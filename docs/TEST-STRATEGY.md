@@ -19,7 +19,7 @@ Sep 25, 2026 · implements Spec › Invariant tests and EP › Testing mindset �
 
 | Layer | Covers | Tool | Runs in |
 | --- | --- | --- | --- |
-| Unit | RIC grammar, calendar, bands, Black-Scholes, IV, measures, selectors, trigger, gates, exits, fills, Reg T, metrics | pytest | `just test`, CI |
+| Unit | Domain primitives (half-even quantizing, money arithmetic, `bar_end`, session bars; `tests/unit/domain/`), RIC grammar, calendar, bands, Black-Scholes, IV, measures, selectors, trigger, gates, exits, fills, Reg T, metrics | pytest | `just test`, CI |
 | Property | Accounting invariants (INV-01, 02, 08, 10); IV vs scalar reference; MarketView as-of guard (INV-04); RIC round-trip (INV-11); integer strike ladders | hypothesis | CI |
 | Scenario | Engine end to end on a synthetic market: one scenario per exit, gate and edge case (§5) | pytest | CI |
 | Determinism | The same synthetic run twice gives byte-identical files (INV-13) | pytest | CI |

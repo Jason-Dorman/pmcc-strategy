@@ -27,7 +27,7 @@ Sep 25, 2026 · schedule from Spec › Build order · **due Fri Oct 9, 11:59 pm*
 | Phase | Dates | Exit criteria (milestone) | Status |
 | --- | --- | --- | --- |
 | P0 Foundations | Sat Sep 26 | `just check` green in Git Bash and in CI; credentials ignored; LSEG session opens from Git Bash | Done locally 2026-09-25; CI run for P0-07/08 pending the PO's push |
-| P1 Data layer and open items | Sat Sep 26 – Sun Sep 27 | NVDA's full chain cached; INV-11, INV-12 pass; window, r and identifiers recorded; universe fetch started | Not started |
+| P1 Data layer and open items | Sat Sep 26 – Sun Sep 27 | NVDA's full chain cached; INV-11, INV-12 pass; window, r and identifiers recorded; universe fetch started | In progress: P1-01 done |
 | P1-10 Universe fetch (background) | Sun Sep 27 – Sat Oct 3 | All 12 symbols cached with coverage summaries | Not started |
 | P2 Pricing | Mon Sep 28 | IV solver matches the reference; EM, ATM IV, RV20 tested | Not started |
 | P3 Engine, accounting, baseline | Mon Sep 28 – Wed Sep 30 | **M1:** baseline blotter, ledger, NAV, Reg T for NVDA; INV-01–10 and 13 pass | Not started |
@@ -144,7 +144,7 @@ P8 release                                                                      
 
 ### P1 — Data layer and open items · Sat Sep 26 – Sun Sep 27
 
-- [ ] **P1-01 · Domain primitives**
+- [x] **P1-01 · Domain primitives** — done 2026-09-25; `money`, `instruments`, `rules`, `clock`, `sessions` (DEC-81); session model follows the DEC-06 recommendation, pending the P1-04 probe
   - `pmcc/domain`: `Price`/`Money` (DEC-44), `OptionId`, `Right`, `Side`, `RuleId`, ET time helpers, and the session/bar model (DEC-06).
   - Done when: tests cover half-even quantization, money arithmetic, `bar_end`, and session-bar classification including half-days.
   - Needs: P0-04
