@@ -117,7 +117,7 @@ P8 release                                                                      
     - `uv run pmcc --help` lists fetch, probe, run, batch, calibrate, export, verify, serve
     - `uv run python -c "import lseg.data"` works
   - Refs: DEC-42, DEC-43
-- [ ] **P0-04 · Quality gates**
+- [x] **P0-04 · Quality gates** — done 2026-09-25; ruff and pyright run through `uv run` (DEC-77); planted C901 and credentials file rejected via `pre-commit run --files`, then removed
   - ruff (lint and format; `C90` with max complexity 10).
   - pyright strict on `pmcc` and `tests`, with the reference files excluded (DEC-57).
   - pytest with hypothesis profiles and the no-network fixture.

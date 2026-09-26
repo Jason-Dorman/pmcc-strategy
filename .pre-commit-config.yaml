@@ -1,0 +1,38 @@
+# Quality gates (P0-04; ARCHITECTURE §14). ruff and pyright run from the uv env,
+# so hook versions always match uv.lock (DEC-77).
+# Reference files are read-only and never checked or fixed (DEC-57).
+exclude: ^(LSEG-DATA-GUIDE\.md|DESIGN-GUIDE\.md|theme\.py|lseg_client\.py)$
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-yaml
+      - id: end-of-file-fixer
+      - id: check-added-large-files
+      - id: detect-private-key
+
+  - repo: local
+    hooks:
+      - id: ruff
+        name: ruff
+        entry: uv run --frozen ruff check --fix
+        language: system
+        types_or: [python, pyi]
+      - id: ruff-format
+        name: ruff-format
+        entry: uv run --frozen ruff format
+        language: system
+        types_or: [python, pyi]
+      - id: pyright
+        name: pyright
+        entry: uv run --frozen pyright
+        language: system
+        types_or: [python, pyi]
+        pass_filenames: false
+        require_serial: true
+      - id: no-lseg-credentials
+        name: reject lseg-data.config.json (never commit credentials)
+        entry: lseg-data.config.json holds LSEG credentials and must never be committed (LDG §1).
+        language: fail
+        files: (^|/)lseg-data\.config\.json$
