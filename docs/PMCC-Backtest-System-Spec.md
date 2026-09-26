@@ -97,9 +97,9 @@ All LSEG access happens locally through `pmcc fetch`; backtests read only the pa
 
 **RIC builder:** `{ROOT}{MONTH}{DAY}{YY}{STRIKE}.U{^MONTHYY if expired}`
 
-- Month letter encodes month and call/put (calls A–L, puts M–X).
-- Day not zero-padded; strike × 100, five digits, zero-padded.
-- Caret suffix only for expired contracts. The long leg (120–270 DTE) is often still live, so the builder must decide expired vs live from the expiry date relative to the fetch date.
+- Month letter encodes month and call/put (calls A–L, puts M–X). The caret always uses the call letter, for puts too: a June put's caret is `^F26` (DEC-45).
+- Day zero-padded to two digits (DEC-01); strike × 100, five digits, zero-padded.
+- Caret suffix only for expired contracts. The long leg (120–270 DTE) is often still live, so the builder must decide expired vs live from the expiry date relative to the fetch date. For a few days after expiry a contract still answers only to the live form, so an expired contract is asked with the caret first, then without it (DEC-45).
 
 **Chain discovery**
 
@@ -370,7 +370,7 @@ These tests prove logical consistency and must pass on every run, for every symb
 8. Available funds ≥ 0 at every entry decision.
 9. Every blotter row and gate-log row carries a valid rule ID defined in the config.
 10. Short and long quantities stay equal whenever a short is open.
-11. RIC builder round-trips known examples (including `AAPLF52619000.U^F26` and `UUUUH212601450.U^H26`) and emits no caret for live contracts.
+11. RIC parser reads known examples as the right contracts (including `UUUUH212601450.U^H26` and the unpadded `AAPLF52619000.U^F26`); the builder emits the zero-padded day, round-trips its own spelling, and emits no caret for live contracts (DEC-01).
 12. Missing RICs return empty series, never exceptions.
 13. Re-running a config on cached data produces byte-identical results.
 14. The frontend type-checks against TypeScript types generated from the current result schema.

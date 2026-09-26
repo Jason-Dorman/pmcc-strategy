@@ -2,7 +2,7 @@
 
 A symbol-agnostic backtester for the **Poor Man's Covered Call** (PMCC): a deep in-the-money, long-dated call held as a stock substitute, with weekly out-of-the-money calls sold against it. One engine runs two strategies, a fixed-rule baseline and a quant variant, on LSEG hourly data, and publishes the results as a static site on GitHub Pages.
 
-> **Status:** foundations (P0) are in place: toolchain, quality gates, CI, logging and import-boundary tests. The data layer (P1) has started, with the domain primitives (integer money, option IDs, rule IDs, the ET session and bar model). The build runs Sep 26 – Oct 9, 2026, tracked in [docs/BUILD-PLAN.md](docs/BUILD-PLAN.md).
+> **Status:** foundations (P0) are in place: toolchain, quality gates, CI, logging and import-boundary tests. The data layer (P1) has started: the domain primitives (integer money, option IDs, rule IDs, the ET session and bar model) and the option RIC builder and parser are in. The build runs Sep 26 – Oct 9, 2026, tracked in [docs/BUILD-PLAN.md](docs/BUILD-PLAN.md).
 > - The commands under Usage are the interface defined in the spec. Until its backlog item lands, each one exits with code 1 and names that item.
 > - The site link will be added at the first deploy.
 

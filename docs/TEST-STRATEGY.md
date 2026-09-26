@@ -19,7 +19,7 @@ Sep 25, 2026 · implements Spec › Invariant tests and EP › Testing mindset �
 
 | Layer | Covers | Tool | Runs in |
 | --- | --- | --- | --- |
-| Unit | Domain primitives (half-even quantizing, money arithmetic, `bar_end`, session bars; `tests/unit/domain/`), RIC grammar, calendar, bands, Black-Scholes, IV, measures, selectors, trigger, gates, exits, fills, Reg T, metrics | pytest | `just test`, CI |
+| Unit | Domain primitives (half-even quantizing, money arithmetic, `bar_end`, session bars; `tests/unit/domain/`), RIC grammar and OCC symbols (`tests/unit/data/test_ric.py`), calendar, bands, Black-Scholes, IV, measures, selectors, trigger, gates, exits, fills, Reg T, metrics | pytest | `just test`, CI |
 | Property | Accounting invariants (INV-01, 02, 08, 10); IV vs scalar reference; MarketView as-of guard (INV-04); RIC round-trip (INV-11); integer strike ladders | hypothesis | CI |
 | Scenario | Engine end to end on a synthetic market: one scenario per exit, gate and edge case (§5) | pytest | CI |
 | Determinism | The same synthetic run twice gives byte-identical files (INV-13) | pytest | CI |
@@ -48,7 +48,7 @@ Numbering follows Spec › Invariant tests.
 | 08 | Available funds ≥ 0 at every entry decision | runtime · property · verify | property tests; `pmcc verify` (post-trade funds in the audit) |
 | 09 | Every blotter and gate-log row carries a valid rule ID from the config | runtime · config · verify | `tests/unit/config/`; `pmcc verify` |
 | 10 | Short qty = long qty whenever a short is open | runtime · property · verify | property tests; `pmcc verify` |
-| 11 | The RIC builder round-trips known examples (as amended by DEC-01) and emits no caret for live contracts | unit · property | `tests/unit/data/test_ric.py` |
+| 11 | Known examples parse as the right contracts (the spec's unpadded one included); the builder emits the zero-padded day, round-trips its own spelling and puts no caret on live contracts (DEC-01) | unit · property | `tests/unit/data/test_ric.py` |
 | 12 | Missing RICs return empty series, never exceptions | unit | `tests/unit/data/test_fetch.py` (FakeProvider) |
 | 13 | Re-running a config on cached data gives byte-identical results (ignoring `run_timestamp`) | determinism test (synthetic, CI) · P8-01 (real, local) | `tests/scenario/test_determinism.py`; `just reproduce` |
 | 14 | The frontend type-checks against types generated from the current schema | `gen:types` + `tsc` | CI web job |

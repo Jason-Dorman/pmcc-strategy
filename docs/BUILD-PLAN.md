@@ -27,7 +27,7 @@ Sep 25, 2026 · schedule from Spec › Build order · **due Fri Oct 9, 11:59 pm*
 | Phase | Dates | Exit criteria (milestone) | Status |
 | --- | --- | --- | --- |
 | P0 Foundations | Sat Sep 26 | `just check` green in Git Bash and in CI; credentials ignored; LSEG session opens from Git Bash | Done locally 2026-09-25; CI run for P0-07/08 pending the PO's push |
-| P1 Data layer and open items | Sat Sep 26 – Sun Sep 27 | NVDA's full chain cached; INV-11, INV-12 pass; window, r and identifiers recorded; universe fetch started | In progress: P1-01 done |
+| P1 Data layer and open items | Sat Sep 26 – Sun Sep 27 | NVDA's full chain cached; INV-11, INV-12 pass; window, r and identifiers recorded; universe fetch started | In progress: P1-01, P1-02 done |
 | P1-10 Universe fetch (background) | Sun Sep 27 – Sat Oct 3 | All 12 symbols cached with coverage summaries | Not started |
 | P2 Pricing | Mon Sep 28 | IV solver matches the reference; EM, ATM IV, RV20 tested | Not started |
 | P3 Engine, accounting, baseline | Mon Sep 28 – Wed Sep 30 | **M1:** baseline blotter, ledger, NAV, Reg T for NVDA; INV-01–10 and 13 pass | Not started |
@@ -43,7 +43,6 @@ Nothing needs answering up front. This is when each open question in [DECISIONS]
 
 | Asked at | About | Questions |
 | --- | --- | --- |
-| P1-04 Probes · Sat Sep 26 | RIC spelling, with the probe result | DEC-01 |
 | P1-05 Open items · Sat Sep 26 | Probe results (DEC-06–14); confirm the window and r | DEC-07, DEC-11 |
 | P1-06 Calendar · Sat Sep 26 | Monthly expiries and holidays | DEC-33 |
 | P1-07 Cache · Sun Sep 27 | Cache file layout | DEC-46 |
@@ -148,7 +147,7 @@ P8 release                                                                      
   - `pmcc/domain`: `Price`/`Money` (DEC-44), `OptionId`, `Right`, `Side`, `RuleId`, ET time helpers, and the session/bar model (DEC-06).
   - Done when: tests cover half-even quantization, money arithmetic, `bar_end`, and session-bar classification including half-days.
   - Needs: P0-04
-- [ ] **P1-02 · RIC builder and parser**
+- [x] **P1-02 · RIC builder and parser** — done 2026-09-26; `build_ric`, `parse_ric`, `forms_to_ask`, `occ_symbol` (DEC-82); the builder pads the day and the parser reads both spellings; DEC-01 settled by the PO from the earlier project's measurements, with the spec's RIC line and INV-11 amended; 92 tests, including hypothesis round-trips; an adversarial review's 2 confirmed and 7 plausible findings fixed (DEC-82)
   - `pmcc/data/ric.py`: build and parse both forms, the OCC symbol, the form policy (DEC-45), and day padding per DEC-01.
   - Done when: the INV-11 tests pass:
     - the spec's examples parse
@@ -168,9 +167,8 @@ P8 release                                                                      
     - a closed session raises before any request
     - an outage writes nothing
   - Needs: P1-02 · Refs: DEC-49; LDG §4
-- [ ] **P1-04 · Probes** **[Workspace]** **[PO]**
-  - `pmcc probe` implements the DEC-01, 06, 07, 08, 09, 12, 13 and 14 checks. Run it for all 12 symbols; the requests are small.
-  - Then ask: DEC-01, with the probe result.
+- [ ] **P1-04 · Probes** **[Workspace]**
+  - `pmcc probe` implements the DEC-06, 07, 08, 09, 12, 13 and 14 checks. Run it for all 12 symbols; the requests are small. (DEC-01 was settled without a probe.)
   - Done when: `data_cache/probes/` has a report per symbol, and each outcome is written into its DEC entry.
   - Needs: P0-01, P1-03
 - [ ] **P1-05 · Resolve the spec's open items** **[PO]**
@@ -463,7 +461,7 @@ The spec sets the order. Cut the next item only when its trigger fires, and mark
 | R-02 | Hourly option history is shorter than 10 weeks, or uneven across symbols | Med | High | Probe on day 1; window = the intersection; tell the PO at once | P1-04 |
 | R-03 | Deep ITM long-dated quotes are sparse or wide: IV failures, few E-L3 candidates, E-T1 retries | Med | Med | Measure (DEC-08); report on Methodology; leave the rules unchanged | P1-09 |
 | R-04 | Fetch volume and time; possible LSEG request limits | Med | High | Estimate first; resumable units; start Sep 27; run overnight; watch for throttling errors | P1-08, P1-10 |
-| R-05 | The RIC day-padding conflict breaks INV-11 as written | High | Med | Probe both spellings; DEC-01 to the PO | P1-04 |
+| R-05 | The zero-padded RIC day, settled from the earlier project without a probe, stops resolving | Low | Med | The DEC-01 note: expiries dated the 1st–9th all come back unanswered; the spelling is set in one place, and the parser reads both | P1-04, P1-09 |
 | R-06 | A strike above $999.99 doesn't fit the 5-digit field | Low | High | Probe the max strike per symbol; ask the PO | P1-04 |
 | R-07 | A split in the window changes the option root | Low | High | Check the tape for discontinuities and corporate actions | P1-04 |
 | R-08 | A wrong bar convention hides look-ahead | Low | High | DEC-06 checks; MarketView keyed on `bar_end` | P1-04 |
