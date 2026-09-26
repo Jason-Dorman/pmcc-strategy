@@ -1,0 +1,52 @@
+# CI (ARCHITECTURE §14). Builds only from committed files: no cache, no secrets,
+# never contacts LSEG (§15). Tools run at the uv.lock versions (DEC-77).
+# The `pmcc verify` step lands with P4-05; the `web` and `deploy` jobs with P4-07.
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Reject tracked credentials
+        run: |
+          if git ls-files | grep -E '(^|/)lseg-data\.config\.json$'; then
+            echo "lseg-data.config.json is tracked; credentials must never be committed (LDG §1)." >&2
+            exit 1
+          fi
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Install from uv.lock
+        run: uv sync --frozen
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-${{ runner.os }}-${{ hashFiles('.pre-commit-config.yaml') }}
+
+      - name: Pre-commit on all files (ruff, format, pyright, guards)
+        run: uv run --frozen pre-commit run --all-files --show-diff-on-failure
+
+      - name: pytest
+        run: uv run --frozen pytest
+        env:
+          HYPOTHESIS_PROFILE: ci

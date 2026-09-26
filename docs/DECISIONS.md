@@ -85,6 +85,9 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-74 | Synthetic-data banner | ENG | — |
 | DEC-75 | Data page | ASK | P7-06 |
 | DEC-76 | Greek attribution display | ASK | P6-01 |
+| DEC-77 | Quality-gate configuration | ENG | — |
+| DEC-78 | justfile conventions | ENG | — |
+| DEC-79 | CI workflow conventions | ENG | — |
 
 ---
 
@@ -621,6 +624,17 @@ Development runs in Git Bash on Windows (DEC-02) and CI runs on Ubuntu. Both mus
 - **Extra recipes:** `test *ARGS` (TEST-STRATEGY §7 uses it) and `fetch … *ARGS`, so `--plan-only` can be passed; `default` lists the recipes.
 - **Test:** `tests/unit/test_justfile.py` checks the bash shell setting and the §14 recipe names by reading the file, so it runs in CI without `just` installed.
 - **Outcome:** 2026-09-25 — `just --list` shows every recipe; `just check` green in Git Bash (pre-commit, 15 tests, web steps skipped).
+
+### DEC-79 — CI workflow conventions
+**Status:** ENG · **Affects:** P0-06, P4-05, P4-07
+
+- **Trigger:** every push and pull request. Read-only token (`contents: read`), and a newer push to the same ref cancels the older run.
+- **Steps call tools directly, not `just`:** the `python` job runs the same commands as `just check` (`uv sync --frozen`, `pre-commit run --all-files`, `pytest`) through `uv run --frozen`, so the runner needs no `just` install and uses the `uv.lock` versions (DEC-77).
+- **Credentials guard:** the first step fails if `git ls-files` lists `lseg-data.config.json` at any path (ARCHITECTURE §15), before anything is installed.
+- **Caches:** setup-uv's uv cache, and `~/.cache/pre-commit` keyed on `.pre-commit-config.yaml`. Python comes from `.python-version`.
+- **Actions:** pinned to major tags (`actions/checkout@v5`, `astral-sh/setup-uv@v6`, `actions/cache@v4`).
+- **Staging:** `pmcc verify results/` joins the `python` job with P4-05, once the command and committed results exist. The `web` and `deploy` jobs arrive with P4-07.
+- **Test:** `tests/unit/test_ci_workflow.py` reads `ci.yml` and checks the triggers, the Ubuntu runner, the frozen install, pre-commit on all files, pytest under the `ci` profile, the credentials guard, and that CI never runs `pmcc fetch` or `pmcc probe`.
 
 ## E. Analytics definitions
 

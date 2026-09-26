@@ -572,11 +572,11 @@ Recipes run under bash (`set shell := ["bash", "-cu"]`): Git Bash locally, bash 
 | `web-dev` · `web-build` · `e2e` · `serve` | frontend |
 | `reproduce` | cached data → batch → verify → export → web build (Spec › CLI) |
 
-CI (`.github/workflows/ci.yml`, on push and PR):
+CI (`.github/workflows/ci.yml`, on push and PR; DEC-79):
 
 | Job | Steps |
 | --- | --- |
-| `python` | setup-uv → `uv sync --frozen` → `pre-commit run --all-files` (ruff, format, pyright, guards) → `pytest` (ci profile) → `pmcc verify results/` |
+| `python` | credentials guard (`git ls-files`) → setup-uv → `uv sync --frozen` → `pre-commit run --all-files` (ruff, format, pyright, guards) → `pytest` (ci profile) → `pmcc verify results/` (added with P4-05) |
 | `web` | `uv sync --frozen` → `pmcc export --out web/public/data/` → `npm ci` → `gen:types` → `lint` → `typecheck` → `vitest` → `build` → dist guard → Playwright smoke → upload the Pages artifact |
 | `deploy` | `main` only; needs `python` and `web`; `actions/deploy-pages` |
 
