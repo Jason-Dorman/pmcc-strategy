@@ -559,13 +559,14 @@ web/
 
 ## 14. Tooling and CI/CD
 
-Recipes run under bash (`set shell := ["bash", "-cu"]`): Git Bash locally, bash on the CI runners (DEC-58).
+Recipes run under bash (`set shell := ["bash", "-cu"]`): Git Bash locally, bash on the CI runners (DEC-58). Python tools run through `uv run --frozen` (DEC-77). A recipe whose command isn't built yet fails with exit 1, naming its backlog item; until `web/` exists (P4-06), `setup` and `check` skip their web steps with a note, and the web recipes fail (DEC-78).
 
 | just recipe | Does |
 | --- | --- |
-| `setup` | `uv sync`, `npm ci` in `web/`, `pre-commit install` |
+| `setup` | `uv sync --frozen`, `npm ci` in `web/`, `pre-commit install` |
 | `check` | pre-commit on all files, pytest, web lint/typecheck/vitest |
-| `probe SYM` · `fetch SYM START END` | LSEG probes / pull (local only) |
+| `test *ARGS` | pytest (dev profile unless `HYPOTHESIS_PROFILE` is set), extra args passed through |
+| `probe SYM` · `fetch SYM START END *ARGS` | LSEG probes / pull (local only); `fetch` passes extra args, e.g. `--plan-only` |
 | `run SYM CONFIG` · `batch` · `calibrate` | backtests |
 | `export` · `verify` | site data / results validation |
 | `web-dev` · `web-build` · `e2e` · `serve` | frontend |

@@ -92,7 +92,8 @@ These exist once P0 is done.
 | --- | --- |
 | `just setup` | install the Python and web environments and the git hooks |
 | `just check` | lint, format check, pyright, pytest, and web lint/typecheck/tests |
-| `just probe SYM` / `just fetch SYM START END` | LSEG spikes / pull (local, Workspace signed in) |
+| `just test [ARGS]` | pytest only |
+| `just probe SYM` / `just fetch SYM START END [--plan-only]` | LSEG spikes / pull (local, Workspace signed in) |
 | `just run SYM CONFIG` / `just batch` / `just calibrate` | backtests |
 | `just export` / `just verify` | site data / results validation |
 | `just web-dev` / `just e2e` / `just serve` | frontend |
