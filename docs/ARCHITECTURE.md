@@ -56,7 +56,8 @@ The spec's tree, plus the `domain/` and `config/` additions from DEC-43.
 
 ```
 pmcc/
-  domain/        Price, Money, OptionId, Right, Side, RuleId; time model (ET, bars, sessions)
+  domain/        money.py (Price, Money), instruments.py (OptionId, Right, Side), rules.py (RuleId),
+                 clock.py (ET, bar_end), sessions.py (Session, session bars) (DEC-81)
   config/        pydantic config models; YAML loader (extends/overrides); hashing; rule-text rendering
   data/
     lseg/        session + raw history calls: the only code importing lseg.data or pandas
@@ -123,10 +124,12 @@ The test also checks that one planted forbidden import per rule is caught, inclu
 
 | Type | Representation | Notes |
 | --- | --- | --- |
-| `Price` | `int`, units of $0.0001 per share | quotes quantized once at load (round half-even) |
-| `Money` | `int`, units of $0.0001 | cash, market values, P&L; `Price × multiplier × qty` is exact |
+| `Price` | frozen dataclass over an `int` of $0.0001 units per share | quotes quantized once at load (round half-even; a float by its shortest repr) |
+| `Money` | frozen dataclass over an `int` of $0.0001 units | cash, market values, P&L; `Price.notional(multiplier, qty)` is exact |
 | multiplier | 100 per option contract; 1 per share | |
 | `float64` | IV, Greeks, ratios, analytics | never cash |
+
+`Price` and `Money` never mix: adding one to the other, or multiplying `Money` by a non-int, raises `TypeError` (DEC-81).
 
 ### 4.2 Time (DEC-06, DEC-20, DEC-23, DEC-24, DEC-33)
 
@@ -135,7 +138,7 @@ The test also checks that one planted forbidden import per rule is caught, inclu
 | Time zone | Every timestamp is tz-aware `America/New_York` after load; never a hardcoded UTC hour (LDG §4.8) |
 | `bar_start` | LSEG stamp (tz-naive UTC); kept in the cache for provenance only |
 | `bar_end` | `bar_start + 1h`; the only key after load, and the decision time |
-| Session bar | A bar whose ET start is 09:00–15:00 on a trading day (ends 10:00–16:00; ends 13:00 on a half-day) |
+| Session bar | A bar whose ET start is 09:00–15:00 on a trading day (ends 10:00–16:00; ends 13:00 on a half-day); `Session.contains()`, `session_of()` |
 | Week-open session | First session of the calendar week; what the rules call "Monday" |
 | Week-final session | Last session of the calendar week; the weekly expiry (E-S2) |
 | Friday-check bar | Last session bar of the week-final session with `bar_end` ≤ 15:00 ET (X-S3) |

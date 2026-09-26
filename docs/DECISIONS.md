@@ -89,6 +89,7 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-78 | justfile conventions | ENG | — |
 | DEC-79 | CI workflow conventions | ENG | — |
 | DEC-80 | Logging setup and the import-boundary test | ENG | — |
+| DEC-81 | Domain value types | ENG | — |
 
 ---
 
@@ -646,6 +647,23 @@ Development runs in Git Bash on Windows (DEC-02) and CI runs on Ubuntu. Both mus
 - **Wiring:** the command stubs don't configure logging yet. Each command calls `configure_logging` when its backlog item builds it (first `pmcc probe`, P1-04, and `pmcc fetch`, P1-08).
 - **Import test:** `tests/architecture/test_imports.py` parses every module under `pmcc/` with `ast`, resolves relative imports, and treats `from a import b` as importing `a.b`, so `from pmcc import data` counts as `pmcc.data`. Imports inside functions and `TYPE_CHECKING` blocks count. Dynamic imports (`importlib`) are not scanned.
 - **Outcome:** 2026-09-25 — logging tests pass (stderr and file carry the same events, LF only). A `pandas` import planted in `pmcc/engine/` failed the import test with `rule 1: pmcc.engine.planted imports pandas`, then was removed.
+
+### DEC-81 — Domain value types
+**Status:** ENG · **Affects:** P1-01, and every package that uses `pmcc.domain`
+
+- **Modules:** `money` (`Price`, `Money`), `instruments` (`OptionId`, `Right`, `Side`), `rules` (`RuleId`), `clock` (ET, `bar_end`), `sessions` (`Session`, `session_of`). `pmcc.domain` re-exports them.
+- **`Price` and `Money`** are frozen dataclasses around one `int` of $0.0001 units (DEC-44), not bare ints, so they can't be mixed by accident: `Price + Money` and `Money * 1.5` raise `TypeError`, and a float for units is refused. `Price.notional(multiplier, qty)` is the only way from a price to cash, and it's exact.
+- **Quantizing:** `from_dollars` rounds half-even, in exact arithmetic (a `Fraction`), so no decimal context can round twice.
+  - A float (numpy's `float64` included) is read by its shortest repr. So `1.23445` is quantized as the printed quote, a tie, to `1.2344`. Its binary value, `1.23445000000000004…`, sits just above the tie and would round up to `1.2345`.
+  - The P1-07 loader's vectorized quantizing must agree with this function, and is to be tested against it.
+- **Dollars out:** `to_dollars()` is exact and always has 4 decimal places, whatever the decimal context.
+- **`OptionId`:** root, expiry, right, strike. The strike is a `Price` in whole cents (the RIC encodes cents); the $999.99 RIC limit is the RIC builder's check (DEC-45), not this type's.
+- **`RuleId`:** a `str` subclass that accepts only the spec's shape (`E-T1`, `G-3`, `X-S5`, …: one digit 1–9). Whether the config defines the ID is checked there (INV-09).
+- **Sessions (DEC-06):** a `Session` is a day and its close (16:00, or 13:00 on a half-day). Its session bars end on the hour from 10:00 through the close. `session_of(bar_end, sessions)` returns `None` for extended-hours bars, the post-close stub and non-trading days. This follows DEC-06's recommendation; the P1-04 probe verifies it. Which days trade and which are half-days comes from the calendar (P1-06).
+- **`bar_end`:** a naive start is LSEG's UTC stamp. The hour is added in UTC, then converted to ET, so it is elapsed time even across a DST change.
+- **Outcome:** 2026-09-25 — domain tests pass, including half-even ties, money arithmetic, `bar_end` under EDT, EST and the fall-back hour, and session-bar classification on a regular day and a half-day.
+- **Outcome:** 2026-09-25 — an adversarial review (4 reviewers, 2 skeptics per finding) confirmed 4 defects, all fixed with regression tests: `np.float64` was rejected by `from_dollars`; ruff failed on the new files; the §4.1 table in ARCHITECTURE was broken; and this entry described the float's binary value the wrong way round. Also fixed from its plausible findings: double rounding past 28 significant digits, `to_dollars` losing its 4 decimal places on huge amounts, and a missing test for a non-UTC aware `bar_end` start.
+  - Process gap: `pre-commit run --all-files` skips files git doesn't track, so `just check` passed before the new files were staged. Until that's closed, run `uv run --frozen ruff check pmcc tests` and `uv run --frozen ruff format --check pmcc tests` before handover.
 
 ## E. Analytics definitions
 
