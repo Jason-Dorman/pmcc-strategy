@@ -124,7 +124,7 @@ P8 release                                                                      
   - `.pre-commit-config.yaml`: ruff, ruff-format, pyright, check-yaml, end-of-file-fixer, check-added-large-files, detect-private-key, and a local hook rejecting a staged `lseg-data.config.json`.
   - Done when: `uv run pre-commit run --all-files` passes, and a planted complexity-11 function and a staged fake credentials file are both rejected (then removed).
   - Needs: P0-03 · Refs: Spec › Stack; EP › Cyclomatic Complexity
-- [ ] **P0-05 · justfile**
+- [x] **P0-05 · justfile** — done 2026-09-25; `just check` green in Git Bash (web steps skip until P4-06); added `test` and `fetch … *ARGS` (DEC-78)
   - `set shell := ["bash", "-cu"]` (DEC-58), plus the recipes in ARCHITECTURE §14. A recipe may be a stub until its phase.
   - Done when: `just --list` shows every recipe, and `just check` runs lint, type-check and tests in Git Bash.
   - Needs: P0-01, P0-04

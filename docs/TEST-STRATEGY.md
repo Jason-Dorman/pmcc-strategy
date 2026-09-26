@@ -151,8 +151,8 @@ Local commands run in Git Bash on Windows, and CI runs on Ubuntu. The same suite
 | Command | Runs |
 | --- | --- |
 | pre-commit | ruff, ruff-format, pyright, guards (fast; on staged files) |
-| `just test` | pytest (dev profile) |
-| `just check` | pre-commit on all files + pytest + web lint, typecheck and Vitest |
+| `just test` | pytest (dev profile); extra args pass through, e.g. `just test -k ric` |
+| `just check` | pre-commit on all files + pytest + web lint, typecheck and Vitest (web steps skipped until P4-06, DEC-78) |
 | CI | everything above (ci profile), plus `pmcc verify`, the web build, the dist guard and the Playwright smoke test |
 | `just reproduce` | local, with the cache: batch → verify → INV-13 on real data → export → web build |
 
