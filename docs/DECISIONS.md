@@ -88,6 +88,7 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-77 | Quality-gate configuration | ENG | — |
 | DEC-78 | justfile conventions | ENG | — |
 | DEC-79 | CI workflow conventions | ENG | — |
+| DEC-80 | Logging setup and the import-boundary test | ENG | — |
 
 ---
 
@@ -635,6 +636,16 @@ Development runs in Git Bash on Windows (DEC-02) and CI runs on Ubuntu. Both mus
 - **Actions:** pinned to major tags (`actions/checkout@v5`, `astral-sh/setup-uv@v6`, `actions/cache@v4`).
 - **Staging:** `pmcc verify results/` joins the `python` job with P4-05, once the command and committed results exist. The `web` and `deploy` jobs arrive with P4-07.
 - **Test:** `tests/unit/test_ci_workflow.py` reads `ci.yml` and checks the triggers, the Ubuntu runner, the frozen install, pre-commit on all files, pytest under the `ci` profile, the credentials guard, and that CI never runs `pmcc fetch` or `pmcc probe`.
+
+### DEC-80 — Logging setup and the import-boundary test
+**Status:** ENG · **Affects:** P0-07, P1-03, P1-08, P3-07
+
+- **Where:** `pmcc/log.py` holds `configure_logging(command, log_dir=Path("logs"))`. A command calls it once at startup; every other module logs through `structlog.get_logger()` and never imports `pmcc.log`, so `accounting` and `pricing` can log without breaking ARCHITECTURE §3.3 rule 4. A new rule 7 enforces this.
+- **Sinks:** each event is one JSON line (`sort_keys`), printed to stderr and appended to `logs/{command}_{UTC yyyymmddThhmmssZ}.jsonl`. The file is opened per event with `newline="\n"` (DEC-58), so a crash never loses a buffered line and Windows writes LF. No stdlib `logging` handlers: `FileHandler` can't be told to write LF on Windows.
+- **Fields:** `event`, `level`, `timestamp` (ISO 8601, UTC, `Z`), `command`, plus the call's keyword fields; exceptions render as text under `exception`. Level INFO and up.
+- **Wiring:** the command stubs don't configure logging yet. Each command calls `configure_logging` when its backlog item builds it (first `pmcc probe`, P1-04, and `pmcc fetch`, P1-08).
+- **Import test:** `tests/architecture/test_imports.py` parses every module under `pmcc/` with `ast`, resolves relative imports, and treats `from a import b` as importing `a.b`, so `from pmcc import data` counts as `pmcc.data`. Imports inside functions and `TYPE_CHECKING` blocks count. Dynamic imports (`importlib`) are not scanned.
+- **Outcome:** 2026-09-25 — logging tests pass (stderr and file carry the same events, LF only). A `pandas` import planted in `pmcc/engine/` failed the import test with `rule 1: pmcc.engine.planted imports pandas`, then was removed.
 
 ## E. Analytics definitions
 

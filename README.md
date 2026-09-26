@@ -2,8 +2,8 @@
 
 A symbol-agnostic backtester for the **Poor Man's Covered Call** (PMCC): a deep in-the-money, long-dated call held as a stock substitute, with weekly out-of-the-money calls sold against it. One engine runs two strategies, a fixed-rule baseline and a quant variant, on LSEG hourly data, and publishes the results as a static site on GitHub Pages.
 
-> **Status:** planning is complete; the build runs Sep 26 – Oct 9, 2026, tracked in [docs/BUILD-PLAN.md](docs/BUILD-PLAN.md).
-> - The commands below are the interface defined in the spec. They become available as the build lands.
+> **Status:** foundations (P0) are in place: toolchain, quality gates, CI, logging and import-boundary tests. The build runs Sep 26 – Oct 9, 2026, tracked in [docs/BUILD-PLAN.md](docs/BUILD-PLAN.md).
+> - The commands under Usage are the interface defined in the spec. Until its backlog item lands, each one exits with code 1 and names that item.
 > - The site link will be added at the first deploy.
 
 ## What the results answer
@@ -39,20 +39,25 @@ A symbol-agnostic backtester for the **Poor Man's Covered Call** (PMCC): a deep 
 
 ## Requirements
 
-- **[uv](https://docs.astral.sh/uv/),** which installs Python 3.12.
-- **Node.js 22 LTS, [just](https://just.systems) and git.**
+- **[uv](https://docs.astral.sh/uv/),** which installs Python 3.12 (from `.python-version`) on the first sync.
+- **[just](https://just.systems):** `uv tool install rust-just` installs it.
+- **git, with Git Bash on Windows.**
+- **Node.js 22 LTS with npm,** for the site (`web/`, from build item P4-06).
 - **LSEG Workspace,** only for fetching data. It must be running and signed in on the same Windows machine, because the LSEG desktop session connects to it locally.
 
-Development runs in Git Bash on Windows, and CI runs the same checks on Ubuntu. Backtests, tests and the site build never contact LSEG.
+Development runs in Git Bash on Windows, and CI runs the same checks on Ubuntu. Keep the clone on a Windows path, not `\\wsl.localhost\…`. Backtests, tests and the site build never contact LSEG.
 
 If uv fails with `invalid peer certificate: UnknownIssuer`, check for a stale `SSL_CERT_FILE` left by a conda activation (`echo $SSL_CERT_FILE`) and `unset SSL_CERT_FILE`, or start the terminal without conda activated.
 
 ## Setup
 
-From the repo root, in Git Bash:
+In Git Bash:
 
 ```bash
-just setup        # uv sync, npm ci in web/, pre-commit hooks
+git clone git@github.com:Jason-Dorman/pmcc-strategy.git
+cd pmcc-strategy
+just setup        # uv sync, npm ci in web/ (once it exists), pre-commit hooks
+just check        # lint, format check, pyright, pytest (and the web checks, once web/ exists)
 ```
 
 LSEG credentials go in `lseg-data.config.json` in the repo root. The file is gitignored; never commit or share it. Its shape:
