@@ -128,7 +128,7 @@ P8 release                                                                      
   - `set shell := ["bash", "-cu"]` (DEC-58), plus the recipes in ARCHITECTURE §14. A recipe may be a stub until its phase.
   - Done when: `just --list` shows every recipe, and `just check` runs lint, type-check and tests in Git Bash.
   - Needs: P0-01, P0-04
-- [ ] **P0-06 · CI skeleton**
+- [x] **P0-06 · CI skeleton** — done 2026-09-25; `python` job plus a credentials guard; `pmcc verify` step deferred to P4-05 (DEC-79); green on GitHub confirmed by the PO on the PR run
   - `.github/workflows/ci.yml` `python` job on Ubuntu: setup-uv, `uv sync --frozen`, pre-commit on all files, pytest.
   - Done when: the workflow is green on GitHub.
   - Needs: P0-02, P0-05
@@ -331,7 +331,7 @@ P8 release                                                                      
   - Needs: P4-03, P3-10
 - [ ] **P4-05 · Export and verify**
   - Ask first: DEC-54.
-  - Final result models for every output (P6 sections may stay empty), JSON Schema, `index.json`, `rules.json`, and the `pmcc export` and `pmcc verify` commands (DEC-51).
+  - Final result models for every output (P6 sections may stay empty), JSON Schema, `index.json`, `rules.json`, and the `pmcc export` and `pmcc verify` commands (DEC-51). Add the `pmcc verify results/` step to the CI `python` job (DEC-79).
   - Done when: `pmcc verify` passes committed results and fails on hand-corrupted copies, one per re-derivable invariant.
   - Needs: P3-08
 - [ ] **P4-06 · Web scaffold** *(parallel from Oct 1)*
