@@ -61,7 +61,8 @@ pmcc/
   config/        pydantic config models; YAML loader (extends/overrides); hashing; rule-text rendering
   data/
     lseg/        session + raw history calls: the only code importing lseg.data or pandas
-    ric.py       RIC build/parse, OCC symbol, form policy (DEC-45)
+    ric.py       build_ric, parse_ric (either day spelling, DEC-01), occ_symbol,
+                 forms_to_ask (the DEC-45 form policy) (DEC-82)
     calendar.py  sessions from the tape, week-open/final, monthly expiries, holiday table (DEC-33)
     discovery.py strike increments (DEC-14), bands and fetch plan (DEC-48)
     fetch.py     unit orchestration: batching, retries, form fallback, diagnostics, resume
@@ -94,7 +95,7 @@ The reference files at the repo root (`LSEG-DATA-GUIDE.md`, `DESIGN-GUIDE.md`, `
 | `domain` | Types and time rules everyone shares | `Price`, `Money`, `OptionId`, `RuleId`, `Session`, `bar_end()` | stdlib |
 | `config` | Turn YAML into validated, hashed, rendered config | `load_run_config()` → `RunConfig` | domain, pydantic, pyyaml |
 | `data.lseg` | Talk to LSEG | `lseg_session()`, `LsegProvider` | domain, lseg.data, pandas |
-| `data` (rest) | Know RICs and calendars; plan, fetch, cache, load | `plan_symbol()`, `fetch_symbol()`, `load_symbol()` | domain, config, polars; only `fetch` uses `data.lseg` |
+| `data` (rest) | Know RICs and calendars; plan, fetch, cache, load | `build_ric()`, `parse_ric()`, `plan_symbol()`, `fetch_symbol()`, `load_symbol()` | domain, config, polars; only `fetch` uses `data.lseg` |
 | `pricing` | Turn quotes into IV, Greeks and measures | `implied_vol()`, `greeks()`, `price_chain()`, `expected_move()`, `rv20()` | domain, numpy, scipy |
 | `strategy` | Decide what to trade | `build_strategy(cfg)` → `Strategy` | domain, config, pricing, `strategy.ports` |
 | `engine` | Run the clock; route decisions to fills and the book | `run_backtest(data, cfg)` → `RunOutput` | domain, config, pricing, strategy, accounting |
@@ -236,7 +237,7 @@ def regt(book: Book, v: Valuation) -> RegT           # IM, MM, available funds, 
 4. For each unit not already in the manifest:
      - probe increments (DEC-14) → integer-cent strike list (LDG §4.11)
      - fetch in batches of 25; a whole-batch failure is retried per RIC;
-       live-only or caret→live per DEC-45
+       live-only or caret→live per DEC-45 (forms_to_ask)
      - check answered + unanswered = requested, per contract (LDG §5)
      - write parquet + sidecar atomically (temp file → rename), then append manifest rows
 5. Print the coverage summary: % session bars with a valid mid, unanswered counts, IV-failure counts,
@@ -253,7 +254,7 @@ Small requests that answer the spec's open items before the full pull:
 
 - bar convention (DEC-06)
 - history depth (DEC-07) and long-dated coverage (DEC-08)
-- live RIC form (DEC-09) and day padding (DEC-01)
+- live RIC form (DEC-09)
 - identifiers, splits and max strike (DEC-12)
 - field availability (DEC-13) and strike increments (DEC-14)
 

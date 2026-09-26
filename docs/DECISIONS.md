@@ -24,7 +24,7 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 
 | ID | Decision | Status | When |
 | --- | --- | --- | --- |
-| DEC-01 | RIC day field: padded or not | VERIFY → ASK | P1-04 |
+| DEC-01 | RIC day field: padded or not | SETTLED (PO) | — |
 | DEC-02 | Fetch environment | SETTLED (PO) | — |
 | DEC-03 | Light theme | ASK | P4-06 |
 | DEC-04 | Chart colour roles | ASK | P7-01 |
@@ -58,7 +58,7 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-42 | Python environment | ENG | — |
 | DEC-43 | Packages added to the spec layout | ENG | — |
 | DEC-44 | Money as integer units | ENG | — |
-| DEC-45 | RIC form policy | ENG | — |
+| DEC-45 | RIC form policy | SETTLED (PO) | — |
 | DEC-46 | Cache layout | ASK | P1-07 |
 | DEC-47 | Fetch dates are inclusive | ENG | — |
 | DEC-48 | Fetch plan and band-edge guard | ENG | — |
@@ -90,13 +90,14 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-79 | CI workflow conventions | ENG | — |
 | DEC-80 | Logging setup and the import-boundary test | ENG | — |
 | DEC-81 | Domain value types | ENG | — |
+| DEC-82 | RIC module | ENG | — |
 
 ---
 
 ## A. Raised during planning
 
 ### DEC-01 — RIC day field: zero-padded or not
-**Status:** VERIFY → ASK · **Verify and ask at:** P1-04 · **Affects:** P1-02, INV-11, Spec › RIC builder
+**Status:** SETTLED · **Basis:** PO, 2026-09-26, on the earlier project's measurements (LDG §3) · **Affects:** P1-02, P1-04, INV-11, Spec › RIC builder
 
 - **Conflict:** Spec › RIC builder says "Day not zero-padded", and INV-11 cites `AAPLF52619000.U^F26`. LDG §3, measured in Aug–Sep 2026, says the opposite: the day is always two digits (`05`), and unpadded RICs didn't resolve. `lseg_client.build_option_ric` pads the day, and its parser rejects `AAPLF52619000.U^F26` (checked Sep 25).
 - **Recommendation:** P1-04 probes both spellings of the same expired contract (`AAPLF52619000.U^F26` vs `AAPLF052619000.U^F26`), and the result goes to the PO.
@@ -106,7 +107,12 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
     2. The builder emits the verified spelling.
     3. Building then parsing round-trips the canonical form.
     4. Live contracts get no caret.
-- **Outcome:** —
+- **Outcome:** 2026-09-25 (interim, asked at P1-02, since the probe comes later) — PO: "Padded, provisional."
+  - The builder emits the padded spelling (`AAPLF052619000.U^F26`), and the parser reads both. The spec's unpadded example is tested to parse to the right contract, not to rebuild as written (`tests/unit/data/test_ric.py`).
+  - The spec's RIC line and INV-11 stay as written until the P1-04 probe settles this entry. If the probe shows the unpadded spelling resolves instead, the builder changes in one place, `_day_field` in `pmcc/data/ric.py` (DEC-82).
+- **Outcome:** 2026-09-26 — PO: "yes the work from the previous project covered it and I know it works - maybe we just make a note in case something breaks."
+  - Settled as zero-padded, with no probe; P1-04 no longer checks the spelling. Spec › RIC builder and INV-11 are amended to the four checks above.
+  - **If it breaks:** a wrong day spelling shows up as every strike of an expiry dated the 1st–9th coming back unanswered, while expiries dated the 10th or later answer. Check the spelling first. It is set in one place, `_day_field` in `pmcc/data/ric.py`, and the parser already reads both spellings.
 
 ### DEC-02 — Fetch environment
 **Status:** SETTLED · **Basis:** PO, 2026-09-25 · **Affects:** P0-01, DEC-58
@@ -473,13 +479,15 @@ Distances are compared in integer price units, so float noise can't create or br
 - **JSON:** dollars are exported to 4 decimals.
 
 ### DEC-45 — RIC form policy
-**Status:** ENG
+**Status:** SETTLED · **Basis:** PO, 2026-09-26 (with DEC-01), on the earlier project's measurements (LDG §3)
 
 - **Unexpired contracts:** an expiry on or after the fetch date uses the live form only (Spec › RIC builder).
 - **Expired contracts:** ask the caret form first, then the live form for whatever didn't answer. The changeover takes days (LDG §3). Record `ric_form_used`.
 - **Puts:** put carets use the **call** month letter (`^F26` for a June put).
 - **Strike limit:** a strike above $999.99 raises.
 - **OCC symbols:** follow `occ_symbol()`.
+- **Outcome:** 2026-09-26 — implemented in `pmcc/data/ric.py` (P1-02, DEC-82). `forms_to_ask()` gives the forms in asking order, `build_ric()` raises above $999.99, and `occ_symbol()` matches LDG §3.
+- **Outcome:** 2026-09-26 — PO, in the DEC-01 answer: the call-letter caret for puts and the caret-then-live order for expired contracts come from the earlier project's measurements, so both are now in Spec › RIC builder. The status was ENG until then.
 
 ### DEC-46 — Cache layout
 **Status:** ASK · **Ask at:** P1-07
@@ -664,6 +672,31 @@ Development runs in Git Bash on Windows (DEC-02) and CI runs on Ubuntu. Both mus
 - **Outcome:** 2026-09-25 — domain tests pass, including half-even ties, money arithmetic, `bar_end` under EDT, EST and the fall-back hour, and session-bar classification on a regular day and a half-day.
 - **Outcome:** 2026-09-25 — an adversarial review (4 reviewers, 2 skeptics per finding) confirmed 4 defects, all fixed with regression tests: `np.float64` was rejected by `from_dollars`; ruff failed on the new files; the §4.1 table in ARCHITECTURE was broken; and this entry described the float's binary value the wrong way round. Also fixed from its plausible findings: double rounding past 28 significant digits, `to_dollars` losing its 4 decimal places on huge amounts, and a missing test for a non-UTC aware `bar_end` start.
   - Process gap: `pre-commit run --all-files` skips files git doesn't track, so `just check` passed before the new files were staged. Until that's closed, run `uv run --frozen ruff check pmcc tests` and `uv run --frozen ruff format --check pmcc tests` before handover.
+
+### DEC-82 — RIC module
+**Status:** ENG · **Affects:** P1-02, and the code that builds or reads RICs (P1-03, P1-04, P1-07, P1-08, the blotter's instrument column)
+
+- **API (`pmcc/data/ric.py`):**
+  - `build_ric(option, form)`, and `parse_ric(ric)` → `ParsedRic(option, form)`.
+  - `forms_to_ask(expiry, fetch_date)` is the DEC-45 policy, returned as the forms to ask in order: `(live,)` when the expiry is on or after the fetch date, otherwise `(expired, live)`.
+  - `occ_symbol(option)`, and `MAX_STRIKE` ($999.99).
+  - `RicForm` is `live` or `expired`, the values recorded as `ric_form_used`. `build_ric` also takes the value as text, as a manifest stores it, and raises on anything else rather than quietly building the live form.
+- **Day spelling:** the builder zero-pads the day (DEC-01). The parser reads both spellings: 8 digits after the month letter are an unpadded one-digit day, 9 are a two-digit day.
+- **The parser is strict.** Anything else raises `ValueError`, so a malformed RIC can't pass for a contract:
+  - upper case and ASCII digits only, `.U` required, no surrounding whitespace
+  - the date must exist, and the strike must be at least $0.01
+  - a caret must be the expiry's call letter and year, so a put-letter caret (`^R26`, which returned no puts in LDG §3) is refused
+- **Roots:** whatever `OptionId` allows (upper-case letters and digits, starting with a letter). The month letter is always the last letter before the RIC's digits, so digits in a root can't make a parse ambiguous.
+- **Two-digit years:** both builders raise for an expiry outside 2000–2099 rather than wrap the year.
+- **OCC symbol:** the root is at most 6 characters and the strike at most 8 digits of $0.001 ($99,999.99); anything wider raises.
+- **Outcome:** 2026-09-26 — the INV-11 tests pass (`tests/unit/data/test_ric.py`, 92 tests, including hypothesis round-trips over random contracts under the `dev` and `ci` profiles). Two one-off checks outside the suite:
+  - a sweep of 609,000 build-then-parse round-trips: every calendar day of 2000–2099 × both rights × both forms, with digit roots and more strikes on the 1st–3rd of each month, and every day under 10 also parsed unpadded
+  - every one of the 2,399 wrong caret suffixes the grammar allows, refused for both a call and a put
+- **Outcome:** 2026-09-26 — an adversarial review (4 reviewers, 2 skeptics per finding; 12 unique findings) confirmed 2 defects and rated 7 plausible. All 9 are fixed, with regression tests:
+  - **Confirmed:** the tests pinned only 6 of the 24 month letters. Build and parse share one table, so a round-trip couldn't see a transposed letter, and January and December (the LEAPS months) were unpinned. Every letter and caret is now checked against the grammar spelled out independently in the test. Also, this entry and a code comment said the month letter is the RIC's last letter; it is the last letter before the digits.
+  - **Plausible:** `build_ric` quietly built the live form for a form passed as text (`"expired"` read back from a manifest). It now reads the text value and raises on anything else. New tests cover trailing whitespace, a separator other than a dot, non-ASCII digits in every field, float-truncated strikes, and every field of the OCC symbol. PRD FR-D3 now names the tests behind the caret-then-live order. This entry's caret figure covered only 71 suffixes and is now exhaustive.
+  - The review's surviving mutants, plus a few more (17 in all), were re-run against the new tests. All are killed except one equivalent mutant: `\d` in the caret group still refuses non-ASCII digits, because the caret must equal the ASCII suffix exactly.
+  - 3 findings were refused by both skeptics and left as they are. One of them, about how RIC forms interact with the DEC-46 hash, is worth raising when DEC-46 is asked at P1-07.
 
 ## E. Analytics definitions
 
