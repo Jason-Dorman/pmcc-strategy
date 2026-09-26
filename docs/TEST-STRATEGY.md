@@ -7,12 +7,12 @@ Sep 25, 2026 · implements Spec › Invariant tests and EP › Testing mindset �
 - **Tests come first.** A backlog item is done only when its tests exist and pass (EP › Testing mindset).
 - **Tests are never cut** (Spec › Build order).
 - **Tests never touch the network.**
-  - An autouse fixture in `tests/conftest.py` blocks sockets.
+  - An autouse fixture in `tests/conftest.py` blocks sockets: connect, `create_connection` and `getaddrinfo` raise, localhost included (DEC-77).
   - LSEG code is tested through `FakeProvider`.
   - CI has no cache and no credentials, and it must still prove every invariant (DEC-51).
 - **Tests are deterministic.**
   - Fixed seeds everywhere.
-  - Hypothesis profiles: `dev` (50 examples) and `ci` (300 examples, derandomized).
+  - Hypothesis profiles: `dev` (50 examples) and `ci` (300 examples, derandomized), chosen by `HYPOTHESIS_PROFILE` (default `dev`).
 - **One behaviour per test.** Name tests `test_<rule-or-inv>_<behaviour>`, e.g. `test_x_s3_fires_within_quarter_em_of_strike`.
 
 ## 2. Layers

@@ -581,6 +581,8 @@ CI (`.github/workflows/ci.yml`, on push and PR):
 
 - **Dist guard:** fails if `web/dist` references `localhost:9000`, an `lseg`/`refinitiv` URL, or `fonts.googleapis.com`. The smoke test also fails on any cross-origin request.
 - **Pre-commit:** ruff, ruff-format, pyright, check-yaml, end-of-file-fixer, check-added-large-files, detect-private-key, and a local hook that rejects a staged `lseg-data.config.json`.
+  - ruff and pyright run through `uv run --frozen`, at the `uv.lock` versions. The reference files are excluded from every hook (DEC-57, DEC-77).
+  - The CI pytest step sets `HYPOTHESIS_PROFILE=ci`.
 
 ## 15. Logging, errors and security
 
