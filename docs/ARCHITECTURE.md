@@ -80,7 +80,7 @@ results/         committed results (§12)
 tests/           unit/, property/, scenario/, architecture/, fixtures/synthetic/
 typings/lseg/    minimal stubs for pyright strict
 web/             frontend (§13)
-.github/workflows/ci.yml · justfile · pyproject.toml · uv.lock · .pre-commit-config.yaml · .gitattributes
+.github/workflows/ci.yml · justfile · pyproject.toml · uv.lock · .python-version · .pre-commit-config.yaml · .gitattributes
 ```
 
 The reference files at the repo root (`LSEG-DATA-GUIDE.md`, `DESIGN-GUIDE.md`, `theme.py`, `lseg_client.py`) stay where they are. They are excluded from lint, type-check and tests (DEC-57).

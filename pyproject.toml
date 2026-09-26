@@ -1,0 +1,38 @@
+[project]
+name = "pmcc"
+version = "0.1.0"
+description = "Symbol-agnostic Poor Man's Covered Call backtester on LSEG hourly data"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "lseg-data==2.1.1",
+    "pandas==2.3.3",
+    "numpy>=2.5",
+    "polars>=1.44",
+    "pyarrow>=25.0",
+    "pydantic>=2.13",
+    "pyyaml>=6.0",
+    "scipy>=1.18",
+    "structlog>=26.1",
+    "typer>=0.27",
+    "tzdata>=2026.4",
+]
+
+[project.scripts]
+pmcc = "pmcc.cli:app"
+
+[dependency-groups]
+dev = [
+    "hypothesis>=6",
+    "pre-commit>=4",
+    "pyright>=1.1",
+    "pytest>=8",
+    "ruff>=0.14",
+]
+
+[build-system]
+requires = ["uv_build>=0.12,<0.13"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-root = ""

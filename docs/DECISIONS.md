@@ -446,7 +446,9 @@ Distances are compared in integer price units, so float noise can't create or br
 - **pandas:** pinned, and imported only in `pmcc/data/lseg/`, where lseg-data hands back pandas and it is converted to polars at once. LDG notes pandas 3.0 changed datetime and string dtypes.
 - **tzdata:** a runtime dependency, because Windows has no system time-zone database for `zoneinfo` (DEC-58).
 - **Playwright:** never install the Python `playwright` package in this env; it bumps `pyee` and breaks lseg-data. The e2e test uses Node Playwright in `web/`.
-- **Typing:** a minimal local stub in `typings/lseg/` keeps pyright strict usable.
+- **Typing:** a minimal local stub in `typings/lseg/` keeps pyright strict usable. It covers only what `pmcc/data/lseg/` calls (`open_session`, `close_session`, `get_history`, `session.get_default().open_state`, `OpenState`, `errors.LDError`) and grows with it.
+- **pandas == 2.3.3:** the newest version lseg-data 2.1.1 allows (it caps pandas below 3.0), and the version the known-good conda `algo` env runs (P0-03).
+- **Packaging:** the `uv_build` backend, with `pmcc/` at the repo root (`module-root = ""`), so `pmcc` is an installed console script. Other runtime deps take lower bounds; `uv.lock` pins them exactly.
 
 ### DEC-43 — Packages added to the spec layout
 **Status:** ENG

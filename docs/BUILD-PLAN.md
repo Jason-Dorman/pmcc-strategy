@@ -91,13 +91,13 @@ P8 release                                                                      
 
 ### P0 — Foundations · Sat Sep 26
 
-- [ ] **P0-01 · Toolchain and LSEG access from Git Bash** **[Workspace]**
+- [x] **P0-01 · Toolchain and LSEG access from Git Bash** **[Workspace]** — done 2026-09-25; `open_state` prints `Opened` through `uv run`
   - Open the project in Git Bash on Windows, from a Windows path (not `\\wsl.localhost\…`), with `lseg-data.config.json` in the repo root (DEC-58).
   - Confirm git, gh, uv, and Node 22 LTS with npm are installed. Install `just` (`uv tool install rust-just`).
   - Done when: `curl -s http://localhost:9000/api/status` shows `ST_PROXY_READY`, and the LDG §4.2 `open_state` one-liner prints `Opened` (run through `uv run` once P0-03 exists).
   - Needs: P0-03 (for the `open_state` check) · Refs: DEC-02, DEC-58; LDG §4.2
-  - Progress 2026-09-25: toolchain installed (git 2.31, gh 2.101, uv 0.12.19, just 1.58.0, Node 22.23.2 / npm 10.9.8; Node 12 replaced via winget, PO choice). Proxy shows `ST_PROXY_READY`; the `open_state` one-liner prints `Opened` through the conda `algo` env. Left: re-run it through `uv run` after P0-03, then tick.
-- [ ] **P0-02 · Repository and GitHub** **[PO]**
+  - Toolchain: git 2.31, gh 2.101, uv 0.12.19, just 1.58.0, Node 22.23.2 / npm 10.9.8 (Node 12 replaced via winget, PO choice).
+- [x] **P0-02 · Repository and GitHub** **[PO]** — done 2026-09-25; verified with read-only git (16 files `i/lf`, credentials ignored and untracked, `main` = `origin/main`). Ticked with P0-03, since it could only be checked after the push
   - Agent: add `.gitattributes` (`* text=auto eol=lf`, `*.parquet binary`; DEC-58), review `.gitignore`, and give the PO the first-commit file list and message.
   - PO (DEC-59): `git init`, make the first commit (docs, reference files, `README.md`, `CLAUDE.md`, `.gitignore`, `.gitattributes`, and never the credentials), create the public repo, and push `main`.
   - PO: set the Pages source to GitHub Actions and turn on secret scanning push protection.
@@ -107,7 +107,7 @@ P8 release                                                                      
     - `git ls-files --eol` shows `i/lf` for text files
     - `main` is pushed
   - Refs: LDG §1; DEC-56, DEC-58
-- [ ] **P0-03 · Python project**
+- [x] **P0-03 · Python project** — done 2026-09-25; pandas pinned at 2.3.3, Python 3.12.14; checked on a fresh copy; CLI stubs exit 1 naming their backlog item
   - `pyproject.toml`, targeting Python 3.12:
     - Runtime deps: polars, pyarrow, numpy, scipy, pydantic, pyyaml, typer, structlog, tzdata, `lseg-data==2.1.1`, pandas (pinned).
     - Dev deps: pytest, hypothesis, ruff, pyright, pre-commit.
