@@ -104,6 +104,7 @@ These exist once P0 is done.
 - **Time:**
   - Timestamps are tz-aware America/New_York. Bars are keyed by their end time (`bar_end`), and every decision happens at a bar's end (DEC-06).
   - In the rules, "Monday" means the week-open session (DEC-20, pending the PO).
+- **Logging:** log through `structlog.get_logger()` with dotted event names (ARCHITECTURE §15). Only `pmcc.cli` imports `pmcc.log` to configure it (DEC-80).
 - **IDs:**
   - Rule IDs match the spec exactly (`E-T1`, `G-3`, `X-S5`, …).
   - Invariant tests `INV-01`…`INV-15` follow the spec's numbering.

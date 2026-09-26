@@ -23,7 +23,7 @@ Sep 25, 2026 · implements Spec › Invariant tests and EP › Testing mindset �
 | Property | Accounting invariants (INV-01, 02, 08, 10); IV vs scalar reference; MarketView as-of guard (INV-04); RIC round-trip (INV-11); integer strike ladders | hypothesis | CI |
 | Scenario | Engine end to end on a synthetic market: one scenario per exit, gate and edge case (§5) | pytest | CI |
 | Determinism | The same synthetic run twice gives byte-identical files (INV-13) | pytest | CI |
-| Architecture | Import boundaries (ARCHITECTURE §3.3) | pytest (AST) | CI |
+| Architecture | Import boundaries (ARCHITECTURE §3.3), in `tests/architecture/test_imports.py`, with one planted violation per rule | pytest (AST) | CI |
 | Config | Rule IDs unique and complete; placeholders resolve; every param referenced; each ablation differs from quant only in its layer | pytest | CI |
 | Results | Schema check plus invariants re-derived from committed results (DEC-51) | `pmcc verify` | CI |
 | Runtime | Invariants checked every bar of every real run; a failure writes nothing | engine | every run |

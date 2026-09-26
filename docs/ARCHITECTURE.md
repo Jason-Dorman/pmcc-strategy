@@ -72,6 +72,7 @@ pmcc/
   accounting/    events.py, book.py, marks.py, regt.py, ledger.py
   analytics/     performance.py, cycles.py, attribution.py, bootstrap.py, robustness.py, fillcheck.py, suitability.py
   export/        models.py (pydantic results), manifest.py, canonical.py, schema.py, site.py, verify.py
+  log.py         structlog JSON setup: stderr + logs/{command}_{timestamp}.jsonl (DEC-80)
   cli.py         typer: fetch, probe, run, batch, calibrate, export, verify, serve
 configs/         _shared.yaml, baseline_pmcc.yaml, quant_pmcc.yaml, ablations/a1…a5.yaml,
                  sensitivity.yaml, universe.yaml, calendar.yaml
@@ -99,6 +100,7 @@ The reference files at the repo root (`LSEG-DATA-GUIDE.md`, `DESIGN-GUIDE.md`, `
 | `accounting` | Record and value positions | `Book.apply()`, `value()`, `regt()` | domain |
 | `analytics` | Summarize runs | `compute_metrics()`, `bootstrap_ci()`, … | domain, accounting read models |
 | `export` | Result models, manifest, canonical JSON, site data, verify | `write_result()`, `export_site()`, `verify()` | domain, config, accounting, analytics |
+| `log` | Configure structured logging for one command | `configure_logging()` | structlog |
 | `cli` | Wire commands | `pmcc` | everything |
 
 ### 3.3 Import rules
@@ -111,6 +113,9 @@ These rules are enforced by `tests/architecture/test_imports.py`, an AST scan wi
 4. `pmcc.accounting` and `pmcc.pricing` import only `pmcc.domain` from this package.
 5. `pmcc.analytics` never imports `engine` or `data`.
 6. `pmcc.domain` imports nothing from `pmcc`. Nothing imports `pmcc.cli`.
+7. `pmcc.log` is imported only by `pmcc.cli`. Every other module logs through `structlog.get_logger()` (DEC-80).
+
+The test also checks that one planted forbidden import per rule is caught, including relative, function-local and `TYPE_CHECKING` imports.
 
 ## 4. Domain: money and time
 
@@ -587,7 +592,9 @@ CI (`.github/workflows/ci.yml`, on push and PR; DEC-79):
 
 ## 15. Logging, errors and security
 
-- **Logging:** structlog JSON, to stderr and to `logs/*.jsonl`.
+- **Logging:** structlog JSON, one event per line, to stderr and to `logs/{command}_{timestamp}.jsonl` (DEC-80).
+  - A command calls `pmcc.log.configure_logging(command)` once at startup; every other module calls `structlog.get_logger()`.
+  - Each event carries `event`, `level`, `timestamp` (ISO 8601, UTC) and `command`; exceptions are rendered as text in `exception`. Level INFO and up.
   - Every soft fetch failure is one event with `symbol`, `unit`, `ric`, `form`, `error_class` and `message` (Spec › Stack).
   - Event names: `fetch.unit.start|done`, `fetch.ric.unanswered`, `fetch.batch.rejected`, `fetch.retry`, `fetch.abort.outage`, `engine.entry.retry`, `engine.gate.fired`, `engine.exit.pending`, `invariant.failed`.
 - **Errors:** the failure taxonomy is DEC-49.

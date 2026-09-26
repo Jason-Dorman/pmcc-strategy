@@ -26,7 +26,7 @@ Sep 25, 2026 · schedule from Spec › Build order · **due Fri Oct 9, 11:59 pm*
 
 | Phase | Dates | Exit criteria (milestone) | Status |
 | --- | --- | --- | --- |
-| P0 Foundations | Sat Sep 26 | `just check` green in Git Bash and in CI; credentials ignored; LSEG session opens from Git Bash | In progress |
+| P0 Foundations | Sat Sep 26 | `just check` green in Git Bash and in CI; credentials ignored; LSEG session opens from Git Bash | Done locally 2026-09-25; CI run for P0-07/08 pending the PO's push |
 | P1 Data layer and open items | Sat Sep 26 – Sun Sep 27 | NVDA's full chain cached; INV-11, INV-12 pass; window, r and identifiers recorded; universe fetch started | Not started |
 | P1-10 Universe fetch (background) | Sun Sep 27 – Sat Oct 3 | All 12 symbols cached with coverage summaries | Not started |
 | P2 Pricing | Mon Sep 28 | IV solver matches the reference; EM, ATM IV, RV20 tested | Not started |
@@ -132,12 +132,12 @@ P8 release                                                                      
   - `.github/workflows/ci.yml` `python` job on Ubuntu: setup-uv, `uv sync --frozen`, pre-commit on all files, pytest.
   - Done when: the workflow is green on GitHub.
   - Needs: P0-02, P0-05
-- [ ] **P0-07 · Logging and architecture test**
+- [x] **P0-07 · Logging and architecture test** — done 2026-09-25; `pmcc/log.py` (DEC-80), not yet wired into the command stubs; added import rule 7 (only `pmcc.cli` imports `pmcc.log`); planted `pandas` import in `pmcc/engine/` rejected, then removed
   - structlog JSON config (stderr and `logs/*.jsonl`).
   - `tests/architecture/test_imports.py` enforcing ARCHITECTURE §3.3.
   - Done when: the test passes, and fails on a planted forbidden import.
   - Needs: P0-04
-- [ ] **P0-08 · README check**
+- [x] **P0-08 · README check** — done 2026-09-25; fresh clone in Git Bash: `just setup` and `just check` green, usage commands match the CLI flags (stubs exit 1 naming their item). Fixed: status note, how to install just, Git Bash and Windows-path notes, Node needed only for `web/`, clone and `just check` steps added to Setup
   - The README was written on Sep 25. Check its requirements, setup and usage sections against the real toolchain, and fix anything that differs.
   - Done when: every README setup step works as written from a fresh clone in Git Bash.
   - Needs: P0-02, P0-05
