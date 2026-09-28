@@ -78,7 +78,7 @@ class BarRequest:
 class MissReason(StrEnum):
     """Why the service left a RIC unanswered. Nothing else ever does (DEC-49)."""
 
-    NO_DATA = "no_data"  # a no-data code: never listed, or a field the RIC doesn't carry
+    NO_DATA = "no_data"  # a no-data code: a RIC the service doesn't know
     EMPTY = "empty"  # no bars in the window
 
 
@@ -307,7 +307,7 @@ def _ask_batch(
         except (NoDataError, UnreadableAnswerError) as exc:
             return exc
 
-    return _retrying(attempt, retry, len(batch))
+    return retrying(attempt, retry, len(batch))
 
 
 def _ask_one(
@@ -322,7 +322,7 @@ def _ask_one(
         except NoDataError as exc:
             return exc
 
-    return _retrying(attempt, retry, 1)
+    return retrying(attempt, retry, 1)
 
 
 def _history(provider: HistoryProvider, rics: Sequence[str], request: BarRequest) -> RawHistory:
@@ -331,7 +331,7 @@ def _history(provider: HistoryProvider, rics: Sequence[str], request: BarRequest
     )
 
 
-def _retrying[T](attempt: Callable[[], T], retry: Retry, size: int) -> T:
+def retrying[T](attempt: Callable[[], T], retry: Retry, size: int) -> T:
     """`attempt()`, asked again on a transient or unreadable failure; then an outage."""
     last: TransientError | UnreadableAnswerError | None = None
     for n in range(1, retry.attempts + 1):

@@ -3,8 +3,8 @@
 Its `get_history` follows the real one:
 
 1. LSEG's historical-pricing service answers each RIC on its own: bars, a service error code (a
-   never-listed RIC, a field the RIC doesn't carry), or an HTTP status (a failing or signed-out
-   Workspace).
+   never-listed RIC), or an HTTP status (a failing or signed-out Workspace). A field the RIC
+   doesn't carry is left out of its answer; the request doesn't fail (P1-04 probes, DEC-83).
 2. A transport failure anywhere in the request fails all of it. lseg-data keeps only the
    exception's text and raises a new `LDError` with no cause and no context.
 3. If no RIC answered, lseg-data raises an `LDError` listing each failure's code
@@ -39,13 +39,14 @@ from pmcc.data.lseg import LsegProvider
 HOURS = (datetime(2026, 9, 14, 17), datetime(2026, 9, 14, 18), datetime(2026, 9, 14, 19))
 DAYS = (datetime(2026, 9, 14), datetime(2026, 9, 15))
 
-# Service codes. 90001 is lseg-data's own "universe is not found". The daily code and the missing-
-# field code are assumptions: the P1-04 probes record the real ones (DEC-83).
+# Service codes. A never-listed RIC's are LSEG's own answers to the P1-04 probes (2026-09-27,
+# DEC-83): 90001 hourly, with the RIC in the message, and 70005 daily, with "The universe is not
+# found". A field the RIC doesn't carry isn't an error at all: the answer leaves it out. The
+# permission code is still an assumption (DEC-83).
 NOT_FOUND = {
     "hourly": "TS.Intraday.UserRequestError.90001",
-    "daily": "TS.Interday.UserRequestError.90001",
+    "daily": "TS.Interday.UserRequestError.70005",
 }
-FIELD_NOT_CARRIED = "TS.Intraday.UserRequestError.90006"
 PERMISSION_DENIED = "TS.Intraday.UserNotPermission.92000"
 HTTP_REASONS = {
     401: "Unauthorized",
@@ -133,8 +134,9 @@ class FakeLseg:
     """The `lseg.data` surface `pmcc.data.lseg` uses, scripted per test.
 
     - `listed`: the RICs the service knows, with their bars. Any other RIC is never listed.
-    - `carried`: the fields every RIC carries; a RIC asked for another fails with
-      `FIELD_NOT_CARRIED`. `None` means every field asked for.
+    - `carried`: the fields every RIC carries. Another field asked for is left out of the answer,
+      as LSEG left out `SETTLE` and an unknown field name in the P1-04 probes (DEC-83). `None`
+      means every field asked for.
     - `answers_with`: RICs whose answer carries only these of the fields asked.
     - `http_status`: RICs whose own request fails with an HTTP status.
     - `every_status`: every RIC fails with this HTTP status, as from a signed-out Workspace.
@@ -234,13 +236,12 @@ class FakeLseg:
         if status is not None:
             return _failed(ric, interval, status, HTTP_REASONS.get(status, "HTTP error"), http=True)
         if ric not in self.listed:
-            return _failed(ric, interval, NOT_FOUND[interval], f"{ric} - The universe is not found")
+            return _failed(ric, interval, NOT_FOUND[interval], not_found_message(ric, interval))
         if ric in self.denied:
             return _failed(ric, interval, PERMISSION_DENIED, "The user has no permission")
-        if self.carried is not None and not set(wanted) <= set(self.carried):
-            message = f"Invalid field(s) {sorted(set(wanted) - set(self.carried))}"
-            return _failed(ric, interval, FIELD_NOT_CARRIED, f"{message}. Requested ric: {ric}")
-        keep = self.answers_with.get(ric, wanted)
+        keep = set(self.answers_with.get(ric, wanted))
+        if self.carried is not None:
+            keep &= set(self.carried)
         carried = [f for f in wanted if f in keep]
         return Answer(ric, self._raw(ric, carried, interval))
 
@@ -279,8 +280,16 @@ def no_data_message(answers: Sequence[Answer]) -> str:
 
 def no_data_error_for(ric: str, interval: str = "hourly") -> LDError:
     """The `LDError` lseg-data raises when `ric`, asked alone, was never listed."""
-    answer = _failed(ric, interval, NOT_FOUND[interval], f"{ric} - The universe is not found")
+    answer = _failed(ric, interval, NOT_FOUND[interval], not_found_message(ric, interval))
     return LDError(message=no_data_message([answer]))
+
+
+def not_found_message(ric: str, interval: str) -> str:
+    """The service's message for a never-listed RIC. The hourly one leads with the RIC, which
+    lseg-data cuts at its ".U"; the daily one doesn't name it (P1-04 probes, DEC-83)."""
+    return (
+        f"{ric} - The universe is not found" if interval != "daily" else "The universe is not found"
+    )
 
 
 def lseg_timestamp(text: str) -> pd.Timestamp:

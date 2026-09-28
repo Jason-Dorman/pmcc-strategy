@@ -29,15 +29,15 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-03 | Light theme | ASK | P4-06 |
 | DEC-04 | Chart colour roles | ASK | P7-01 |
 | DEC-05 | LSEG terms: raw cache and derived series | ASK | P3-10 |
-| DEC-06 | Bar timestamps, decision time, session bars | VERIFY | P1-04 |
-| DEC-07 | Backtest window | VERIFY → PO confirms | P1-04, P1-05 |
-| DEC-08 | Long-dated coverage | VERIFY | P1-04, P1-09 |
-| DEC-09 | Live-contract RIC form | VERIFY | P1-04 |
+| DEC-06 | Bar timestamps, decision time, session bars | VERIFY: probed, report at P1-05 | P1-04 |
+| DEC-07 | Backtest window | VERIFY: probed → PO confirms | P1-04, P1-05 |
+| DEC-08 | Long-dated coverage | VERIFY: probed; full measure at P1-09 | P1-04, P1-09 |
+| DEC-09 | Live-contract RIC form | VERIFY: probed, report at P1-05 | P1-04 |
 | DEC-10 | Reg T and FINRA 4210 citations | VERIFY | by P7-04 |
 | DEC-11 | Risk-free rate | VERIFY → PO picks | P1-05 |
-| DEC-12 | Per-symbol identifiers, splits, max strike | VERIFY | P1-04 |
-| DEC-13 | Hourly field availability | VERIFY | P1-04 |
-| DEC-14 | Strike increments | ENG method · VERIFY values | P1-04 |
+| DEC-12 | Per-symbol identifiers, splits, max strike | VERIFY: probed, report at P1-05 | P1-04 |
+| DEC-13 | Hourly field availability | VERIFY: probed, report at P1-05 | P1-04 |
+| DEC-14 | Strike increments | ENG method · VERIFY values: probed | P1-04 |
 | DEC-20 | Week-open session and order of operations | ASK | P3-07 |
 | DEC-21 | Selection freeze and E-T1 | ASK | P3-07 |
 | DEC-22 | Gates and the gate log | ASK | P3-07 |
@@ -51,7 +51,7 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-30 | Starting capital (E-L4) | ASK | P3-09 |
 | DEC-31 | Entry-timing sensitivity | ASK | P5-02 |
 | DEC-32 | Point-in-time listing | ASK | P3-02 |
-| DEC-33 | Expiry calendar | ASK | P1-06 |
+| DEC-33 | Expiry calendar | SETTLED (PO) | — |
 | DEC-34 | Rule stamping for multi-rule events | ASK | P3-07 |
 | DEC-40 | Source of truth | SETTLED (PO) | — |
 | DEC-41 | Frontend stack follows the spec | SETTLED (spec) | — |
@@ -60,7 +60,7 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-44 | Money as integer units | ENG | — |
 | DEC-45 | RIC form policy | SETTLED (PO) | — |
 | DEC-46 | Cache layout | ASK | P1-07 |
-| DEC-47 | Fetch dates are inclusive | ENG | — |
+| DEC-47 | Fetch dates are inclusive | ENG · probed (LSEG's date edges) | — |
 | DEC-48 | Fetch plan and band-edge guard | ENG | — |
 | DEC-49 | Failure taxonomy | ENG | — |
 | DEC-50 | Canonical results and INV-13 | ASK | P3-08 |
@@ -91,7 +91,9 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-80 | Logging setup and the import-boundary test | ENG | — |
 | DEC-81 | Domain value types | ENG | — |
 | DEC-82 | RIC module | ENG | — |
-| DEC-83 | History port, LSEG adapter and batched requests | ENG · VERIFY (error codes) | P1-04 |
+| DEC-83 | History port, LSEG adapter and batched requests | ENG · error codes verified | — |
+| DEC-84 | Calendar, chain discovery and the fetch plan | ENG | — |
+| DEC-85 | Probe design | ENG | — |
 
 ---
 
@@ -179,7 +181,12 @@ The results are reported to the PO at P1-05. A result that contradicts the spec 
 - **Verify, on QQQ and NVDA over at least 3 sessions:**
   1. The hourly bar whose TRDPRC_1 equals that session's daily close starts at 15:00 ET, which proves start stamping.
   2. An option's BID/ASK in that 15:00 bar equals its daily closing BID/ASK, which proves end-of-bar quotes.
-- **Outcome:** —
+- **Outcome:** 2026-09-27 — probed on all 12 symbols over the last 5 sessions, Sep 21–25 2026. Daily bars came back for Sep 22–25 only (DEC-47), so 48 sessions were compared. Reports are in `data_cache/probes/` (DEC-85).
+  1. **Bars are stamped at their start.** Every option's hourly bars start 09:00–16:00 ET, and every Nasdaq stock's (`.O`) start 04:00–19:00. That is the 09:30–16:00 option session plus a stub, and the 04:00–20:00 extended stock session. End stamps would read 10:00–17:00 and 05:00–20:00.
+  2. **Quotes are end-of-bar values.** The daily closing BID/ASK equals the final quote of the bar starting 16:00 in 48 of 48 sessions, because the day's last quote comes at or after 16:00. For single-stock options it also equals the final quote of the bar starting 15:00 in 16 of 28 sessions (AMD 4/4, NVDA 3, TSLA 3, JPM 3, AAPL 2, COIN 1, META 0), which a start-of-bar value couldn't. ETF options (SPY, QQQ, IWM, TLT, XLE) trade until 16:15, so their closing quote always falls in the stub (0 of 20 in the 15:00 bar).
+  3. **Check 1 fails as written: the official close is not the close bar's last trade.** The daily TRDPRC_1, the closing auction, equals the last trade of the bar starting 15:00 in only 9 of 48 sessions. The two differ by up to 0.09% (JPM), most by under 0.03%. Points 1 and 2 still prove start stamps and end-of-bar quotes.
+- **For the PO at P1-05:** the recommendation stands: `bar_end = bar_start + 1h`, decisions at `bar_end`, session bars ending 10:00–16:00 (13:00 on a half-day), and the 16:00 stub kept for provenance only. Point 3 also goes to DEC-23 (closing spot, ITM at expiry): the close bar's last trade sat up to $0.40 from the official close (META; AMD $0.33, JPM $0.31, TSLA $0.27), and that close decides exercise.
+- The probe used the first stock suffix that answered (DEC-85). For SPY, IWM and XLE that was the NYSE venue (`.N`, bars 07:00–16:00), not their Arca primary (`.P`), so their stock-side spans are that venue's.
 
 ### DEC-07 — Backtest window
 **Status:** VERIFY → PO confirms · **Verify at:** P1-04 · **Confirm at:** P1-05 · **Affects:** `configs/universe.yaml`, fetch plan
@@ -190,7 +197,20 @@ The results are reported to the PO at P1-05. A result that contradicts the spec 
   - **Start:** the first week-open session by which all 12 symbols have data.
   - **End:** the final session of the last complete week before the universe fetch begins.
   - Fix both in `universe.yaml` before the first published run.
-- **Outcome:** start —, end —, weeks —.
+- **Outcome:** start —, end —, weeks —. (The PO sets these at P1-05.)
+- **Outcome:** 2026-09-27 — probed on all 12 symbols, sampling weeks 1–18 months back (DEC-85):
+  - **Hourly history ends somewhere between Sep 26 and Oct 27 2025, the same for every symbol.** Of the 11 symbols with 10- and 11-month samples (NVDA ran the first version, which had none), all had stock bars in the week of Oct 27 2025 (11 months back), and none had any bars in the week of Sep 22 2025, 366–370 days before the probe. The samples bound the edge but don't place it. They fit a rolling 365-day limit, under which the oldest data moves forward a day each day.
+  - **Not every leg reaches that far.** The week of Oct 27 2025 had a weekly call with valid mids for 10 of those 11 (XLE's didn't), and a long call for 10 (SPY's didn't). NVDA is shown back to the week of Dec 22 2025 only. `back_to` in each report is the reach with no gap in any more recent sample: long calls reach no sample for SPY, JPM and XLE, because of the gaps below.
+  - **The gaps.**
+    - Long calls: SPY, JPM and XLE one month back (the Feb 19 2027 monthly, not yet listed at 179 DTE), SPY 10–11 months back, QQQ 4 months back. These look like monthlies not yet listed.
+    - TLT's weekly 3 months back did answer but had no valid mid on any session bar: a quote gap, not a listing gap.
+    - XLE's weekly 10–11 months back, and its long call 10 months back, didn't answer because the probe asked the wrong strikes: LSEG's daily closes are split-adjusted (DEC-12), so for weeks before XLE's 2-for-1 split on Dec 5 2025 the $10 anchor from the adjusted close ($40) was about half the traded price. These samples say nothing about XLE's history there. Any fetch reaching before the split must ask unadjusted (2x) strikes.
+    - DEC-08 and DEC-32 cover how listing and quote gaps reach the rules.
+- **For the PO at P1-05:** the spec asks for the longest window the history allows, and at least 10 weeks. The limits:
+  - history back to somewhere between Sep 26 and Oct 27 2025 (proven only from Oct 27, and for NVDA only from Dec 22), moving forward a day each day;
+  - the stock's 30-session warm-up before the start;
+  - XLE's split on Dec 5 2025: a window starting after it avoids adjusted contracts;
+  - fetch volume, which grows with the window. ARCHITECTURE §6.3 estimates ~700 requests (~16 min) per symbol for 11 weeks; a 40-week window is roughly 4 times that.
 
 ### DEC-08 — Long-dated coverage
 **Status:** VERIFY · **Verify at:** P1-04, P1-09 · **Affects:** E-L3 candidate sets, Methodology
@@ -200,13 +220,20 @@ The results are reported to the PO at P1-05. A result that contradicts the spec 
   - Median spread %.
   - Count of IV failures. A deep ITM mid below `S − K·e^(−rT)` has no IV (see DEC-27).
 - Sparse data means fewer candidates and more E-T1 retries. That is reported on the Methodology page. The rules stay unchanged.
-- **Outcome:** —
+- **Outcome:** 2026-09-27 (P1-04's sample; the full measure is P1-09's) — calls on the Mar 19 2027 monthly (175 DTE), at strikes spanning about δ 0.90–0.70 (Black-Scholes with r = 0 and 60-session realized volatility), over the last 20 sessions. That is 75 contracts across the 12 symbols, 140 session bars each.
+  - **Every contract had a valid mid on every session bar** (10,500 of 10,500). TLT got one strike ($75): the probe took the strike step measured at 0.8 × spot ($5), while the same expiry lists $1 strikes nearer the money, so this says nothing about how many TLT strikes are listed.
+  - **Median spread as a % of mid:** QQQ 1.4, NVDA 1.4, TSLA 2.1, META 2.7, AAPL 2.7, AMD 3.002, IWM 3.2, SPY 3.5, JPM 4.6, COIN 6.3, XLE 7.5, TLT 9.6. E-T1 allows a long entry only at ≤ 3%, so on 7 of the 12 (AMD just over) the median long candidate fails E-T1. Expect retries and fewer E-L3 candidates there (R-03, R-14). The rules stay unchanged, as above.
+  - **Below intrinsic** (mid < S − K, a lower bound on IV failures): 1 bar (TLT).
+  - Not every monthly that is 120–270 DTE is listed at every date: SPY's Feb 2027 monthly had no bars in the week of Aug 24 2026 (179 DTE); the probe asked Jan 2027 only in the week of Jul 27 2026, where it answered (DEC-07's gaps).
 
 ### DEC-09 — Live-contract RICs
 **Status:** VERIFY · **Verify at:** P1-04 · **Affects:** P1-02, P1-03
 
 - Long legs still listed at fetch time must resolve in the live form (no caret). LDG §4.13 and §6.3 say they do. Confirm on 3 symbols.
-- **Outcome:** —
+- **Outcome:** 2026-09-27 — confirmed on all 12 symbols:
+  - Every live monthly the coverage check asked (75 contracts) answered in the live form, the only form asked.
+  - A live contract asked in the caret form never answered: `TS.Intraday.UserRequestError.90001`, 12 of 12.
+  - Weeklies expired 9 days earlier answered in the caret form, 12 of 12 (DEC-14's check).
 
 ### DEC-10 — Reg T and FINRA 4210 citations
 **Status:** VERIFY · **Verify by:** P7-04 · **Affects:** Methodology page
@@ -236,7 +263,17 @@ The results are reported to the PO at P1-05. A result that contradicts the spec 
   - **Option root.**
   - **No split in the window,** since a split changes the root (LDG §3).
   - **Max strike needed ≤ $999.99,** the 5-digit strike field. If any symbol needs more, that's an `ASK`.
-- **Outcome:** —
+- **Outcome:** 2026-09-27 — probed on all 12 symbols (DEC-85):
+  - **Stock RICs.** Each suffix was asked alone:
+    - Nasdaq listings answer `.O`, and also the venue RICs `.N`, `.P`, `.A` and `.Z`.
+    - The NYSE Arca ETFs (SPY, IWM, XLE) and JPM (NYSE) have no `.O`.
+    - No symbol answers `.K`.
+    - The venues' last closes differ: by cents for most, and by up to $0.94 across AMD's and $0.63 across META's.
+  - **Recommendation for `configs/universe.yaml` (P1-05): each primary listing:** SPY.P, QQQ.O, IWM.P, AAPL.O, NVDA.O, AMD.O, META.O, TSLA.O, COIN.O, JPM.N, TLT.O, XLE.P. The probe used the first suffix that answered, so its SPY, IWM and XLE stock bars are the NYSE venue's (`.N`), not Arca's.
+  - **Option roots** are the tickers: every symbol's weeklies and monthlies answered under its ticker.
+  - **Splits: LSEG's daily history is split-adjusted**, so the probe's check (the largest daily moves, none of which looked like a split) can't see a split. **XLE split 2-for-1 on Dec 5 2025** (OCC Information Memo #57734; State Street's announcement of Nov 20 2025), and its daily bars show no jump. A web search found no split announced for the other 11 in 2025–2026, but that isn't proof. Confirm them against OCC memos at P1-05, and choose the window with XLE's split in mind (DEC-07).
+  - **Max strike:** the top of the weekly call band over the last year (high + 2.5 EMest, DEC-48) fits the $999.99 field for all 12. META is closest ($973.51), then AMD ($922.78).
+  - **Calendar:** every symbol's daily bars match `configs/calendar.yaml` from Jan 2 2025 to Sep 25 2026, including the unscheduled closure on Jan 9 2025 (DEC-33).
 
 ### DEC-13 — Hourly field availability
 **Status:** VERIFY · **Verify at:** P1-04 · **Affects:** fetch field lists
@@ -247,7 +284,7 @@ The results are reported to the PO at P1-05. A result that contradicts the spec 
   - The fetch requests only the fields that exist.
   - Dropped fields are recorded in each unit's sidecar and on the Methodology page.
   - The stock also needs BID/ASK, for the stock fills after X-S5.
-- **Outcome:** —
+- **Outcome:** 2026-09-27 — for all 12 symbols, hourly bars carry all 8 fields, on the options and on the stock (for SPY, IWM and XLE, on the NYSE venue's `.N`, not the Arca primary DEC-12 recommends, which wasn't field-probed), each asked paired with TRDPRC_1: BID, ASK, TRDPRC_1, OPEN_PRC, HIGH_1, LOW_1, ACVOL_UNS, NUM_MOVES. The fetch can ask for all of them; no field is dropped. LSEG doesn't refuse a field a RIC lacks, it leaves it out of the answer (DEC-83). So a unit's sidecar should record the fields asked and the fields that came back (P1-07).
 
 ### DEC-14 — Strike increments
 **Status:** ENG (method) · VERIFY (values) · **Verify at:** P1-04 · **Affects:** P1-06
@@ -256,7 +293,21 @@ The results are reported to the PO at P1-05. A result that contradicts the spec 
   - The strikes are an anchor `A` (a multiple of $10 near the region's centre) plus `A+0.50`, `A+1`, `A+2.50` and `A+5`.
   - The smallest offset that answers is the increment. If none answers, the increment is $10.
 - **Recording:** increments are recorded per expiry in the sidecar. They can differ by region, e.g. $1 near spot and $5 deep ITM on the same monthly (LDG §6.2).
-- **Outcome:** —
+- **Outcome:** 2026-09-27 — measured with the method above, on daily bars for one session per region (DEC-85). In cents:
+
+  | Symbol | Next weekly, near money | Expired weekly, near money | Monthly (Mar 2027), near money | Monthly, deep ITM (0.8 × spot) |
+  | --- | --- | --- | --- | --- |
+  | SPY, QQQ, IWM | 100 | 100 | 500 | 500 |
+  | AAPL | 250 | 250 | 1,000 | 1,000 |
+  | NVDA, META, TSLA, JPM | 250 | 250 | 500 | 500 |
+  | AMD | 250 | 250 | none answered | 1,000 |
+  | COIN | 250 | 250 | 1,000 | 500 |
+  | TLT | 50 | 50 | 100 | 500 |
+  | XLE | 50 | 100 | 100 | 100 |
+
+  - The increment differs by region and by expiry, as LDG §6.2 said, so the fetch measures it per unit and per band (DEC-84).
+  - 1,000 means no offset answered but the anchor did: a $10 grid, or wider.
+  - **AMD's near-money monthly answered no strike at all** around its $630 anchor, so its $10 is DEC-14's default, not a measurement. The fetch (P1-08) should treat an unanswered anchor as no measurement, record it in the sidecar, and not trust the default.
 
 ## C. Rule interpretations
 
@@ -400,7 +451,7 @@ Distances are compared in integer price units, so float noise can't create or br
 - **Outcome:** —
 
 ### DEC-33 — Expiry calendar
-**Status:** ASK · **Ask at:** P1-06
+**Status:** SETTLED · **Basis:** PO, 2026-09-27 · **Affects:** P1-06, P1-07, P1-08, P3-02, E-L2, E-S1, E-S2
 
 - **Weekly expiries:** the last trading session of each week, from the stock tape (spec).
 - **Recommendation (monthly):** the third Friday, or the prior session if that Friday is an NYSE holiday. Holidays come from `configs/calendar.yaml` (NYSE holidays and early closes for 2026–2027, with the source cited). Holidays derived from the tape must match the table (a P1-06 check).
@@ -410,7 +461,12 @@ Distances are compared in integer price units, so float noise can't create or br
   - Mon Sep 7 2026 (Labor Day) moves week-open to Tue Sep 8.
   - Fri Jun 19 2026 is closed, so that week expires Thu Jun 18.
   - Juneteenth 2027 is observed Fri Jun 18, so the June 2027 monthly expires Thu Jun 17 (verify).
-- **Outcome:** —
+- **Outcome:** 2026-09-27 — PO, asked at P1-06, took every recommendation:
+  1. **Monthlies** expire on the third Friday, or on the session before it when that Friday is an NYSE holiday. **Weeklies** expire on each calendar week's final session (Spec).
+  2. **The table covers 2025–2027**, widened from 2026–2027 in case the probed window starts in 2025. It lists NYSE full closures and 13:00 early closes, cited to nyse.com and NYSE Group's calendar releases. It includes the unscheduled closure on Thu Jan 9 2025 (National Day of Mourning for President Carter). Checked on nyse.com on 2026-09-27: Juneteenth 2027 is observed Fri Jun 18, so the June 2027 monthly expires Thu Jun 17; Jul 3 2026 is closed, and Jul 2 2026 is a full day.
+  3. **The tape must match the table.** A day with regular-hours bars that the table closes, or a table session with no bars, raises `CalendarMismatchError` naming the days. The table is then fixed, with a source, or the data gap is investigated; nothing is patched quietly.
+  4. **MarketView exposes the calendar** as reference data, without the as-of gate.
+- **Outcome:** 2026-09-27 — implemented in P1-06 (DEC-84). All four known cases pass (`tests/unit/config/test_calendar_file.py`). The P1-04 probes then checked the table against each symbol's LSEG daily bars, Jan 2 2025 to Sep 25 2026 (DEC-85): see DEC-12's outcome.
 
 ### DEC-34 — Rule stamping for multi-rule events
 **Status:** ASK · **Ask at:** P3-07 · **Affects:** INV-09
@@ -505,6 +561,12 @@ Distances are compared in integer price units, so float noise can't create or br
 - `pmcc fetch --start/--end` take inclusive dates, as the spec's example implies.
 - The fetch passes `end + 1 day`, because LSEG's end is effectively exclusive (LDG §2).
 - **Outcome:** 2026-09-26 — the provider port takes an exclusive end (`end_exclusive`, DEC-83) and passes it to LSEG unchanged, so the day is added by `pmcc fetch` (P1-08), not by the adapter as this entry first said.
+- **Outcome:** 2026-09-27 — how LSEG reads the dates, from the P1-04 probes on 11 symbols (DEC-85):
+  - **Hourly bars behave as `[start, end)` over whole days, as assumed.** On every symbol, a one-session window returned that session and a week returned its five. In late September every bar from 04:00 to 19:00 ET falls on the same UTC date as its ET date, so this can't tell whether LSEG cuts days at ET or UTC midnight; either way no session bar is cut. The fetch is hourly, so this entry holds.
+  - **Daily bars don't, and the edges depend on the request.**
+    - For one RIC, a daily window behaved as `(start, end]`: [Mon Sep 21, Tue Sep 22) returned Tuesday's bar, [Fri Sep 25, Sat Sep 26) returned nothing, and the week returned Tuesday to Friday.
+    - A daily batch of 5 option RICs returned both edge days: [Sep 14, Sep 15) gave Sep 14 and Sep 15.
+  - Nothing in the backtest reads daily bars. Anything that does (the probes, or a daily increment check in P1-08) shouldn't rely on a daily request's first or last day: ask a day wider on each side and filter by date.
 
 ### DEC-48 — Fetch plan and band-edge guard
 **Status:** ENG · **Affects:** P1-06, P5-05
@@ -516,6 +578,14 @@ Distances are compared in integer price units, so float noise can't create or br
   - Monthly long-candidate bands cover the whole window.
 - **Bands:** built from regular-session highs and lows, padded; they err wide (LDG §4.10).
 - **Band-edge guard:** if a selection lands on the top or bottom strike fetched, the run flags it and the unit is re-fetched wider.
+- **Outcome:** 2026-09-27 — the plan is built in P1-06 (`plan_symbol` in `pmcc/data/discovery.py`, DEC-84). Two changes to ARCHITECTURE §6.3, both of which only widen what is fetched:
+  - A monthly is a long candidate on **any** session of the window, not only on week-open sessions, since E-L1 retries daily and X-L1/X-L2 re-enter. Its unit runs from the first session it is a candidate on to its expiry or the window's end, whichever comes first. §6.3 said window start to window end, which can't hold for a monthly expiring inside a long window.
+  - The weekly after the window (G-3's next week) is fetched only up to the window's end.
+- **Outcome:** 2026-09-27 — after the adversarial review of P1-04 and P1-06 (DEC-84):
+  - **The long band's top is now the week's high, at the money.** The old top, weekHigh·e^(−0.3σ̂√T), sat near δ 0.72–0.77 on the probed volatilities, not the ≈0.65 claimed, because a bigger σ̂ moves a delta-based edge deeper, and the e^(σ²T/2) term was left out. So strikes near δ 0.70, quant E-L3's edge, weren't fetched. A strike at δ 0.70 is below spot for any σ and T, so an at-the-money top always holds it.
+  - **The long band is split into 3 bands of equal price ratio,** each with its own increment probe (DEC-14). One increment at the band's centre took the deep grid ($5) and would miss finer strikes near the money.
+  - **Every week with a session in the window gets its weekly calls and its week-open put,** even when the window ends mid-week; the next weekly follows the last one. Before, a window ending before its last week's final session got no put for that week-open and no next weekly.
+  - The band-edge guard stays with P5-05.
 
 ### DEC-49 — Failure taxonomy
 **Status:** ENG
@@ -531,6 +601,7 @@ Distances are compared in integer price units, so float noise can't create or br
 - **Outcome:** 2026-09-26 — the data-layer classes are implemented in P1-03 as `NoDataError`, `UnreadableAnswerError`, `TransientError` and `ProviderOutageError` (`pmcc/data/provider.py`). DEC-83 records exactly which errors fall in each class and how each is retried. Two rows changed from the first version of this table:
   - "Batch rejected whole" was a transient error, retried as a batch. A batch is now split instead, and each RIC is settled on its own.
   - An HTTP status, a permission code, and a single RIC's answer that can't be read are now failures that are retried and then fail loud. They were never meant as "no data", but lseg-data reports them in the same `LDError` as a never-listed RIC, and the P1-03 review found the first version filing them as unanswered (DEC-83).
+- **Outcome:** 2026-09-27 — the P1-04 probes found that LSEG doesn't refuse a field a RIC doesn't carry: it leaves the field out of the answer (DEC-83). So the "Unanswered contract" row's "a field it doesn't carry" never produces a no-data code. Such a field comes back with no values; the RIC answers with its other fields.
 
 ### DEC-50 — Canonical results and INV-13
 **Status:** ASK · **Ask at:** P3-08
@@ -630,6 +701,7 @@ Development runs in Git Bash on Windows (DEC-02) and CI runs on Ubuntu. Both mus
 - **Credentials hook:** a `language: fail` hook rejects any file named `lseg-data.config.json`, at any path.
 - **Outcome:** 2026-09-25 — `pre-commit run --all-files` passes. A planted complexity-11 function (C901) and a fake `lseg-data.config.json` were both rejected, then removed.
 - **Outcome:** 2026-09-25 — PO: "I'll handle everything with github - setting up the repo, initializing, and committing and pushing - and that will remain true for the remainder of the project." Read-only git allowed (PO, same day).
+- **Outcome:** 2026-09-27 (P1-06) — both hypothesis profiles now run with `deadline=None`. Under a full-suite run on Windows, one example of a P1-03 property test (a whole fetch through pandas frames) took 404 ms, against hypothesis's 200 ms default, so the test failed at random. A wall-clock limit makes a pass depend on machine load, which TEST-STRATEGY §1 rules out.
 
 ### DEC-78 — justfile conventions
 **Status:** ENG · **Affects:** P0-05, P0-06, P4-06
@@ -705,7 +777,7 @@ Development runs in Git Bash on Windows (DEC-02) and CI runs on Ubuntu. Both mus
   - 3 findings were refused by both skeptics and left as they are. One of them, about how RIC forms interact with the DEC-46 hash, is worth raising when DEC-46 is asked at P1-07.
 
 ### DEC-83 — History port, LSEG adapter and batched requests
-**Status:** ENG · VERIFY (the service's error codes) · **Verify at:** P1-04 · **Affects:** P1-03, P1-04, P1-07, P1-08, DEC-47, DEC-49
+**Status:** ENG · error codes verified at P1-04 (see the last outcome) · **Affects:** P1-03, P1-04, P1-07, P1-08, DEC-47, DEC-49
 
 - **Where things live.** ARCHITECTURE §3.3 rule 2 lets only `fetch` and `cli` import the adapter, so the parts that don't talk to LSEG sit outside it:
   - **`pmcc/data/provider.py`:** the `HistoryProvider` port, `RawHistory`, `Interval` and the four failure classes. There is no LSEG code here, so `fetch` can catch the failures without importing the adapter.
@@ -772,6 +844,87 @@ Development runs in Git Bash on Windows (DEC-02) and CI runs on Ubuntu. Both mus
   - **Plausible:** Pending was untested; the "raises only `ProviderOutageError`" docstrings were false; `Retry(attempts=0)` faked an outage.
   - **Refuted:** pandas in tests. The import rules cover `pmcc/`.
   - **Now:** 110 tests in the four P1-03 files (362 in the suite). Another 16 mutants planted in the new guards were all killed: the no-data code rule twice, the `LDError` match, closed-during-a-call, Pending, settling left-out RICs, splitting and retrying unreadable answers, filtering unasked RICs, single-RIC batches, zero attempts, the log event and its form, the sort, and both flat-RIC checks.
+- **Outcome:** 2026-09-27 — verified by the P1-04 probes on all 12 symbols (DEC-85). Every symbol answered the same way:
+  - **A never-listed RIC is no data, hourly and daily, in both forms.**
+    - Hourly: `TS.Intraday.UserRequestError.90001`, with the RIC in the message up to its `.U`.
+    - Daily: `TS.Interday.UserRequestError.70005`, "The universe is not found", with no RIC named. A wrong stock suffix (`NVDA.K`) gets the same daily answer.
+    - Both codes match `NO_DATA_CODE`, so the no-data codes don't need widening. The fake had assumed 90001 for daily; it now uses 70005 and the real message, and the contract test still passes.
+  - **A live contract asked in the caret form** is a never-listed RIC (90001).
+  - **A field the RIC doesn't carry is not an error,** contrary to LDG §4.6 and the fake. `SETTLE`, and a field name no service knows (`PMCC_NO_SUCH_FIELD`), each paired with TRDPRC_1, came back answered with TRDPRC_1 only.
+    - The fake now leaves such a field out of the RIC's answer (`carried`). Its `FIELD_NOT_CARRIED` code is gone, and the two tests that used it now check the real behaviour.
+    - A RIC asked only for fields it doesn't carry is still an assumption: the fake answers it with no bars.
+  - **Batches:**
+    - An hourly batch holding a listed and a never-listed RIC can't be read (the `UniverseContainer` TypeError).
+    - The daily batch answers without the never-listed RIC.
+    - An hourly pair asked for BID and SETTLE comes back as flat RIC columns, which the reader refuses as `Unattributable`.
+
+    All three are as the fake and the contract test had them, and `fetch_rics` splits the batch and settles each RIC alone.
+  - **Still assumptions:** the permission code, and what a signed-out Workspace returns. No probe can safely produce either.
+
+### DEC-84 — Calendar, chain discovery and the fetch plan
+**Status:** ENG · **Affects:** P1-06, P1-07, P1-08, P3-02 (`MarketView.calendar`), P5-05
+
+- **Where things live:**
+  - **`pmcc/domain/calendar.py`:** `SessionCalendar`, which gives sessions and their closes, week-open and week-final sessions, weekly and monthly expiries, and the sessions before a day. It sits in `domain`, not in `data` where ARCHITECTURE §3.1 first put it: `MarketView` (`strategy/ports.py`) returns it, and `strategy` may not import `data` (ARCHITECTURE §3.3 rule 3). Standard library only.
+  - **`pmcc/config/calendar.py`:** `configs/calendar.yaml`, validated by pydantic into a `SessionCalendar`. The file is found from the module, not the working directory. Unknown keys, unnamed or repeated days, weekend closures and days outside the span are refused.
+  - **`pmcc/data/calendar.py`:** the tape check (DEC-33): `tape_days`, `check_trading_days`, `sessions_from_tape` and `CalendarMismatchError`. A trading day is an ET date with a bar starting 09:00–15:00 ET; extended-hours bars alone never make one. A tape can't show a 13:00 close (post-market trading carries on), so early closes come from the table.
+  - **`pmcc/data/discovery.py`:** increments (DEC-14), `Band` and `Pad` ladders in integer cents, `session_ranges`, `band_vol`, `nearest_monthly` and `plan_symbol` (a `FetchPlan` of `Unit`s).
+- **A day outside the table raises** rather than being guessed. The table covers 2025–2027, so a window or a long-leg expiry past 2027 needs it extended first.
+- **How the plan reads ARCHITECTURE §6.3.** These choices size what is fetched; they never decide what a rule sees.
+  - **DTE and T:** DTE is in calendar days, and a band's T is calendar days ÷ 365. These follow DEC-24's recommendation, but since they only size fetches they don't wait for DEC-24's answer. They reproduce §6.3's example: the Jul 6 – Sep 18 2026 window needs the Nov 2026 – May 2027 monthlies (a test).
+  - **Band volatility:** σ̂ = 1.25 × the highest RV20 in the window. RV20 here is the sample standard deviation of 20 daily log returns of session closes × √252, taken at every close from the last one before the window to its end. Pricing's RV20 is DEC-26's.
+  - **Long candidates:** a monthly is a candidate on any session of the window. Its unit runs from the first such session to its expiry or the window's end, whichever comes first. Its band is the union over those weeks, from weekLow·e^(−2σ̂√T) up to the week's high, split into 3 bands of equal price ratio, each probed for its own increment (DEC-48's outcomes).
+  - **Weeks:** every calendar week with a session in the window gets its weekly calls, and a put on its week-open session if that session is in the window; the next weekly follows the last.
+  - **Pads and anchors:** EMest takes the unit's high as spot, which errs wide. A monthly's outer edges are padded 2 steps, and its 3 bands overlap by 1 step at each cut. The increment anchor is the nearest multiple of $10, ties going up, and never below $10.
+  - **The estimate (P1-08):** a `FetchPlan` holds bands, not strikes; a ladder needs the band's increment, which only an option request can measure. So the estimate printed before any option request has to assume increments, from the probe reports' DEC-14 values, and say so.
+  - **One unit per expiry and right:** a monthly Friday in the window can be both a weekly expiry and a long candidate. The unit then spans both date ranges and keeps every band, and the increment is probed per band (DEC-14's regions). A unit's sidecar therefore records a step per band.
+- **Session ranges** come from session bars only (DEC-06), so extended-hours ticks stay out (LDG §4.10). A trade print widens the range too. The close is the close bar's TRDPRC_1.
+- **Outcome:** 2026-09-27 — P1-06's tests pass: `tests/unit/domain/test_calendar.py`, `tests/unit/config/test_calendar_file.py`, `tests/unit/data/test_tape_calendar.py` and `tests/unit/data/test_discovery.py`, 86 tests, including a hypothesis property that every ladder is an integer-cent grid covering its padded range. One bug was caught while writing them: a monthly expiring inside a long window was banded over weeks after its expiry (T < 0). That led to the change recorded in DEC-48's outcome.
+- **Outcome:** 2026-09-27 — an adversarial review of P1-04 and P1-06 (4 reviewers, 2 skeptics per finding; 44 findings, 34 unique, the 12 most severe verified: 10 confirmed, 2 plausible, none refuted). For P1-06:
+  - **Confirmed, high:** the long band's top sat near δ 0.72–0.77, so δ 0.70 strikes weren't fetched. It now reaches the money (DEC-48).
+  - **Plausible, high:** one increment probed at the long band's centre took the deep grid and would miss finer strikes near the money. The band is now 3 bands, each probed (DEC-48).
+  - **Confirmed, medium:** a window ending mid-week lost its last week's put and next weekly (fixed); the tests couldn't tell which RV20s `band_vol` reads (three new tests kill the "skip the last close", "skip the pre-window close" and "start one late" mutants); no test covered the put on the window's first week-open (added).
+  - **Unverified, fixed anyway:** the monthly pads are now pinned by a test.
+  - **Now:** 97 tests in the four P1-06 files; 527 in the suite.
+
+### DEC-85 — Probe design
+**Status:** ENG · **Affects:** P1-04, P1-05, P1-08; DEC-06–09, DEC-12–14, DEC-47, DEC-83
+
+- **Where:** `pmcc/data/probe/`, one module per check:
+  - `identifiers`: DEC-12, plus the table against LSEG's daily bars (DEC-33)
+  - `errors`: DEC-83
+  - `bars`: DEC-06
+  - `edges`: DEC-47
+  - `fields`: DEC-13
+  - `increments`: DEC-14
+  - `coverage`: DEC-08 and DEC-09
+  - `depth`: DEC-07
+  - `runner`: sequences them and writes the report
+
+  The probes ask through the `HistoryProvider` port; `pmcc.cli` hands them an LSEG session (ARCHITECTURE §3.3 rule 2).
+- **Report:** one JSON file per symbol and day, `data_cache/probes/{SYM}_{YYYYMMDD}.json`, with sorted keys, LF endings and NaN written as null. It is written whole through a temporary file and never over an existing one; to probe again, rename the old report. `requests` counts every request made.
+- **Order:** stock RIC, then daily bars, then the error answers, then the checks that read quotes (increments, bars, edges, fields, coverage, depth). A never-listed RIC must come back with a no-data code. If one answers anyway (with bars, or an answer that can't be read), the report stops after the error answers and says why, and the command exits 1. If it fails any other way, that failure is asked again like any fetch and persists as an outage. An outage writes nothing.
+- **Asking:** the stock-suffix candidates, the error answers, the fields and the date edges go through `ask`, which records what the service answered: bars, a no-data code, or (for a batch) an answer that can't be read. Anything else (a transient failure, or a single RIC's unreadable answer) is asked again with DEC-49's 3 attempts and then raises an outage, because a dead or signed-out Workspace shows up only as transient failures (DEC-83). The other checks ask through `fetch_rics` and `fetch_contracts`, as the fetch will.
+- **Methods:**
+  - Option strikes are $10 anchors near spot, or near 0.8 × spot for a long, so they are listed on any grid up to $10.
+  - The δ 0.90–0.70 strikes come from Black-Scholes with r = 0 and a 60-session realized volatility, because the pricer (P2) isn't built. Below-intrinsic with r = 0 is a lower bound on DEC-08's IV failures.
+- **Tests:** `tests/unit/data/test_probe.py` runs the whole probe over `FakeMarket` (`tests/fakes/market.py`). That fake is a `HistoryProvider` over a synthetic market and fails as the port does over lseg-data (DEC-83): a dying Workspace is a transient failure, never an outage raised by the port, and there are no bars on or after its `today`. The CLI tests swap it in for `lseg_session`.
+- **Outcome:** 2026-09-27 — all 12 symbols probed in about 20 minutes. NVDA took 89 requests (the first version); the rest took 94–105 each, about 100 s. No symbol stopped, and no request needed a retry.
+  - **Added after NVDA,** before the other 11 ran: the DEC-47 date edges, 10- and 11-month depth samples, and a field name no service knows (because `SETTLE` hadn't been refused). NVDA's report predates these.
+  - **One check turned out blind:** LSEG's history is split-adjusted, so the largest daily moves can't show a split (DEC-12).
+  - **Tests:** `tests/unit/data/test_probe.py` (40) and the CLI's probe tests (4) in `tests/unit/test_cli.py`.
+- **Outcome:** 2026-09-27 — an adversarial review of P1-04 and P1-06 (4 reviewers, 2 skeptics per finding; see DEC-84's outcome for the totals). For P1-04:
+  - **Confirmed, high:** a Workspace dying during the DEC-83 asks got a report written that blamed LSEG's codes, because `ask` recorded transient failures instead of retrying them. `ask` now retries, and a persisting failure is an outage that writes nothing. `FakeMarket` had raised `ProviderOutageError` from the port, which `LsegProvider` can't do for a desktop session, so no test took the real path; it now fails with transient errors, and the probe is tested dying at 9 points.
+  - **Confirmed, medium:**
+    - the date-edge check asked for sessions not yet traded when run before a week's final session; it now uses the latest complete week, and the expired weekly is the latest at least a week back;
+    - the calendar check was tested only on a tape that matches; a mismatching tape is now tested;
+    - DEC-07 overstated how far every leg reaches and misread XLE's pre-split samples (split-adjusted closes gave wrong strikes); DEC-07 is corrected.
+  - **Plausible, medium:** the stop gate was tested only with every never-listed ask failing; each interval is now tested alone.
+  - **Unverified, fixed anyway:**
+    - tests for an empty field, a split-like move, a band top past $999.99, a quote matching on one side only, `last_session` at the close, on a holiday and on a half-day, and the first-suffix choice with several suffixes answering;
+    - stale docstrings about a field a RIC doesn't carry;
+    - the doc figures above (request counts, AMD's 3.002%, TLT's one strike, the Jan 2027 claim, the close and venue gaps, the edge's precision, DEC-13's `.N` caveat, DEC-49's row, DEC-83's status line).
+  - **Now:** 63 probe tests and 5 CLI probe tests. The reports already written stand. The fixes change what a failing run writes and which week the date edges use, not what these successful runs recorded.
 
 ## E. Analytics definitions
 

@@ -27,7 +27,7 @@ Sep 25, 2026 · schedule from Spec › Build order · **due Fri Oct 9, 11:59 pm*
 | Phase | Dates | Exit criteria (milestone) | Status |
 | --- | --- | --- | --- |
 | P0 Foundations | Sat Sep 26 | `just check` green in Git Bash and in CI; credentials ignored; LSEG session opens from Git Bash | Done locally 2026-09-25; CI run for P0-07/08 pending the PO's push |
-| P1 Data layer and open items | Sat Sep 26 – Sun Sep 27 | NVDA's full chain cached; INV-11, INV-12 pass; window, r and identifiers recorded; universe fetch started | In progress: P1-01, P1-02, P1-03 done |
+| P1 Data layer and open items | Sat Sep 26 – Sun Sep 27 | NVDA's full chain cached; INV-11, INV-12 pass; window, r and identifiers recorded; universe fetch started | In progress: P1-01 to P1-04 and P1-06 done; P1-05 (PO review of the probe results) next |
 | P1-10 Universe fetch (background) | Sun Sep 27 – Sat Oct 3 | All 12 symbols cached with coverage summaries | Not started |
 | P2 Pricing | Mon Sep 28 | IV solver matches the reference; EM, ATM IV, RV20 tested | Not started |
 | P3 Engine, accounting, baseline | Mon Sep 28 – Wed Sep 30 | **M1:** baseline blotter, ledger, NAV, Reg T for NVDA; INV-01–10 and 13 pass | Not started |
@@ -168,7 +168,7 @@ P8 release                                                                      
     - a closed session raises before any request
     - an outage writes nothing
   - Needs: P1-02 · Refs: DEC-49; LDG §4
-- [ ] **P1-04 · Probes** **[Workspace]**
+- [x] **P1-04 · Probes** **[Workspace]** — done 2026-09-27; `pmcc probe` (`pmcc/data/probe/`, DEC-85) wrote one report per symbol to `data_cache/probes/` for all 12, about 100 requests and 100 s each, with no retries; outcomes are in DEC-06 to DEC-09, DEC-12 to DEC-14, DEC-47 and DEC-83. For P1-05: hourly history ends between Sep 26 and Oct 27 2025 (a rolling year?); start stamps and end-of-bar quotes are confirmed, but the official close isn't the close bar's last trade (R-21, DEC-23); XLE split 2-for-1 on Dec 5 2025 and LSEG's history is split-adjusted; long-leg median spreads exceed E-T1's 3% on 7 symbols. Both never-listed codes are no-data codes, and a field a RIC lacks isn't an error at all, so both fakes were corrected (DEC-83). An adversarial review (4 reviewers, 2 skeptics per finding) confirmed a high: a Workspace dying during the DEC-83 asks got a report written; now an outage (DEC-85). 68 tests, over a new port-level `FakeMarket`
   - `pmcc probe` implements the DEC-06, 07, 08, 09, 12, 13 and 14 checks. Run it for all 12 symbols; the requests are small. (DEC-01 was settled without a probe.)
   - It also records the real error answers for DEC-83: the `LDError` text and codes for a never-listed RIC (hourly and daily, both forms), a field the RIC doesn't carry, and an hourly batch holding one of each. The fake's assumed codes are then checked against them.
   - Done when: `data_cache/probes/` has a report per symbol, and each outcome is written into its DEC entry.
@@ -177,11 +177,11 @@ P8 release                                                                      
   - Report the probe results (DEC-06–14) to the PO.
   - Ask first: DEC-07 (window) and DEC-11 (r).
   - Start the Reg T citations (DEC-10, due by P7-04).
-  - Fill in `configs/universe.yaml` (window, r, symbols with stock RICs and roots) and `configs/calendar.yaml`.
+  - Fill in `configs/universe.yaml` (window, r, symbols with stock RICs and roots). `configs/calendar.yaml` came with P1-06 (2025–2027); check that it covers the window and the long legs' expiries.
   - Tick the spec's open-item boxes, each with its DEC link.
   - Done when: every open item is resolved or has a dated owner, and both config files validate.
   - Needs: P1-04
-- [ ] **P1-06 · Calendar and chain discovery**
+- [x] **P1-06 · Calendar and chain discovery** — done 2026-09-27; DEC-33 settled by the PO, taking all four recommendations, with the table widened to 2025–2027. Built: `SessionCalendar` (`pmcc/domain/calendar.py`, placed in `domain` because MarketView returns it, DEC-84); `configs/calendar.yaml` with its loader; the tape check, which stops on any mismatch; and `pmcc/data/discovery.py` (increments, integer-cent bands, `plan_symbol`). 97 tests, including a hypothesis ladder property. Changes to ARCHITECTURE §6.3 (DEC-48): a monthly counts as a candidate on every session and its unit ends at its expiry; after the adversarial review (DEC-84), the long band reaches the money in 3 separately probed bands (it had stopped near δ 0.75), and a window ending mid-week keeps its last week. The P1-04 probes then checked the table against LSEG's daily bars for all 12 symbols (DEC-33)
   - Ask first: DEC-33.
   - Sessions from the tape, week-open and week-final sessions, weekly and monthly expiries, increments (DEC-14), and the bands and fetch plan (DEC-48).
   - Done when tests pass for:
@@ -460,22 +460,23 @@ The spec sets the order. Cut the next item only when its trigger fires, and mark
 | ID | Risk | Likelihood | Impact | Mitigation | Watch at |
 | --- | --- | --- | --- | --- | --- |
 | R-01 | Windows (Git Bash) and Ubuntu CI diverge: CRLF line endings, missing time-zone data, shell differences | Med | Med | DEC-58: `.gitattributes` LF, `tzdata`, `newline="\n"`, bash recipes; CI catches what slips through | P0-02, P0-05 |
-| R-02 | Hourly option history is shorter than 10 weeks, or uneven across symbols | Med | High | Probe on day 1; window = the intersection; tell the PO at once | P1-04 |
-| R-03 | Deep ITM long-dated quotes are sparse or wide: IV failures, few E-L3 candidates, E-T1 retries | Med | Med | Measure (DEC-08); report on Methodology; leave the rules unchanged | P1-09 |
+| R-02 | Hourly option history is shorter than 10 weeks, or uneven across symbols | Med | High | Probe on day 1; window = the intersection; tell the PO at once. **P1-04:** hourly history ends between Sep 26 and Oct 27 2025, the same for every symbol sampled there (DEC-07) | P1-04 |
+| R-03 | Deep ITM long-dated quotes are sparse or wide: IV failures, few E-L3 candidates, E-T1 retries | Med | Med | Measure (DEC-08); report on Methodology; leave the rules unchanged. **P1-04 sample:** every bar quoted, but median spreads over E-T1's 3% on 7 symbols | P1-09 |
 | R-04 | Fetch volume and time; possible LSEG request limits | Med | High | Estimate first; resumable units; start Sep 27; run overnight; watch for throttling errors | P1-08, P1-10 |
 | R-05 | The zero-padded RIC day, settled from the earlier project without a probe, stops resolving | Low | Med | The DEC-01 note: expiries dated the 1st–9th all come back unanswered; the spelling is set in one place, and the parser reads both | P1-04, P1-09 |
-| R-06 | A strike above $999.99 doesn't fit the 5-digit field | Low | High | Probe the max strike per symbol; ask the PO | P1-04 |
-| R-07 | A split in the window changes the option root | Low | High | Check the tape for discontinuities and corporate actions | P1-04 |
-| R-08 | A wrong bar convention hides look-ahead | Low | High | DEC-06 checks; MarketView keyed on `bar_end` | P1-04 |
+| R-06 | A strike above $999.99 doesn't fit the 5-digit field | Low | High | Probe the max strike per symbol; ask the PO. **P1-04:** all 12 fit; META is closest ($973.51, DEC-12) | P1-04 |
+| R-07 | A split in the window changes the option root | Low | High | Check the tape for discontinuities and corporate actions. **P1-04:** LSEG's history is split-adjusted, so the tape can't show a split; XLE split 2-for-1 on Dec 5 2025 (DEC-12). Confirm the rest against OCC memos and pick the window with it in mind | P1-04, P1-05 |
+| R-08 | A wrong bar convention hides look-ahead | Low | High | DEC-06 checks; MarketView keyed on `bar_end`. **P1-04:** start stamps and end-of-bar quotes confirmed on all 12 | P1-04 |
 | R-09 | Float nondeterminism breaks INV-13 | Med | Med | Integer money, explicit sorts, seeded RNG, canonical JSON | P3-08 |
 | R-10 | The schedule compresses | High | High | Cut list with triggers; parallel web track; M1 gate | status board |
 | R-11 | LSEG terms forbid publishing raw-derived series | Med | Med | DEC-05 asked at P3-10; binned scatter as the fallback | P3-10, P6-07 |
 | R-12 | pyright strict clashes with untyped libraries (lseg-data, scipy) | Med | Low | Local stubs; typed adapters; narrow ignores, each with a reason | P0-03 |
 | R-13 | Results JSON is too heavy for the site | Low | Med | Detail levels (DEC-54); virtualized tables; per-run lazy loading | P4-05 |
 | R-14 | Quant E-L3 favours wide-spread contracts, so E-T1 keeps failing | Med | Med | Report retry counts; no tuning after the first run (spec) | P4-04 |
-| R-15 | Holiday and half-day edge cases | Med | Med | Calendar tests on known dates | P1-06 |
+| R-15 | Holiday and half-day edge cases | Med | Med | Calendar tests on known dates. **P1-06:** they pass, and the table matched LSEG's trading days for all 12 from Jan 2025 (DEC-33) | P1-06 |
 | R-16 | The Workspace session drops mid-pull | Med | Med | A dead Workspace never changes the session's state (DEC-83), so failing requests are retried 3 times, then abort the unit as an outage; resume | P1-08 |
 | R-17 | The Pages base path or routing breaks deep links | Low | Med | `base: './'` with HashRouter; deploy early (P4-07) | P4-07 |
 | R-18 | Pulls need the PO's machine on and signed in to Workspace | High | Med | Schedule pulls with the PO; batch them overnight | P1-10 |
 | R-19 | A late PO answer stalls the items that depend on it | Med | Med | Batch questions per item and ask one item ahead (§2) | §2 |
-| R-20 | A guessed RIC fails with a code that isn't a no-data code, so the fetch stops as an outage | Med | Med | P1-04 records the real codes before any pull; widening the no-data codes is a DEC-83 decision | P1-04 |
+| R-20 | A guessed RIC fails with a code that isn't a no-data code, so the fetch stops as an outage | Med | Med | P1-04 records the real codes before any pull; widening the no-data codes is a DEC-83 decision. **Retired by P1-04:** both never-listed codes are no-data codes (DEC-83) | P1-04 |
+| R-21 | The close bar's last trade differs from the official close (up to 0.09% in the probes), so a short pinned near its strike can be ITM by one and OTM by the other | Med | Med | DEC-23 (asked at P2-03) decides which close X-S4/X-S5 use; the probe numbers go with the question | P2-03 |

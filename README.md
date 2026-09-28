@@ -2,8 +2,8 @@
 
 A symbol-agnostic backtester for the **Poor Man's Covered Call** (PMCC): a deep in-the-money, long-dated call held as a stock substitute, with weekly out-of-the-money calls sold against it. One engine runs two strategies, a fixed-rule baseline and a quant variant, on LSEG hourly data, and publishes the results as a static site on GitHub Pages.
 
-> **Status:** foundations (P0) are in place: toolchain, quality gates, CI, logging and import-boundary tests. The data layer (P1) has started: the domain primitives (integer money, option IDs, rule IDs, the ET session and bar model), the option RIC builder and parser, the LSEG adapter (session check and fail-soft history, tested against a fake that a contract test keeps true to lseg-data), and batched requests (single-RIC verdicts, retries and the caret→live fallback) are in. The build runs Sep 26 – Oct 9, 2026, tracked in [docs/BUILD-PLAN.md](docs/BUILD-PLAN.md).
-> - The commands under Usage are the interface defined in the spec. Until its backlog item lands, each one exits with code 1 and names that item.
+> **Status:** foundations (P0) are in place: toolchain, quality gates, CI, logging and import-boundary tests. The data layer (P1) has started: the domain primitives (integer money, option IDs, rule IDs, the ET session and bar model), the option RIC builder and parser, the LSEG adapter (session check and fail-soft history, tested against a fake that a contract test keeps true to lseg-data), batched requests (single-RIC verdicts, retries and the caret→live fallback), the NYSE session calendar (2025–2027, checked against each stock's trading days), chain discovery (strike increments, integer-cent strike bands, the fetch plan), and `pmcc probe` are in. The probes' reports for all 12 symbols answer the spec's open items, pending the PO's review. The build runs Sep 26 – Oct 9, 2026, tracked in [docs/BUILD-PLAN.md](docs/BUILD-PLAN.md).
+> - The commands under Usage are the interface defined in the spec. `pmcc probe` works; until its backlog item lands, each other command exits with code 1 and names that item.
 > - The site link will be added at the first deploy.
 
 ## What the results answer
@@ -70,6 +70,7 @@ LSEG credentials go in `lseg-data.config.json` in the repo root. The file is git
 ## Usage
 
 ```bash
+uv run pmcc probe  --symbol NVDA                                       # LSEG spikes → data_cache/probes/ (Workspace required)
 uv run pmcc fetch  --symbol NVDA --start 2026-07-06 --end 2026-09-18   # LSEG → local cache (Workspace required)
 uv run pmcc run    --symbol NVDA --config configs/quant_pmcc.yaml       # one backtest, from the cache only
 uv run pmcc batch  --universe configs/universe.yaml                     # every symbol × strategy × variant
