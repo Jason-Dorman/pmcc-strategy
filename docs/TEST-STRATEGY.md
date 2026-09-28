@@ -20,8 +20,8 @@ Sep 25, 2026 · implements Spec › Invariant tests and EP › Testing mindset �
 
 | Layer | Covers | Tool | Runs in |
 | --- | --- | --- | --- |
-| Unit | Domain primitives (half-even quantizing, money arithmetic, `bar_end`, session bars; `tests/unit/domain/`), RIC grammar and OCC symbols (`tests/unit/data/test_ric.py`), the LSEG adapter and batched requests (`tests/unit/data/test_lseg_*.py`, `test_fetch.py`, §6), the calendar (`tests/unit/domain/test_calendar.py`, `tests/unit/config/test_calendar_file.py`, `tests/unit/data/test_tape_calendar.py`), the universe file, with its window planned on the shipped calendar (`tests/unit/config/test_universe_file.py`, DEC-86), increments, bands and the fetch plan (`tests/unit/data/test_discovery.py`), the probes (`tests/unit/data/test_probe.py`, §6), Black-Scholes, IV, measures, selectors, trigger, gates, exits, fills, Reg T, metrics | pytest | `just test`, CI |
-| Property | Accounting invariants (INV-01, 02, 08, 10); IV vs scalar reference; MarketView as-of guard (INV-04); RIC round-trip (INV-11); every fetched contract answered or unanswered, never both; integer strike ladders (`test_discovery.py`); every session sits between its week-open and week-final sessions | hypothesis | CI |
+| Unit | Domain primitives (half-even quantizing, money arithmetic, `bar_end`, session bars; `tests/unit/domain/`), RIC grammar and OCC symbols (`tests/unit/data/test_ric.py`), the LSEG adapter and batched requests (`tests/unit/data/test_lseg_*.py`, `test_fetch.py`, §6), the calendar (`tests/unit/domain/test_calendar.py`, `tests/unit/config/test_calendar_file.py`, `tests/unit/data/test_tape_calendar.py`), the universe file, with its window planned on the shipped calendar (`tests/unit/config/test_universe_file.py`, DEC-86), increments, bands and the fetch plan (`tests/unit/data/test_discovery.py`), the probes (`tests/unit/data/test_probe.py`, §6), the cache and loader (`tests/unit/data/test_cache.py`, `test_load.py`, `test_files.py`: atomic writes, never overwriting, counts per contract, the data-manifest hash, a FakeProvider round trip; DEC-46, DEC-87), Black-Scholes, IV, measures, selectors, trigger, gates, exits, fills, Reg T, metrics | pytest | `just test`, CI |
+| Property | Accounting invariants (INV-01, 02, 08, 10); IV vs scalar reference; MarketView as-of guard (INV-04); RIC round-trip (INV-11); every fetched contract answered or unanswered, never both; the loader's vectorized price quantizing equals `Price.from_dollars` (`test_load.py`); integer strike ladders (`test_discovery.py`); every session sits between its week-open and week-final sessions | hypothesis | CI |
 | Scenario | Engine end to end on a synthetic market: one scenario per exit, gate and edge case (§5) | pytest | CI |
 | Determinism | The same synthetic run twice gives byte-identical files (INV-13) | pytest | CI |
 | Architecture | Import boundaries (ARCHITECTURE §3.3), in `tests/architecture/test_imports.py`, with one planted violation per rule | pytest (AST) | CI |
@@ -96,7 +96,7 @@ Every rule ID needs at least:
 
 ## 5. Synthetic market (`tests/fixtures/synthetic/`)
 
-A deterministic generator writes a dataset in the **cache format** (same parquet schema and manifest), so the loader, pricing and engine are tested exactly as they run on real data.
+A deterministic generator writes a dataset in the **cache format**: a parquet and a sidecar per unit, as `SymbolCache` writes them, since `load_symbol` reads the sidecars, never `manifest.json` (DEC-87). So the loader, pricing and engine are tested exactly as they run on real data.
 
 **Underlying**
 
@@ -165,6 +165,7 @@ The tests are in `tests/unit/data/`:
 | `test_lseg_provider.py` | `LsegProvider` and `to_long`: every frame lseg-data builds, UTC bar starts, daily dates, the failure classes, reading the service's codes |
 | `test_fetch.py` | INV-12, batches of 25, single-RIC verdicts, retries and backoff, outages at every stage, the form rounds, the log events; a hypothesis property that every contract is answered or unanswered, never both |
 | `test_lseg_contract.py` | the fake against lseg-data 2.1.1's own code |
+| `test_cache.py`, `test_load.py` | pulls fetched from `FakeLseg` through `fetch_contracts` and `fetch_rics` (`tests/fakes/pulls.py`), cached, then loaded back: the P1-07 round trip (DEC-87) |
 
 **FakeMarket** (`tests/fakes/market.py`, DEC-85) serves code that consumes the port rather than the adapter: the probes (`test_probe.py`), and the CLI's `probe` command (`tests/unit/test_cli.py`).
 - It is a `HistoryProvider` over a small synthetic market: one stock, and weekly and monthly calls on a $1 grid near spot and a $5 grid beyond. It has bars from a chosen date, and a contract answers only in the form its expiry calls for.
@@ -187,9 +188,9 @@ Every LDG §4 item, and where it is tested:
 | 4 | Batches of 25; a batch fails whole, or answers partially | `test_fetch.py`, `test_lseg_contract.py` |
 | 5 | The response shape varies | `test_lseg_provider.py`, `test_lseg_contract.py` |
 | 6 | A field a RIC doesn't carry fails the request. **Not so in the P1-04 probes:** LSEG left `SETTLE` and an unknown field out of the answer, and a batch then came back as flat RIC columns (DEC-83) | `test_lseg_provider.py`, `test_fetch.py` (the field is left out; the batch is split) |
-| 7 | No SETTLE; a zero or missing bid means no valid mid | the loader's quote validity (P1-07) |
+| 7 | No SETTLE; a zero or missing bid means no valid mid | `test_load.py`: `valid_quote` needs BID > 0, ASK > 0 and ASK ≥ BID |
 | 8 | Intraday stamps are UTC bar starts | `test_lseg_provider.py`; `bar_end` in `tests/unit/domain/test_clock.py` |
-| 9 | The last bar isn't the close; session bars | `tests/unit/domain/test_sessions.py`; the loader (P1-07) |
+| 9 | The last bar isn't the close; session bars | `tests/unit/domain/test_sessions.py`; `test_load.py`: `session_bar` drops pre-market, the 16:00 stub and a half-day's 13:00 bar |
 | 10 | Bogus extended-hours highs and lows | `test_discovery.py`: session ranges use session bars only, and bands err wide |
 | 11 | Integer-cent strike ladders | `test_discovery.py` (a hypothesis property) |
 | 12 | Band strikes per expiry | `test_discovery.py`: one unit per expiry and right, each with its own bands |

@@ -10,7 +10,6 @@ dead or signed-out Workspace shows up only as transient failures (DEC-83), never
 
 import json
 import math
-import os
 from collections.abc import Sequence
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -20,6 +19,7 @@ import numpy as np
 
 from pmcc.data.discovery import TRADING_DAYS, increment_anchor, nearest_monthly
 from pmcc.data.fetch import Retry
+from pmcc.data.files import write_new
 from pmcc.data.probe.bars import probe_bars
 from pmcc.data.probe.context import CountingProvider, Json, Probe, price
 from pmcc.data.probe.coverage import probe_coverage
@@ -149,15 +149,8 @@ def write_report(report: Json, path: Path) -> None:
         raise FileExistsError(
             f"{path} exists; a probe report is never overwritten. Rename it first."
         )
-    path.parent.mkdir(parents=True, exist_ok=True)
     text = json.dumps(_finite(report), indent=2, sort_keys=True, ensure_ascii=False) + "\n"
-    temp = path.with_name(path.name + ".partial")
-    try:
-        with temp.open("x", encoding="utf-8", newline="\n") as f:
-            f.write(text)
-        os.link(temp, path)  # fails if `path` appeared meanwhile; nothing is replaced
-    finally:
-        temp.unlink(missing_ok=True)
+    write_new(path, text.encode("utf-8"))
 
 
 def _finite(value: object) -> object:

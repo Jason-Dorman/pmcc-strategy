@@ -110,7 +110,7 @@ All LSEG access happens locally through `pmcc fetch`; backtests read only the pa
 
 **Cache**
 
-- Parquet per instrument, plus a manifest with RIC, fetch time, row count, and hash.
+- Parquet per fetch unit (the stock tape, and each expiry's calls or puts), each with a sidecar, plus a manifest with RIC, fetch time, row count, and hash. The data-manifest hash ignores fetch times and which RIC form answered, and a unit is re-pulled only after its files are moved aside (DEC-46).
 - Re-running a backtest never re-fetches. Commit derived results; commit raw data only if LSEG terms allow.
 
 ## Conventions

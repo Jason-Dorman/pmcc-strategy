@@ -13,8 +13,9 @@
 
 Guess-and-check fails soft: a RIC nothing answered comes back as an empty series and a
 `fetch.ric.unanswered` log event, never an exception (INV-12). An outage raises
-`ProviderOutageError` and returns nothing, so nothing can be written from it (LDG §4.3). Unit
-orchestration, the cache and resume come with P1-08.
+`ProviderOutageError` and returns nothing, so nothing can be written from it (LDG §4.3). The
+cache (`pmcc.data.cache`) builds on these results, so the unit loop and resume (P1-08) sit above
+both modules, not here (DEC-87).
 """
 
 import time

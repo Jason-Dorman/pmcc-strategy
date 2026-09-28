@@ -60,7 +60,7 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-43 | Packages added to the spec layout | ENG | — |
 | DEC-44 | Money as integer units | ENG | — |
 | DEC-45 | RIC form policy | SETTLED (PO) | — |
-| DEC-46 | Cache layout | ASK | P1-07 |
+| DEC-46 | Cache layout | SETTLED (PO) | — |
 | DEC-47 | Fetch dates are inclusive | ENG · probed (LSEG's date edges) | — |
 | DEC-48 | Fetch plan and band-edge guard | ENG | — |
 | DEC-49 | Failure taxonomy | ENG | — |
@@ -96,6 +96,7 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-84 | Calendar, chain discovery and the fetch plan | ENG | — |
 | DEC-85 | Probe design | ENG | — |
 | DEC-86 | Universe config and strict YAML | ENG | — |
+| DEC-87 | Cache writes, sidecars and the loader | ENG | — |
 
 ---
 
@@ -636,13 +637,18 @@ Distances are compared in integer price units, so float noise can't create or br
 - **Outcome:** 2026-09-26 — PO, in the DEC-01 answer: the call-letter caret for puts and the caret-then-live order for expired contracts come from the earlier project's measurements, so both are now in Spec › RIC builder. The status was ENG until then.
 
 ### DEC-46 — Cache layout
-**Status:** ASK · **Ask at:** P1-07
+**Status:** SETTLED · **Basis:** PO, 2026-09-28 (asked at P1-07) · **Affects:** P1-07, P1-08, P3-08, Spec › Cache
 
 - The spec says "parquet per instrument". The recommendation stores one parquet per underlying (`{SYM}/stock.parquet`) and one per option chain unit (`{SYM}/chains/{expiry}_{C|P}.parquet`). The chain unit is the fetch unit and is written atomically.
 - A per-RIC manifest (`{SYM}/manifest.json`) keeps the spec's fields (RIC, fetch time, row count, hash) and adds the form, status, and first and last bar.
 - Each unit has a sidecar per LDG §5.
 - **Data-manifest hash:** the one in a run manifest is the sha256 of the symbol's manifest content, excluding fetch times. Re-fetching identical data doesn't change it, and fetching another symbol never does.
-- **Outcome:** —
+- **Outcome:** 2026-09-28 — PO, asked at P1-07 as three questions; each recommendation was taken:
+  - **Layout: per fetch unit.** One parquet for the stock tape and one per expiry and right, each with its sidecar; not one per RIC. Spec › Cache now says "per fetch unit", citing this entry.
+  - **The hash ignores the RIC form.** An expired contract can answer under the caret form on one pull date and the live form on another (DEC-45), with identical bars. The hash covers each contract's identity (its OCC symbol, or the stock's RIC), unit, status, row count, first and last bar, and a sha256 of its bars (the RIC left out). It leaves out the RIC spelling, the form and the fetch time, which the manifest and sidecar still record. This was the point DEC-82's review raised for this entry.
+  - **Re-pull: move the unit's two files.** The parquet and sidecar are the record. `manifest.json` is rebuilt from the sidecars after every write, so moving a unit's two files aside (e.g. into `{SYM}/superseded/`) makes the next fetch pull it again. Code never edits or deletes an old file.
+- **Outcome:** 2026-09-28 — built in P1-07 (`pmcc/data/cache.py`, `pmcc/data/load.py`, `pmcc/data/files.py`); the engineering choices are in DEC-87. One of them departs from the recommendation's wording:
+  - **Manifest entries are per contract, not per RIC.** LDG §5 counts answered + unanswered = requested per contract, and one contract can be asked under both forms. So each entry is a contract asked, and it keeps the RIC that answered. The RICs asked for an unanswered contract, with each one's reason, are in the sidecar. It is an ENG choice, so the PO can overrule it.
 
 ### DEC-47 — Fetch dates are inclusive
 **Status:** ENG
@@ -1049,6 +1055,44 @@ Development runs in Git Bash on Windows (DEC-02) and CI runs on Ubuntu. Both mus
     - DEC-13 had been marked SETTLED on a probe basis, which the legend doesn't allow while the `.P` primaries are unprobed; back to VERIFY.
   - **Refuted:** the fetch's stock-RIC source isn't named in ARCHITECTURE §6.1 (P1-08 will read `Universe`); the conversion assumes investment basis whatever `series` says (documented, and DGS3MO is investment basis); the spec's "back to late Oct 2025" (DEC-07's own headline); the README's Jul 6 – Sep 18 fetch example (the spec's CLI example).
   - **Now:** 54 tests in `test_universe_file.py` and 18 in `test_calendar_file.py`. 30 mutants re-run against them, the 14 above plus the 16 the review showed or suggested would survive (tolerances, prefix checks, looser patterns, `extra="ignore"` per model, empty strings, a lax YAML reader in either loader): all killed.
+
+### DEC-87 — Cache writes, sidecars and the loader
+**Status:** ENG · **Affects:** P1-07, P1-08, P3-02, P3-08
+
+- **Where:**
+  - `pmcc/data/files.py`: `write_new` (a `.partial` file hard-linked into place, which fails if the target exists) and `replace_file` (for the manifest, a derived index). The probe report writer uses `write_new` too.
+  - `pmcc/data/cache.py`: `UnitPull`, built by `chain_pull` or `stock_pull` from `fetch_contracts` or `fetch_rics` results, and `SymbolCache` (`write_unit`, `has_unit`, `units`, `orphans`, `rebuild_manifest`).
+  - `pmcc/data/load.py`: `load_symbol` → `SymbolData`, plus `quantize`.
+- **Dependency direction:** `cache` imports `fetch`'s result types. So P1-08's unit loop, which fetches and then writes, sits above both, not inside `fetch.py` as ARCHITECTURE §3.1 first said; P1-08 names its module.
+- **A unit exists once its sidecar does.** The parquet is written first and the sidecar last.
+  - A write that fails before the sidecar is written removes the parquet it just wrote.
+  - A process killed between the two leaves a parquet with no sidecar (an orphan). `write_unit` refuses to replace it, and `load_symbol` refuses to load until it is moved aside.
+  - Temp files are named `{file}.{random}.partial`, so one a killed write left never blocks a later write, and nothing reads it.
+  - `write_unit` reads every sidecar before writing anything, so an unreadable one stops it first. Once the sidecar is written the unit is cached; if rebuilding `manifest.json` then fails, the index stays stale until the next write.
+  - A sidecar must record the unit its path names. A unit's pair renamed in place inside `chains/` is refused (`CacheError`), not read as the unit it records: moving aside means into `superseded/`.
+- **One manifest entry per contract asked,** not per RIC asked, so answered + unanswered = requested counts contracts (LDG §5). `chain_pull` refuses a result that doesn't cover exactly the contracts requested, or a contract outside the unit's expiry and right.
+- **Parquet:** `bar_start_utc`, `ric`, `expiry`, `strike_cents`, `right`, then one float64 column per field requested, in request order. A field no RIC returned is an all-null column, and the sidecar's `fields_returned` says so. Rows are one per RIC and bar, sorted.
+- **The bars hash** is over each bar's start and its fields' values (sorted by field name; `float.__repr__`; empty cells as empty), in time order.
+- **Loader:**
+  - It reads the sidecars, never `manifest.json`. It checks every parquet's sha256 against its sidecar, and refuses a missing or changed file, an orphan, or a symbol with no stock unit.
+  - It checks the stock tape's trading days against the calendar over the stock unit's dates (DEC-33).
+  - Prices (`BID`, `ASK`, `TRDPRC_1`, `OPEN_PRC`, `HIGH_1`, `LOW_1`) become Int64 $0.0001 units, exactly as `Price.from_dollars` would give them (DEC-44). The scaling is vectorized, and a value within 1e-6 of a half unit, or of $100,000 or more, goes through `Price.from_dollars` itself. Hypothesis tests compare the two on floats within ±$1M and on five-decimal half-unit values within ±$100M (sampled, not exhaustive), plus fixed cases above $1M where plain float scaling rounds wrongly. Volumes (`ACVOL_UNS`, `NUM_MOVES`) stay float64.
+  - It adds `bar_end` (Datetime, America/New_York), `session_bar` (the bar ends on one of its session's bar ends, 10:00 to the close) and `valid_quote` (BID > 0, ASK > 0, ASK ≥ BID; a missing side is invalid).
+  - `SymbolData.chains` is keyed by (expiry, right).
+- **Outcome:** 2026-09-28 — 60 tests (`test_cache.py` 34, `test_load.py` 21, `test_files.py` 5). The P1-07 done-when cases are all among them. 19 planted mutants were all killed. The one that survived the first run (a bars hash reading only the first bar) led to three direct hash tests.
+- **Outcome:** 2026-09-28 — an adversarial review of P1-07 (4 reviewers, 2 skeptics per finding): 29 findings, 21 unique; the 12 most severe verified as 10 confirmed, 1 plausible and 1 refuted; 9 low ones unverified. All 11 confirmed or plausible are fixed, and so are the 9 unverified ones:
+  - **Confirmed, medium:**
+    - a unit's pair renamed in place inside `chains/` was still read as the unit its sidecar records; it double-counted in the manifest and changed the hash of identical data. A sidecar must now record the unit its path names, or it is refused.
+    - test gaps: `OPEN_PRC`, `HIGH_1` and `LOW_1` quantizing and float volumes; session bars over more than one day (now across the Nov 1 clock change); the bars hash on `BID`, `TRDPRC_1` and sub-cent digits; per-contract entries with two contracts answered.
+    - stale docs: ARCHITECTURE §6.1 step 4 still skipped units "already in the manifest", and TEST-STRATEGY §5 described the synthetic cache as "parquet schema and manifest".
+  - **Confirmed, low:**
+    - `write_unit` could raise after the unit was cached (a failed manifest rebuild), against "a write that raises leaves no file". Every sidecar is now read before anything is written, and the docs say what a failed rebuild leaves.
+    - a `.partial` left by a killed write made the next write fail once. Temp files now have unique names. Writing the new tests also found that a failed temp write couldn't remove its file on Windows (an open handle); it is now closed first.
+    - DEC-46 said "per-RIC manifest" though entries are per contract; now noted in DEC-46.
+  - **Plausible, medium:** no put unit or two units of one expiry was cached or loaded; now tested, with a contract of another expiry refused.
+  - **Unverified, low, fixed:** the stock unit's sha and missing-file checks; a tape missing its first session; quantizing above $1M; the hash's independence from entry order; the `UnitPull` guards and the `empty` miss reason; ARCHITECTURE §4.2's `bar_start` row and §6.1's resume note on orphans; `fetch.py`'s docstring; this entry's wording on the quantize tests.
+  - **Refuted:** the sidecar can't record an increment anchor that didn't answer (DEC-14). That is P1-08's to add, when it probes increments.
+  - **Now:** 90 tests (`test_cache.py` 51, `test_load.py` 32, `test_files.py` 7). The review's 25 surviving mutants, plus the 19 above, re-run against them: all 44 killed (one more, `%g` formatting in the bars hash, needed a seventh-digit case).
 
 ## E. Analytics definitions
 
