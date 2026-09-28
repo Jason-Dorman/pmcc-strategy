@@ -27,7 +27,7 @@ Sep 25, 2026 · schedule from Spec › Build order · **due Fri Oct 9, 11:59 pm*
 | Phase | Dates | Exit criteria (milestone) | Status |
 | --- | --- | --- | --- |
 | P0 Foundations | Sat Sep 26 | `just check` green in Git Bash and in CI; credentials ignored; LSEG session opens from Git Bash | Done locally 2026-09-25; CI run for P0-07/08 pending the PO's push |
-| P1 Data layer and open items | Sat Sep 26 – Sun Sep 27 | NVDA's full chain cached; INV-11, INV-12 pass; window, r and identifiers recorded; universe fetch started | In progress: P1-01 to P1-06 done (window Mar 30 – Sep 25 2026, r = 0.0371, universe QQQ, NVDA, TSLA); P1-07 (cache) next |
+| P1 Data layer and open items | Sat Sep 26 – Sun Sep 27 | NVDA's full chain cached; INV-11, INV-12 pass; window, r and identifiers recorded; universe fetch started | In progress: P1-01 to P1-07 done (window Mar 30 – Sep 25 2026, r = 0.0371, universe QQQ, NVDA, TSLA; cache and loader per DEC-46); P1-08 (`pmcc fetch`) next |
 | P1-10 Universe fetch (background) | Sun Sep 27 – Sat Oct 3 | QQQ and TSLA cached with coverage summaries (NVDA at P1-09) | Not started |
 | P2 Pricing | Mon Sep 28 | IV solver matches the reference; EM, ATM IV, RV20 tested | Not started |
 | P3 Engine, accounting, baseline | Mon Sep 28 – Wed Sep 30 | **M1:** baseline blotter, ledger, NAV, Reg T for NVDA; INV-01–10 and 13 pass | Not started |
@@ -193,7 +193,7 @@ P8 release                                                                      
     - integer-cent ladders and band formulas
     - tape holidays matching the table
   - Needs: P1-01
-- [ ] **P1-07 · Cache and loader**
+- [x] **P1-07 · Cache and loader** — done 2026-09-28. The PO settled DEC-46, taking all three recommendations: one parquet and sidecar per fetch unit (the spec's Cache line amended); a data-manifest hash that ignores fetch times and the RIC form; a re-pull by moving the unit's two files aside, with `manifest.json` rebuilt from the sidecars. Built: `pmcc/data/files.py` (never-overwrite writes, now also behind the probe report), `pmcc/data/cache.py` and `pmcc/data/load.py` (DEC-87). The loader checks each parquet's sha256 and the stock tape against the calendar, and quantizes prices exactly as `Price.from_dollars` does, vectorized. An adversarial review (4 reviewers, 2 skeptics per finding) confirmed 10 findings and rated 1 plausible, all fixed with 9 unverified lows: a unit renamed in place was read as the unit its sidecar records, a stale `.partial` blocked the next write, and test and doc gaps (DEC-87). 90 tests over FakeProvider pulls; 44 planted mutants killed. P1-08's unit loop sits above `fetch` and `cache`, since `cache` imports `fetch`'s result types (DEC-87)
   - Ask first: DEC-46.
   - Atomic writes, never overwriting, the manifest and sidecars, and the per-symbol content hash.
   - `load_symbol()`: polars, `bar_end`, session bars, quote validity.

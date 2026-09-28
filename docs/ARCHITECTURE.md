@@ -77,11 +77,16 @@ pmcc/
     discovery.py strike increments (DEC-14), integer-cent bands, session ranges, and the fetch
                  plan: plan_symbol → FetchPlan of units (DEC-48, DEC-84)
     fetch.py     fetch_rics, fetch_contracts: batching, retries, form fallback, diagnostics
-                 (P1-03, DEC-83); unit orchestration and resume (P1-08)
+                 (P1-03, DEC-83). The unit loop and resume (P1-08) sit above fetch and cache,
+                 since cache imports fetch's result types (DEC-87)
     probe/       the P1-04 probes over the HistoryProvider port, one module per DEC check;
                  one report per symbol (§6.2, DEC-85)
-    cache.py     parquet + manifest + sidecar I/O (atomic, never overwrite)
-    load.py      polars loaders → SymbolData (no network)
+    files.py     write_new (whole or not at all, never over a file), replace_file (DEC-87)
+    cache.py     UnitPull (chain_pull, stock_pull) → SymbolCache.write_unit: a unit's parquet +
+                 sidecar, then the manifest rebuilt from the sidecars; the data-manifest hash
+                 (DEC-46, DEC-87)
+    load.py      load_symbol → SymbolData (no network): verified units, integer prices,
+                 bar_end, session bars, quote validity (DEC-87)
   pricing/       black_scholes.py, iv.py (vectorized), chain.py (per-bar snapshots), measures.py (EM, ATM IV, RV20)
   strategy/      ports.py (MarketView, PositionState), selectors.py, trigger.py, gates.py, exits.py, registry.py
   engine/        market_view.py (as-of gate), loop.py, legs.py (state machines), fills.py, invariants.py
@@ -109,7 +114,7 @@ The reference files at the repo root (`LSEG-DATA-GUIDE.md`, `DESIGN-GUIDE.md`, `
 | `domain` | Types and time rules everyone shares | `Price`, `Money`, `OptionId`, `RuleId`, `Session`, `SessionCalendar`, `bar_end()` | stdlib |
 | `config` | Turn YAML into validated, hashed, rendered config | `load_run_config()` → `RunConfig`; `load_calendar()` → `SessionCalendar`; `load_universe()` → `Universe` | domain, pydantic, pyyaml |
 | `data.lseg` | Talk to LSEG | `lseg_session()` → `LsegProvider` | `data.provider`, lseg.data, pandas, polars |
-| `data` (rest) | Know RICs; check the tape against the calendar; probe, plan, fetch, cache, load | `HistoryProvider`, `build_ric()`, `parse_ric()`, `sessions_from_tape()`, `run_probe()`, `plan_symbol()`, `fetch_rics()`, `fetch_contracts()`, `fetch_symbol()`, `load_symbol()` | domain, config, polars, numpy; only `fetch` may use `data.lseg` |
+| `data` (rest) | Know RICs; check the tape against the calendar; probe, plan, fetch, cache, load | `HistoryProvider`, `build_ric()`, `parse_ric()`, `sessions_from_tape()`, `run_probe()`, `plan_symbol()`, `fetch_rics()`, `fetch_contracts()`, `fetch_symbol()`, `SymbolCache.write_unit()`, `load_symbol()` | domain, config, polars, numpy; only `fetch` may use `data.lseg` |
 | `pricing` | Turn quotes into IV, Greeks and measures | `implied_vol()`, `greeks()`, `price_chain()`, `expected_move()`, `rv20()` | domain, numpy, scipy |
 | `strategy` | Decide what to trade | `build_strategy(cfg)` → `Strategy` | domain, config, pricing, `strategy.ports` |
 | `engine` | Run the clock; route decisions to fills and the book | `run_backtest(data, cfg)` → `RunOutput` | domain, config, pricing, strategy, accounting |
@@ -151,7 +156,7 @@ The test also checks that one planted forbidden import per rule is caught, inclu
 | Concept | Definition |
 | --- | --- |
 | Time zone | Every timestamp is tz-aware `America/New_York` after load; never a hardcoded UTC hour (LDG §4.8) |
-| `bar_start` | LSEG stamp (tz-naive UTC); kept in the cache for provenance only |
+| `bar_start` | LSEG stamp, the bar's start in UTC; cached as `bar_start_utc` (tz-aware UTC) for provenance only |
 | `bar_end` | `bar_start + 1h`; the only key after load, and the decision time |
 | Session bar | A bar whose ET start is 09:00–15:00 on a trading day (ends 10:00–16:00; ends 13:00 on a half-day); `Session.contains()`, `session_of()` |
 | Trading days | `SessionCalendar` from `configs/calendar.yaml`: every weekday not listed as closed, with 13:00 early closes (DEC-33). The stock tape's trading days must match it, or loading stops (`CalendarMismatchError`) |
@@ -264,19 +269,20 @@ def regt(book: Book, v: Valuation) -> RegT           # IM, MM, available funds, 
 2. Stock tape [D0 − 30 sessions, D1] → sessions (its trading days must match configs/calendar.yaml,
    DEC-33), weekly expiries, session highs/lows, realized vol.
 3. Build the plan (§6.3) and print the estimate: units, RIC requests, minutes. --plan-only stops here.
-4. For each unit not already in the manifest:
+4. For each unit without a sidecar (`SymbolCache.has_unit`; manifest.json can lag a unit moved aside):
      - probe increments (DEC-14) → integer-cent strike list (LDG §4.11)
      - fetch in batches of 25; a RIC that doesn't come back with bars is asked again alone;
        a failed request is asked again (3 attempts, 2 s / 4 s backoff), then aborts as an
        outage; live-only or caret→live per DEC-45 (forms_to_ask) (fetch_contracts, DEC-83)
      - check answered + unanswered = requested, per contract (LDG §5)
-     - write parquet + sidecar atomically (temp file → rename), then append manifest rows
+     - write the parquet, then the sidecar, each whole (temp file → hard link, which never
+       replaces a file), then rebuild manifest.json from the sidecars (DEC-46, DEC-87)
 5. Print the coverage summary: % session bars with a valid mid, unanswered counts, IV-failure counts,
    log file path.
 ```
 
-- **Resume:** a crash or outage loses at most the unit in flight. Re-running skips units already in the manifest.
-- **Never overwrite:** a re-pull means the user renames the old file first (LDG §5).
+- **Resume:** a crash or outage loses at most the unit in flight. Re-running skips units whose sidecar exists. A process killed between a unit's parquet and its sidecar leaves an orphan parquet, which stops that unit's write (and the loader) until the user moves it aside (§6.4).
+- **Never overwrite:** a re-pull means the user moves the unit's parquet and sidecar aside first, e.g. into `{SYM}/superseded/` (LDG §5, DEC-46).
 - **Tell the user first:** any pull longer than a couple of minutes starts only after its estimate has been shown (LDG §4.15).
 
 ### 6.2 Probes (`pmcc probe`, output in `data_cache/probes/`)
@@ -322,30 +328,41 @@ The stock RIC and daily bars come first, since every later check needs them, the
 data_cache/                                   gitignored (DEC-05, DEC-56)
   probes/{SYM}_{YYYYMMDD}.json                one report per symbol and day, never overwritten (DEC-85)
   {SYM}/
-    manifest.json                             per RIC: ric, unit, form, status, rows, first/last bar,
-                                              fetched_at, file, sha256
+    manifest.json                             index rebuilt from the sidecars: every entry, the
+                                              data-manifest hash, the units
     stock.parquet            stock.sidecar.json
     chains/{YYYY-MM-DD}_{C|P}.parquet         chains/{YYYY-MM-DD}_{C|P}.sidecar.json
+    superseded/                               units the user moved aside to re-pull; never read
+    …/*.{random}.partial                     temp files a killed write left; never read, never block
 logs/fetch_{timestamp}.jsonl                  gitignored
 ```
 
-- **Parquet columns** are raw, as returned: `bar_start_utc` (datetime, UTC), `ric`, `expiry`, `strike_cents`, `right`, then one float64 column per field (`BID`, `ASK`, `TRDPRC_1`, `OPEN_PRC`, `HIGH_1`, `LOW_1`, `ACVOL_UNS`, `NUM_MOVES`).
+- **One parquet and one sidecar per fetch unit** (§6.3), not per RIC (PO, DEC-46).
+  - The parquet is written first and the sidecar last, each whole or not at all. A unit exists once its sidecar does.
+  - A write that fails before its sidecar is written leaves no file. Once the sidecar is written the unit is cached; if rebuilding manifest.json then fails, the index stays stale until the next write (the loader never reads it). Every sidecar is read before anything is written, so an unreadable one stops the write first.
+  - A process killed between the two leaves a parquet with no sidecar. The next write of that unit refuses it, and so does the loader, until it is moved aside (DEC-87).
+  - A unit is moved aside out of its folder, into `superseded/`. A sidecar renamed in place (its recorded unit isn't the one its path names) is refused, never read as the unit it records (DEC-87).
+- **Parquet columns** are raw, as returned: `bar_start_utc` (datetime, UTC), `ric`, `expiry`, `strike_cents`, `right` (null for the stock), then one float64 column per field requested (`BID`, `ASK`, `TRDPRC_1`, `OPEN_PRC`, `HIGH_1`, `LOW_1`, `ACVOL_UNS`, `NUM_MOVES`). A field that never came back is an all-null column.
 - **Sidecar** (LDG §5):
   - request details: fields requested and fields that came back (LSEG leaves out a field a RIC lacks, DEC-83), dates, interval, tz convention, the strike step per band (DEC-84)
-  - results: `ric_form_used`, `unanswered`, `errors`
-  - pull date
+  - results: counts (requested = answered + unanswered, per contract), `ric_form_used`, `unanswered` (each contract's RICs asked, with the reason and codes), `errors`
+  - the pull date, the parquet's name and sha256, and the unit's manifest entries
+- **Manifest entry,** one per contract asked: `instrument` (OCC symbol, or the stock's RIC), `unit`, `status`, `ric` and `form` (the RIC that answered), `rows`, `first_bar`, `last_bar`, `fetched_at`, and `sha256` (of the contract's bars, without the RIC).
+- **Data-manifest hash:** the sha256 of every entry's content: identity, unit, status, rows, first and last bar, and the bars' sha256. It leaves out `fetched_at`, `ric` and `form`, so re-pulling identical bars, under either RIC form, never changes it, and another symbol's fetch never does (PO, DEC-46).
 
 ### 6.5 Loading (`data/load.py`, no network)
 
-`load_symbol()` takes these steps:
+`load_symbol(root, symbol, calendar)` takes these steps:
 
-1. Polars lazy scans.
-2. Quantize prices to `Price`.
-3. Add `bar_end` in ET.
-4. Tag session bars.
-5. Mark quote validity: BID > 0, ASK > 0 and ASK ≥ BID.
+1. Read the sidecars, never `manifest.json`. Refuse a parquet that is missing or whose sha256 differs, an orphan parquet, or a symbol with no stock unit (`CacheError`).
+2. Polars scans, one per unit.
+3. Quantize prices to $0.0001 units (Int64), exactly as `Price.from_dollars` (DEC-44, DEC-87).
+4. Add `bar_end` in ET.
+5. Tag session bars (`session_bar`).
+6. Mark quote validity (`valid_quote`): BID > 0, ASK > 0 and ASK ≥ BID.
+7. Check the stock tape's trading days against the calendar over the stock unit's dates (`CalendarMismatchError`, DEC-33).
 
-It returns `SymbolData`: the stock frame, per-expiry chain frames, the calendar, and the data-manifest hash. Every bar is kept for provenance, but only session bars reach MarketView.
+It returns `SymbolData`: the stock frame, chain frames keyed by (expiry, right), the calendar, and the data-manifest hash. Every bar is kept for provenance, but only session bars reach MarketView.
 
 ## 7. Pricing
 
