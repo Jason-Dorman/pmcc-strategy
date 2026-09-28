@@ -91,6 +91,7 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-80 | Logging setup and the import-boundary test | ENG | — |
 | DEC-81 | Domain value types | ENG | — |
 | DEC-82 | RIC module | ENG | — |
+| DEC-83 | History port, LSEG adapter and batched requests | ENG · VERIFY (error codes) | P1-04 |
 
 ---
 
@@ -502,7 +503,8 @@ Distances are compared in integer price units, so float noise can't create or br
 **Status:** ENG
 
 - `pmcc fetch --start/--end` take inclusive dates, as the spec's example implies.
-- The adapter passes `end + 1 day`, because LSEG's end is effectively exclusive (LDG §2).
+- The fetch passes `end + 1 day`, because LSEG's end is effectively exclusive (LDG §2).
+- **Outcome:** 2026-09-26 — the provider port takes an exclusive end (`end_exclusive`, DEC-83) and passes it to LSEG unchanged, so the day is added by `pmcc fetch` (P1-08), not by the adapter as this entry first said.
 
 ### DEC-48 — Fetch plan and band-edge guard
 **Status:** ENG · **Affects:** P1-06, P5-05
@@ -520,11 +522,15 @@ Distances are compared in integer price units, so float noise can't create or br
 
 | Class | Example | Handling |
 | --- | --- | --- |
-| Unanswered contract | RIC never listed; `LDError … No data` | Soft: empty series, manifest `unanswered`, log event `fetch.ric.unanswered` |
-| Transient provider error | timeout; batch rejected whole | Retry the whole batch, then each RIC alone (LDG §4.4); 3 attempts with backoff |
-| Outage | session not `Opened`; repeated transport errors | Fail loud: abort the unit, write nothing, exit non-zero (LDG §4.3) |
+| Unanswered contract | the service answers a RIC, asked alone, with a no-data code (never listed; a field it doesn't carry) or with no bars in the window | Soft: empty series, manifest `unanswered`, log event `fetch.ric.unanswered`. A RIC that doesn't come back with bars in its batch is asked again alone first, since only a single-RIC answer settles it (LDG §4.4) |
+| Transient provider error | timeout; refused connection; an HTTP status or permission code; an answer that can't be read | Ask the same request again: 3 attempts, with backoff (2 s, 4 s); a failure that persists is an outage |
+| Outage | session not `Opened`; a failure that persists through 3 attempts | Fail loud: abort the unit, write nothing, exit non-zero (LDG §4.3) |
 | Engine error | look-ahead request; uncovered short; quantity mismatch | Crash the run; nothing written |
 | Invariant violation | NAV doesn't reconcile | Run exits non-zero; no result file |
+
+- **Outcome:** 2026-09-26 — the data-layer classes are implemented in P1-03 as `NoDataError`, `UnreadableAnswerError`, `TransientError` and `ProviderOutageError` (`pmcc/data/provider.py`). DEC-83 records exactly which errors fall in each class and how each is retried. Two rows changed from the first version of this table:
+  - "Batch rejected whole" was a transient error, retried as a batch. A batch is now split instead, and each RIC is settled on its own.
+  - An HTTP status, a permission code, and a single RIC's answer that can't be read are now failures that are retried and then fail loud. They were never meant as "no data", but lseg-data reports them in the same `LDError` as a never-listed RIC, and the P1-03 review found the first version filing them as unanswered (DEC-83).
 
 ### DEC-50 — Canonical results and INV-13
 **Status:** ASK · **Ask at:** P3-08
@@ -697,6 +703,75 @@ Development runs in Git Bash on Windows (DEC-02) and CI runs on Ubuntu. Both mus
   - **Plausible:** `build_ric` quietly built the live form for a form passed as text (`"expired"` read back from a manifest). It now reads the text value and raises on anything else. New tests cover trailing whitespace, a separator other than a dot, non-ASCII digits in every field, float-truncated strikes, and every field of the OCC symbol. PRD FR-D3 now names the tests behind the caret-then-live order. This entry's caret figure covered only 71 suffixes and is now exhaustive.
   - The review's surviving mutants, plus a few more (17 in all), were re-run against the new tests. All are killed except one equivalent mutant: `\d` in the caret group still refuses non-ASCII digits, because the caret must equal the ASCII suffix exactly.
   - 3 findings were refused by both skeptics and left as they are. One of them, about how RIC forms interact with the DEC-46 hash, is worth raising when DEC-46 is asked at P1-07.
+
+### DEC-83 — History port, LSEG adapter and batched requests
+**Status:** ENG · VERIFY (the service's error codes) · **Verify at:** P1-04 · **Affects:** P1-03, P1-04, P1-07, P1-08, DEC-47, DEC-49
+
+- **Where things live.** ARCHITECTURE §3.3 rule 2 lets only `fetch` and `cli` import the adapter, so the parts that don't talk to LSEG sit outside it:
+  - **`pmcc/data/provider.py`:** the `HistoryProvider` port, `RawHistory`, `Interval` and the four failure classes. There is no LSEG code here, so `fetch` can catch the failures without importing the adapter.
+  - **`pmcc/data/lseg/`:** `api.py` (`LsegApi`, the slice of `lseg.data` that is called), `session.py` (`lseg_session`), `shapes.py` (`to_long`) and `provider.py` (`LsegProvider`).
+  - **`pmcc/data/fetch.py`:** batches, verdicts, retries, the caret→live fallback and diagnostics (`fetch_rics`, `fetch_contracts`). None of it depends on LSEG, so it goes in `fetch.py` (ARCHITECTURE §3.1) rather than under `lseg/`, where the P1-03 item first put it. P1-08 adds unit orchestration and resume to the same module.
+- **Rows:** long `(bar_start, ric, field, value)`, one row per non-empty cell, sorted by RIC, field and time. `bar_start` is LSEG's own stamp, unshifted: a UTC datetime for hourly bars and a date for daily ones. `bar_end` is added at load (P1-07).
+- **What lseg-data 2.1.1 does.** Read in its source, and pinned by `tests/unit/data/test_lseg_contract.py`, which runs the library's own code offline:
+  - `get_history` asks the historical-pricing service once per RIC, in parallel, and hourly requests page.
+  - A transport failure in any RIC's request fails the whole call. lseg-data keeps only the exception's text and raises a new `LDError(message=…)`: no class, no cause, no code.
+  - If no RIC answered, it raises an `LDError` whose text starts "No data to return" and lists each distinct failure once: a service code such as `TS.Intraday.UserRequestError.90001` (a never-listed RIC), or an HTTP status (a failing or signed-out Workspace). Each message is cut at its first dot, so a RIC loses its `.U`.
+  - A desktop session never leaves Opened on its own. A dead Workspace shows up only as failing requests.
+  - **Frames:**
+    - One RIC gives flat field columns.
+    - Several RICs give a `(RIC, field)` MultiIndex when the first RIC to answer carries two or more fields. When it carries one, they give flat RIC columns named after the last RIC's field. A RIC whose answer carries more fields then spills into its neighbour's column, or the build raises (`IndexError`, `ValueError`).
+    - An hourly batch holding a RIC that failed can't be built: a failed page leaves a raw with no headers, which raises the `UniverseContainer` TypeError of LDG §4.4. A daily batch answers without the failed RIC and raises nothing.
+- **Failure classes (how DEC-49 is applied).** They share no base class, so nothing can catch an outage by accident.
+  - **`NoDataError` (soft):** an `LDError` whose every code is a no-data code, `TS.*.UserRequestError.*`. It carries the codes.
+  - **`UnreadableAnswerError`:** any other class of error from `get_history` (raised while lseg-data builds its frame), or a frame whose columns can't be attributed. A batch is split. A single RIC can't be, so its unreadable answer is asked again like a transient failure and ends as an outage.
+  - **`TransientError`:** any other `LDError` (a flattened transport failure, an HTTP status, a permission code, a failure with no code), or an unwrapped `TimeoutError`, `ConnectionError` or httpx `TransportError`. It gets 3 attempts in all, 2 s and then 4 s apart, and then counts as an outage.
+  - **`ProviderOutageError` (loud):** the config is missing, opening raises, or the session isn't Opened before a request (Pending counts as not open); any error raised once the session is no longer open; any failure that persists through 3 attempts.
+- **A RIC is unanswered only on the service's word, given to that RIC alone.**
+  - `fetch_rics` asks in batches of 25, and every RIC that doesn't come back with bars is asked again on its own.
+  - A RIC's verdict is its bars, a no-data code (`MissReason.NO_DATA`, with the codes), or no bars in the window (`MissReason.EMPTY`).
+  - A rejected batch's codes don't say which RIC got which, so a batch never settles a RIC.
+  - **Cost:** one extra request for each RIC that doesn't answer in its batch. An hourly batch holding a missing RIC costs 1 + 25 requests, as it did in the earlier project.
+- **Answers that can't be attributed are rejected, not guessed.** How the port departs from LDG's `to_long`:
+  - Flat RIC columns are trusted only when a single field was asked, and only under that field's name. LDG's filed unnamed ones under the first field asked, and trusted the name, which lseg-data takes from the last RIC.
+  - Field columns for several RICs, columns that match no RIC or field asked, and a MultiIndex with no level holding an asked RIC are rejected. LDG's dropped the first and guessed the other two.
+  - Columns for RICs nobody asked for are dropped. LDG's kept them under LSEG's spelling.
+  - An answer that isn't a DataFrame is rejected. LDG's treated it as empty.
+- **Session:**
+  - `lseg_session()` yields an `LsegProvider`, not the module.
+  - The config is found at the repo root and passed to `open_session(config_name=…)`. lseg-data reads it; pmcc only checks that it exists.
+  - `lseg.data` is imported only when a session opens, so importing pmcc stays offline. A test checks this in a fresh interpreter.
+- **Counting and logs:**
+  - A `RicsResult` refuses to exist unless every RIC asked is answered or missed, never both (LDG §5). `fetch_contracts` counts per contract. A hypothesis test covers both forms and live-only contracts.
+  - `fetch_rics` logs each unanswered RIC once as `fetch.ric.unanswered`, with `ric`, `form` (for an option RIC), `reason`, `codes` and `message`. A caret miss is logged even when the live form then answers: it is a fact about that RIC.
+  - `fetch.batch.rejected` and `fetch.retry` are logged as they happen. `symbol` and `unit` join the events when P1-08 binds them.
+- **Test double and contract test:**
+  - `FakeLseg` (`tests/fakes/lseg.py`) ports what lseg-data does with the service's answers: per-RIC answers, the flattening of transport failures, the `validate_responses` message, and `HistoricalBuilder` with its quirks. `fake_provider(fake)`, the real `LsegProvider` over it, is the FakeProvider of TEST-STRATEGY §6.
+  - `tests/unit/data/test_lseg_contract.py` feeds the fake's answers to lseg-data's own code: its builder, `validate_responses`, paging and `get_hp_data`. The library runs in a separate interpreter with sockets blocked and its config lookup pointed at an empty folder, and it must give the same frames, messages and raws. An lseg-data upgrade that changes any of it fails there.
+  - Tests import pandas to build frames, and import lseg.data only in that separate interpreter. The import rules of ARCHITECTURE §3.3 cover `pmcc/` (DEC-80). Tests import the fake as `tests.fakes`, so pytest gets `pythonpath = ["."]`.
+- **pandas typing:**
+  - pandas has no type stubs, and pyright strict can't see through its return types. The four files that handle pandas frames (`pmcc/data/lseg/shapes.py`, `tests/fakes/lseg.py`, `tests/unit/data/test_lseg_provider.py`, `tests/unit/data/test_lseg_contract.py`) turn off pyright's unknown-type and missing-stub reports at file level. Everything else stays strict.
+  - In `shapes.py`, `to_long` checks the frame and reads its column labels, and `_wide` and `_stamps` convert it. The alternative, `pandas-stubs`, would be a new dependency and needs the PO.
+- **Verify at P1-04:**
+  - lseg-data itself names 90001 as "universe is not found". The daily never-listed code, the missing-field code and what a signed-out Workspace returns are assumptions in the fake.
+  - The probes record the real `LDError` text for a never-listed RIC (hourly and daily, both forms), a field the RIC doesn't carry, and an hourly batch holding one of each.
+  - If a guessed RIC comes back with a code that isn't a `UserRequestError` code, the fetch stops as an outage rather than record the RIC as unanswered. Widening the no-data codes is then a decision recorded here.
+- **Residual risks,** which `get_history` doesn't let the adapter see:
+  - A transport error whose text is empty makes lseg-data return an empty frame, which reads as `EMPTY`. httpx's transport errors carry text, and P1-08's coverage summary flags a unit with no answers.
+  - An hourly RIC whose later page fails over HTTP comes back truncated but answered. The window's ~800 hourly bars per contract are expected to fit one page.
+- **Outcome:** 2026-09-26 — first version: 63 tests, INV-12 included; 15 planted mutants killed.
+- **Outcome:** 2026-09-26 — an adversarial review (4 reviewers, then 2 skeptics per finding) found 38 findings, 24 of them unique. The 12 most severe were verified: 9 confirmed, 2 plausible, 1 refuted. All 11, and the 12 unverified low findings, are fixed with regression tests; the design above is the result.
+  - **Confirmed, high:** real lseg-data flattens transport failures into bare `LDError` text and never moves a desktop session out of Opened. So a dead or signed-out Workspace was filed as "no data", against LDG §4.3 and the CLAUDE.md hard rule. The first version classified by exception class and by `open_state`, and the fake raised shapes lseg-data never produces.
+  - **Confirmed, high:** lseg-data names flat RIC columns after the last RIC's field and spills values across RICs, so the port could file one field's values under another.
+  - **Confirmed, medium:**
+    - a flat-RIC test couldn't tell the columns' name from the first field asked;
+    - `fetch_rics` logged nothing for an unanswered RIC;
+    - outages during the one-at-a-time asks and between form rounds were untested;
+    - this entry handed the real-error check to P1-04 with no step there;
+    - the fake's outages were ones lseg-data can't produce.
+  - **Confirmed, low:** the log's `forms` key against ARCHITECTURE §15's `form`, and this entry undercounting how the port departs from LDG's `to_long`.
+  - **Plausible:** Pending was untested; the "raises only `ProviderOutageError`" docstrings were false; `Retry(attempts=0)` faked an outage.
+  - **Refuted:** pandas in tests. The import rules cover `pmcc/`.
+  - **Now:** 110 tests in the four P1-03 files (362 in the suite). Another 16 mutants planted in the new guards were all killed: the no-data code rule twice, the `LDError` match, closed-during-a-call, Pending, settling left-out RICs, splitting and retrying unreadable answers, filtering unasked RICs, single-RIC batches, zero attempts, the log event and its form, the sort, and both flat-RIC checks.
 
 ## E. Analytics definitions
 

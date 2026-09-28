@@ -72,7 +72,7 @@ Every row points to its source. "Verified by" names the invariant test (INV-nn),
 | --- | --- | --- | --- |
 | FR-D1 | `pmcc fetch --symbol S --start --end` pulls hourly bars for the underlying and its options from LSEG through a local Workspace desktop session and writes them to the local cache. Only `fetch` and `probe` contact LSEG. | Spec › Data layer; LDG §1–2 | architecture test; P1-09 |
 | FR-D2 | Underlying: hourly OHLC plus trade prints (plus BID/ASK for stock fills). Options: hourly BID, ASK, and when traded TRDPRC_1, OPEN_PRC, HIGH_1, LOW_1, ACVOL_UNS, NUM_MOVES. The same bar size for both. | Spec › Fields and bars; DEC-13 | P1-04 probe report |
-| FR-D3 | The RIC builder follows the spec grammar: a zero-padded day, a caret only for expired contracts, the call-month letter in put carets, and a strike field ≤ $999.99. Live vs expired is decided against the fetch date, and an expired contract is asked with the caret first, then without it. | Spec › RIC builder; DEC-01, DEC-45 | INV-11; the form-policy tests in `tests/unit/data/test_ric.py`; P1-03's FakeProvider tests (the live fallback) |
+| FR-D3 | The RIC builder follows the spec grammar: a zero-padded day, a caret only for expired contracts, the call-month letter in put carets, and a strike field ≤ $999.99. Live vs expired is decided against the fetch date, and an expired contract is asked with the caret first, then without it. | Spec › RIC builder; DEC-01, DEC-45 | INV-11; the form-policy tests in `tests/unit/data/test_ric.py`; the form-round tests in `tests/unit/data/test_fetch.py` (the live fallback) |
 | FR-D4 | Chain discovery: weekly expiries are the last session of each week from the stock tape; monthly expiries are the third Friday (prior session if a holiday); strike increments are probed per symbol and expiry; bands follow the fetch plan. | Spec › Chain discovery; DEC-14, DEC-33, DEC-48 | P1-06 tests |
 | FR-D5 | Guess-and-check fails soft: a missing RIC returns an empty series and a log entry, never an exception. An outage aborts without writing anything. | Spec; LDG §4.3; DEC-49 | INV-12 |
 | FR-D6 | Cache: parquet plus a manifest (RIC, fetch time, row count, hash). Never overwritten. Backtests read only the cache, and re-running never re-fetches. | Spec › Cache; DEC-46 | P1-07 tests |
@@ -202,7 +202,7 @@ Every row points to its source. "Verified by" names the invariant test (INV-nn),
 | NFR-04 | Engineering principles | Import-boundary test. A new rule kind needs no engine edit (EP; DEC-53). |
 | NFR-05 | Runtime | One run ≤ 10 s; full universe batch ≤ 20 min on the dev machine |
 | NFR-06 | Site weight | First load ≤ 2 s on broadband; a full run file ≤ 2 MB; tables stay responsive at 5,000 ledger rows |
-| NFR-07 | Observability | structlog JSON. Every soft fetch failure is a searchable event with symbol, unit, RIC, form and error. |
+| NFR-07 | Observability | structlog JSON. Every soft fetch failure is a searchable event with symbol, unit, RIC, form, reason and the service's codes (DEC-83). |
 | NFR-08 | Security | Credentials never committed or printed; CI holds no secrets; the site makes no cross-origin requests |
 | NFR-09 | Accessibility | WCAG AA text contrast in both themes; keyboard-reachable controls; a caption explains each chart |
 | NFR-10 | Responsive | Usable at 390 px wide; tables and charts scroll rather than squash |

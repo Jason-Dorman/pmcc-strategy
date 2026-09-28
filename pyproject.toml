@@ -64,5 +64,7 @@ typeCheckingMode = "strict"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# The repo root, so tests import shared fakes as `tests.fakes` (DEC-83).
+pythonpath = ["."]
 addopts = ["--strict-markers", "--strict-config", "-ra"]
 xfail_strict = true

@@ -60,12 +60,17 @@ pmcc/
                  clock.py (ET, bar_end), sessions.py (Session, session bars) (DEC-81)
   config/        pydantic config models; YAML loader (extends/overrides); hashing; rule-text rendering
   data/
-    lseg/        session + raw history calls: the only code importing lseg.data or pandas
+    provider.py  HistoryProvider port, RawHistory (long rows), Interval, the DEC-49 failure
+                 classes (DEC-83)
+    lseg/        the only code importing lseg.data or pandas (DEC-83): api.py (the lseg.data
+                 slice called), session.py (lseg_session), shapes.py (any answer shape → long
+                 polars rows), provider.py (LsegProvider: one fail-soft get_history call)
     ric.py       build_ric, parse_ric (either day spelling, DEC-01), occ_symbol,
                  forms_to_ask (the DEC-45 form policy) (DEC-82)
     calendar.py  sessions from the tape, week-open/final, monthly expiries, holiday table (DEC-33)
     discovery.py strike increments (DEC-14), bands and fetch plan (DEC-48)
-    fetch.py     unit orchestration: batching, retries, form fallback, diagnostics, resume
+    fetch.py     fetch_rics, fetch_contracts: batching, retries, form fallback, diagnostics
+                 (P1-03, DEC-83); unit orchestration and resume (P1-08)
     cache.py     parquet + manifest + sidecar I/O (atomic, never overwrite)
     load.py      polars loaders → SymbolData (no network)
   pricing/       black_scholes.py, iv.py (vectorized), chain.py (per-bar snapshots), measures.py (EM, ATM IV, RV20)
@@ -94,8 +99,8 @@ The reference files at the repo root (`LSEG-DATA-GUIDE.md`, `DESIGN-GUIDE.md`, `
 | --- | --- | --- | --- |
 | `domain` | Types and time rules everyone shares | `Price`, `Money`, `OptionId`, `RuleId`, `Session`, `bar_end()` | stdlib |
 | `config` | Turn YAML into validated, hashed, rendered config | `load_run_config()` → `RunConfig` | domain, pydantic, pyyaml |
-| `data.lseg` | Talk to LSEG | `lseg_session()`, `LsegProvider` | domain, lseg.data, pandas |
-| `data` (rest) | Know RICs and calendars; plan, fetch, cache, load | `build_ric()`, `parse_ric()`, `plan_symbol()`, `fetch_symbol()`, `load_symbol()` | domain, config, polars; only `fetch` uses `data.lseg` |
+| `data.lseg` | Talk to LSEG | `lseg_session()` → `LsegProvider` | `data.provider`, lseg.data, pandas, polars |
+| `data` (rest) | Know RICs and calendars; plan, fetch, cache, load | `HistoryProvider`, `build_ric()`, `parse_ric()`, `plan_symbol()`, `fetch_rics()`, `fetch_contracts()`, `fetch_symbol()`, `load_symbol()` | domain, config, polars; only `fetch` may use `data.lseg` |
 | `pricing` | Turn quotes into IV, Greeks and measures | `implied_vol()`, `greeks()`, `price_chain()`, `expected_move()`, `rv20()` | domain, numpy, scipy |
 | `strategy` | Decide what to trade | `build_strategy(cfg)` → `Strategy` | domain, config, pricing, `strategy.ports` |
 | `engine` | Run the clock; route decisions to fills and the book | `run_backtest(data, cfg)` → `RunOutput` | domain, config, pricing, strategy, accounting |
@@ -153,13 +158,24 @@ Signatures are indicative. Names and shapes are settled here; details are settle
 ### 5.1 Data provider (dependency inversion for LSEG)
 
 ```python
-class HistoryProvider(Protocol):
+class HistoryProvider(Protocol):                              # pmcc/data/provider.py
     def history(self, rics: Sequence[str], fields: Sequence[str], start: date,
                 end_exclusive: date, interval: Interval) -> RawHistory: ...
+# RawHistory.rows: (bar_start, ric, field, value), one row per non-empty cell; bar_start is
+# LSEG's stamp, a UTC datetime (hourly) or a date (daily)
+# raises NoDataError (soft) | UnreadableAnswerError (split the batch) | TransientError (ask
+# again) | ProviderOutageError (loud)
 ```
 
-- `LsegProvider` wraps `ld.get_history`: fail-soft, with every response shape normalized to long polars rows (LDG §4.5).
-- `FakeProvider` (tests) scripts answers, partial batches, whole-batch rejections, missing fields, closed sessions and outages.
+- `LsegProvider` (`pmcc/data/lseg/`) wraps `ld.get_history` (DEC-83):
+  - It checks the session before every request; Pending counts as not open.
+  - Every frame lseg-data builds is read into long polars rows (LDG §4.5). An answer it can't attribute is rejected, never guessed.
+  - Every error becomes one of the four classes, by what lseg-data 2.1.1 actually raises. Only the service's no-data codes (`TS.*.UserRequestError.*`) count as no data. A flattened transport failure, an HTTP status or a permission code is transient, and an error raised once the session has closed is an outage.
+- `fetch_rics` and `fetch_contracts` (`pmcc/data/fetch.py`) consume any `HistoryProvider`:
+  - 25-RIC batches. A RIC that doesn't come back with bars is asked again alone, and only that single answer can make it unanswered (a no-data code, or no bars in the window).
+  - A failed request is asked again, 3 attempts with backoff, and then becomes an outage.
+  - The DEC-45 forms are asked in rounds, with `ric_form_used`, per-contract counts, per-RIC misses and errors.
+- The FakeProvider (tests) is the real `LsegProvider` over `FakeLseg`, a port of what lseg-data does with the service's answers. A contract test runs the real library offline on the same answers (TEST-STRATEGY §6).
 
 ### 5.2 MarketView: the look-ahead guard
 
@@ -236,8 +252,9 @@ def regt(book: Book, v: Valuation) -> RegT           # IM, MM, available funds, 
 3. Build the plan (§6.3) and print the estimate: units, RIC requests, minutes. --plan-only stops here.
 4. For each unit not already in the manifest:
      - probe increments (DEC-14) → integer-cent strike list (LDG §4.11)
-     - fetch in batches of 25; a whole-batch failure is retried per RIC;
-       live-only or caret→live per DEC-45 (forms_to_ask)
+     - fetch in batches of 25; a RIC that doesn't come back with bars is asked again alone;
+       a failed request is asked again (3 attempts, 2 s / 4 s backoff), then aborts as an
+       outage; live-only or caret→live per DEC-45 (forms_to_ask) (fetch_contracts, DEC-83)
      - check answered + unanswered = requested, per contract (LDG §5)
      - write parquet + sidecar atomically (temp file → rename), then append manifest rows
 5. Print the coverage summary: % session bars with a valid mid, unanswered counts, IV-failure counts,
@@ -257,6 +274,7 @@ Small requests that answer the spec's open items before the full pull:
 - live RIC form (DEC-09)
 - identifiers, splits and max strike (DEC-12)
 - field availability (DEC-13) and strike increments (DEC-14)
+- error answers: the `LDError` text and codes for a never-listed RIC (hourly and daily, both forms), a field the RIC doesn't carry, and a batch holding one of each (DEC-83)
 
 ### 6.3 Fetch plan (DEC-48)
 
@@ -599,7 +617,7 @@ CI (`.github/workflows/ci.yml`, on push and PR; DEC-79):
 - **Logging:** structlog JSON, one event per line, to stderr and to `logs/{command}_{timestamp}.jsonl` (DEC-80).
   - A command calls `pmcc.log.configure_logging(command)` once at startup; every other module calls `structlog.get_logger()`.
   - Each event carries `event`, `level`, `timestamp` (ISO 8601, UTC) and `command`; exceptions are rendered as text in `exception`. Level INFO and up.
-  - Every soft fetch failure is one event with `symbol`, `unit`, `ric`, `form`, `error_class` and `message` (Spec › Stack).
+  - Every soft fetch failure is one `fetch.ric.unanswered` event, logged once per RIC the service left unanswered, with `symbol`, `unit`, `ric`, `form` (for an option RIC), `reason` (`no_data` or `empty`), `codes` and `message` (Spec › Stack, DEC-83). `fetch.batch.rejected` and `fetch.retry` carry `size` and the error.
   - Event names: `fetch.unit.start|done`, `fetch.ric.unanswered`, `fetch.batch.rejected`, `fetch.retry`, `fetch.abort.outage`, `engine.entry.retry`, `engine.gate.fired`, `engine.exit.pending`, `invariant.failed`.
 - **Errors:** the failure taxonomy is DEC-49.
 - **Secrets:**
