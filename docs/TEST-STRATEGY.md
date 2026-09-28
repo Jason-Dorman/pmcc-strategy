@@ -8,7 +8,7 @@ Sep 25, 2026 · implements Spec › Invariant tests and EP › Testing mindset �
 - **Tests are never cut** (Spec › Build order).
 - **Tests never touch the network.**
   - An autouse fixture in `tests/conftest.py` blocks sockets: connect, `create_connection` and `getaddrinfo` raise, localhost included (DEC-77).
-  - LSEG code is tested through `FakeProvider`.
+  - LSEG code is tested through `FakeProvider`, which a contract test keeps true to lseg-data 2.1.1 (§6).
   - CI has no cache and no credentials, and it must still prove every invariant (DEC-51).
 - **Tests are deterministic.**
   - Fixed seeds everywhere.
@@ -19,8 +19,8 @@ Sep 25, 2026 · implements Spec › Invariant tests and EP › Testing mindset �
 
 | Layer | Covers | Tool | Runs in |
 | --- | --- | --- | --- |
-| Unit | Domain primitives (half-even quantizing, money arithmetic, `bar_end`, session bars; `tests/unit/domain/`), RIC grammar and OCC symbols (`tests/unit/data/test_ric.py`), calendar, bands, Black-Scholes, IV, measures, selectors, trigger, gates, exits, fills, Reg T, metrics | pytest | `just test`, CI |
-| Property | Accounting invariants (INV-01, 02, 08, 10); IV vs scalar reference; MarketView as-of guard (INV-04); RIC round-trip (INV-11); integer strike ladders | hypothesis | CI |
+| Unit | Domain primitives (half-even quantizing, money arithmetic, `bar_end`, session bars; `tests/unit/domain/`), RIC grammar and OCC symbols (`tests/unit/data/test_ric.py`), the LSEG adapter and batched requests (`tests/unit/data/test_lseg_*.py`, `test_fetch.py`, §6), calendar, bands, Black-Scholes, IV, measures, selectors, trigger, gates, exits, fills, Reg T, metrics | pytest | `just test`, CI |
+| Property | Accounting invariants (INV-01, 02, 08, 10); IV vs scalar reference; MarketView as-of guard (INV-04); RIC round-trip (INV-11); every fetched contract answered or unanswered, never both; integer strike ladders | hypothesis | CI |
 | Scenario | Engine end to end on a synthetic market: one scenario per exit, gate and edge case (§5) | pytest | CI |
 | Determinism | The same synthetic run twice gives byte-identical files (INV-13) | pytest | CI |
 | Architecture | Import boundaries (ARCHITECTURE §3.3), in `tests/architecture/test_imports.py`, with one planted violation per rule | pytest (AST) | CI |
@@ -132,17 +132,58 @@ Each builder scripts the spot path and quotes to force one behaviour:
 
 ## 6. FakeProvider
 
-`FakeProvider` implements `HistoryProvider` and scripts every LSEG behaviour from LDG §4:
+The FakeProvider is `fake_provider(FakeLseg(...))` (`tests/fakes/lseg.py`, DEC-83): the real `LsegProvider` over `FakeLseg`.
 
-- per-RIC answers and never-listed RICs (`No data`)
-- a whole batch rejected because of one bad RIC (including the `UniverseContainer` TypeError)
-- partial answers that raise nothing
-- each response shape: MultiIndex in either order, flat fields, flat RICs
-- a requested field the RIC doesn't carry → `LDError` for the whole request
-- a closed session, transient timeouts that recover, and a sustained outage
-- a contract that answers only to the live form, or only to the caret form
+- The adapter's classification, the frame reader and the fetch logic are all under test, and only the network is fake.
+- Tests import it as `tests.fakes` (pytest `pythonpath = ["."]`).
 
-It also records every request, so tests can assert batch sizes, retry order and that nothing was requested before the session opened.
+`FakeLseg` answers the way lseg-data 2.1.1 does, not the way a test would like:
+
+- The service answers each RIC on its own: bars, a no-data code (a never-listed RIC, a field it doesn't carry), a permission code, or an HTTP status (a failing or signed-out Workspace).
+- A transport failure fails the whole call as an `LDError` holding only its text, and the session still says Opened. The failure can be a timeout, a Workspace that died, or a Pending session.
+- If no RIC answered, one `LDError` lists each failure's code, as lseg-data's `validate_responses` does.
+- Otherwise a port of lseg-data's `HistoricalBuilder` builds the frame, quirks included:
+  - an hourly batch holding a failed RIC raises the `UniverseContainer` TypeError;
+  - a daily batch answers without the failed RIC;
+  - RICs whose answers carry different fields make the build raise, or file values under the wrong column.
+- **Scripted extras:** a closed session, an `open_session` that raises or leaves the session Closed or Pending, and exceptions lseg-data doesn't raise today (an unwrapped transport error, a bug).
+
+It records every request, with whether the session was open. Tests can then assert batch sizes, the order of requests and retries, and that nothing was requested on a closed session.
+
+**The contract test** (`tests/unit/data/test_lseg_contract.py`) keeps the fake honest.
+
+- It feeds the fake's answers to lseg-data's own code: its builder, `validate_responses`, paging, and the flattening in `get_hp_data`.
+- The library runs in a separate interpreter with sockets blocked and its config lookup pointed at an empty folder.
+- It must give the same frames, messages and raws. An lseg-data upgrade that changes any of them fails there.
+
+The tests are in `tests/unit/data/`:
+
+| File | Covers |
+| --- | --- |
+| `test_lseg_session.py` | `lseg_session`: the open-state check (Closed and Pending), config path, always closing, a session closed mid-pull, a dead Workspace that still says Opened, importing stays offline |
+| `test_lseg_provider.py` | `LsegProvider` and `to_long`: every frame lseg-data builds, UTC bar starts, daily dates, the failure classes, reading the service's codes |
+| `test_fetch.py` | INV-12, batches of 25, single-RIC verdicts, retries and backoff, outages at every stage, the form rounds, the log events; a hypothesis property that every contract is answered or unanswered, never both |
+| `test_lseg_contract.py` | the fake against lseg-data 2.1.1's own code |
+
+Every LDG §4 item, and where it is tested:
+
+| LDG §4 | Behaviour | Tested in |
+| --- | --- | --- |
+| 1 | Guess RICs; most guesses fail | `test_fetch.py` (INV-12) |
+| 2 | `open_session` doesn't raise when it fails | `test_lseg_session.py` |
+| 3 | An outage is never recorded as a market fact | `test_fetch.py`, `test_lseg_provider.py` |
+| 4 | Batches of 25; a batch fails whole, or answers partially | `test_fetch.py`, `test_lseg_contract.py` |
+| 5 | The response shape varies | `test_lseg_provider.py`, `test_lseg_contract.py` |
+| 6 | A field a RIC doesn't carry fails the request | `test_lseg_provider.py`, `test_fetch.py` |
+| 7 | No SETTLE; a zero or missing bid means no valid mid | the loader's quote validity (P1-07) |
+| 8 | Intraday stamps are UTC bar starts | `test_lseg_provider.py`; `bar_end` in `tests/unit/domain/test_clock.py` |
+| 9 | The last bar isn't the close; session bars | `tests/unit/domain/test_sessions.py`; the loader (P1-07) |
+| 10 | Bogus extended-hours highs and lows | bands that err wide (P1-06) |
+| 11 | Integer-cent strike ladders | discovery (P1-06) |
+| 12 | Band strikes per expiry | the fetch plan (P1-06) |
+| 13 | A live contract's history is available | `forms_to_ask` in `test_ric.py`; the live-only round in `test_fetch.py` |
+| 14 | BID/ASK aren't proven to be the NBBO | wording on the Methodology page (P7); nothing to test in code |
+| 15 | Tell the user before a long pull | the `--plan-only` estimate (P1-08) |
 
 ## 7. Where tests run
 

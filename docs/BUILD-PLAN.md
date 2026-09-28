@@ -27,7 +27,7 @@ Sep 25, 2026 · schedule from Spec › Build order · **due Fri Oct 9, 11:59 pm*
 | Phase | Dates | Exit criteria (milestone) | Status |
 | --- | --- | --- | --- |
 | P0 Foundations | Sat Sep 26 | `just check` green in Git Bash and in CI; credentials ignored; LSEG session opens from Git Bash | Done locally 2026-09-25; CI run for P0-07/08 pending the PO's push |
-| P1 Data layer and open items | Sat Sep 26 – Sun Sep 27 | NVDA's full chain cached; INV-11, INV-12 pass; window, r and identifiers recorded; universe fetch started | In progress: P1-01, P1-02 done |
+| P1 Data layer and open items | Sat Sep 26 – Sun Sep 27 | NVDA's full chain cached; INV-11, INV-12 pass; window, r and identifiers recorded; universe fetch started | In progress: P1-01, P1-02, P1-03 done |
 | P1-10 Universe fetch (background) | Sun Sep 27 – Sat Oct 3 | All 12 symbols cached with coverage summaries | Not started |
 | P2 Pricing | Mon Sep 28 | IV solver matches the reference; EM, ATM IV, RV20 tested | Not started |
 | P3 Engine, accounting, baseline | Mon Sep 28 – Wed Sep 30 | **M1:** baseline blotter, ledger, NAV, Reg T for NVDA; INV-01–10 and 13 pass | Not started |
@@ -157,10 +157,11 @@ P8 release                                                                      
     - live contracts get no caret
     - a hypothesis round-trip over random contracts holds
   - Needs: P1-01 · Refs: Spec › RIC builder; LDG §3
-- [ ] **P1-03 · Provider port and LSEG adapter**
-  - The `HistoryProvider` protocol.
-  - `pmcc/data/lseg/`: a port of `lseg_session`, fail-soft history, the shape normalizer (into polars), 25-RIC batches with per-RIC retry, caret→live fallback, and diagnostics.
-  - `FakeProvider` (TEST-STRATEGY §6).
+- [x] **P1-03 · Provider port and LSEG adapter** — done 2026-09-26; `HistoryProvider` and four failure classes in `pmcc/data/provider.py`; `lseg_session` and `LsegProvider` in `pmcc/data/lseg/`; batches, single-RIC verdicts and form rounds in `pmcc/data/fetch.py` (DEC-83). An adversarial review confirmed 9 findings (2 high: a dead or signed-out Workspace was filed as no data, and flat RIC columns could file one field's values under another) and rated 2 plausible; all are fixed, and errors are now classified by what lseg-data 2.1.1 really raises. The FakeProvider ports lseg-data's behaviour, and a contract test runs the real library offline to keep it true. 110 tests; 31 planted mutants killed across both rounds. LDG §4's adapter items (1–6, 8, 13) have FakeProvider tests, and TEST-STRATEGY §6 maps the rest to the items that build them. P1-04 checks the assumed error codes (DEC-83)
+  - The `HistoryProvider` protocol and its failure classes (`pmcc/data/provider.py`).
+  - `pmcc/data/lseg/`: a port of `lseg_session`, fail-soft history and the frame reader (into polars).
+  - `pmcc/data/fetch.py`: 25-RIC batches, single-RIC verdicts, retries, caret→live fallback, and diagnostics. None of it depends on LSEG, so it sits outside the adapter (DEC-83).
+  - `FakeProvider` (TEST-STRATEGY §6), kept true to lseg-data by a contract test.
   - Done when:
     - the INV-12 tests pass
     - every LDG §4 behaviour has a FakeProvider test
@@ -169,6 +170,7 @@ P8 release                                                                      
   - Needs: P1-02 · Refs: DEC-49; LDG §4
 - [ ] **P1-04 · Probes** **[Workspace]**
   - `pmcc probe` implements the DEC-06, 07, 08, 09, 12, 13 and 14 checks. Run it for all 12 symbols; the requests are small. (DEC-01 was settled without a probe.)
+  - It also records the real error answers for DEC-83: the `LDError` text and codes for a never-listed RIC (hourly and daily, both forms), a field the RIC doesn't carry, and an hourly batch holding one of each. The fake's assumed codes are then checked against them.
   - Done when: `data_cache/probes/` has a report per symbol, and each outcome is written into its DEC entry.
   - Needs: P0-01, P1-03
 - [ ] **P1-05 · Resolve the spec's open items** **[PO]**
@@ -205,7 +207,7 @@ P8 release                                                                      
   - Plan → estimate (units, RIC requests, minutes) → resumable unit loop → coverage summary; `--plan-only`.
   - Done when FakeProvider tests show:
     - a resume after a mid-run outage refetches only the missing units
-    - the estimate prints before any request
+    - the estimate prints before any option request (only the stock tape, which the plan is built from, comes first: ARCHITECTURE §6.1)
   - Needs: P1-07 · Refs: ARCHITECTURE §6.1
 - [ ] **P1-09 · First symbol: NVDA** **[Workspace]**
   - Show the PO the `--plan-only` estimate, then fetch NVDA over the window.
@@ -472,7 +474,8 @@ The spec sets the order. Cut the next item only when its trigger fires, and mark
 | R-13 | Results JSON is too heavy for the site | Low | Med | Detail levels (DEC-54); virtualized tables; per-run lazy loading | P4-05 |
 | R-14 | Quant E-L3 favours wide-spread contracts, so E-T1 keeps failing | Med | Med | Report retry counts; no tuning after the first run (spec) | P4-04 |
 | R-15 | Holiday and half-day edge cases | Med | Med | Calendar tests on known dates | P1-06 |
-| R-16 | The Workspace session drops mid-pull | Med | Med | Per-unit session check; outages abort cleanly; resume | P1-08 |
+| R-16 | The Workspace session drops mid-pull | Med | Med | A dead Workspace never changes the session's state (DEC-83), so failing requests are retried 3 times, then abort the unit as an outage; resume | P1-08 |
 | R-17 | The Pages base path or routing breaks deep links | Low | Med | `base: './'` with HashRouter; deploy early (P4-07) | P4-07 |
 | R-18 | Pulls need the PO's machine on and signed in to Workspace | High | Med | Schedule pulls with the PO; batch them overnight | P1-10 |
 | R-19 | A late PO answer stalls the items that depend on it | Med | Med | Batch questions per item and ask one item ahead (§2) | §2 |
+| R-20 | A guessed RIC fails with a code that isn't a no-data code, so the fetch stops as an outage | Med | Med | P1-04 records the real codes before any pull; widening the no-data codes is a DEC-83 decision | P1-04 |
