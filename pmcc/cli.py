@@ -6,7 +6,19 @@ from typing import Annotated, NoReturn
 
 import typer
 
+from pmcc.config.calendar import load_calendar
+from pmcc.data.lseg import lseg_session
+from pmcc.data.probe import ProbeStoppedError, probe_path, run_probe, write_report
+from pmcc.data.provider import ProviderOutageError
+from pmcc.domain.clock import ET
+from pmcc.log import configure_logging
+
 app = typer.Typer(help="PMCC backtester: fetch LSEG data, run backtests, export the site.")
+
+
+def _now() -> datetime:
+    return datetime.now(ET)
+
 
 Symbol = Annotated[str, typer.Option(help="Underlying ticker, e.g. NVDA.")]
 Day = Annotated[datetime, typer.Option(formats=["%Y-%m-%d"])]
@@ -30,9 +42,30 @@ def fetch(
 
 
 @app.command()
-def probe(symbol: Symbol) -> None:
+def probe(
+    symbol: Symbol,
+    out: Annotated[Path, typer.Option(help="Where probe reports go.")] = Path("data_cache/probes"),
+) -> None:
     """Run the LSEG spikes for a symbol and write a probe report."""
-    _not_built("P1-04")
+    configure_logging("probe")
+    sym, now = symbol.upper(), _now()
+    path = probe_path(out, sym, now.date())
+    if path.exists():
+        _fail(f"{path} exists; a probe report is never overwritten. Rename it to probe again.")
+    try:
+        with lseg_session() as provider:
+            report = run_probe(provider, sym, load_calendar(), now)
+    except (ProviderOutageError, ProbeStoppedError) as exc:
+        _fail(f"{sym}: the probe stopped and wrote nothing: {exc}")
+    write_report(report, path)
+    typer.echo(f"{sym}: {report['requests']} requests; report written to {path}")
+    if report["stopped"] is not None:
+        _fail(f"{sym}: stopped early: {report['stopped']}")
+
+
+def _fail(message: str) -> NoReturn:
+    typer.echo(message, err=True)
+    raise typer.Exit(code=1)
 
 
 @app.command()

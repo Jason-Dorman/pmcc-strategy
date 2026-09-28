@@ -28,7 +28,6 @@ from pmcc.domain.instruments import OptionId, Right
 from pmcc.domain.money import Price
 from tests.fakes.lseg import (
     DAYS,
-    FIELD_NOT_CARRIED,
     NOT_FOUND,
     FakeLseg,
     OpenState,
@@ -162,15 +161,20 @@ def test_fetch_asks_a_repeated_ric_once() -> None:
     assert result.requested == (a,)
 
 
-def test_fetch_field_the_rics_do_not_carry_is_told_apart_from_a_missing_ric_by_its_code() -> None:
+def test_fetch_field_the_rics_do_not_carry_is_left_out_and_the_rics_still_answer() -> None:
+    # As LSEG answered SETTLE in the P1-04 probes: each RIC's answer carries only BID, so the batch
+    # comes back as flat RIC columns that can't be attributed, and each RIC is asked alone.
     rics = _rics(2)
     fake = FakeLseg(listed={r: _bars() for r in rics}, carried=set(QUOTES))
     request = BarRequest(("BID", "SETTLE"), REQUEST.start, REQUEST.end_exclusive, REQUEST.interval)
 
     result = fetch_rics(fake_provider(fake), rics, request)
 
-    assert result.unanswered == tuple(rics)
-    assert {result.misses[r].codes for r in rics} == {(FIELD_NOT_CARRIED,)}
+    assert result.answered == frozenset(rics)
+    assert result.unanswered == ()
+    assert set(result.history.rows["field"].to_list()) == {"BID"}
+    assert [e.error_class for e in result.errors] == ["Unattributable"]
+    assert _asked(fake) == [tuple(rics), (rics[0],), (rics[1],)]
 
 
 def test_fetch_logs_a_rejected_batch() -> None:

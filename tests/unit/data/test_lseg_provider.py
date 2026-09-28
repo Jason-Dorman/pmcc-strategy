@@ -29,7 +29,6 @@ from pmcc.data.provider import (
 )
 from tests.fakes.lseg import (
     DAYS,
-    FIELD_NOT_CARRIED,
     NOT_FOUND,
     Answer,
     FakeLseg,
@@ -184,13 +183,21 @@ def test_lseg_provider_never_listed_ric_is_no_data_with_its_code() -> None:
     assert caught.value.codes == (NOT_FOUND["hourly"],)
 
 
-def test_lseg_provider_field_the_ric_does_not_carry_is_no_data_with_its_own_code() -> None:
+def test_lseg_provider_field_the_ric_does_not_carry_is_left_out_not_an_error() -> None:
+    # LSEG answered SETTLE and an unknown field name this way in the P1-04 probes (DEC-83).
     fake = FakeLseg(listed=LISTED, carried=set(QUOTES))
 
-    with pytest.raises(NoDataError) as caught:
-        _ask(fake, rics=(A,), fields=("BID", "SETTLE"))
+    history = _ask(fake, rics=(A,), fields=("BID", "SETTLE"))
 
-    assert caught.value.codes == (FIELD_NOT_CARRIED,)
+    assert set(history.rows["field"].to_list()) == {"BID"}
+
+
+def test_lseg_provider_batch_asked_a_field_no_ric_carries_is_unreadable() -> None:
+    # Each answer carries one of the two fields asked, so lseg-data builds flat RIC columns.
+    fake = FakeLseg(listed=LISTED, carried=set(QUOTES))
+
+    with pytest.raises(UnreadableAnswerError, match="RIC columns for 2 fields"):
+        _ask(fake, rics=(A, B), fields=("BID", "SETTLE"))
 
 
 def test_lseg_provider_hourly_batch_holding_a_never_listed_ric_is_unreadable() -> None:

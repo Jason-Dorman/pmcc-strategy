@@ -57,8 +57,11 @@ The spec's tree, plus the `domain/` and `config/` additions from DEC-43.
 ```
 pmcc/
   domain/        money.py (Price, Money), instruments.py (OptionId, Right, Side), rules.py (RuleId),
-                 clock.py (ET, bar_end), sessions.py (Session, session bars) (DEC-81)
-  config/        pydantic config models; YAML loader (extends/overrides); hashing; rule-text rendering
+                 clock.py (ET, bar_end), sessions.py (Session, session bars) (DEC-81),
+                 calendar.py (SessionCalendar: sessions, week-open/final, weekly and monthly
+                 expiries; DEC-33, DEC-84)
+  config/        pydantic config models; YAML loader (extends/overrides); hashing; rule-text rendering;
+                 calendar.py (configs/calendar.yaml → SessionCalendar, DEC-84)
   data/
     provider.py  HistoryProvider port, RawHistory (long rows), Interval, the DEC-49 failure
                  classes (DEC-83)
@@ -67,10 +70,14 @@ pmcc/
                  polars rows), provider.py (LsegProvider: one fail-soft get_history call)
     ric.py       build_ric, parse_ric (either day spelling, DEC-01), occ_symbol,
                  forms_to_ask (the DEC-45 form policy) (DEC-82)
-    calendar.py  sessions from the tape, week-open/final, monthly expiries, holiday table (DEC-33)
-    discovery.py strike increments (DEC-14), bands and fetch plan (DEC-48)
+    calendar.py  sessions from the tape: its trading days must match the holiday table, or
+                 CalendarMismatchError (DEC-33, DEC-84)
+    discovery.py strike increments (DEC-14), integer-cent bands, session ranges, and the fetch
+                 plan: plan_symbol → FetchPlan of units (DEC-48, DEC-84)
     fetch.py     fetch_rics, fetch_contracts: batching, retries, form fallback, diagnostics
                  (P1-03, DEC-83); unit orchestration and resume (P1-08)
+    probe/       the P1-04 probes over the HistoryProvider port, one module per DEC check;
+                 one report per symbol (§6.2, DEC-85)
     cache.py     parquet + manifest + sidecar I/O (atomic, never overwrite)
     load.py      polars loaders → SymbolData (no network)
   pricing/       black_scholes.py, iv.py (vectorized), chain.py (per-bar snapshots), measures.py (EM, ATM IV, RV20)
@@ -97,10 +104,10 @@ The reference files at the repo root (`LSEG-DATA-GUIDE.md`, `DESIGN-GUIDE.md`, `
 
 | Package | One job | Main API | Depends on |
 | --- | --- | --- | --- |
-| `domain` | Types and time rules everyone shares | `Price`, `Money`, `OptionId`, `RuleId`, `Session`, `bar_end()` | stdlib |
-| `config` | Turn YAML into validated, hashed, rendered config | `load_run_config()` → `RunConfig` | domain, pydantic, pyyaml |
+| `domain` | Types and time rules everyone shares | `Price`, `Money`, `OptionId`, `RuleId`, `Session`, `SessionCalendar`, `bar_end()` | stdlib |
+| `config` | Turn YAML into validated, hashed, rendered config | `load_run_config()` → `RunConfig`; `load_calendar()` → `SessionCalendar` | domain, pydantic, pyyaml |
 | `data.lseg` | Talk to LSEG | `lseg_session()` → `LsegProvider` | `data.provider`, lseg.data, pandas, polars |
-| `data` (rest) | Know RICs and calendars; plan, fetch, cache, load | `HistoryProvider`, `build_ric()`, `parse_ric()`, `plan_symbol()`, `fetch_rics()`, `fetch_contracts()`, `fetch_symbol()`, `load_symbol()` | domain, config, polars; only `fetch` may use `data.lseg` |
+| `data` (rest) | Know RICs; check the tape against the calendar; probe, plan, fetch, cache, load | `HistoryProvider`, `build_ric()`, `parse_ric()`, `sessions_from_tape()`, `run_probe()`, `plan_symbol()`, `fetch_rics()`, `fetch_contracts()`, `fetch_symbol()`, `load_symbol()` | domain, config, polars, numpy; only `fetch` may use `data.lseg` |
 | `pricing` | Turn quotes into IV, Greeks and measures | `implied_vol()`, `greeks()`, `price_chain()`, `expected_move()`, `rv20()` | domain, numpy, scipy |
 | `strategy` | Decide what to trade | `build_strategy(cfg)` → `Strategy` | domain, config, pricing, `strategy.ports` |
 | `engine` | Run the clock; route decisions to fills and the book | `run_backtest(data, cfg)` → `RunOutput` | domain, config, pricing, strategy, accounting |
@@ -145,8 +152,10 @@ The test also checks that one planted forbidden import per rule is caught, inclu
 | `bar_start` | LSEG stamp (tz-naive UTC); kept in the cache for provenance only |
 | `bar_end` | `bar_start + 1h`; the only key after load, and the decision time |
 | Session bar | A bar whose ET start is 09:00–15:00 on a trading day (ends 10:00–16:00; ends 13:00 on a half-day); `Session.contains()`, `session_of()` |
-| Week-open session | First session of the calendar week; what the rules call "Monday" |
+| Trading days | `SessionCalendar` from `configs/calendar.yaml`: every weekday not listed as closed, with 13:00 early closes (DEC-33). The stock tape's trading days must match it, or loading stops (`CalendarMismatchError`) |
+| Week-open session | First session of the calendar week (Monday to Sunday); what the rules call "Monday" |
 | Week-final session | Last session of the calendar week; the weekly expiry (E-S2) |
+| Monthly expiry | Third Friday, or the session before it when that Friday is closed (DEC-33) |
 | Friday-check bar | Last session bar of the week-final session with `bar_end` ≤ 15:00 ET (X-S3) |
 | Close bar | Last session bar of a session; its TRDPRC_1 is the session close |
 | Expiry instant | The expiry session's close; T is measured to it, ACT/365 |
@@ -190,6 +199,8 @@ class MarketView(Protocol):                                   # pmcc/strategy/po
     def session_closes(self, n: int) -> Sequence[Price]: ...             # completed sessions only
     def calendar(self) -> SessionCalendar: ...                           # reference data (DEC-33)
 ```
+
+`SessionCalendar` lives in `pmcc.domain` (DEC-84), so `strategy/ports.py` can name it without importing `data`. It is reference data, published in advance, so it answers for future days without the as-of gate (DEC-33).
 
 - The implementation (`engine/market_view.py`) keeps the loaded frames and priced snapshots private.
 - Every accessor resolves through a single `_as_of(t)` that raises `LookAheadError` when `t > now`.
@@ -248,7 +259,8 @@ def regt(book: Book, v: Valuation) -> RegT           # IM, MM, available funds, 
 ```
 1. Open the session: lseg_session() raises unless open_state == Opened, before any request
    (LDG §4.2). The config is resolved from the repo root, not the caller's CWD.
-2. Stock tape [D0 − 30 sessions, D1] → sessions, weekly expiries, highs/lows, realized vol.
+2. Stock tape [D0 − 30 sessions, D1] → sessions (its trading days must match configs/calendar.yaml,
+   DEC-33), weekly expiries, session highs/lows, realized vol.
 3. Build the plan (§6.3) and print the estimate: units, RIC requests, minutes. --plan-only stops here.
 4. For each unit not already in the manifest:
      - probe increments (DEC-14) → integer-cent strike list (LDG §4.11)
@@ -267,29 +279,34 @@ def regt(book: Book, v: Valuation) -> RegT           # IM, MM, available funds, 
 
 ### 6.2 Probes (`pmcc probe`, output in `data_cache/probes/`)
 
-Small requests that answer the spec's open items before the full pull:
+Small requests that answer the spec's open items before the full pull, about 100 per symbol (`pmcc/data/probe/`, DEC-85):
 
-- bar convention (DEC-06)
-- history depth (DEC-07) and long-dated coverage (DEC-08)
-- live RIC form (DEC-09)
-- identifiers, splits and max strike (DEC-12)
+- identifiers, splits and max strike (DEC-12), plus the holiday table against LSEG's daily bars (DEC-33)
+- error answers: the `LDError` text and codes for a never-listed RIC (hourly and daily, both forms), a live contract asked with a caret, a field the RIC doesn't carry, and batches holding a failure (DEC-83)
+- bar convention (DEC-06) and how LSEG reads request dates (DEC-47)
 - field availability (DEC-13) and strike increments (DEC-14)
-- error answers: the `LDError` text and codes for a never-listed RIC (hourly and daily, both forms), a field the RIC doesn't carry, and a batch holding one of each (DEC-83)
+- long-dated coverage (DEC-08) and the live RIC form (DEC-09)
+- history depth (DEC-07)
+
+The stock RIC and daily bars come first, since every later check needs them, then the error answers, then the checks that read quotes (increments, bars, edges, fields, coverage, depth). A never-listed RIC must come back with a no-data code. If one answers anyway, the report stops after the error answers and the command exits 1. Any other failure is asked again like any fetch (DEC-49), so a dead or signed-out Workspace, which shows up only as transient failures (DEC-83), ends as an outage. An outage writes nothing. The report is one JSON file per symbol and day, never overwritten. The date edges use the latest complete week, so nothing asked is in the future.
 
 ### 6.3 Fetch plan (DEC-48)
 
 | Unit | Contracts | Strikes | Dates | Needed by |
 | --- | --- | --- | --- | --- |
 | `stock` | underlying RIC | — | window start − 30 sessions → window end | spot, RV20, sessions, bands |
-| `chains/{E}_C` | calls, each weekly expiry E in the window **plus the next one after it** | `[low − 4 steps, high + max(2.5·EMest, 6 steps)]` from regular-session highs/lows over the dates | week-open of the **prior** week → E | E-S3, X-S1…X-S5, G-3 next-week IV, ledger marks, fill check |
+| `chains/{E}_C` | calls, the weekly expiry E of every week with a session in the window (the last one included when the window ends mid-week) **plus the next one after it** | `[low − 4 steps, high + max(2.5·EMest, 6 steps)]` from regular-session highs/lows over the dates | week-open of the **prior** week → E (the next one after the window: → window end) | E-S3, X-S1…X-S5, G-3 next-week IV, ledger marks, fill check |
 | `chains/{E}_P` | puts | `[low − 2 steps, high + 2 steps]` of the week-open session | week-open session of E's week | EM (quant E-S3, X-S3) |
-| `chains/{M}_C` | calls, every monthly M that is 120–270 DTE on some week-open session, or nearest 180 DTE | union over the window's weeks of `[weekLow·e^(−2.0·σ̂·√T), weekHigh·e^(−0.3·σ̂·√T)]` (≈ δ 0.97 → 0.65), padded | window start → window end | E-L2/E-L3, X-L1/X-L2, ledger marks, fill check |
+| `chains/{M}_C` | calls, every monthly M that is 120–270 DTE on some session of the window, or nearest 180 DTE | union over the unit's weeks of `[weekLow·e^(−2.0·σ̂·√T), weekHigh]` (≈ δ 0.97 → the money), split into 3 bands of equal price ratio, each probed for its own increment; outer edges padded 2 steps, cuts overlapping 1 | first session M is a candidate → M or window end, whichever is first (DEC-48) | E-L2/E-L3, X-L1/X-L2, ledger marks, fill check |
 
 - **Inputs:**
-  - `σ̂` = 1.25 × the highest RV20 in the window.
-  - `EMest` = spot · σ̂ · √(5/252), which is at least the ATM straddle.
-  - T = the monthly's time to expiry at that week (DEC-24).
-  - Increments follow DEC-14.
+  - `σ̂` = 1.25 × the highest RV20 in the window (the sample standard deviation of 20 daily log returns of session closes × √252).
+  - `EMest` = spot · σ̂ · √(5/252), which is at least the ATM straddle. The spot taken is the unit's high.
+  - DTE is calendar days, and T is calendar days ÷ 365 from each week's first session in the unit. These only size what is fetched; pricing's T is DEC-24's.
+  - Increments follow DEC-14, probed per band: a unit whose expiry is both a weekly and a long candidate keeps every band.
+  - The top of the long band is the week's high, not a delta: a strike at δ 0.70 (quant E-L3's edge) is below spot for any σ and T, while a delta-based edge moves deeper as σ̂ grows (DEC-48).
+  - **Estimate:** a plan holds bands, not strikes, and a ladder needs its band's increment. The estimate printed before any option request (§6.1) assumes increments from the probe reports' DEC-14 values.
+- **Session ranges:** each session's low and high come from its session bars only, and a trade print widens them. The tape's trading days must match the calendar first (DEC-33).
 - **Example:** the spec's window (Jul 6 → Sep 18 2026) needs the monthlies Nov 20 2026 through May 21 2027 (7 expiries).
 - **Estimate:** requests ≈ Σ strikes × forms asked. LDG measured about 44 RIC requests per minute (~1,100 in ~25 min). An 11-week window is about 700 requests, ~16 min per symbol, or ~3–4 h for all 12.
 
@@ -297,7 +314,7 @@ Small requests that answer the spec's open items before the full pull:
 
 ```
 data_cache/                                   gitignored (DEC-05, DEC-56)
-  probes/{SYM}_{probe}_{YYYYMMDD}.json
+  probes/{SYM}_{YYYYMMDD}.json                one report per symbol and day, never overwritten (DEC-85)
   {SYM}/
     manifest.json                             per RIC: ric, unit, form, status, rows, first/last bar,
                                               fetched_at, file, sha256
@@ -308,7 +325,7 @@ logs/fetch_{timestamp}.jsonl                  gitignored
 
 - **Parquet columns** are raw, as returned: `bar_start_utc` (datetime, UTC), `ric`, `expiry`, `strike_cents`, `right`, then one float64 column per field (`BID`, `ASK`, `TRDPRC_1`, `OPEN_PRC`, `HIGH_1`, `LOW_1`, `ACVOL_UNS`, `NUM_MOVES`).
 - **Sidecar** (LDG §5):
-  - request details: fields requested and dropped, dates, interval, tz convention, strike step
+  - request details: fields requested and fields that came back (LSEG leaves out a field a RIC lacks, DEC-83), dates, interval, tz convention, the strike step per band (DEC-84)
   - results: `ric_form_used`, `unanswered`, `errors`
   - pull date
 
@@ -446,7 +463,7 @@ A failure raises `InvariantViolation`; the run writes nothing and exits non-zero
 | `configs/ablations/a1…a5.yaml` | `extends: ../quant_pmcc.yaml` + `overrides` keyed by rule ID |
 | `configs/sensitivity.yaml` | friction, timing and grid variants (§11) |
 | `configs/universe.yaml` | window, symbols (stock RIC, option root), r with source, starting cash with basis, bootstrap seed |
-| `configs/calendar.yaml` | NYSE holidays and early closes 2026–2027, with source |
+| `configs/calendar.yaml` | NYSE holidays and early closes 2025–2027, with sources (DEC-33) |
 
 A rule entry (DEC-52):
 

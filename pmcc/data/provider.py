@@ -67,7 +67,8 @@ class RawHistory:
 class NoDataError(Exception):
     """The service answered every RIC in the request with a no-data code (DEC-49: soft).
 
-    A never-listed RIC, or a field a RIC doesn't carry. `codes` are the service's error codes.
+    A never-listed RIC. (A field a RIC doesn't carry is left out of its answer, not refused:
+    P1-04 probes, DEC-83.) `codes` are the service's error codes.
     They don't say which RIC got which code, so only a single-RIC request settles a RIC.
     """
 

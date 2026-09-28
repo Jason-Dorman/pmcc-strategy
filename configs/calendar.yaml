@@ -1,0 +1,54 @@
+# NYSE trading calendar, 2025-2027 (DEC-33). Loaded by pmcc.config.calendar.
+#
+# Every weekday from first_day to last_day is a session (09:30-16:00 ET) unless it is listed
+# under `closed`. An `early_closes` day ends at 13:00 ET (eligible options trade to 13:15; the
+# backtest's last session bar on that day ends at 13:00, DEC-06). Holidays that fall on a Saturday
+# are observed on the Friday before, and those on a Sunday on the Monday after, as NYSE lists them.
+#
+# The stock tape must agree with this table: a day with regular-hours bars that the table closes,
+# or a table session with no bars, stops the plan and the load (DEC-33, PO 2026-09-27).
+source:
+  - "NYSE, Holidays & Trading Hours, https://www.nyse.com/markets/hours-calendars (2026 and 2027; read 2026-09-27)"
+  - "NYSE Group, NYSE Group Announces 2025, 2026 and 2027 Holiday and Early Closings Calendar (Nov 2024), https://ir.theice.com/press/news-details/2024/NYSE-Group-Announces-2025-2026-and-2027-Holiday-and-Early-Closings-Calendar/default.aspx"
+  - "NYSE, The New York Stock Exchange Will Close Markets on January 9 to Honor the Passing of Former President Jimmy Carter on National Day of Mourning (Dec 2024), https://ir.theice.com/press/news-details/2024/The-New-York-Stock-Exchange-Will-Close-Markets-on-January-9-to-Honor-the-Passing-of-Former-President-Jimmy-Carter-on-National-Day-of-Mourning/default.aspx"
+first_day: 2025-01-01
+last_day: 2027-12-31
+closed:
+  - {day: 2025-01-01, name: "New Year's Day"}
+  - {day: 2025-01-09, name: "National Day of Mourning (President Carter)"}
+  - {day: 2025-01-20, name: "Martin Luther King, Jr. Day"}
+  - {day: 2025-02-17, name: "Washington's Birthday"}
+  - {day: 2025-04-18, name: "Good Friday"}
+  - {day: 2025-05-26, name: "Memorial Day"}
+  - {day: 2025-06-19, name: "Juneteenth"}
+  - {day: 2025-07-04, name: "Independence Day"}
+  - {day: 2025-09-01, name: "Labor Day"}
+  - {day: 2025-11-27, name: "Thanksgiving Day"}
+  - {day: 2025-12-25, name: "Christmas Day"}
+  - {day: 2026-01-01, name: "New Year's Day"}
+  - {day: 2026-01-19, name: "Martin Luther King, Jr. Day"}
+  - {day: 2026-02-16, name: "Washington's Birthday"}
+  - {day: 2026-04-03, name: "Good Friday"}
+  - {day: 2026-05-25, name: "Memorial Day"}
+  - {day: 2026-06-19, name: "Juneteenth"}
+  - {day: 2026-07-03, name: "Independence Day (observed)"}
+  - {day: 2026-09-07, name: "Labor Day"}
+  - {day: 2026-11-26, name: "Thanksgiving Day"}
+  - {day: 2026-12-25, name: "Christmas Day"}
+  - {day: 2027-01-01, name: "New Year's Day"}
+  - {day: 2027-01-18, name: "Martin Luther King, Jr. Day"}
+  - {day: 2027-02-15, name: "Washington's Birthday"}
+  - {day: 2027-03-26, name: "Good Friday"}
+  - {day: 2027-05-31, name: "Memorial Day"}
+  - {day: 2027-06-18, name: "Juneteenth (observed)"}
+  - {day: 2027-07-05, name: "Independence Day (observed)"}
+  - {day: 2027-09-06, name: "Labor Day"}
+  - {day: 2027-11-25, name: "Thanksgiving Day"}
+  - {day: 2027-12-24, name: "Christmas Day (observed)"}
+early_closes:
+  - {day: 2025-07-03, name: "Independence Day eve"}
+  - {day: 2025-11-28, name: "Day after Thanksgiving"}
+  - {day: 2025-12-24, name: "Christmas Eve"}
+  - {day: 2026-11-27, name: "Day after Thanksgiving"}
+  - {day: 2026-12-24, name: "Christmas Eve"}
+  - {day: 2027-11-26, name: "Day after Thanksgiving"}
