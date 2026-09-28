@@ -126,7 +126,7 @@ Every decision uses only data available at the bar's end time, and every fill is
 **Greeks and pricing**
 
 - Black-Scholes, with implied vol solved from the bar's mid, vectorized across the whole chain snapshot (Newton's method with a bisection fallback).
-- Risk-free rate r: one constant for the window, stated on the site (for example the 3-month T-bill rate at window start).
+- Risk-free rate r: one constant for the window, stated on the site: the 3-month Treasury yield at the last close before the window, continuously compounded (DEC-11).
 - Dividend yield q = 0 (dividends out of scope).
 - Weekly expected move EM = mid of the weekly ATM straddle (nearest-strike call mid + put mid). This needs put quotes for the ATM strike only.
 - Realized vol RV20: annualized close-to-close vol over the prior 20 sessions, using daily closes derived from the hourly tape.
@@ -277,7 +277,7 @@ Two strategies, five ablations, and three sensitivity checks, run independently 
 
 **Universe** (`configs/universe.yaml`)
 
-SPY, QQQ, IWM, AAPL, NVDA, AMD, META, TSLA, COIN, JPM, TLT, XLE. Equity index ETFs and single names across a wide volatility range, plus financials, long-duration Treasuries, and energy to add drivers less correlated with US large-cap tech. All symbols use the same window: as long as LSEG hourly option history allows, and at least 10 weeks. Any symbol can also be run alone via `pmcc run --symbol`.
+QQQ, NVDA, TSLA (DEC-15). An equity index ETF and two single names across a wide volatility range (roughly 20%, 40% and 55% realized), chosen from the probed twelve for the tightest long-leg spreads. The first plan's twelve (SPY, QQQ, IWM, AAPL, NVDA, AMD, META, TSLA, COIN, JPM, TLT, XLE) added financials, long-duration Treasuries and energy; the PO cut it for time (DEC-15). The probes had also found most of the dropped symbols' long legs wider than E-T1's 3%. All symbols use the same window: Mon Mar 30 2026 to Fri Sep 25 2026, 26 weeks of hourly bars, set by the PO from the probed history (DEC-07). A window must lie within LSEG's hourly option history and be at least 10 weeks. Any symbol can also be run alone via `pmcc run --symbol`.
 
 ## Analytics and metrics
 
@@ -385,7 +385,7 @@ A gradable baseline exists by Sep 30; everything after that adds depth, and Oct 
 | Dates | Work | Done when |
 | --- | --- | --- |
 | Sep 26–27 | Repo tooling (uv, ruff, pyright, pre-commit, justfile, CI skeleton); resolve open items; RIC builder, chain discovery, parquet cache; fetch one symbol | One symbol's full chain cached; tests 11–12 pass |
-| Sep 27 onward | Start universe fetches in the background as soon as the fetcher works | All 12 symbols cached by Oct 3 |
+| Sep 27 onward | Start universe fetches in the background as soon as the fetcher works | All 3 symbols cached by Oct 3 |
 | Sep 28–30 | Pricing (IV, Greeks, EM, RV20); engine and MarketView; fill simulator; accounting; baseline PMCC | Baseline blotter, ledger, NAV, Reg T for one symbol; tests 1–10 and 13 pass |
 | Oct 1–2 | Quant long and short selectors; gates G-3 to G-5; gate log; ablation configs; scaffold the Vite app and Pages deploy Action with sample JSON | Quant PMCC and A1–A5 run on one symbol |
 | Oct 3–4 | Batch runs across the universe; friction, timing, and parameter sensitivity | All results JSON written |
@@ -393,16 +393,16 @@ A gradable baseline exists by Sep 30; everything after that adds depth, and Oct 
 | Oct 7–8 | React pages (comparison, strategy, rules from YAML, methodology, universe) and write-up | CI builds and deploys the site after `pmcc export`, and the site passes a full read-through |
 | Oct 9 | Buffer; publish to GitHub Pages; check no live LSEG on Pages | URL submitted by 11:59pm |
 
-If time runs short, cut in this order: parameter grid, entry-timing sensitivity, Greek attribution, universe size (down to five symbols). Never cut the blotter, NAV, Reg T, rules page, or tests.
+If time runs short, cut in this order: parameter grid, entry-timing sensitivity, Greek attribution, universe size (already cut to three symbols, DEC-15). Never cut the blotter, NAV, Reg T, rules page, or tests.
 
 ## Open items to verify before building
 
 Resolve these by Sep 27; each one affects every fill or the backtest window.
 
-- [ ] **Bar timestamp convention.** Pull one known contract and confirm whether LSEG hourly bars are stamped at start or end, and whether BID/ASK are end-of-bar values. Set the decision-time rule accordingly.
-- [ ] **History depth.** How far back LSEG hourly BID/ASK goes for expired weeklies and for long-dated contracts. This sets the backtest window for all symbols.
-- [ ] **Long-dated coverage.** Whether hourly BID/ASK exists for deep ITM, 120–270 DTE strikes on each universe symbol, and how sparse it is. Sparse data will limit E-L3's candidate set.
-- [ ] **Live-contract RICs.** Confirm that long legs still listed at fetch time resolve without the caret suffix.
-- [ ] **Reg T text.** Confirm the long-option loan value (≤ 9 months: none) and the covered-diagonal treatment against the Reg T and FINRA 4210 text, and cite it on the Methodology page.
-- [ ] **Risk-free rate.** Choose the source and value of r, and state it on the site.
-- [ ] **LSEG terms.** Confirm whether raw cached data may be committed to a public repo; default to committing derived results only.
+- [x] **Bar timestamp convention.** Pull one known contract and confirm whether LSEG hourly bars are stamped at start or end, and whether BID/ASK are end-of-bar values. Set the decision-time rule accordingly. *Resolved in DEC-06: stamped at the start, end-of-bar quotes; decisions at the bar's end.*
+- [x] **History depth.** How far back LSEG hourly BID/ASK goes for expired weeklies and for long-dated contracts. This sets the backtest window for all symbols. *Resolved in DEC-07: back to late Oct 2025; the window is Mar 30 – Sep 25 2026.*
+- [ ] **Long-dated coverage.** Whether hourly BID/ASK exists for deep ITM, 120–270 DTE strikes on each universe symbol, and how sparse it is. Sparse data will limit E-L3's candidate set. *DEC-08: sampled at P1-04; measured in full at P1-09 and P1-10 (by Sat Oct 3).*
+- [x] **Live-contract RICs.** Confirm that long legs still listed at fetch time resolve without the caret suffix. *Resolved in DEC-09: confirmed on all 12 symbols.*
+- [ ] **Reg T text.** Confirm the long-option loan value (≤ 9 months: none) and the covered-diagonal treatment against the Reg T and FINRA 4210 text, and cite it on the Methodology page. *DEC-10: both confirmed and cited; the short stock after X-S5 goes to the PO at P3-04 (Mon Sep 28), and the quotes go on Methodology at P7-04 (Wed Oct 7).*
+- [x] **Risk-free rate.** Choose the source and value of r, and state it on the site. *Resolved in DEC-11: FRED DGS3MO, 3.73% on Mar 27 2026, so r = 0.0371.*
+- [ ] **LSEG terms.** Confirm whether raw cached data may be committed to a public repo; default to committing derived results only. *DEC-05: asked at P3-10 (Wed Sep 30), before real results go to the public repo.*

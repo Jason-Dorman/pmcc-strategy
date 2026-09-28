@@ -1,0 +1,32 @@
+# The backtest universe (Spec › Universe), set by the PO at P1-05 on 2026-09-28. Loaded by
+# pmcc.config.universe, which checks the window against configs/calendar.yaml.
+#
+# `starting_cash`, with its basis, joins at P3-09 (DEC-30), and the bootstrap seed at P6-05
+# (DEC-61).
+
+# One window for every symbol (DEC-07): 26 weeks, 125 sessions. The stock tape's 30-session
+# warm-up starts Fri Feb 13 2026, inside LSEG's hourly history (which reaches late Oct 2025).
+window:
+  start: 2026-03-30  # Mon: a week-open session, and the first E-L1 session
+  end: 2026-09-25    # Fri: the last complete week before the universe fetch
+
+# r: one constant for the window, continuously compounded (DEC-11). The 3-month Treasury yield at
+# the last close before the window, so the first decision could have known it. The loader checks
+# that `value` is `quoted_pct` converted over a 91-day bill, rounded to 4 decimals.
+risk_free_rate:
+  value: 0.0371
+  quoted_pct: 3.73
+  series: DGS3MO
+  as_of: 2026-03-27
+  source: >-
+    Board of Governors of the Federal Reserve System (H.15), Market Yield on U.S. Treasury
+    Securities at 3-Month Constant Maturity, Quoted on an Investment Basis (DGS3MO), via FRED,
+    Federal Reserve Bank of St. Louis, https://fred.stlouisfed.org/series/DGS3MO (read 2026-09-28)
+
+# The universe (DEC-15): an index ETF and two single names across a wide volatility range, cut by
+# the PO from the first plan's twelve. Each at its primary listing, Nasdaq .O (DEC-12); the option
+# roots are the tickers.
+symbols:
+  - {symbol: QQQ, stock_ric: QQQ.O, option_root: QQQ}
+  - {symbol: NVDA, stock_ric: NVDA.O, option_root: NVDA}
+  - {symbol: TSLA, stock_ric: TSLA.O, option_root: TSLA}

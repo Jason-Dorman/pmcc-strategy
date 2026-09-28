@@ -61,7 +61,9 @@ pmcc/
                  calendar.py (SessionCalendar: sessions, week-open/final, weekly and monthly
                  expiries; DEC-33, DEC-84)
   config/        pydantic config models; YAML loader (extends/overrides); hashing; rule-text rendering;
-                 calendar.py (configs/calendar.yaml → SessionCalendar, DEC-84)
+                 calendar.py (configs/calendar.yaml → SessionCalendar, DEC-84);
+                 universe.py (configs/universe.yaml → Universe: window, r, symbols; DEC-86);
+                 yaml_file.py (read_yaml: safe YAML refusing a key given twice; DEC-86)
   data/
     provider.py  HistoryProvider port, RawHistory (long rows), Interval, the DEC-49 failure
                  classes (DEC-83)
@@ -105,7 +107,7 @@ The reference files at the repo root (`LSEG-DATA-GUIDE.md`, `DESIGN-GUIDE.md`, `
 | Package | One job | Main API | Depends on |
 | --- | --- | --- | --- |
 | `domain` | Types and time rules everyone shares | `Price`, `Money`, `OptionId`, `RuleId`, `Session`, `SessionCalendar`, `bar_end()` | stdlib |
-| `config` | Turn YAML into validated, hashed, rendered config | `load_run_config()` → `RunConfig`; `load_calendar()` → `SessionCalendar` | domain, pydantic, pyyaml |
+| `config` | Turn YAML into validated, hashed, rendered config | `load_run_config()` → `RunConfig`; `load_calendar()` → `SessionCalendar`; `load_universe()` → `Universe` | domain, pydantic, pyyaml |
 | `data.lseg` | Talk to LSEG | `lseg_session()` → `LsegProvider` | `data.provider`, lseg.data, pandas, polars |
 | `data` (rest) | Know RICs; check the tape against the calendar; probe, plan, fetch, cache, load | `HistoryProvider`, `build_ric()`, `parse_ric()`, `sessions_from_tape()`, `run_probe()`, `plan_symbol()`, `fetch_rics()`, `fetch_contracts()`, `fetch_symbol()`, `load_symbol()` | domain, config, polars, numpy; only `fetch` may use `data.lseg` |
 | `pricing` | Turn quotes into IV, Greeks and measures | `implied_vol()`, `greeks()`, `price_chain()`, `expected_move()`, `rv20()` | domain, numpy, scipy |
@@ -307,8 +309,12 @@ The stock RIC and daily bars come first, since every later check needs them, the
   - The top of the long band is the week's high, not a delta: a strike at δ 0.70 (quant E-L3's edge) is below spot for any σ and T, while a delta-based edge moves deeper as σ̂ grows (DEC-48).
   - **Estimate:** a plan holds bands, not strikes, and a ladder needs its band's increment. The estimate printed before any option request (§6.1) assumes increments from the probe reports' DEC-14 values.
 - **Session ranges:** each session's low and high come from its session bars only, and a trade print widens them. The tape's trading days must match the calendar first (DEC-33).
-- **Example:** the spec's window (Jul 6 → Sep 18 2026) needs the monthlies Nov 20 2026 through May 21 2027 (7 expiries).
-- **Estimate:** requests ≈ Σ strikes × forms asked. LDG measured about 44 RIC requests per minute (~1,100 in ~25 min). An 11-week window is about 700 requests, ~16 min per symbol, or ~3–4 h for all 12.
+- **Examples:**
+  - The spec's CLI example window (Jul 6 → Sep 18 2026) needs the monthlies Nov 20 2026 through May 21 2027 (7 expiries).
+  - The PO's window (Mar 30 → Sep 25 2026, DEC-07) needs a warm-up from Feb 13 2026 and the monthlies Aug 21 2026 through Jun 17 2027 (11 expiries). `tests/unit/config/test_universe_file.py` plans it on the shipped calendar.
+- **Estimate:** requests ≈ Σ strikes × forms asked. LDG measured about 44 RIC requests per minute (~1,100 in ~25 min).
+  - An 11-week window is about 700 requests, ~16 min per symbol, or ~3–4 h for all 12.
+  - The PO's 26-week window scales that by about 2.4, roughly 40 min per symbol or 2–2.5 h for the three (DEC-15), and DEC-48's wider long bands add to it. `--plan-only` prints the real figure.
 
 ### 6.4 Cache layout (DEC-46)
 
@@ -462,7 +468,7 @@ A failure raises `InvariantViolation`; the run writes nothing and exits non-zero
 | `configs/quant_pmcc.yaml` | `extends: _shared.yaml`; quant E-L2, E-L3, E-S3; G-3, G-4, G-5; report sections |
 | `configs/ablations/a1…a5.yaml` | `extends: ../quant_pmcc.yaml` + `overrides` keyed by rule ID |
 | `configs/sensitivity.yaml` | friction, timing and grid variants (§11) |
-| `configs/universe.yaml` | window, symbols (stock RIC, option root), r with source, starting cash with basis, bootstrap seed |
+| `configs/universe.yaml` | the window (DEC-07); r with the quote, series, date and source it came from (DEC-11); symbols with stock RIC and option root (DEC-12). Starting cash with its basis joins at P3-09, the bootstrap seed at P6-05. Loaded by `pmcc/config/universe.py`, which checks the window's sessions against the calendar (DEC-86) |
 | `configs/calendar.yaml` | NYSE holidays and early closes 2025–2027, with sources (DEC-33) |
 
 A rule entry (DEC-52):

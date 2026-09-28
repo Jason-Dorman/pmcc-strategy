@@ -44,7 +44,7 @@ The product answers these questions:
 
 | ID | Goal | Measured by |
 | --- | --- | --- |
-| G1 | Accuracy | INV-01…INV-15 pass for every symbol × run (12 × 24); CI fails otherwise |
+| G1 | Accuracy | INV-01…INV-15 pass for every symbol × run (3 × 24); CI fails otherwise |
 | G2 | Honest reporting | Every HR requirement (§7) is visible on the site |
 | G3 | Performance reporting | Every metric in Spec › Analytics is present per symbol × strategy and pooled |
 | G4 | Purpose | The landing page states it; every rule shows its rationale |
@@ -83,7 +83,7 @@ Every row points to its source. "Verified by" names the invariant test (INV-nn),
 | ID | Requirement | Source | Verified by |
 | --- | --- | --- | --- |
 | FR-P1 | Black-Scholes Greeks with IV solved from the bar's mid, vectorized across the chain snapshot (Newton with bisection fallback) | Spec › Greeks and pricing | IV solver vs scalar reference (P2-02) |
-| FR-P2 | One constant r for the window, with source and value stated on the site; q = 0 | Spec; DEC-11 | Methodology page |
+| FR-P2 | One constant r for the window, with source and value stated on the site; q = 0. r = 0.0371, from FRED DGS3MO (3.73% on Mar 27 2026), continuously compounded | Spec; DEC-11 | `tests/unit/config/test_universe_file.py`; Methodology page |
 | FR-P3 | EM = mid of the weekly ATM straddle | Spec; DEC-25 | P2-03 tests |
 | FR-P4 | RV20 = annualized close-to-close vol over the prior 20 sessions, from hourly-derived daily closes | Spec; DEC-26 | P2-03 tests |
 | FR-P5 | A failed IV solve makes a contract ineligible on that bar | Spec; DEC-27 | P2-02, P2-04 tests |
@@ -126,7 +126,7 @@ Every row points to its source. "Verified by" names the invariant test (INV-nn),
 | FR-B1 | Strategies `baseline_pmcc` and `quant_pmcc`, defined as configs | Spec › Strategies | config tests |
 | FR-B2 | Ablations A1–A5: quant with one layer removed | Spec › Ablations | config-diff test (P4-03) |
 | FR-B3 | Sensitivity: friction at 0 / 0.25 / 0.50 for both strategies; entry timing (baseline, one run per week-open bar); parameter grid (quant, one parameter at a time). Every result is published. | Spec › Sensitivity checks; DEC-31 | P5-02, P6-06 |
-| FR-B4 | A universe batch over `configs/universe.yaml` (12 symbols) on one common window of at least 10 weeks; any symbol can run alone | Spec › Universe; DEC-07 | P5-04 |
+| FR-B4 | A universe batch over `configs/universe.yaml` (QQQ, NVDA, TSLA; DEC-15) on one common window, Mon Mar 30 – Fri Sep 25 2026 (26 weeks; at least 10 required); any symbol can run alone | Spec › Universe; DEC-07, DEC-15 | `tests/unit/config/test_universe_file.py`; P5-04 |
 | FR-B5 | One starting cash balance for every symbol and run, fixed before the first run | Spec › E-L4; DEC-30 | P5-01 |
 | FR-B6 | `just reproduce`: cached data → all runs → export → built site | Spec › CLI | INV-13; P8-01 |
 

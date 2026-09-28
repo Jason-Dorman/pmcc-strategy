@@ -27,8 +27,8 @@ Sep 25, 2026 · schedule from Spec › Build order · **due Fri Oct 9, 11:59 pm*
 | Phase | Dates | Exit criteria (milestone) | Status |
 | --- | --- | --- | --- |
 | P0 Foundations | Sat Sep 26 | `just check` green in Git Bash and in CI; credentials ignored; LSEG session opens from Git Bash | Done locally 2026-09-25; CI run for P0-07/08 pending the PO's push |
-| P1 Data layer and open items | Sat Sep 26 – Sun Sep 27 | NVDA's full chain cached; INV-11, INV-12 pass; window, r and identifiers recorded; universe fetch started | In progress: P1-01 to P1-04 and P1-06 done; P1-05 (PO review of the probe results) next |
-| P1-10 Universe fetch (background) | Sun Sep 27 – Sat Oct 3 | All 12 symbols cached with coverage summaries | Not started |
+| P1 Data layer and open items | Sat Sep 26 – Sun Sep 27 | NVDA's full chain cached; INV-11, INV-12 pass; window, r and identifiers recorded; universe fetch started | In progress: P1-01 to P1-06 done (window Mar 30 – Sep 25 2026, r = 0.0371, universe QQQ, NVDA, TSLA); P1-07 (cache) next |
+| P1-10 Universe fetch (background) | Sun Sep 27 – Sat Oct 3 | QQQ and TSLA cached with coverage summaries (NVDA at P1-09) | Not started |
 | P2 Pricing | Mon Sep 28 | IV solver matches the reference; EM, ATM IV, RV20 tested | Not started |
 | P3 Engine, accounting, baseline | Mon Sep 28 – Wed Sep 30 | **M1:** baseline blotter, ledger, NAV, Reg T for NVDA; INV-01–10 and 13 pass | Not started |
 | P4 Quant layer and site skeleton | Thu Oct 1 – Fri Oct 2 | **M2:** quant + A1–A5 on NVDA; Pages serves the skeleton from sample JSON; INV-14, 15 in CI | Not started |
@@ -50,6 +50,7 @@ Nothing needs answering up front. This is when each open question in [DECISIONS]
 | P2-03 Measures · Mon Sep 28 | Spot and close, ATM IV and EM, RV20 | DEC-23, DEC-25, DEC-26 |
 | P2-04 Chain pricer · Mon Sep 28 | Greeks when IV fails; fresh quotes only | DEC-27 |
 | P3-02 MarketView · Mon Sep 28 | Point-in-time listing | DEC-32 |
+| P3-04 Accounting core · Mon Sep 28 | The short stock's margin after X-S5 while the long call is held (found at P1-05) | DEC-10 |
 | P3-06 Rule modules · Tue Sep 29 | Tie-breaks | DEC-29 |
 | P3-07 Engine loop · Tue Sep 29 | Order of operations, selection freeze, gate log, exits without quotes, rule stamping | DEC-20, DEC-21, DEC-22, DEC-28, DEC-34 |
 | P3-08 Results · Wed Sep 30 | Test 13 vs the run timestamp; dirty-tree rule | DEC-50 |
@@ -173,7 +174,7 @@ P8 release                                                                      
   - It also records the real error answers for DEC-83: the `LDError` text and codes for a never-listed RIC (hourly and daily, both forms), a field the RIC doesn't carry, and an hourly batch holding one of each. The fake's assumed codes are then checked against them.
   - Done when: `data_cache/probes/` has a report per symbol, and each outcome is written into its DEC entry.
   - Needs: P0-01, P1-03
-- [ ] **P1-05 · Resolve the spec's open items** **[PO]**
+- [x] **P1-05 · Resolve the spec's open items** **[PO]** — done 2026-09-28. The PO confirmed the bar convention (DEC-06). They set the window to Mon Mar 30 – Fri Sep 25 2026, 26 weeks, the shortest of the three offered, and the spec's Universe line now names it (DEC-07). They took FRED DGS3MO for r, 3.73% on Mar 27, so r = 0.0371 (DEC-11), and the primary-listing stock RICs (DEC-12). `configs/universe.yaml` and its loader (`pmcc/config/universe.py`, DEC-86) come with 54 tests. An adversarial review (4 reviewers, 2 skeptics per finding) found 11 unique findings: 1 confirmed and 6 plausible, all fixed (six test gaps, plus DEC-13 back to VERIFY until the `.P` primaries' fields are seen), and 4 refuted. Then the PO cut the universe to QQQ, NVDA and TSLA for time (DEC-15), which dropped the `.P` RICs and settled DEC-13. Both config files are now read by a strict YAML reader that refuses a key given twice, and 30 planted mutants were all killed. A test runs the real fetch planner over the window, and `configs/calendar.yaml` covers every date it asks for, from the Feb 13 warm-up to the Jun 17 2027 monthly. Splits were checked against OCC: XLE's (Dec 5 2025) is the only one, before the window. The Reg T citations are found, and one finding contradicts the spec: X-S5's short stock, hedged by the long call, needs less margin than the spec's 150%/30%, so DEC-10 is asked at P3-04. The spec's open items: 4 resolved, and 3 with dated owners (DEC-05 at P3-10, DEC-08 at P1-10, DEC-10 at P3-04 and P7-04)
   - Report the probe results (DEC-06–14) to the PO.
   - Ask first: DEC-07 (window) and DEC-11 (r).
   - Start the Reg T citations (DEC-10, due by P7-04).
@@ -219,8 +220,8 @@ P8 release                                                                      
   - **P1 exit.**
   - Needs: P1-05, P1-08
 - [ ] **P1-10 · Universe fetch (background)** **[Workspace]**
-  - Show the PO the estimate, fetch the other 11 symbols (overnight is fine), and re-run any failures.
-  - Done when: all 12 are cached with coverage summaries by **Sat Oct 3**, with any gaps recorded in DEC-08.
+  - Show the PO the estimate, fetch QQQ and TSLA, and re-run any failures.
+  - Done when: all 3 (DEC-15) are cached with coverage summaries by **Sat Oct 3**, with any gaps recorded in DEC-08.
   - Needs: P1-09
 
 ### P2 — Pricing · Mon Sep 28
@@ -267,6 +268,7 @@ P8 release                                                                      
   - Done when: the same seed produces identical files, and each builder has a smoke test.
   - Needs: P1-07
 - [ ] **P3-04 · Accounting core**
+  - Ask first: DEC-10 (the short stock's margin after X-S5 while the long call is held).
   - Events, the book, marks with stale carry-forward, ledger rows, NAV, Reg T and flags (ARCHITECTURE §9).
   - Done when:
     - property tests for INV-01, 02, 08 and 10 pass over random sequences of fills, expiries, assignments and marks
@@ -361,7 +363,7 @@ P8 release                                                                      
 ### P5 — Universe batch and sensitivity · Sat Oct 3 – Sun Oct 4
 
 - [ ] **P5-01 · Final capital**
-  - Once the universe is cached (P1-10), run `pmcc calibrate` across 12 symbols × 2 strategies and commit `starting_cash` with its basis (DEC-30).
+  - Once the universe is cached (P1-10), run `pmcc calibrate` across the 3 symbols × 2 strategies and commit `starting_cash` with its basis (DEC-30).
   - Done when: `universe.yaml` has a non-provisional value.
   - Needs: P1-10, P4-03
 - [ ] **P5-02 · Sensitivity variants**
@@ -452,7 +454,7 @@ The spec sets the order. Cut the next item only when its trigger fires, and mark
 | 1 | Parameter grid | M3 not reached by Sun Oct 4, 20:00 | P5-02 grid variants, P6-06 grid table |
 | 2 | Entry-timing sensitivity | M4 not reached by Tue Oct 6, 12:00 | P5-02 timing variants, P6-06 timing table |
 | 3 | Greek attribution | M4 not reached by Tue Oct 6, 20:00 | P6-04, the quant page's Greek panel |
-| 4 | Universe down to 5 symbols (best data coverage, spanning the volatility range) | fewer than 12 cached by Sat Oct 3, 20:00, or M3 at risk | P1-10, P5 |
+| 4 | Universe size | — (taken early: the PO cut it from 12 symbols to QQQ, NVDA and TSLA on 2026-09-28, DEC-15) | P1-10, P5 |
 | — | Data page local mode (keep the github.io banner) | P7 behind at Wed Oct 7 end of day | P7-06 |
 
 ## 6. Risks
@@ -460,12 +462,12 @@ The spec sets the order. Cut the next item only when its trigger fires, and mark
 | ID | Risk | Likelihood | Impact | Mitigation | Watch at |
 | --- | --- | --- | --- | --- | --- |
 | R-01 | Windows (Git Bash) and Ubuntu CI diverge: CRLF line endings, missing time-zone data, shell differences | Med | Med | DEC-58: `.gitattributes` LF, `tzdata`, `newline="\n"`, bash recipes; CI catches what slips through | P0-02, P0-05 |
-| R-02 | Hourly option history is shorter than 10 weeks, or uneven across symbols | Med | High | Probe on day 1; window = the intersection; tell the PO at once. **P1-04:** hourly history ends between Sep 26 and Oct 27 2025, the same for every symbol sampled there (DEC-07) | P1-04 |
-| R-03 | Deep ITM long-dated quotes are sparse or wide: IV failures, few E-L3 candidates, E-T1 retries | Med | Med | Measure (DEC-08); report on Methodology; leave the rules unchanged. **P1-04 sample:** every bar quoted, but median spreads over E-T1's 3% on 7 symbols | P1-09 |
-| R-04 | Fetch volume and time; possible LSEG request limits | Med | High | Estimate first; resumable units; start Sep 27; run overnight; watch for throttling errors | P1-08, P1-10 |
+| R-02 | Hourly option history is shorter than 10 weeks, or uneven across symbols | Med | High | Probe on day 1; window = the intersection; tell the PO at once. **P1-04:** hourly history ends between Sep 26 and Oct 27 2025, the same for every symbol sampled there (DEC-07). **Retired at P1-05:** the PO's window (Mar 30 – Sep 25 2026) and its warm-up sit 3½ months inside that edge | P1-04 |
+| R-03 | Deep ITM long-dated quotes are sparse or wide: IV failures, few E-L3 candidates, E-T1 retries | Med | Med | Measure (DEC-08); report on Methodology; leave the rules unchanged. **P1-04 sample:** every bar quoted, but median spreads over E-T1's 3% on 7 symbols. **DEC-15:** the kept three have the tightest (QQQ 1.4%, NVDA 1.4%, TSLA 2.1%) | P1-09 |
+| R-04 | Fetch volume and time; possible LSEG request limits | Med | High | Estimate first; resumable units; start Sep 27; run overnight; watch for throttling errors. **P1-05:** the 26-week window scales ARCHITECTURE §6.3's 11-week estimate by about 2.4 ; with the 3 symbols of DEC-15 that's roughly 2–2.5 h, and DEC-48's wider long bands add to it; P1-08's `--plan-only` prints the real figure first | P1-08, P1-10 |
 | R-05 | The zero-padded RIC day, settled from the earlier project without a probe, stops resolving | Low | Med | The DEC-01 note: expiries dated the 1st–9th all come back unanswered; the spelling is set in one place, and the parser reads both | P1-04, P1-09 |
 | R-06 | A strike above $999.99 doesn't fit the 5-digit field | Low | High | Probe the max strike per symbol; ask the PO. **P1-04:** all 12 fit; META is closest ($973.51, DEC-12) | P1-04 |
-| R-07 | A split in the window changes the option root | Low | High | Check the tape for discontinuities and corporate actions. **P1-04:** LSEG's history is split-adjusted, so the tape can't show a split; XLE split 2-for-1 on Dec 5 2025 (DEC-12). Confirm the rest against OCC memos and pick the window with it in mind | P1-04, P1-05 |
+| R-07 | A split in the window changes the option root | Low | High | Check the tape for discontinuities and corporate actions. **P1-04:** LSEG's history is split-adjusted, so the tape can't show a split; XLE split 2-for-1 on Dec 5 2025 (DEC-12). Confirm the rest against OCC memos and pick the window with it in mind. **Retired at P1-05:** XLE's split is before the window and its warm-up; OCC's series search, issuer filings and news show no other event for the 12, and none announced before Oct 9 2026 (DEC-12) | P1-04, P1-05 |
 | R-08 | A wrong bar convention hides look-ahead | Low | High | DEC-06 checks; MarketView keyed on `bar_end`. **P1-04:** start stamps and end-of-bar quotes confirmed on all 12 | P1-04 |
 | R-09 | Float nondeterminism breaks INV-13 | Med | Med | Integer money, explicit sorts, seeded RNG, canonical JSON | P3-08 |
 | R-10 | The schedule compresses | High | High | Cut list with triggers; parallel web track; M1 gate | status board |

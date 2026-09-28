@@ -85,6 +85,13 @@ def test_calendar_file_refuses_a_weekend_closure(tmp_path: Path) -> None:
         load_calendar(_write(tmp_path, body))
 
 
+def test_calendar_file_refuses_a_key_given_twice(tmp_path: Path) -> None:
+    # yaml.safe_load would keep the second `closed` and silently drop the first's holidays.
+    body = HEADER + "closed:\n  - {day: 2026-01-19, name: a}\nearly_closes: []\nclosed: []\n"
+    with pytest.raises(ValueError, match="more than once"):
+        read_calendar_file(_write(tmp_path, body))
+
+
 @pytest.mark.parametrize(
     "body",
     [

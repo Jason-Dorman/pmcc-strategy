@@ -7,9 +7,9 @@ from collections import Counter
 from datetime import date
 from pathlib import Path
 
-import yaml
 from pydantic import BaseModel, ConfigDict, Field
 
+from pmcc.config.yaml_file import read_yaml
 from pmcc.domain.calendar import SessionCalendar
 
 CALENDAR_PATH = Path(__file__).resolve().parents[2] / "configs" / "calendar.yaml"
@@ -51,7 +51,7 @@ class CalendarFile(BaseModel):
 
 def read_calendar_file(path: Path = CALENDAR_PATH) -> CalendarFile:
     """The validated file, sources included (the Methodology page cites them)."""
-    return CalendarFile.model_validate(yaml.safe_load(path.read_text(encoding="utf-8")))
+    return CalendarFile.model_validate(read_yaml(path))
 
 
 def load_calendar(path: Path = CALENDAR_PATH) -> SessionCalendar:

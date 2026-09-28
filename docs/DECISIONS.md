@@ -29,15 +29,16 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-03 | Light theme | ASK | P4-06 |
 | DEC-04 | Chart colour roles | ASK | P7-01 |
 | DEC-05 | LSEG terms: raw cache and derived series | ASK | P3-10 |
-| DEC-06 | Bar timestamps, decision time, session bars | VERIFY: probed, report at P1-05 | P1-04 |
-| DEC-07 | Backtest window | VERIFY: probed → PO confirms | P1-04, P1-05 |
-| DEC-08 | Long-dated coverage | VERIFY: probed; full measure at P1-09 | P1-04, P1-09 |
-| DEC-09 | Live-contract RIC form | VERIFY: probed, report at P1-05 | P1-04 |
-| DEC-10 | Reg T and FINRA 4210 citations | VERIFY | by P7-04 |
-| DEC-11 | Risk-free rate | VERIFY → PO picks | P1-05 |
-| DEC-12 | Per-symbol identifiers, splits, max strike | VERIFY: probed, report at P1-05 | P1-04 |
-| DEC-13 | Hourly field availability | VERIFY: probed, report at P1-05 | P1-04 |
-| DEC-14 | Strike increments | ENG method · VERIFY values: probed | P1-04 |
+| DEC-06 | Bar timestamps, decision time, session bars | SETTLED (PO) | — |
+| DEC-07 | Backtest window | SETTLED (PO) | — |
+| DEC-08 | Long-dated coverage | VERIFY: sampled; full measure at P1-09, P1-10 | P1-09, P1-10 |
+| DEC-09 | Live-contract RIC form | SETTLED (spec, probed) | — |
+| DEC-10 | Reg T and FINRA 4210 citations | ASK: short stock after X-S5 · citations found | P3-04; quotes by P7-04 |
+| DEC-11 | Risk-free rate | SETTLED (PO) | — |
+| DEC-12 | Per-symbol identifiers, splits, max strike | SETTLED (PO) | — |
+| DEC-13 | Hourly field availability | SETTLED (spec, probed) | — |
+| DEC-14 | Strike increments | ENG method · values probed | — |
+| DEC-15 | Universe size | SETTLED (PO) | — |
 | DEC-20 | Week-open session and order of operations | ASK | P3-07 |
 | DEC-21 | Selection freeze and E-T1 | ASK | P3-07 |
 | DEC-22 | Gates and the gate log | ASK | P3-07 |
@@ -94,6 +95,7 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-83 | History port, LSEG adapter and batched requests | ENG · error codes verified | — |
 | DEC-84 | Calendar, chain discovery and the fetch plan | ENG | — |
 | DEC-85 | Probe design | ENG | — |
+| DEC-86 | Universe config and strict YAML | ENG | — |
 
 ---
 
@@ -169,7 +171,7 @@ Whichever is chosen becomes named tokens (`--long-leg`, `--short-leg`, `--strate
 The results are reported to the PO at P1-05. A result that contradicts the spec becomes an `ASK`.
 
 ### DEC-06 — Bar timestamps, decision time, session bars
-**Status:** VERIFY · **Verify at:** P1-04 · **Affects:** loader, MarketView, every rule
+**Status:** SETTLED · **Basis:** PO, 2026-09-28, on the P1-04 probes · **Affects:** loader, MarketView, every rule
 
 - **Known (LDG §4.8–4.9, measured):**
   - Intraday bars arrive tz-naive UTC, stamped at the bar's start. BID/ASK are the bar's final values.
@@ -187,9 +189,14 @@ The results are reported to the PO at P1-05. A result that contradicts the spec 
   3. **Check 1 fails as written: the official close is not the close bar's last trade.** The daily TRDPRC_1, the closing auction, equals the last trade of the bar starting 15:00 in only 9 of 48 sessions. The two differ by up to 0.09% (JPM), most by under 0.03%. Points 1 and 2 still prove start stamps and end-of-bar quotes.
 - **For the PO at P1-05:** the recommendation stands: `bar_end = bar_start + 1h`, decisions at `bar_end`, session bars ending 10:00–16:00 (13:00 on a half-day), and the 16:00 stub kept for provenance only. Point 3 also goes to DEC-23 (closing spot, ITM at expiry): the close bar's last trade sat up to $0.40 from the official close (META; AMD $0.33, JPM $0.31, TSLA $0.27), and that close decides exercise.
 - The probe used the first stock suffix that answered (DEC-85). For SPY, IWM and XLE that was the NYSE venue (`.N`, bars 07:00–16:00), not their Arca primary (`.P`), so their stock-side spans are that venue's.
+- **Outcome:** 2026-09-28 — PO, asked at P1-05, confirmed the recommendation as it stands above.
+  - `bar_end = bar_start + 1h` is the only timestamp after load, and decisions happen at `bar_end`.
+  - Session bars end 10:00–16:00 (13:00 on a half-day).
+  - The 16:00 stub is kept for provenance only. ETF options quote until 16:15, so their closing quote falls in the stub and never drives a decision, mark or fill.
+  - The domain's session model (P1-01, DEC-81) already follows this, so no code changes.
 
 ### DEC-07 — Backtest window
-**Status:** VERIFY → PO confirms · **Verify at:** P1-04 · **Confirm at:** P1-05 · **Affects:** `configs/universe.yaml`, fetch plan
+**Status:** SETTLED · **Basis:** PO, 2026-09-28, on the P1-04 probes · **Affects:** `configs/universe.yaml`, fetch plan, Spec › Universe
 
 - **Spec:** one window for all symbols, as long as hourly option history allows and at least 10 weeks.
 - **Recommendation:**
@@ -197,7 +204,6 @@ The results are reported to the PO at P1-05. A result that contradicts the spec 
   - **Start:** the first week-open session by which all 12 symbols have data.
   - **End:** the final session of the last complete week before the universe fetch begins.
   - Fix both in `universe.yaml` before the first published run.
-- **Outcome:** start —, end —, weeks —. (The PO sets these at P1-05.)
 - **Outcome:** 2026-09-27 — probed on all 12 symbols, sampling weeks 1–18 months back (DEC-85):
   - **Hourly history ends somewhere between Sep 26 and Oct 27 2025, the same for every symbol.** Of the 11 symbols with 10- and 11-month samples (NVDA ran the first version, which had none), all had stock bars in the week of Oct 27 2025 (11 months back), and none had any bars in the week of Sep 22 2025, 366–370 days before the probe. The samples bound the edge but don't place it. They fit a rolling 365-day limit, under which the oldest data moves forward a day each day.
   - **Not every leg reaches that far.** The week of Oct 27 2025 had a weekly call with valid mids for 10 of those 11 (XLE's didn't), and a long call for 10 (SPY's didn't). NVDA is shown back to the week of Dec 22 2025 only. `back_to` in each report is the reach with no gap in any more recent sample: long calls reach no sample for SPY, JPM and XLE, because of the gaps below.
@@ -211,9 +217,23 @@ The results are reported to the PO at P1-05. A result that contradicts the spec 
   - the stock's 30-session warm-up before the start;
   - XLE's split on Dec 5 2025: a window starting after it avoids adjusted contracts;
   - fetch volume, which grows with the window. ARCHITECTURE §6.3 estimates ~700 requests (~16 min) per symbol for 11 weeks; a 40-week window is roughly 4 times that.
+- **Outcome:** 2026-09-28 — PO, asked at P1-05: **Mon Mar 30 2026 to Fri Sep 25 2026, 26 weeks and 125 sessions**, in `configs/universe.yaml`.
+  - **The choice.** The PO was offered three windows:
+    - Dec 8 2025, 42 weeks. The longest the proven history allowed, and the recommendation.
+    - Jan 12 2026, 37 weeks.
+    - Mar 30 2026, 26 weeks. The question put its fetch at about two-thirds of the 42-week one, at the cost of 16 weeks of sample.
+
+    The PO took the shortest. Spec › Universe said "as long as LSEG hourly option history allows"; it now names this window and cites this entry.
+  - **End:** Fri Sep 25 2026, the final session of the last complete week before the universe fetch (P1-09 onward).
+  - **What the window avoids:** the stock tape's 30-session warm-up starts Fri Feb 13 2026. That is 10 weeks after XLE's split and 3½ months inside the history's edge. So it doesn't matter exactly where the edge falls, or whether LSEG's hourly stock bars are split-adjusted like its daily ones (DEC-12).
+  - **Checked** in `tests/unit/config/test_universe_file.py` (DEC-86):
+    - the start is a week-open session and the end a week-final one;
+    - 26 weekly expiries;
+    - the real fetch planner, run over the window, asks for nothing outside `configs/calendar.yaml`: its expiries run to the Jun 17 2027 monthly, the last within 270 DTE of Sep 25.
+  - r for this window: DEC-11.
 
 ### DEC-08 — Long-dated coverage
-**Status:** VERIFY · **Verify at:** P1-04, P1-09 · **Affects:** E-L3 candidate sets, Methodology
+**Status:** VERIFY · **Verify at:** P1-04, P1-09, P1-10 · **Affects:** E-L3 candidate sets, Methodology
 
 - **Measure per symbol:**
   - Share of session bars with a valid mid for 0.70–0.90 delta monthly calls at 120–270 DTE.
@@ -225,9 +245,13 @@ The results are reported to the PO at P1-05. A result that contradicts the spec 
   - **Median spread as a % of mid:** QQQ 1.4, NVDA 1.4, TSLA 2.1, META 2.7, AAPL 2.7, AMD 3.002, IWM 3.2, SPY 3.5, JPM 4.6, COIN 6.3, XLE 7.5, TLT 9.6. E-T1 allows a long entry only at ≤ 3%, so on 7 of the 12 (AMD just over) the median long candidate fails E-T1. Expect retries and fewer E-L3 candidates there (R-03, R-14). The rules stay unchanged, as above.
   - **Below intrinsic** (mid < S − K, a lower bound on IV failures): 1 bar (TLT).
   - Not every monthly that is 120–270 DTE is listed at every date: SPY's Feb 2027 monthly had no bars in the week of Aug 24 2026 (179 DTE); the probe asked Jan 2027 only in the week of Jul 27 2026, where it answered (DEC-07's gaps).
+- **Outcome:** 2026-09-28 — reported to the PO at P1-05, with no question, since the spec fixes the rules.
+  - On the 7 symbols whose median long spread exceeds 3%, expect late long entries, and perhaps none on TLT or XLE.
+  - Measured in full over the window's own monthlies (Aug 2026 – Jun 2027, DEC-07): NVDA at P1-09, the other 11 at P1-10.
+- **Outcome:** 2026-09-28 — the PO cut the universe to QQQ, NVDA and TSLA (DEC-15), the three with the tightest long-leg spreads (1.4%, 1.4%, 2.1%). NVDA is measured at P1-09, QQQ and TSLA at P1-10.
 
 ### DEC-09 — Live-contract RICs
-**Status:** VERIFY · **Verify at:** P1-04 · **Affects:** P1-02, P1-03
+**Status:** SETTLED · **Basis:** Spec › RIC builder, confirmed by the P1-04 probes and reported to the PO at P1-05 (2026-09-28) · **Affects:** P1-02, P1-03
 
 - Long legs still listed at fetch time must resolve in the live form (no caret). LDG §4.13 and §6.3 say they do. Confirm on 3 symbols.
 - **Outcome:** 2026-09-27 — confirmed on all 12 symbols:
@@ -236,27 +260,57 @@ The results are reported to the PO at P1-05. A result that contradicts the spec 
   - Weeklies expired 9 days earlier answered in the caret form, 12 of 12 (DEC-14's check).
 
 ### DEC-10 — Reg T and FINRA 4210 citations
-**Status:** VERIFY · **Verify by:** P7-04 · **Affects:** Methodology page
+**Status:** ASK (the short stock after X-S5) · **Ask at:** P3-04 · **Quotes due:** P7-04 · **Affects:** P3-04, Methodology page, Spec › NAV and Reg T
 
 - **Confirm and cite:**
   - A long listed option with 9 months or less to expiry has no loan value (paid in full).
   - A short call is covered at $0 by a long call with a lower or equal strike and a later or equal expiry.
   - Short stock needs 150% initial (proceeds plus 50%) and 30% maintenance.
 - **Candidate sources:** Reg T (12 CFR §220.12), FINRA Rule 4210(c) and (f)(2), and Cboe margin rules. Quote the exact paragraphs on the Methodology page.
-- **Outcome:** —
+- **Outcome:** 2026-09-28 — researched at P1-05 in the primary sources. P7-04 re-reads the live text before quoting it.
+  - **Sources:**
+    - eCFR, 12 CFR 220.12, read through eCFR's API because the page sits behind a bot check. Title 12 was current to 2026-09-24, and §220.12 is unchanged since 1998.
+    - FINRA Rule 4210, from the Internet Archive copy of 2026-08-30, spot-checked against the live page. Its latest amendment is SR-FINRA-2025-017, effective June 4 2026.
+    - The Cboe Options rule book, updated Sep 21 2026.
+
+  | Claim | Finding | Citation |
+  | --- | --- | --- |
+  | A long listed option with ≤ 9 months to expiry is paid in full | Confirmed. Reg T leaves listed options to the exchange and FINRA rules, and keeps long options out of its 50% rule. FINRA: "…expires in nine months or less, initial margin must be deposited and maintained equal to at least 100 percent of the purchase price". Cboe says 100% of current market value. Over 9 months it's 75%, a 25% loan value | 12 CFR 220.12(a), (f)(1); FINRA 4210(f)(2)(D); Cboe 10.3(c)(4)(A)–(B) |
+  | E-L2's 270 DTE is always within 9 months | Confirmed. Neither rule defines "nine months" in days, and the shortest span of 9 calendar months is 273 days | FINRA 4210(f)(2)(D); Cboe 10.3(c)(4) |
+  | A short call is covered at $0 by a long call with a lower or equal strike and a later or equal expiry | Confirmed, as a spread. The conditions: same underlying, all listed, all American (or all European), equal aggregate underlying value, the short expiring on or before the long. The short's margin is the lesser of its naked requirement and the spread's maximum loss, which is $0 here, and "'Long' options must be paid for in full". Spreads need a margin account | FINRA 4210(f)(2)(A)(xxxii), (f)(2)(H)(i), (f)(2)(N)(ii); Cboe 10.3(a)(5)(E), 10.3(c)(5)(C)(v)(a) |
+  | Short stock: 150% initial, 30% maintenance | Confirmed for plain short stock. Initial is "150 percent of the current market value". Maintenance is the greater of $5.00 a share and 30%; 30% governs above $16.67, as it does for all 12 symbols | 12 CFR 220.12(c)(1); FINRA 4210(c)(3) |
+  | …but X-S5's short stock | **Contradicts the spec's table.** X-S5 sells the stock short by assignment while the long call is held, and the long's strike is below the sale price (the short strike). Reg T then asks "100 percent of the current market value", the proceeds alone. FINRA asks 10% of the call's aggregate exercise price plus its out-of-the-money amount, capped at the (c) amount. E.g. META at $750 against a $600 long needs $6,000 of maintenance, not $22,500 | 12 CFR 220.12(c)(2); FINRA 4210(f)(2)(H)(v)a; Cboe 10.3(c)(5)(C)(iv)(a) |
+
+  - **Also for the Methodology page:**
+    - Brokers may require more than these minimums (FINRA 4210(d)(1)(B); Cboe 10.3(c)).
+    - A margin account needs $2,000 of equity (4210(b)(4)).
+    - FINRA's intraday margin rule, which replaced pattern day trading on June 4 2026, isn't modelled.
+    - Interpretation 4210(b)(4)/051 lets an assigned short be closed the same day by exercising the long.
+- **Question for the PO at P3-04** (the accounting core, which builds Reg T): after X-S5, which requirement does the short stock carry?
+  - **Recommendation:** the hedged requirement the rules give while the long call is held.
+    - Initial: the sale proceeds, with no additional 50% (220.12(c)(2)).
+    - Maintenance: 10% of the long's strike × shares, plus the long's out-of-the-money amount, capped at the greater of $5 × shares and 30% of the short's value (4210(f)(2)(H)(v)a).
+    - Plain 150%/30% would apply only if the long were gone. Under DEC-20's recommended order the cover comes before any long exit, so it never is.
+  - **Alternative:** keep 150%/30% as a conservative simplification, and reword the site's negative-funds statement. Otherwise the site would say a position couldn't have been held when the rules allow it.
+  - Either way, Spec › NAV and Reg T changes in the commit that answers this.
 
 ### DEC-11 — Risk-free rate
-**Status:** VERIFY → PO picks · **At:** P1-05 · **Affects:** pricing, eligibility, Methodology
+**Status:** SETTLED · **Basis:** PO, 2026-09-28 · **Affects:** pricing, eligibility, Methodology, `configs/universe.yaml`
 
 - The spec asks for the source and value of r to be chosen.
 - **Recommendation:** use the 3-month US T-bill yield on the window's start date, as one continuously compounded constant.
   - **Source:** LSEG (`US3MT=RR`, RIC to be confirmed), cross-checked against FRED DTB3.
   - **Storage:** `configs/universe.yaml` with its source and date, and shown on the site.
 - r changes eligibility: a deep ITM mid below `S − K·e^(−rT)` has no IV. Fix r before any run.
-- **Outcome:** —
+- **Outcome:** 2026-09-28 — PO, asked at P1-05: the 3-month Treasury yield from FRED at the last close before the window, continuously compounded.
+  - **The quote:** DGS3MO (H.15's 3-month constant maturity, investment basis) was 3.73% on Fri Mar 27 2026, the last close before the window (DEC-07).
+  - **The rate:** converted over a 91-day bill, r = ln(1 + 0.0373 × 91/365) × 365/91 = 0.037128, used and stated as **0.0371** (4 decimals).
+  - **Why this, not the recommendation above:** at P1-05 the recommendation became FRED, not LSEG. It is public, so any reader can check r, and it needs no extra LSEG pull. The question also offered LSEG's `US3MT=RR` and a window-average yield, which isn't point-in-time. DTB3 (discount basis) gives 0.0369 for the same day.
+  - **Point in time:** the quote was known before the first decision (Mon Mar 30, 10:00). The 3-month yield then rose to 4.24% by Sep 24 2026; the spec's single constant doesn't follow it, and Methodology states r with its date.
+  - **Stored** in `configs/universe.yaml` (`risk_free_rate`), with the quote, series, date and source. The loader refuses a value that isn't the quote converted (DEC-86).
 
 ### DEC-12 — Per-symbol identifiers, splits, max strike
-**Status:** VERIFY · **Verify at:** P1-04 · **Affects:** `configs/universe.yaml`, P1-02
+**Status:** SETTLED · **Basis:** PO, 2026-09-28 (stock RICs); the P1-04 probes and the P1-05 split check · **Affects:** `configs/universe.yaml`, P1-02, P1-08
 
 - **Confirm for each universe symbol:**
   - **Stock RIC with its exchange suffix.** LDG verified only `QQQ.O` and `UUUU.K`.
@@ -274,9 +328,28 @@ The results are reported to the PO at P1-05. A result that contradicts the spec 
   - **Splits: LSEG's daily history is split-adjusted**, so the probe's check (the largest daily moves, none of which looked like a split) can't see a split. **XLE split 2-for-1 on Dec 5 2025** (OCC Information Memo #57734; State Street's announcement of Nov 20 2025), and its daily bars show no jump. A web search found no split announced for the other 11 in 2025–2026, but that isn't proof. Confirm them against OCC memos at P1-05, and choose the window with XLE's split in mind (DEC-07).
   - **Max strike:** the top of the weekly call band over the last year (high + 2.5 EMest, DEC-48) fits the $999.99 field for all 12. META is closest ($973.51), then AMD ($922.78).
   - **Calendar:** every symbol's daily bars match `configs/calendar.yaml` from Jan 2 2025 to Sep 25 2026, including the unscheduled closure on Jan 9 2025 (DEC-33).
+- **Outcome:** 2026-09-28 — PO, asked at P1-05: each symbol at its primary listing, as recommended. In `configs/universe.yaml`:
+
+  | RIC | Symbols |
+  | --- | --- |
+  | Arca, `.P` | SPY, IWM, XLE |
+  | Nasdaq, `.O` | QQQ, AAPL, NVDA, AMD, META, TSLA, COIN, TLT |
+  | NYSE, `.N` | JPM |
+
+  - Option roots are the tickers.
+  - SPY.P, IWM.P and XLE.P answered daily bars, but their hourly fields weren't probed (DEC-13 used `.N`). Each unit's sidecar records the fields that came back (P1-07).
+- **Outcome:** 2026-09-28 — splits and contract adjustments, checked at P1-05 for Aug 1 2025 to Sep 27 2026. Sources: OCC's series search for all 12 (read 2026-09-28), OCC memos, issuer filings and news.
+  - **XLE's is the only event:** 2-for-1, ex Fri Dec 5 2025 (OCC #57734). The root stayed XLE, strikes were halved, contract counts doubled, and the deliverable stayed 100 shares. It falls before the window and its warm-up (DEC-07).
+  - **Halved strikes.** Contracts listed before the split carry halved strikes. DEC-14's offsets read a halved $1 or $5 grid ($0.50 or $2.50) as it is, but would read a halved $0.50 grid ($0.25) as $0.50. In this window, only XLE monthlies listed before Dec 5 2025 can carry them.
+  - **Nothing for the other 11,** and no split announced before Oct 9 2026.
+    - The series search lists no adjusted root (like `COIN1`) and no reduced strike for any of them, so adjusted contracts are ruled out positively.
+    - A whole-number split keeps its root, so "no split" rests on issuer documents and dated news, the latest from Sep 17 and Sep 23 2026.
+    - COIN's reincorporation in Texas (Dec 15 2025, 1:1) and QQQ's conversion to an open-end fund (Dec 22 2025) changed no option contract.
+  - **QQQ's Dec 18 2026 monthly,** a long candidate, also lists strikes reduced by $0.21584 (e.g. $599.78), left by a Dec 2023 special dividend (OCC #53847). The fetch's integer-cent ladders never ask them, so E-L3 never sees them; the standard strikes beside them are asked.
+  - **Why it matters past the window.** LSEG's daily history is split-adjusted. If its hourly history is too, a split between the window's start and the fetch would restate the tape against unadjusted strikes. None is announced before Oct 9, and the universe fetch is planned to finish by Oct 3.
 
 ### DEC-13 — Hourly field availability
-**Status:** VERIFY · **Verify at:** P1-04 · **Affects:** fetch field lists
+**Status:** SETTLED · **Basis:** Spec › Fields and bars, confirmed by the P1-04 probes on every symbol kept (DEC-15) · **Affects:** fetch field lists
 
 - A field the RIC doesn't carry raises `LDError` for the whole request (LDG §4.6).
 - **Probe:** each field from Spec › Fields and bars, paired with TRDPRC_1, on hourly option and stock RICs.
@@ -285,9 +358,11 @@ The results are reported to the PO at P1-05. A result that contradicts the spec 
   - Dropped fields are recorded in each unit's sidecar and on the Methodology page.
   - The stock also needs BID/ASK, for the stock fills after X-S5.
 - **Outcome:** 2026-09-27 — for all 12 symbols, hourly bars carry all 8 fields, on the options and on the stock (for SPY, IWM and XLE, on the NYSE venue's `.N`, not the Arca primary DEC-12 recommends, which wasn't field-probed), each asked paired with TRDPRC_1: BID, ASK, TRDPRC_1, OPEN_PRC, HIGH_1, LOW_1, ACVOL_UNS, NUM_MOVES. The fetch can ask for all of them; no field is dropped. LSEG doesn't refuse a field a RIC lacks, it leaves it out of the answer (DEC-83). So a unit's sidecar should record the fields asked and the fields that came back (P1-07).
+- **Outcome:** 2026-09-28 — reported to the PO at P1-05. The PO then chose the Arca primaries for SPY, IWM and XLE (DEC-12), whose hourly fields weren't probed, so the entry stays VERIFY: it settles when the fetches of those three (P1-10; NVDA's at P1-09 is on the probed `.O`) show all 8 fields in their sidecars, stock BID/ASK included (the X-S5 stock fills need them). The adversarial review of P1-05 caught this entry first marked SETTLED on a probe basis, which the legend doesn't allow.
+- **Outcome:** 2026-09-28 — the PO then cut the universe to QQQ, NVDA and TSLA (DEC-15). All three use `.O`, whose hourly fields the probes checked (all 8, options and stock), so nothing is left to verify: settled on the spec, as the probes confirmed it.
 
 ### DEC-14 — Strike increments
-**Status:** ENG (method) · VERIFY (values) · **Verify at:** P1-04 · **Affects:** P1-06
+**Status:** ENG (method) · values probed at P1-04, reported to the PO at P1-05 · **Affects:** P1-06, P1-08
 
 - **Method:** per expiry and per region (near the money for weeklies, deep ITM for monthlies), probe one session with 5 strikes in a single batch.
   - The strikes are an anchor `A` (a multiple of $10 near the region's centre) plus `A+0.50`, `A+1`, `A+2.50` and `A+5`.
@@ -308,6 +383,20 @@ The results are reported to the PO at P1-05. A result that contradicts the spec 
   - The increment differs by region and by expiry, as LDG §6.2 said, so the fetch measures it per unit and per band (DEC-84).
   - 1,000 means no offset answered but the anchor did: a $10 grid, or wider.
   - **AMD's near-money monthly answered no strike at all** around its $630 anchor, so its $10 is DEC-14's default, not a measurement. The fetch (P1-08) should treat an unanswered anchor as no measurement, record it in the sidecar, and not trust the default.
+
+### DEC-15 — Universe size
+**Status:** SETTLED · **Basis:** PO, 2026-09-28 · **Affects:** Spec › Universe, `configs/universe.yaml`, P1-10, P3-09, P5, P6 (pooled statistics), P7-05; the cut list
+
+- **Question (raised by the PO after P1-05):** is the 12-symbol universe too big, for GitHub Pages or for the timeline?
+- **The assessment given:**
+  - **Pages:** not a limit. The site holds results JSON only, about 1 MB per symbol by estimate (~875 hourly ledger rows per full run); Pages allows 1 GB. The raw cache never leaves the machine (DEC-56).
+  - **Timeline:** the code is the same for 1 symbol or 12, so each symbol costs fetch time (roughly 40 min, with Workspace signed in), a coverage review, and its own data quirks. The probes put 7 of the 12 long legs over E-T1's 3% spread (DEC-08), so several could come back with few or no trades. The build is also about a day behind.
+  - Options offered: all 12; 3 (QQQ, NVDA, TSLA, recommended: the tightest long-leg spreads, and realized volatility of about 20%, 40% and 55%); 5 (adding META, AAPL); 1–2 (NVDA, perhaps QQQ).
+- **Outcome:** 2026-09-28 — PO: "ok lets do qqq, nvda, tsla".
+  - `configs/universe.yaml` lists QQQ.O, NVDA.O and TSLA.O (DEC-12's primary listings); Spec › Universe, its build order and its cut list are amended to cite this entry.
+  - **What goes:** the diversifying drivers (financials, Treasuries, energy). SPY, IWM and XLE's unprobed `.P` RICs (DEC-13), XLE's halved strikes (DEC-12) and QQQ's dividend-reduced strikes remain facts about the probes; only QQQ's still reaches the fetch.
+  - **What stays:** pooled statistics across three symbols (DEC-61), the Universe page and the suitability screen, now over three. The cut list's universe cut (#4) is taken early.
+  - **Fetch:** roughly 2–2.5 h for the three over the 26-week window (ARCHITECTURE §6.3), before DEC-48's wider long bands.
 
 ## C. Rule interpretations
 
@@ -925,6 +1014,41 @@ Development runs in Git Bash on Windows (DEC-02) and CI runs on Ubuntu. Both mus
     - stale docstrings about a field a RIC doesn't carry;
     - the doc figures above (request counts, AMD's 3.002%, TLT's one strike, the Jan 2027 claim, the close and venue gaps, the edge's precision, DEC-13's `.N` caveat, DEC-49's row, DEC-83's status line).
   - **Now:** 63 probe tests and 5 CLI probe tests. The reports already written stand. The fixes change what a failing run writes and which week the date edges use, not what these successful runs recorded.
+
+### DEC-86 — Universe config and strict YAML
+**Status:** ENG · **Affects:** P1-05, P1-08, P3-01 (`RunConfig`), P3-09, P4-05 (`index.json`), P6-05
+
+- **Where:** `pmcc/config/universe.py` validates `configs/universe.yaml` with pydantic.
+  - `read_universe_file()` checks the file on its own.
+  - `load_universe(calendar)` also checks the window's sessions.
+  - The file is found from the module, like the calendar.
+  - Both config files are read by `pmcc/config/yaml_file.py`'s `read_yaml`: safe YAML that refuses a mapping key given twice. `yaml.safe_load` keeps the last of two equal keys without a word, so a second `stock_ric:` in an entry, or a second `closed:` list in the calendar, would quietly replace the first.
+- **What it holds now:**
+  - `window` (DEC-07);
+  - `risk_free_rate` (DEC-11): the value used, plus the quote, series, date and source it came from;
+  - `symbols` (DEC-12): symbol, stock RIC and option root.
+
+  `starting_cash` joins with P3-09 (DEC-30) and the bootstrap seed with P6-05 (DEC-61). Until then an unknown key is refused.
+- **What it refuses:**
+  - a window that doesn't run from a week-open session to a week-final session, spans fewer than 10 weekly expiries (Spec › Universe), or falls outside the calendar;
+  - an r quoted on or after the window's first day, which the first decision couldn't have known;
+  - an r that isn't its quote converted. `value` must equal ln(1 + y·91/365)·365/91 rounded to 4 decimals, so a typo in either number fails at load;
+  - a symbol listed twice, or a stock RIC that names another symbol or has no venue suffix;
+  - a root `OptionId` would refuse. The pattern is copied from `OptionId`; a test builds a RIC from every shipped root, and another feeds the same odd roots (digits first, a dot, a space, a trailing newline, non-ASCII) to both and requires the same answer;
+  - an empty `series` or `source`, and a key given twice anywhere in the file.
+- **Calendar coverage:** a test runs the real fetch planner (`plan_symbol`) over the window on a synthetic tape. So every calendar date the fetch will ask for, from the warm-up (Feb 13 2026) to the last long candidate (Jun 17 2027), is inside `configs/calendar.yaml`. It uses the planner's own constants rather than copies. `config` can't import `data` (ARCHITECTURE §3.3), so this check lives in the test.
+- **Outcome:** 2026-09-28 — 28 tests in `tests/unit/config/test_universe_file.py`. 14 planted mutants were all killed: each refusal above, the bill's term and its year basis, the calendar check, and unknown keys.
+- **Outcome:** 2026-09-28 — an adversarial review of P1-05 (4 reviewers, 2 skeptics per finding; 14 findings, 11 unique, all verified: 1 confirmed, 6 plausible, 4 refuted). No finding showed a bug in the shipped code or a misrecorded PO answer; all 7 are fixed.
+  - **Confirmed, low:** the only refusal of a bad r was 2 bp off, and the quote was never wrong, so a 1 bp tolerance in the check survived. Now refused: 1 bp high and low, and a quote 0.01 off either way.
+  - **Plausible, medium:** the own-RIC rule was tested only on an unrelated ticker, so a prefix check survived (`SPY` with `SPYG.P`). Now tested both ways (`SPYG.P`, and `AMDL` with `AMD.O`).
+  - **Plausible, low:**
+    - unknown keys were tested only at the top level; now in the window, the rate and a symbol entry too;
+    - an empty `source` or `series` was never tried (the "no source" case removed the key);
+    - `yaml.safe_load` let a key given twice overwrite silently, in both config files; `read_yaml` now refuses it;
+    - nothing tied the root and venue patterns to `OptionId`'s rule; now a shared-inputs test and venue cases (`SPY.p`, `SPY.PQX`);
+    - DEC-13 had been marked SETTLED on a probe basis, which the legend doesn't allow while the `.P` primaries are unprobed; back to VERIFY.
+  - **Refuted:** the fetch's stock-RIC source isn't named in ARCHITECTURE §6.1 (P1-08 will read `Universe`); the conversion assumes investment basis whatever `series` says (documented, and DGS3MO is investment basis); the spec's "back to late Oct 2025" (DEC-07's own headline); the README's Jul 6 – Sep 18 fetch example (the spec's CLI example).
+  - **Now:** 54 tests in `test_universe_file.py` and 18 in `test_calendar_file.py`. 30 mutants re-run against them, the 14 above plus the 16 the review showed or suggested would survive (tolerances, prefix checks, looser patterns, `extra="ignore"` per model, empty strings, a lax YAML reader in either loader): all killed.
 
 ## E. Analytics definitions
 
