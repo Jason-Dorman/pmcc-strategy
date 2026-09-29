@@ -9,7 +9,7 @@ from collections.abc import Mapping, Sequence
 from datetime import UTC, date, datetime, timedelta
 
 from pmcc.data.cache import UnitPull, chain_pull, stock_pull
-from pmcc.data.discovery import Unit
+from pmcc.data.discovery import StepMeasure, Unit
 from pmcc.data.fetch import BarRequest, Retry, fetch_contracts, fetch_rics
 from pmcc.data.provider import Interval
 from pmcc.data.ric import RicForm, build_ric
@@ -81,6 +81,7 @@ def pull_chain(
     steps: Sequence[int] = (),
     symbol: str = SYMBOL,
     fields: Sequence[str] = FIELDS,
+    increments: Sequence[StepMeasure] = (),
 ) -> UnitPull:
     """`strikes` of the unit's expiry and right, asked as a real fetch asks them."""
     assert unit.expiry is not None
@@ -90,7 +91,7 @@ def pull_chain(
     result = fetch_contracts(
         fake_provider(fake), options, asked, FETCH_DATE, retry=Retry(sleep=_no_wait)
     )
-    return chain_pull(symbol, unit, asked, steps, options, result, fetched_at)
+    return chain_pull(symbol, unit, asked, steps, options, result, fetched_at, increments)
 
 
 def pull_stock(

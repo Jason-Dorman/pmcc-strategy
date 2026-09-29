@@ -2,8 +2,8 @@
 
 A symbol-agnostic backtester for the **Poor Man's Covered Call** (PMCC): a deep in-the-money, long-dated call held as a stock substitute, with weekly out-of-the-money calls sold against it. One engine runs two strategies, a fixed-rule baseline and a quant variant, on LSEG hourly data, and publishes the results as a static site on GitHub Pages.
 
-> **Status:** foundations (P0) are in place: toolchain, quality gates, CI, logging and import-boundary tests. The data layer (P1) has started: the domain primitives (integer money, option IDs, rule IDs, the ET session and bar model), the option RIC builder and parser, the LSEG adapter (session check and fail-soft history, tested against a fake that a contract test keeps true to lseg-data), batched requests (single-RIC verdicts, retries and the caret→live fallback), the NYSE session calendar (2025–2027, checked against each stock's trading days), chain discovery (strike increments, integer-cent strike bands, the fetch plan), `pmcc probe`, and the raw cache and its loader (one parquet and sidecar per fetch unit, never overwritten) are in. The PO has reviewed the probes' reports and set the backtest window, the risk-free rate and each symbol's RICs in `configs/universe.yaml`. The build runs Sep 26 – Oct 9, 2026, tracked in [docs/BUILD-PLAN.md](docs/BUILD-PLAN.md).
-> - The commands under Usage are the interface defined in the spec. `pmcc probe` works; until its backlog item lands, each other command exits with code 1 and names that item.
+> **Status:** foundations (P0) are in place: toolchain, quality gates, CI, logging and import-boundary tests. The data layer (P1) has started: the domain primitives (integer money, option IDs, rule IDs, the ET session and bar model), the option RIC builder and parser, the LSEG adapter (session check and fail-soft history, tested against a fake that a contract test keeps true to lseg-data), batched requests (single-RIC verdicts, retries and the caret→live fallback), the NYSE session calendar (2025–2027, checked against each stock's trading days), chain discovery (strike increments, integer-cent strike bands, the fetch plan), `pmcc probe`, the raw cache and its loader (one parquet and sidecar per fetch unit, never overwritten), and `pmcc fetch` (an estimate before any option request, a resumable unit loop, a coverage summary) are in. The PO has reviewed the probes' reports and set the backtest window, the risk-free rate and each symbol's RICs in `configs/universe.yaml`. The build runs Sep 26 – Oct 9, 2026, tracked in [docs/BUILD-PLAN.md](docs/BUILD-PLAN.md).
+> - The commands under Usage are the interface defined in the spec. `pmcc probe` and `pmcc fetch` work; until its backlog item lands, each other command exits with code 1 and names that item.
 > - The site link will be added at the first deploy.
 
 ## What the results answer
@@ -72,6 +72,7 @@ LSEG credentials go in `lseg-data.config.json` in the repo root. The file is git
 ```bash
 uv run pmcc probe  --symbol NVDA                                       # LSEG spikes → data_cache/probes/ (Workspace required)
 uv run pmcc fetch  --symbol NVDA --start 2026-07-06 --end 2026-09-18   # LSEG → local cache (Workspace required)
+uv run pmcc fetch  --symbol NVDA --start 2026-03-30 --end 2026-09-25 --plan-only   # the estimate: asks LSEG for the stock tape only, writes nothing (Workspace required)
 uv run pmcc run    --symbol NVDA --config configs/quant_pmcc.yaml       # one backtest, from the cache only
 uv run pmcc batch  --universe configs/universe.yaml                     # every symbol × strategy × variant
 uv run pmcc export --out web/public/data/                               # results → site data + JSON Schema
@@ -84,7 +85,7 @@ just reproduce                                                          # cached
 
 Results are committed in `results/`. Raw LSEG data is not. To reproduce from scratch:
 
-1. Fetch the universe into `data_cache/` with `pmcc fetch`. This needs LSEG access.
+1. Fetch the universe into `data_cache/` with `pmcc fetch`. This needs LSEG access. Each symbol needs its probe report first (`pmcc probe`), whose strike steps feed the estimate; `--plan-only` prints the estimate after asking LSEG for the stock tape only. The window's `--start` and `--end` must both be sessions. If a fetch stops (Workspace signs out, say), run the same command again: it picks up at the first unit not yet cached.
 2. Run `just reproduce`. It re-runs every configuration on the cached data, verifies the results, exports them and builds the site. Re-running a configuration on the same cached data produces byte-identical results.
 
 Each result's manifest records the commit, config, data manifest and lockfile that produced it.

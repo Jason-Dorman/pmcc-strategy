@@ -5,7 +5,8 @@ says what to ask and reads the answers.
 
 - **Increments (DEC-14):** ask an anchor `A` (a multiple of $10 near the region's centre) and
   `A` + $0.50, $1, $2.50, $5 on one session. The smallest offset that answers is the increment;
-  if none does, it is $10.
+  if none does, it is $10. An anchor that doesn't answer measures nothing: the anchors $10 either
+  side are asked instead, and if none answers the step is the probe report's, flagged (PO, DEC-14).
 - **Bands (ARCHITECTURE §6.3):** a band is a price range plus padding in strike steps. Its ladder
   is built in integer cents on the increment's grid (LDG §4.11) and errs wide (LDG §4.10).
 - **Plan:** one unit for the stock tape, and one per expiry and right (`chains/{E}_{C|P}`), each
@@ -53,6 +54,36 @@ def increment_from(anchor: int, answered: Collection[int]) -> int:
         if anchor + offset in answered:
             return offset
     return NO_OFFSET_INCREMENT_CENTS
+
+
+def neighbour_anchors(anchor: int) -> tuple[int, ...]:
+    """The anchors $10 below and above `anchor`, asked when it didn't answer (PO, DEC-14)."""
+    return tuple(a for a in (anchor - ANCHOR_GRID_CENTS, anchor + ANCHOR_GRID_CENTS) if a > 0)
+
+
+class StepSource(StrEnum):
+    """Where a band's strike step came from (DEC-14)."""
+
+    MEASURED = "measured"  # the anchor answered
+    NEIGHBOUR = "neighbour"  # the anchor didn't, an anchor $10 away did
+    PROBE_REPORT = "probe_report"  # no anchor answered: the probe report's step, unmeasured
+
+
+@final
+@dataclass(frozen=True, slots=True)
+class StepMeasure:
+    """How one band's strike step was found: the anchors asked on `session`, in order, the
+    strikes that answered there (cents), and the step taken."""
+
+    session: date
+    anchors: tuple[int, ...]
+    answered: tuple[int, ...]
+    step: int
+    source: StepSource
+
+    @property
+    def measured(self) -> bool:
+        return self.source is not StepSource.PROBE_REPORT
 
 
 # --- Bands ------------------------------------------------------------------------------------
@@ -242,6 +273,28 @@ class Unit:
     bands: tuple[Band, ...] = ()
 
 
+class UnitKind(StrEnum):
+    """What a unit holds, for the estimate and the coverage summary."""
+
+    STOCK = "stock"
+    WEEKLY_CALLS = "weekly calls"
+    MONTHLY_CALLS = "monthly calls"
+    BOTH_CALLS = "weekly + monthly calls"  # a monthly Friday that is also a weekly expiry
+    PUTS = "puts"
+
+
+def unit_kind(right: Right | None, regions: Collection[Region]) -> UnitKind:
+    """A unit's kind from its right and its bands' regions."""
+    if right is None:
+        return UnitKind.STOCK
+    if right is Right.PUT:
+        return UnitKind.PUTS
+    near, deep = Region.NEAR_MONEY in regions, Region.DEEP_ITM in regions
+    if near and deep:
+        return UnitKind.BOTH_CALLS
+    return UnitKind.WEEKLY_CALLS if near else UnitKind.MONTHLY_CALLS
+
+
 @final
 @dataclass(frozen=True, slots=True)
 class FetchPlan:
@@ -325,13 +378,19 @@ def _weekly_calls(calendar: SessionCalendar, tape: _Tape, sigma: float) -> Itera
     ]
     expiries.append(calendar.week_final(expiries[-1] + _WEEK).day)
     for expiry in expiries:
-        start = calendar.week_open(expiry - _WEEK).day
-        end = min(expiry, tape.end)
+        start, end = weekly_dates(calendar, expiry, tape.end)
         low, high = tape.span(start, end)
         em = float(high.to_dollars()) * sigma * math.sqrt(EM_WEEK_YEARS)
         above = Pad(WEEKLY_ABOVE_STEPS, Price.from_dollars(WEEKLY_EM_MULTIPLE * em))
         band = Band(Region.NEAR_MONEY, low, high, Pad(WEEKLY_BELOW_STEPS), above)
         yield _Part(expiry, Right.CALL, start, end, (band,))
+
+
+def weekly_dates(calendar: SessionCalendar, expiry: date, window_end: date) -> tuple[date, date]:
+    """A weekly's dates: the prior week's first session (G-3's next-week IV) to its expiry, or to
+    the window's end. The coverage summary counts a merged unit's weekly part over these
+    (DEC-16)."""
+    return calendar.week_open(expiry - _WEEK).day, min(expiry, window_end)
 
 
 def _atm_puts(calendar: SessionCalendar, tape: _Tape) -> Iterator[_Part]:

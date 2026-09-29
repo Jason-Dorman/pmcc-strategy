@@ -17,6 +17,7 @@ import pytest
 from pmcc.data import cache as cache_module
 from pmcc.data import files
 from pmcc.data.cache import (
+    CachedBand,
     CacheError,
     Status,
     SymbolCache,
@@ -26,7 +27,7 @@ from pmcc.data.cache import (
     data_manifest_hash,
     stock_pull,
 )
-from pmcc.data.discovery import Band, Pad, Region, Unit
+from pmcc.data.discovery import Band, Pad, Region, StepMeasure, StepSource, Unit
 from pmcc.data.fetch import BarRequest, fetch_contracts, fetch_rics
 from pmcc.data.provider import Interval
 from pmcc.data.ric import RicForm, build_ric, occ_symbol
@@ -123,9 +124,62 @@ def test_cache_sidecar_records_the_request(tmp_path: Path) -> None:
     assert side["request"]["interval"] == "hourly"
     assert "UTC" in side["request"]["tz"]
     assert side["request"]["bands"] == [
-        {"region": "near_money", "low": "95.0000", "high": "105.0000", "step_cents": 100}
+        {
+            "region": "near_money",
+            "low": "95.0000",
+            "high": "105.0000",
+            "step_cents": 100,
+            "increment": None,
+        }
     ]
     assert (side["expiry"], side["right"]) == ("2026-09-18", "C")
+
+
+def test_cache_sidecar_records_how_each_step_was_found(tmp_path: Path) -> None:
+    near = Band(Region.NEAR_MONEY, Price.from_dollars(95), Price.from_dollars(105), Pad(2), Pad(6))
+    deep = Band(Region.DEEP_ITM, Price.from_dollars(60), Price.from_dollars(90), Pad(2), Pad(2))
+    unit = Unit(CHAIN.name, DAY, DAY, EXPIRY, Right.CALL, (near, deep))
+    measures = (
+        StepMeasure(EXPIRY, (10_000,), (10_000, 10_100), 100, StepSource.MEASURED),
+        StepMeasure(EXPIRY, (8_000, 7_000, 9_000), (), 500, StepSource.PROBE_REPORT),
+    )
+    cache = _cache(tmp_path)
+    pull = pull_chain(
+        market({100: option_bars()}), [100], unit=unit, steps=[100, 500], increments=measures
+    )
+    cache.write_unit(pull)
+
+    bands = _sidecar(cache)["request"]["bands"]
+    assert [b["increment"] for b in bands] == [
+        {
+            "session": "2026-09-18",
+            "anchors_cents": [10_000],
+            "answered_cents": [10_000, 10_100],
+            "source": "measured",
+        },
+        {
+            "session": "2026-09-18",
+            "anchors_cents": [8_000, 7_000, 9_000],
+            "answered_cents": [],
+            "source": "probe_report",
+        },
+    ]
+    (cached,) = cache.units()
+    assert cached.bands == (
+        CachedBand(Region.NEAR_MONEY, near.low, near.high, 100, StepSource.MEASURED),
+        CachedBand(Region.DEEP_ITM, deep.low, deep.high, 500, StepSource.PROBE_REPORT),
+    )
+    assert (cached.fields, cached.fields_returned) == (FIELDS, ("ASK", "BID", "TRDPRC_1"))
+
+
+def test_cache_pull_refuses_steps_its_measures_didnt_find() -> None:
+    band = Band(Region.NEAR_MONEY, Price.from_dollars(95), Price.from_dollars(105), Pad(2), Pad(6))
+    unit = Unit(CHAIN.name, DAY, DAY, EXPIRY, Right.CALL, (band,))
+    measure = StepMeasure(EXPIRY, (10_000,), (10_000, 10_100), 100, StepSource.MEASURED)
+    fake = market({100: option_bars()})
+
+    with pytest.raises(ValueError, match="its increment measure found"):
+        pull_chain(fake, [100], unit=unit, steps=[250], increments=[measure])
 
 
 def test_cache_sidecar_records_forms_misses_and_pull_date(tmp_path: Path) -> None:

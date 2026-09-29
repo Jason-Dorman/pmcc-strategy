@@ -19,13 +19,16 @@ from pmcc.data.discovery import (
     Pad,
     Region,
     SessionRange,
+    UnitKind,
     band_vol,
     increment_anchor,
     increment_from,
     increment_strikes,
+    neighbour_anchors,
     plan_symbol,
     session_ranges,
     stock_unit,
+    unit_kind,
 )
 from pmcc.data.provider import Interval, raw_schema
 from pmcc.domain.clock import ET
@@ -405,3 +408,27 @@ def test_band_vol_reads_the_rv20_at_the_last_close_before_the_window() -> None:
     # Only the RV20 at Jul 2 (used on the window's first session) reaches back to this close.
     oldest = CAL.sessions_before(date(2026, 7, 2), 20)[0].day
     assert band_vol(_with_close(oldest, "140"), *WINDOW) > 1.5 * SIGMA
+
+
+# --- Neighbour anchors and unit kinds (P1-08) -------------------------------------------------
+
+
+def test_neighbour_anchors_are_ten_dollars_either_side() -> None:
+    assert neighbour_anchors(18_000) == (17_000, 19_000)
+    assert neighbour_anchors(1_000) == (2_000,)  # never a strike of $0
+
+
+@pytest.mark.parametrize(
+    ("right", "regions", "kind"),
+    [
+        (None, set[Region](), UnitKind.STOCK),
+        (Right.PUT, {Region.NEAR_MONEY}, UnitKind.PUTS),
+        (Right.CALL, {Region.NEAR_MONEY}, UnitKind.WEEKLY_CALLS),
+        (Right.CALL, {Region.DEEP_ITM}, UnitKind.MONTHLY_CALLS),
+        (Right.CALL, {Region.NEAR_MONEY, Region.DEEP_ITM}, UnitKind.BOTH_CALLS),
+    ],
+)
+def test_unit_kind_from_right_and_regions(
+    right: Right | None, regions: set[Region], kind: UnitKind
+) -> None:
+    assert unit_kind(right, regions) is kind
