@@ -20,7 +20,7 @@ Sep 25, 2026 · implements Spec › Invariant tests and EP › Testing mindset �
 
 | Layer | Covers | Tool | Runs in |
 | --- | --- | --- | --- |
-| Unit | Domain primitives (half-even quantizing, money arithmetic, `bar_end`, session bars; `tests/unit/domain/`), RIC grammar and OCC symbols (`tests/unit/data/test_ric.py`), the LSEG adapter and batched requests (`tests/unit/data/test_lseg_*.py`, `test_fetch.py`, §6), the calendar (`tests/unit/domain/test_calendar.py`, `tests/unit/config/test_calendar_file.py`, `tests/unit/data/test_tape_calendar.py`), the universe file, with its window planned on the shipped calendar (`tests/unit/config/test_universe_file.py`, DEC-86), increments, bands and the fetch plan (`tests/unit/data/test_discovery.py`), the probes (`tests/unit/data/test_probe.py`, §6), the cache and loader (`tests/unit/data/test_cache.py`, `test_load.py`, `test_files.py`: atomic writes, never overwriting, counts per contract, the data-manifest hash, a FakeProvider round trip; DEC-46, DEC-87), Black-Scholes, IV, measures, selectors, trigger, gates, exits, fills, Reg T, metrics | pytest | `just test`, CI |
+| Unit | Domain primitives (half-even quantizing, money arithmetic, `bar_end`, session bars; `tests/unit/domain/`), RIC grammar and OCC symbols (`tests/unit/data/test_ric.py`), the LSEG adapter and batched requests (`tests/unit/data/test_lseg_*.py`, `test_fetch.py`, §6), the calendar (`tests/unit/domain/test_calendar.py`, `tests/unit/config/test_calendar_file.py`, `tests/unit/data/test_tape_calendar.py`), the universe file, with its window planned on the shipped calendar (`tests/unit/config/test_universe_file.py`, DEC-86), increments, bands and the fetch plan (`tests/unit/data/test_discovery.py`), the probes (`tests/unit/data/test_probe.py`, §6), the cache and loader (`tests/unit/data/test_cache.py`, `test_load.py`, `test_files.py`: atomic writes, never overwriting, counts per contract, the data-manifest hash, a FakeProvider round trip; DEC-46, DEC-87), `pmcc fetch`'s plan, estimate, unit loop, resume and coverage summary (`tests/unit/data/test_pull.py`, `test_estimate.py`, `test_coverage.py`, and the fetch tests in `tests/unit/test_cli.py`; DEC-16, DEC-88), Black-Scholes, IV, measures, selectors, trigger, gates, exits, fills, Reg T, metrics | pytest | `just test`, CI |
 | Property | Accounting invariants (INV-01, 02, 08, 10); IV vs scalar reference; MarketView as-of guard (INV-04); RIC round-trip (INV-11); every fetched contract answered or unanswered, never both; the loader's vectorized price quantizing equals `Price.from_dollars` (`test_load.py`); integer strike ladders (`test_discovery.py`); every session sits between its week-open and week-final sessions | hypothesis | CI |
 | Scenario | Engine end to end on a synthetic market: one scenario per exit, gate and edge case (§5) | pytest | CI |
 | Determinism | The same synthetic run twice gives byte-identical files (INV-13) | pytest | CI |
@@ -166,17 +166,20 @@ The tests are in `tests/unit/data/`:
 | `test_fetch.py` | INV-12, batches of 25, single-RIC verdicts, retries and backoff, outages at every stage, the form rounds, the log events; a hypothesis property that every contract is answered or unanswered, never both |
 | `test_lseg_contract.py` | the fake against lseg-data 2.1.1's own code |
 | `test_cache.py`, `test_load.py` | pulls fetched from `FakeLseg` through `fetch_contracts` and `fetch_rics` (`tests/fakes/pulls.py`), cached, then loaded back: the P1-07 round trip (DEC-87) |
+| `test_coverage.py` | the coverage summary over a `FakeLseg` cache: valid mids over calendar session bars, near-the-money weekly calls, the flags (DEC-16) |
 
-**FakeMarket** (`tests/fakes/market.py`, DEC-85) serves code that consumes the port rather than the adapter: the probes (`test_probe.py`), and the CLI's `probe` command (`tests/unit/test_cli.py`).
-- It is a `HistoryProvider` over a small synthetic market: one stock, and weekly and monthly calls on a $1 grid near spot and a $5 grid beyond. It has bars from a chosen date, and a contract answers only in the form its expiry calls for.
+**FakeMarket** (`tests/fakes/market.py`, DEC-85) serves code that consumes the port rather than the adapter: the probes (`test_probe.py`), the fetch's plan and unit loop (`test_pull.py`, `test_estimate.py`), and the CLI's `probe` and `fetch` commands (`tests/unit/test_cli.py`).
+- It is a `HistoryProvider` over a small synthetic market: one stock, and weekly and monthly calls and puts on a $1 grid near spot and a $5 grid beyond. It has bars from a chosen date, and a contract answers only in the form its expiry calls for.
 - It fails the way the port does over lseg-data, as FakeProvider and the contract test pin it:
   - a never-listed RIC gets its real code;
   - a field not carried is left out;
   - an hourly batch holding a failure can't be read, and a daily one answers without it;
   - RICs that each answer one of several fields asked can't be attributed.
 - A Workspace that dies (`dies_after`) fails with transient errors, as `LsegProvider` reports a dead or signed-out desktop session (DEC-83); it never raises an outage from the port.
-- It has no bars on or after its `today`, and it dates its answers as the fetch assumes, `[start, end)`. LSEG's daily answers don't always follow that; the fetch is hourly (DEC-47).
-- Hooks drive the probe's other branches: several stock suffixes answering, empty fields, never-listed strikes that answer, and a tape that disagrees with the calendar.
+- It has no bars on or after its `today`, and it dates its answers `[start, end)`. LSEG's hourly answers do too; its daily ones don't (DEC-47). The fetch's strike-step asks are daily, so they ask a day wider on each side and keep only bars dated the session; the fake can check that filter (a strike first listed the day after), but not LSEG's own daily edges, which P1-09 meets for real.
+- Hooks drive the probe's other branches: several stock suffixes answering, empty fields, never-listed strikes that answer, and a tape that disagrees with the calendar. The fetch adds strikes that aren't listed (to hide a step anchor, DEC-14) and how long before its expiry a contract lists (DEC-88).
+- P1-08's done-when names FakeProvider tests. The resume and estimate-order tests run over FakeMarket instead, because a whole symbol's plan asks thousands of dated questions that `FakeLseg`'s fixed bars can't answer; FakeMarket fails as the port does over lseg-data, which FakeProvider and the contract test pin (DEC-88).
+- `test_pull.py` runs a whole symbol over a one-week window (9 units) through `prepare` and `pull_units`: the stock tape is the only request before the estimate, a Workspace dying at five points resumes to exactly the missing units, and each band's step follows DEC-14.
 
 Every LDG §4 item, and where it is tested:
 
@@ -184,7 +187,7 @@ Every LDG §4 item, and where it is tested:
 | --- | --- | --- |
 | 1 | Guess RICs; most guesses fail | `test_fetch.py` (INV-12) |
 | 2 | `open_session` doesn't raise when it fails | `test_lseg_session.py` |
-| 3 | An outage is never recorded as a market fact | `test_fetch.py`, `test_lseg_provider.py` |
+| 3 | An outage is never recorded as a market fact | `test_fetch.py`, `test_lseg_provider.py`; `test_pull.py` (the unit in flight writes nothing; resume) |
 | 4 | Batches of 25; a batch fails whole, or answers partially | `test_fetch.py`, `test_lseg_contract.py` |
 | 5 | The response shape varies | `test_lseg_provider.py`, `test_lseg_contract.py` |
 | 6 | A field a RIC doesn't carry fails the request. **Not so in the P1-04 probes:** LSEG left `SETTLE` and an unknown field out of the answer, and a batch then came back as flat RIC columns (DEC-83) | `test_lseg_provider.py`, `test_fetch.py` (the field is left out; the batch is split) |
@@ -196,7 +199,7 @@ Every LDG §4 item, and where it is tested:
 | 12 | Band strikes per expiry | `test_discovery.py`: one unit per expiry and right, each with its own bands |
 | 13 | A live contract's history is available | `forms_to_ask` in `test_ric.py`; the live-only round in `test_fetch.py` |
 | 14 | BID/ASK aren't proven to be the NBBO | wording on the Methodology page (P7); nothing to test in code |
-| 15 | Tell the user before a long pull | the `--plan-only` estimate (P1-08) |
+| 15 | Tell the user before a long pull | `test_estimate.py`; `test_cli.py`: the estimate prints before any option request, and `--plan-only` asks only for the stock tape (P1-08) |
 
 ## 7. Where tests run
 

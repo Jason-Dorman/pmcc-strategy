@@ -82,6 +82,8 @@ class FakeMarket:
     - `empty_fields`: fields every RIC answers with no values.
     - `traded_closed` and `untraded`: days the stock trades although the table closes them, and
       table sessions it doesn't trade, so its tape disagrees with the calendar.
+    - `unlisted`: strikes, in cents, that no expiry lists (to hide a strike-step anchor).
+    - `listed_days`: how many days before its expiry an option lists.
     """
 
     calendar: SessionCalendar
@@ -95,6 +97,8 @@ class FakeMarket:
     empty_fields: Collection[str] = ()
     traded_closed: Collection[date] = ()
     untraded: Collection[date] = ()
+    unlisted: Collection[int] = ()
+    listed_days: int = LISTED_DAYS
     calls: int = 0
     requests: list[tuple[tuple[str, ...], tuple[str, ...], date, date, Interval]] = field(
         default_factory=list[tuple[tuple[str, ...], tuple[str, ...], date, date, Interval]]
@@ -168,6 +172,8 @@ class FakeMarket:
         return weekly or self.calendar.monthly_expiry(expiry.year, expiry.month) == expiry
 
     def _on_grid(self, option: OptionId, interval: Interval) -> bool:
+        if option.strike_cents in self.unlisted:
+            return False
         if option.strike_cents % 100 == ODD_CENTS:
             return interval in self.odd_strikes_answer
         near = abs(option.strike_cents / 100 - self.spot) <= NEAR_MONEY_DOLLARS
@@ -190,7 +196,7 @@ class FakeMarket:
             return False
         if option is None:
             return day not in self.untraded
-        return option.expiry - timedelta(days=LISTED_DAYS) <= day <= option.expiry
+        return option.expiry - timedelta(days=self.listed_days) <= day <= option.expiry
 
     def _rows(
         self,

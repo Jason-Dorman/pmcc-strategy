@@ -25,8 +25,16 @@ import numpy as np
 import numpy.typing as npt
 import polars as pl
 
-from pmcc.data.cache import STOCK_UNIT, CachedUnit, CacheError, SymbolCache, data_manifest_hash
+from pmcc.data.cache import (
+    KEY_COLUMNS,
+    STOCK_UNIT,
+    CachedUnit,
+    CacheError,
+    SymbolCache,
+    data_manifest_hash,
+)
 from pmcc.data.calendar import sessions_from_tape
+from pmcc.data.provider import Interval, RawHistory
 from pmcc.domain.calendar import SessionCalendar
 from pmcc.domain.instruments import Right
 from pmcc.domain.money import UNITS_PER_DOLLAR, Price
@@ -79,6 +87,26 @@ def load_symbol(root: Path, symbol: str, calendar: SessionCalendar) -> SymbolDat
     )
 
 
+def cached_stock(cache: SymbolCache) -> tuple[CachedUnit, RawHistory]:
+    """The cached stock unit and its bars as the provider returned them (long rows, unquantized),
+    so a resumed fetch plans from the very tape it cached. Raises `CacheError` if there is no stock
+    unit, or its parquet is missing or changed."""
+    unit = next((u for u in cache.units() if u.name == STOCK_UNIT), None)
+    if unit is None:
+        raise CacheError(f"{cache.dir} has no stock unit")
+    _verify(cache, unit)
+    frame = pl.read_parquet(cache.parquet_path(STOCK_UNIT))
+    fields = [c for c in frame.columns if c not in KEY_COLUMNS]
+    rows = (
+        frame.unpivot(fields, index=["bar_start_utc", "ric"], variable_name="field")
+        .drop_nulls("value")
+        .rename({"bar_start_utc": "bar_start"})
+        .select("bar_start", "ric", "field", pl.col("value").cast(pl.Float64))
+        .sort("ric", "field", "bar_start")
+    )
+    return unit, RawHistory(Interval.HOURLY, rows)
+
+
 def verified_units(cache: SymbolCache) -> tuple[CachedUnit, ...]:
     """The cached units, once every parquet is there, unchanged, and has a sidecar."""
     orphans = cache.orphans()
@@ -89,12 +117,16 @@ def verified_units(cache: SymbolCache) -> tuple[CachedUnit, ...]:
         )
     units = cache.units()
     for unit in units:
-        path = cache.parquet_path(unit.name)
-        if not path.exists():
-            raise CacheError(f"{path} is missing; its sidecar says it was written")
-        if hashlib.sha256(path.read_bytes()).hexdigest() != unit.file_sha256:
-            raise CacheError(f"{path} has changed since it was written (sha256 differs)")
+        _verify(cache, unit)
     return units
+
+
+def _verify(cache: SymbolCache, unit: CachedUnit) -> None:
+    path = cache.parquet_path(unit.name)
+    if not path.exists():
+        raise CacheError(f"{path} is missing; its sidecar says it was written")
+    if hashlib.sha256(path.read_bytes()).hexdigest() != unit.file_sha256:
+        raise CacheError(f"{path} has changed since it was written (sha256 differs)")
 
 
 def _load_unit(cache: SymbolCache, unit: CachedUnit, calendar: SessionCalendar) -> pl.DataFrame:

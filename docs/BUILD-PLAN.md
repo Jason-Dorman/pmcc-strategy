@@ -27,7 +27,7 @@ Sep 25, 2026 · schedule from Spec › Build order · **due Fri Oct 9, 11:59 pm*
 | Phase | Dates | Exit criteria (milestone) | Status |
 | --- | --- | --- | --- |
 | P0 Foundations | Sat Sep 26 | `just check` green in Git Bash and in CI; credentials ignored; LSEG session opens from Git Bash | Done locally 2026-09-25; CI run for P0-07/08 pending the PO's push |
-| P1 Data layer and open items | Sat Sep 26 – Sun Sep 27 | NVDA's full chain cached; INV-11, INV-12 pass; window, r and identifiers recorded; universe fetch started | In progress: P1-01 to P1-07 done (window Mar 30 – Sep 25 2026, r = 0.0371, universe QQQ, NVDA, TSLA; cache and loader per DEC-46); P1-08 (`pmcc fetch`) next |
+| P1 Data layer and open items | Sat Sep 26 – Sun Sep 27 | NVDA's full chain cached; INV-11, INV-12 pass; window, r and identifiers recorded; universe fetch started | In progress: P1-01 to P1-08 done (window Mar 30 – Sep 25 2026, r = 0.0371, universe QQQ, NVDA, TSLA; cache and loader per DEC-46; `pmcc fetch` per DEC-88); P1-09 (NVDA's fetch, Workspace) next |
 | P1-10 Universe fetch (background) | Sun Sep 27 – Sat Oct 3 | QQQ and TSLA cached with coverage summaries (NVDA at P1-09) | Not started |
 | P2 Pricing | Mon Sep 28 | IV solver matches the reference; EM, ATM IV, RV20 tested | Not started |
 | P3 Engine, accounting, baseline | Mon Sep 28 – Wed Sep 30 | **M1:** baseline blotter, ledger, NAV, Reg T for NVDA; INV-01–10 and 13 pass | Not started |
@@ -46,6 +46,7 @@ Nothing needs answering up front. This is when each open question in [DECISIONS]
 | P1-05 Open items · Sat Sep 26 | Probe results (DEC-06–14); confirm the window and r | DEC-07, DEC-11 |
 | P1-06 Calendar · Sat Sep 26 | Monthly expiries and holidays | DEC-33 |
 | P1-07 Cache · Sun Sep 27 | Cache file layout | DEC-46 |
+| P1-08 Fetch · Mon Sep 28 | A strike step with no anchor; the coverage summary (asked when found) | DEC-14, DEC-16 |
 | P2-01 Black-Scholes · Mon Sep 28 | Time and Greek units | DEC-24 |
 | P2-03 Measures · Mon Sep 28 | Spot and close, ATM IV and EM, RV20 | DEC-23, DEC-25, DEC-26 |
 | P2-04 Chain pricer · Mon Sep 28 | Greeks when IV fails; fresh quotes only | DEC-27 |
@@ -204,7 +205,7 @@ P8 release                                                                      
     - the hash ignores fetch times
     - the loader round-trips FakeProvider data
   - Needs: P1-03, P1-06
-- [ ] **P1-08 · `pmcc fetch`**
+- [x] **P1-08 · `pmcc fetch`** — done 2026-09-28; `pmcc/data/pull.py` (`prepare`, `pull_units`, `measure_step`), `estimate.py`, `coverage.py` and the command (DEC-88). The PO answered three questions that came up: a band whose anchor doesn't answer tries the anchors $10 either side, then takes the probe report's step, flagged (DEC-14); the coverage summary leaves IV failures out until P2-04 and counts valid mids over every calendar session bar, and a merged monthly unit's near-money strikes over its weekly part only (DEC-16). The plan comes from the cached stock tape when there is one, cached units must match the plan, and the window's ends must be sessions. The done-when's resume and estimate-order tests run over `FakeMarket`, the port-level fake, not FakeProvider (TEST-STRATEGY §6): a Workspace dying at five points resumes to exactly the missing units, and the estimate (a low and a high figure) prints before the first option request. An adversarial review (4 reviewers, 2 skeptics per finding) confirmed 10 findings (a window ending on a weekend or holiday cached unmeasured steps; a stopped probe report crashed the command; a stale README note; 7 test gaps), rated 1 plausible (put to the PO) and refuted 1; all are fixed, with the 16 unverified lows. 77 new tests, 748 in the suite; 51 planted mutants killed (DEC-88)
   - Plan → estimate (units, RIC requests, minutes) → resumable unit loop → coverage summary; `--plan-only`.
   - Done when FakeProvider tests show:
     - a resume after a mid-run outage refetches only the missing units

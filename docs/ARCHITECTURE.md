@@ -77,8 +77,12 @@ pmcc/
     discovery.py strike increments (DEC-14), integer-cent bands, session ranges, and the fetch
                  plan: plan_symbol → FetchPlan of units (DEC-48, DEC-84)
     fetch.py     fetch_rics, fetch_contracts: batching, retries, form fallback, diagnostics
-                 (P1-03, DEC-83). The unit loop and resume (P1-08) sit above fetch and cache,
-                 since cache imports fetch's result types (DEC-87)
+                 (P1-03, DEC-83)
+    pull.py      pmcc fetch's unit loop, above fetch and cache (cache imports fetch's result
+                 types, DEC-87): prepare (stock tape → plan), pull_units (resumable),
+                 measure_step (DEC-14) (DEC-88)
+    estimate.py  the estimate printed before any option request: steps from the probe report
+    coverage.py  the coverage summary printed after a fetch, from the cache (DEC-16)
     probe/       the P1-04 probes over the HistoryProvider port, one module per DEC check;
                  one report per symbol (§6.2, DEC-85)
     files.py     write_new (whole or not at all, never over a file), replace_file (DEC-87)
@@ -114,7 +118,7 @@ The reference files at the repo root (`LSEG-DATA-GUIDE.md`, `DESIGN-GUIDE.md`, `
 | `domain` | Types and time rules everyone shares | `Price`, `Money`, `OptionId`, `RuleId`, `Session`, `SessionCalendar`, `bar_end()` | stdlib |
 | `config` | Turn YAML into validated, hashed, rendered config | `load_run_config()` → `RunConfig`; `load_calendar()` → `SessionCalendar`; `load_universe()` → `Universe` | domain, pydantic, pyyaml |
 | `data.lseg` | Talk to LSEG | `lseg_session()` → `LsegProvider` | `data.provider`, lseg.data, pandas, polars |
-| `data` (rest) | Know RICs; check the tape against the calendar; probe, plan, fetch, cache, load | `HistoryProvider`, `build_ric()`, `parse_ric()`, `sessions_from_tape()`, `run_probe()`, `plan_symbol()`, `fetch_rics()`, `fetch_contracts()`, `fetch_symbol()`, `SymbolCache.write_unit()`, `load_symbol()` | domain, config, polars, numpy; only `fetch` may use `data.lseg` |
+| `data` (rest) | Know RICs; check the tape against the calendar; probe, plan, fetch, cache, load | `HistoryProvider`, `build_ric()`, `parse_ric()`, `sessions_from_tape()`, `run_probe()`, `plan_symbol()`, `fetch_rics()`, `fetch_contracts()`, `prepare()`, `pull_units()`, `estimate()`, `coverage()`, `SymbolCache.write_unit()`, `load_symbol()` | domain, config, polars, numpy; only `fetch` may use `data.lseg` |
 | `pricing` | Turn quotes into IV, Greeks and measures | `implied_vol()`, `greeks()`, `price_chain()`, `expected_move()`, `rv20()` | domain, numpy, scipy |
 | `strategy` | Decide what to trade | `build_strategy(cfg)` → `Strategy` | domain, config, pricing, `strategy.ports` |
 | `engine` | Run the clock; route decisions to fills and the book | `run_backtest(data, cfg)` → `RunOutput` | domain, config, pricing, strategy, accounting |
@@ -264,24 +268,40 @@ def regt(book: Book, v: Valuation) -> RegT           # IM, MM, available funds, 
 ### 6.1 Fetch flow (`pmcc fetch --symbol S --start D0 --end D1`)
 
 ```
+0. The symbol comes from configs/universe.yaml (stock RIC, option root), and its strike steps for
+   the estimate from its newest probe report; with neither, or with a report that stopped early
+   or can't be read, stop before asking anything.
 1. Open the session: lseg_session() raises unless open_state == Opened, before any request
    (LDG §4.2). The config is resolved from the repo root, not the caller's CWD.
-2. Stock tape [D0 − 30 sessions, D1] → sessions (its trading days must match configs/calendar.yaml,
-   DEC-33), weekly expiries, session highs/lows, realized vol.
-3. Build the plan (§6.3) and print the estimate: units, RIC requests, minutes. --plan-only stops here.
-4. For each unit without a sidecar (`SymbolCache.has_unit`; manifest.json can lag a unit moved aside):
-     - probe increments (DEC-14) → integer-cent strike list (LDG §4.11)
-     - fetch in batches of 25; a RIC that doesn't come back with bars is asked again alone;
-       a failed request is asked again (3 attempts, 2 s / 4 s backoff), then aborts as an
-       outage; live-only or caret→live per DEC-45 (forms_to_ask) (fetch_contracts, DEC-83)
+2. D0 and D1 must be sessions, D0 ≤ D1, or stop before asking anything (a band's step is
+   measured on its unit's last session, often D1; DEC-88).
+   Stock tape [D0 − 30 sessions, D1]: read from the cache when its unit is there (no request),
+   else one hourly request → sessions (its trading days must match configs/calendar.yaml,
+   DEC-33), session highs/lows, realized vol (prepare, DEC-88).
+3. Build the plan (§6.3). Every cached chain unit must be one the plan would write, with its
+   dates and bands, or stop and name them; a band whose ladder on a $10 step would pass $999.99
+   stops it too (DEC-12, DEC-88). Print the estimate: units, strikes, and a low and a high figure
+   for RIC requests and minutes. --plan-only stops here and writes nothing.
+4. Write the stock unit if step 2 fetched it. Then for each unit without a sidecar
+   (`SymbolCache.has_unit`; manifest.json can lag a unit moved aside) (pull_units):
+     - measure each band's strike step on the unit's last session (DEC-14; the neighbour anchors,
+       then the probe report's step, flagged) → integer-cent strike ladders (LDG §4.11)
+     - fetch the union of the ladders, hourly, in batches of 25; a RIC that doesn't come back
+       with bars is asked again alone; a failed request is asked again (3 attempts, 2 s / 4 s
+       backoff), then aborts as an outage; live-only or caret→live per DEC-45 (forms_to_ask)
+       (fetch_contracts, DEC-83)
      - check answered + unanswered = requested, per contract (LDG §5)
      - write the parquet, then the sidecar, each whole (temp file → hard link, which never
        replaces a file), then rebuild manifest.json from the sidecars (DEC-46, DEC-87)
-5. Print the coverage summary: % session bars with a valid mid, unanswered counts, IV-failure counts,
-   log file path.
+5. Close the session and print the coverage summary from the cache (DEC-16): per kind, contracts
+   requested, answered and unanswered and the % of calendar session bars with a valid mid;
+   near-the-money weekly calls, over each weekly's own dates (a merged monthly unit's weekly
+   part only); bands whose step wasn't measured, units that answered nothing, fields that never
+   came back; the log file path. IV failures aren't counted until the chain pricer adds them
+   (P2-04).
 ```
 
-- **Resume:** a crash or outage loses at most the unit in flight. Re-running skips units whose sidecar exists. A process killed between a unit's parquet and its sidecar leaves an orphan parquet, which stops that unit's write (and the loader) until the user moves it aside (§6.4).
+- **Resume:** a crash or outage loses at most the unit in flight, and the command exits 1. Re-running the same command plans from the cached stock tape and skips units whose sidecar exists. A process killed between a unit's parquet and its sidecar leaves an orphan parquet, which stops that unit's write (and the loader) until the user moves it aside (§6.4).
 - **Never overwrite:** a re-pull means the user moves the unit's parquet and sidecar aside first, e.g. into `{SYM}/superseded/` (LDG §5, DEC-46).
 - **Tell the user first:** any pull longer than a couple of minutes starts only after its estimate has been shown (LDG §4.15).
 
@@ -313,12 +333,12 @@ The stock RIC and daily bars come first, since every later check needs them, the
   - DTE is calendar days, and T is calendar days ÷ 365 from each week's first session in the unit. These only size what is fetched; pricing's T is DEC-24's.
   - Increments follow DEC-14, probed per band: a unit whose expiry is both a weekly and a long candidate keeps every band.
   - The top of the long band is the week's high, not a delta: a strike at δ 0.70 (quant E-L3's edge) is below spot for any σ and T, while a delta-based edge moves deeper as σ̂ grows (DEC-48).
-  - **Estimate:** a plan holds bands, not strikes, and a ladder needs its band's increment. The estimate printed before any option request (§6.1) assumes increments from the probe reports' DEC-14 values.
+  - **Estimate:** a plan holds bands, not strikes, and a ladder needs its band's increment. The estimate printed before any option request (§6.1) assumes increments from the symbol's newest probe report: per region, the finest step measured where the anchor answered (DEC-88).
 - **Session ranges:** each session's low and high come from its session bars only, and a trade print widens them. The tape's trading days must match the calendar first (DEC-33).
 - **Examples:**
   - The spec's CLI example window (Jul 6 → Sep 18 2026) needs the monthlies Nov 20 2026 through May 21 2027 (7 expiries).
   - The PO's window (Mar 30 → Sep 25 2026, DEC-07) needs a warm-up from Feb 13 2026 and the monthlies Aug 21 2026 through Jun 17 2027 (11 expiries). `tests/unit/config/test_universe_file.py` plans it on the shipped calendar.
-- **Estimate:** requests ≈ Σ strikes × forms asked. LDG measured about 44 RIC requests per minute (~1,100 in ~25 min).
+- **Estimate:** the low figure is Σ strikes + 5 per band (the step asks), one form per contract. An hourly batch holding an unlisted strike is asked again one RIC at a time, and a recently expired contract can be asked in both forms, so the high figure is three times that; fetches on the fake market asked 2.3 to 2.5 times the low figure (DEC-88). LDG measured about 44 RIC requests per minute (~1,100 in ~25 min).
   - An 11-week window is about 700 requests, ~16 min per symbol, or ~3–4 h for all 12.
   - The PO's 26-week window scales that by about 2.4, roughly 40 min per symbol or 2–2.5 h for the three (DEC-15), and DEC-48's wider long bands add to it. `--plan-only` prints the real figure.
 
@@ -344,7 +364,7 @@ logs/fetch_{timestamp}.jsonl                  gitignored
   - A unit is moved aside out of its folder, into `superseded/`. A sidecar renamed in place (its recorded unit isn't the one its path names) is refused, never read as the unit it records (DEC-87).
 - **Parquet columns** are raw, as returned: `bar_start_utc` (datetime, UTC), `ric`, `expiry`, `strike_cents`, `right` (null for the stock), then one float64 column per field requested (`BID`, `ASK`, `TRDPRC_1`, `OPEN_PRC`, `HIGH_1`, `LOW_1`, `ACVOL_UNS`, `NUM_MOVES`). A field that never came back is an all-null column.
 - **Sidecar** (LDG §5):
-  - request details: fields requested and fields that came back (LSEG leaves out a field a RIC lacks, DEC-83), dates, interval, tz convention, the strike step per band (DEC-84)
+  - request details: fields requested and fields that came back (LSEG leaves out a field a RIC lacks, DEC-83), dates, interval, tz convention, the strike step per band (DEC-84) and how it was found: the session, anchors asked, strikes that answered, and `measured`, `neighbour` or `probe_report` (DEC-14, DEC-88)
   - results: counts (requested = answered + unanswered, per contract), `ric_form_used`, `unanswered` (each contract's RICs asked, with the reason and codes), `errors`
   - the pull date, the parquet's name and sha256, and the unit's manifest entries
 - **Manifest entry,** one per contract asked: `instrument` (OCC symbol, or the stock's RIC), `unit`, `status`, `ric` and `form` (the RIC that answered), `rows`, `first_bar`, `last_bar`, `fetched_at`, and `sha256` (of the contract's bars, without the RIC).
@@ -658,7 +678,7 @@ CI (`.github/workflows/ci.yml`, on push and PR; DEC-79):
   - A command calls `pmcc.log.configure_logging(command)` once at startup; every other module calls `structlog.get_logger()`.
   - Each event carries `event`, `level`, `timestamp` (ISO 8601, UTC) and `command`; exceptions are rendered as text in `exception`. Level INFO and up.
   - Every soft fetch failure is one `fetch.ric.unanswered` event, logged once per RIC the service left unanswered, with `symbol`, `unit`, `ric`, `form` (for an option RIC), `reason` (`no_data` or `empty`), `codes` and `message` (Spec › Stack, DEC-83). `fetch.batch.rejected` and `fetch.retry` carry `size` and the error.
-  - Event names: `fetch.unit.start|done`, `fetch.ric.unanswered`, `fetch.batch.rejected`, `fetch.retry`, `fetch.abort.outage`, `engine.entry.retry`, `engine.gate.fired`, `engine.exit.pending`, `invariant.failed`.
+  - Event names: `fetch.plan`, `fetch.unit.start|done`, `fetch.increment.unmeasured`, `fetch.ric.unanswered`, `fetch.batch.rejected`, `fetch.retry`, `fetch.abort.outage`, `fetch.coverage`, `fetch.coverage.unit`, `engine.entry.retry`, `engine.gate.fired`, `engine.exit.pending`, `invariant.failed`.
 - **Errors:** the failure taxonomy is DEC-49.
 - **Secrets:**
   - `lseg-data.config.json` is gitignored, blocked by a pre-commit hook, and checked in CI (`git ls-files` must not list it).

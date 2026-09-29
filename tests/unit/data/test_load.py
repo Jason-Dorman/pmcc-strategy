@@ -18,7 +18,8 @@ from pmcc.config.calendar import load_calendar
 from pmcc.data.cache import CacheError, SymbolCache
 from pmcc.data.calendar import CalendarMismatchError
 from pmcc.data.discovery import Unit
-from pmcc.data.load import SymbolData, load_symbol, quantize
+from pmcc.data.load import SymbolData, cached_stock, load_symbol, quantize
+from pmcc.data.provider import Interval
 from pmcc.data.ric import RicForm, build_ric
 from pmcc.domain.calendar import SessionCalendar
 from pmcc.domain.clock import ET, bar_end
@@ -353,3 +354,35 @@ def test_load_quantize_matches_price_on_large_values(value: float) -> None:
 def test_load_quantize_matches_price_on_half_units_of_any_size(tenth_mills: int) -> None:
     value = float(Decimal(tenth_mills * 10 + 5).scaleb(-5))
     assert quantize(pl.Series([value])).to_list() == [Price.from_dollars(value).units]
+
+
+# --- The cached stock tape, for a resumed fetch's plan (P1-08) ---------------------------------
+
+
+def test_load_cached_stock_gives_back_the_rows_the_provider_returned(tmp_path: Path) -> None:
+    pull = pull_stock(market({}), fields=ALL_FIELDS)
+    cache = SymbolCache(tmp_path, SYMBOL)
+    cache.write_unit(pull)
+
+    unit, history = cached_stock(cache)
+
+    assert unit.name == "stock"
+    assert history.interval is Interval.HOURLY
+    assert history.rows.equals(pull.history.rows)
+
+
+def test_load_cached_stock_refuses_a_changed_parquet(tmp_path: Path) -> None:
+    _cached(tmp_path)
+    cache = SymbolCache(tmp_path, SYMBOL)
+    path = cache.parquet_path("stock")
+    path.write_bytes(path.read_bytes() + b"!")
+
+    with pytest.raises(CacheError, match="changed"):
+        cached_stock(cache)
+
+
+def test_load_cached_stock_needs_a_stock_unit(tmp_path: Path) -> None:
+    SymbolCache(tmp_path, SYMBOL).write_unit(pull_chain(market({100: option_bars()}), [100]))
+
+    with pytest.raises(CacheError, match="no stock unit"):
+        cached_stock(SymbolCache(tmp_path, SYMBOL))

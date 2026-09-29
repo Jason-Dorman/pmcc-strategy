@@ -36,12 +36,13 @@ from typing import Any, final
 
 import polars as pl
 
-from pmcc.data.discovery import Unit
+from pmcc.data.discovery import Region, StepMeasure, StepSource, Unit
 from pmcc.data.fetch import BarRequest, ContractsResult, Miss, RequestError, RicsResult
 from pmcc.data.files import replace_file, write_new
 from pmcc.data.provider import Interval, RawHistory
 from pmcc.data.ric import RicForm, occ_symbol, parse_ric
 from pmcc.domain.instruments import OptionId, Right
+from pmcc.domain.money import Price
 
 FORMAT = 1
 STOCK_UNIT = "stock"
@@ -53,7 +54,7 @@ TZ_CONVENTION = (
     "bar_start_utc is LSEG's stamp: the bar's start, in UTC (LDG §4.8). "
     "bar_end = bar_start + 1h, in America/New_York, is added at load (DEC-06)."
 )
-_KEY_COLUMNS = {
+KEY_COLUMNS = {
     "bar_start_utc": pl.Datetime("us", "UTC"),
     "ric": pl.String(),
     "expiry": pl.Date(),
@@ -82,7 +83,8 @@ class UnitPull:
     `answered` maps each contract that answered (its OCC symbol, or the stock's RIC) to the RIC
     that answered, and `unanswered` maps each one that didn't to the RICs asked for it. Together
     they are every contract asked, once (LDG §5). `steps` is the strike step of each of the unit's
-    bands, in cents (DEC-84). Build one with `chain_pull` or `stock_pull`.
+    bands, in cents (DEC-84), and `increments` says how each was found (DEC-14; empty when the
+    steps were given, not measured). Build one with `chain_pull` or `stock_pull`.
     """
 
     symbol: str
@@ -96,6 +98,7 @@ class UnitPull:
     misses: Mapping[str, Miss]
     errors: tuple[RequestError, ...]
     fetched_at: datetime
+    increments: tuple[StepMeasure, ...] = ()
 
     def __post_init__(self) -> None:
         if self.request.interval is not Interval.HOURLY:
@@ -104,6 +107,8 @@ class UnitPull:
             raise ValueError(f"the request's dates aren't unit {self.unit.name}'s (DEC-47)")
         if len(self.steps) != len(self.unit.bands):
             raise ValueError(f"unit {self.unit.name} has {len(self.unit.bands)} bands, not steps")
+        if self.increments and tuple(m.step for m in self.increments) != self.steps:
+            raise ValueError("each band's step must be the one its increment measure found")
         if self.answered.keys() & self.unanswered.keys():
             raise ValueError("a contract can't be both answered and unanswered")
         if self.history.rics() != frozenset(self.answered.values()):
@@ -124,6 +129,7 @@ def chain_pull(
     options: Sequence[OptionId],
     result: ContractsResult,
     fetched_at: datetime,
+    increments: Sequence[StepMeasure] = (),
 ) -> UnitPull:
     """A chain unit's pull. Raises `ValueError` unless every contract in `options` is either
     answered or unanswered in `result`, and nothing else is (LDG §5, per contract)."""
@@ -148,6 +154,7 @@ def chain_pull(
         misses=result.misses,
         errors=result.errors,
         fetched_at=fetched_at,
+        increments=tuple(increments),
     )
 
 
@@ -257,7 +264,7 @@ def unit_frame(pull: UnitPull) -> pl.DataFrame:
     float64 column per field requested, null where the answer had no value.
     """
     fields = pull.request.fields
-    schema = pl.Schema({**_KEY_COLUMNS, **dict.fromkeys(fields, pl.Float64())})
+    schema = pl.Schema({**KEY_COLUMNS, **dict.fromkeys(fields, pl.Float64())})
     rows = pull.history.rows.filter(pl.col("field").is_in(fields))
     if rows.is_empty():
         return pl.DataFrame(schema=schema)
@@ -277,7 +284,7 @@ def _with_contracts(wide: pl.DataFrame, unit: Unit) -> pl.DataFrame:
     """Each RIC's contract, parsed from the RIC; nulls for the stock."""
     if unit.expiry is None:
         return wide.with_columns(
-            pl.lit(None, _KEY_COLUMNS[c]).alias(c) for c in ("expiry", "strike_cents", "right")
+            pl.lit(None, KEY_COLUMNS[c]).alias(c) for c in ("expiry", "strike_cents", "right")
         )
     rics: list[str] = wide["ric"].unique().to_list()
     options = [parse_ric(ric).option for ric in rics]
@@ -352,8 +359,9 @@ def sidecar(
                     "low": str(band.low.to_dollars()),
                     "high": str(band.high.to_dollars()),
                     "step_cents": step,
+                    "increment": _increment(pull.increments[i]) if pull.increments else None,
                 }
-                for band, step in zip(unit.bands, pull.steps, strict=True)
+                for i, (band, step) in enumerate(zip(unit.bands, pull.steps, strict=True))
             ],
         },
         "fields_returned": returned,
@@ -381,6 +389,15 @@ def sidecar(
     }
 
 
+def _increment(measure: StepMeasure) -> dict[str, object]:
+    return {
+        "session": measure.session.isoformat(),
+        "anchors_cents": list(measure.anchors),
+        "answered_cents": list(measure.answered),
+        "source": measure.source.value,
+    }
+
+
 def _miss(ric: str, miss: Miss | None) -> dict[str, object]:
     if miss is None:
         return {"ric": ric, "reason": None, "codes": [], "message": None}
@@ -397,6 +414,18 @@ def _miss(ric: str, miss: Miss | None) -> dict[str, object]:
 
 @final
 @dataclass(frozen=True, slots=True)
+class CachedBand:
+    """A band as its unit's sidecar records it. `source` is `None` when the step was given."""
+
+    region: Region
+    low: Price
+    high: Price
+    step: int
+    source: StepSource | None
+
+
+@final
+@dataclass(frozen=True, slots=True)
 class CachedUnit:
     """A unit as its sidecar records it."""
 
@@ -408,6 +437,9 @@ class CachedUnit:
     start: date
     end_exclusive: date
     entries: tuple[Entry, ...]
+    bands: tuple[CachedBand, ...] = ()
+    fields: tuple[str, ...] = ()
+    fields_returned: tuple[str, ...] = ()
 
 
 @final
@@ -532,6 +564,20 @@ def _read_unit(path: Path, name: str) -> CachedUnit:
         start=date.fromisoformat(request["start"]),
         end_exclusive=date.fromisoformat(request["end_exclusive"]),
         entries=tuple(Entry.from_json(e) for e in raw["entries"]),
+        bands=tuple(_cached_band(b) for b in request["bands"]),
+        fields=tuple(request["fields"]),
+        fields_returned=tuple(raw["fields_returned"]),
+    )
+
+
+def _cached_band(raw: Mapping[str, Any]) -> CachedBand:
+    increment: Mapping[str, Any] | None = raw.get("increment")
+    return CachedBand(
+        region=Region(raw["region"]),
+        low=Price.from_dollars(raw["low"]),
+        high=Price.from_dollars(raw["high"]),
+        step=raw["step_cents"],
+        source=None if increment is None else StepSource(increment["source"]),
     )
 
 

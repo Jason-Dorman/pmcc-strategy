@@ -37,8 +37,9 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-11 | Risk-free rate | SETTLED (PO) | — |
 | DEC-12 | Per-symbol identifiers, splits, max strike | SETTLED (PO) | — |
 | DEC-13 | Hourly field availability | SETTLED (spec, probed) | — |
-| DEC-14 | Strike increments | ENG method · values probed | — |
+| DEC-14 | Strike increments | ENG method · values probed · unmeasured anchor SETTLED (PO) | — |
 | DEC-15 | Universe size | SETTLED (PO) | — |
+| DEC-16 | Fetch coverage summary | SETTLED (PO) | — |
 | DEC-20 | Week-open session and order of operations | ASK | P3-07 |
 | DEC-21 | Selection freeze and E-T1 | ASK | P3-07 |
 | DEC-22 | Gates and the gate log | ASK | P3-07 |
@@ -97,6 +98,7 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-85 | Probe design | ENG | — |
 | DEC-86 | Universe config and strict YAML | ENG | — |
 | DEC-87 | Cache writes, sidecars and the loader | ENG | — |
+| DEC-88 | The fetch command: plan, estimate, unit loop | ENG | — |
 
 ---
 
@@ -363,7 +365,7 @@ The results are reported to the PO at P1-05. A result that contradicts the spec 
 - **Outcome:** 2026-09-28 — the PO then cut the universe to QQQ, NVDA and TSLA (DEC-15). All three use `.O`, whose hourly fields the probes checked (all 8, options and stock), so nothing is left to verify: settled on the spec, as the probes confirmed it.
 
 ### DEC-14 — Strike increments
-**Status:** ENG (method) · values probed at P1-04, reported to the PO at P1-05 · **Affects:** P1-06, P1-08
+**Status:** ENG (method) · values probed at P1-04, reported to the PO at P1-05 · an unmeasured anchor SETTLED (PO, 2026-09-28) · **Affects:** P1-06, P1-08
 
 - **Method:** per expiry and per region (near the money for weeklies, deep ITM for monthlies), probe one session with 5 strikes in a single batch.
   - The strikes are an anchor `A` (a multiple of $10 near the region's centre) plus `A+0.50`, `A+1`, `A+2.50` and `A+5`.
@@ -384,6 +386,10 @@ The results are reported to the PO at P1-05. A result that contradicts the spec 
   - The increment differs by region and by expiry, as LDG §6.2 said, so the fetch measures it per unit and per band (DEC-84).
   - 1,000 means no offset answered but the anchor did: a $10 grid, or wider.
   - **AMD's near-money monthly answered no strike at all** around its $630 anchor, so its $10 is DEC-14's default, not a measurement. The fetch (P1-08) should treat an unanswered anchor as no measurement, record it in the sidecar, and not trust the default.
+- **Outcome:** 2026-09-28 — PO, asked at P1-08: what the fetch does when a band's anchor doesn't answer. Offered: try the neighbouring anchors (recommended); take the probe report's step at once; stop the unit. The PO chose the neighbours:
+  - Ask the anchors $10 below and $10 above, each with its four offsets, in one request. If either answers, take the finer step they show.
+  - If none answers, the band takes the probe report's step for its symbol and region, and is flagged: `probe_report` in the unit's sidecar, a `fetch.increment.unmeasured` log event, and a line in the coverage summary (DEC-16).
+  - Built in `pmcc/data/pull.py` (`measure_step`, DEC-88).
 
 ### DEC-15 — Universe size
 **Status:** SETTLED · **Basis:** PO, 2026-09-28 · **Affects:** Spec › Universe, `configs/universe.yaml`, P1-10, P3-09, P5, P6 (pooled statistics), P7-05; the cut list
@@ -398,6 +404,20 @@ The results are reported to the PO at P1-05. A result that contradicts the spec 
   - **What goes:** the diversifying drivers (financials, Treasuries, energy). SPY, IWM and XLE's unprobed `.P` RICs (DEC-13), XLE's halved strikes (DEC-12) and QQQ's dividend-reduced strikes remain facts about the probes; only QQQ's still reaches the fetch.
   - **What stays:** pooled statistics across three symbols (DEC-61), the Universe page and the suitability screen, now over three. The cut list's universe cut (#4) is taken early.
   - **Fetch:** roughly 2–2.5 h for the three over the 26-week window (ARCHITECTURE §6.3), before DEC-48's wider long bands.
+
+### DEC-16 — Fetch coverage summary
+**Status:** SETTLED · **Basis:** PO, 2026-09-28 (asked at P1-08, and after its review) · **Affects:** P1-08, P1-09, P1-10, P2-04, ARCHITECTURE §6.1
+
+- **The gap:** ARCHITECTURE §6.1 step 5 asked the fetch to print "% session bars with a valid mid, unanswered counts, IV-failure counts". Two points were open:
+  - **IV failures** need the IV solver (P2-02), which isn't built. Offered: count bars whose mid is below S − K·e^(−rT), the no-IV condition of DEC-08 and DEC-27, as a lower bound (recommended); leave them out until P2-02; build P2-02 first.
+  - **The valid-mid denominator.** Offered: every session bar the calendar has over each answered contract's unit dates, so a bar that never came back counts as no mid (recommended); only the bars LSEG returned.
+- **Outcome:** 2026-09-28 — PO:
+  - **IV failures: left out for now.** The summary says so. HR-8's disclosure of IV failures on the Methodology page is unaffected, since it comes from the runs. They join the fetch summary with the chain pricer, whose done-when already asks for them (P2-04), not with the solver alone (P2-02), as this entry first said.
+  - **Denominator: calendar session bars,** as recommended. A valid mid is BID > 0, ASK > 0 and ASK ≥ BID (ARCHITECTURE §6.5).
+  - **Reported:** per kind (stock, weekly calls, monthly calls, weekly + monthly calls, puts) on screen, and per unit in the log (`fetch.coverage.unit`), with contracts requested, answered and unanswered. **Near-the-money weekly calls** get their own line: calls whose strike lies inside the unit's stock range, the near-money band before padding. That is P1-09's ≥ 90% measure.
+  - **Flags:** bands whose step wasn't measured (DEC-14), units that answered nothing (DEC-83's residual risk), and fields that never came back (DEC-13).
+  - Built in `pmcc/data/coverage.py`. It reads the cache through `load_symbol`, after the LSEG session has closed (DEC-88).
+- **Outcome:** 2026-09-28 — PO, asked after P1-08's review: which dates the near-the-money line counts for a **merged unit**, a monthly Friday that is also a weekly expiry. In the PO's window the Aug 21 and Sep 18 2026 units run from Mar 30, their first long-candidate session, so their near-money strikes were counted over about five months, not the weekly's two weeks. Offered: the weekly part only (recommended); the whole unit, as built. The PO chose the **weekly part only**: from the prior week's first session to the expiry (or the window's end), the dates a weekly unit covers. The per-kind table still counts the whole unit. `weekly_dates` in `pmcc/data/discovery.py` gives those dates to both the planner and the summary.
 
 ## C. Rule interpretations
 
@@ -877,7 +897,7 @@ Development runs in Git Bash on Windows (DEC-02) and CI runs on Ubuntu. Both mus
 - **Where things live.** ARCHITECTURE §3.3 rule 2 lets only `fetch` and `cli` import the adapter, so the parts that don't talk to LSEG sit outside it:
   - **`pmcc/data/provider.py`:** the `HistoryProvider` port, `RawHistory`, `Interval` and the four failure classes. There is no LSEG code here, so `fetch` can catch the failures without importing the adapter.
   - **`pmcc/data/lseg/`:** `api.py` (`LsegApi`, the slice of `lseg.data` that is called), `session.py` (`lseg_session`), `shapes.py` (`to_long`) and `provider.py` (`LsegProvider`).
-  - **`pmcc/data/fetch.py`:** batches, verdicts, retries, the caret→live fallback and diagnostics (`fetch_rics`, `fetch_contracts`). None of it depends on LSEG, so it goes in `fetch.py` (ARCHITECTURE §3.1) rather than under `lseg/`, where the P1-03 item first put it. P1-08 adds unit orchestration and resume to the same module.
+  - **`pmcc/data/fetch.py`:** batches, verdicts, retries, the caret→live fallback and diagnostics (`fetch_rics`, `fetch_contracts`). None of it depends on LSEG, so it goes in `fetch.py` (ARCHITECTURE §3.1) rather than under `lseg/`, where the P1-03 item first put it. P1-08 adds unit orchestration and resume to the same module. (It couldn't: `cache` imports `fetch`, so the loop is in `pull.py`; DEC-87, DEC-88.)
 - **Rows:** long `(bar_start, ric, field, value)`, one row per non-empty cell, sorted by RIC, field and time. `bar_start` is LSEG's own stamp, unshifted: a UTC datetime for hourly bars and a date for daily ones. `bar_end` is added at load (P1-07).
 - **What lseg-data 2.1.1 does.** Read in its source, and pinned by `tests/unit/data/test_lseg_contract.py`, which runs the library's own code offline:
   - `get_history` asks the historical-pricing service once per RIC, in parallel, and hourly requests page.
@@ -1093,6 +1113,61 @@ Development runs in Git Bash on Windows (DEC-02) and CI runs on Ubuntu. Both mus
   - **Unverified, low, fixed:** the stock unit's sha and missing-file checks; a tape missing its first session; quantizing above $1M; the hash's independence from entry order; the `UnitPull` guards and the `empty` miss reason; ARCHITECTURE §4.2's `bar_start` row and §6.1's resume note on orphans; `fetch.py`'s docstring; this entry's wording on the quantize tests.
   - **Refuted:** the sidecar can't record an increment anchor that didn't answer (DEC-14). That is P1-08's to add, when it probes increments.
   - **Now:** 90 tests (`test_cache.py` 51, `test_load.py` 32, `test_files.py` 7). The review's 25 surviving mutants, plus the 19 above, re-run against them: all 44 killed (one more, `%g` formatting in the bars hash, needed a seventh-digit case).
+
+### DEC-88 — The fetch command: plan, estimate, unit loop
+**Status:** ENG · **Affects:** P1-08, P1-09, P1-10; DEC-14, DEC-16, DEC-46, DEC-47, DEC-83, DEC-87
+
+- **Where:**
+  - `pmcc/data/pull.py`: `prepare` (the stock tape and the plan) and `pull_units` (the unit loop), with `pull_unit` and `measure_step`. It sits above `fetch` and `cache`, as DEC-87 said it must.
+  - `pmcc/data/estimate.py`: the steps taken from the probe report, and the estimate.
+  - `pmcc/data/coverage.py`: the summary (DEC-16).
+  - `pmcc fetch` in `pmcc/cli.py`.
+
+  ARCHITECTURE §3.2's `fetch_symbol()` became `prepare` and `pull_units`, so the command can print the estimate between them.
+- **Target:** the symbol must be in `configs/universe.yaml`, which gives its stock RIC and option root (DEC-12). `--start` and `--end` are the window's first and last sessions, inclusive (DEC-47). They don't have to be the universe's window, but both must be sessions and the start no later than the end, or the command stops before asking anything: a band's step is measured on its unit's last session, often the window's end, and a weekend or holiday there left every such band unmeasured (the review, below).
+- **The plan comes from the stock tape.**
+  - If the stock unit is cached, the plan is built from it (its sha256 checked) with no request, and its dates must be the ones this window needs. Otherwise the tape is one hourly request.
+  - So a resumed run plans exactly what the first run planned.
+  - The tape's trading days must match the calendar (DEC-33).
+- **The cache must match the plan.** Every cached chain unit must be one the plan would write, with the same dates and bands (region, low, high). If one isn't, the command stops before any option request and names the units to move into `superseded/` (DEC-46). This catches a fetch of another window, or a planner change, over an old cache.
+- **`--plan-only` writes nothing.** It asks for the stock tape (1 request) if it isn't cached, prints the estimate, and stops. A full run prints the same estimate, then writes the stock unit and the chain units in plan order.
+- **The estimate:**
+  - It takes its steps from the symbol's newest probe report (`data_cache/probes/{SYM}_{YYYYMMDD}.json`): the finest step measured per region, from records whose anchor answered. Near the money comes from the two weekly records, deep ITM from the two monthly ones. The long bands are deep ITM by region, but the top one reaches the money, so both monthly records count for them; that is how DEC-14's "the probe report's step for its region" is read for the long bands.
+  - With no probe report, or with a newest one that stopped early or can't be read, the command stops before asking anything. It doesn't fall back to an older report: a stopped probe says something about LSEG changed.
+  - Requests: the low figure is the strikes (the union of each pending unit's band ladders) + 5 per band, for the step asks. An hourly batch holding one unlisted strike is asked again one RIC at a time (DEC-83), and a recently expired contract can be asked in both forms (DEC-45), so the high figure is three times the low one. The review measured fetches on the fake market at 2.3 to 2.5 times the low figure, and an NVDA-sized plan at 1.9 times; the first version printed the low figure alone. Minutes assume 44 RIC requests a minute (LDG §4.15). Cached units are left out.
+  - The printed text is ASCII only: Git Bash on Windows prints it in cp1252 (DEC-58).
+- **Strike steps (DEC-14):**
+  - Each band's step is measured on its unit's last session, by which every strike the unit lists is listed. A monthly still live at the window's end is asked on the window's last session.
+  - It asks the unit's own right, for daily BID and ASK, a day wider on each side, and counts only bars dated that session (DEC-47).
+  - The PO's neighbour anchors are asked together in one request.
+  - The sidecar records, per band, the session, the anchors asked, the strikes that answered, and the source: `measured`, `neighbour` or `probe_report`. This closes DEC-87's note that an unanswered anchor couldn't be recorded. `CachedUnit` reads the bands back, with the fields asked and returned.
+- **A unit's fetch:** the union of its bands' ladders (the overlapping cuts ask a strike once), hourly, all 8 fields (DEC-13), through `fetch_contracts`. The fetch date for DEC-45 is the run's date in ET.
+- **Resume:** units are written one at a time. An outage raises and loses only the unit in flight; the command exits 1 and says to run it again. `fetch.unit.start|done`, `fetch.ric.unanswered`, `fetch.retry` and `fetch.batch.rejected` carry `symbol` and `unit` (`stock` for the tape), bound through structlog's contextvars (DEC-83). New events: `fetch.plan`, `fetch.increment.unmeasured`, `fetch.coverage`, `fetch.coverage.unit`.
+- **The strike field:** once planned, a band whose ladder on a $10 step (the widest DEC-14 can find) would pass $999.99 stops the command before any option request, as a question for the PO (DEC-12). It errs on the side of stopping; DEC-12 found every symbol fits. The first version left this to `build_ric`, which raises only after the unit's step asks.
+- **Tests:** the unit loop runs over `FakeMarket` (DEC-85), which answers a whole symbol's dated requests at the port as FakeProvider does. It gains two hooks: `unlisted` (strikes no expiry lists) and `listed_days`.
+- **Outcome:** 2026-09-28 — 55 new tests: `test_pull.py` 24, `test_estimate.py` 8, `test_coverage.py` 5, the CLI's fetch tests 7, and 11 across `test_discovery.py`, `test_load.py` and `test_cache.py`. 726 in the suite.
+  - **P1-08's done-when:** after an outage at any of five points (the first step ask, the second, and three points mid-run), a resume asks only for the missing units and leaves the cached files byte-identical. The estimate prints before the first option request, and `--plan-only` asks only for the stock tape.
+  - **Mutants:** 25 planted in the new guards: the pending filter, the cached tape, the plan checks, the neighbour anchors and the finer step, the day filter and the widening, the estimate's steps and requests, the report choice, the coverage denominator, near the money, quote validity, missing fields, the estimate's place in the command, the sidecar record, and `unit_kind`. The first run left 3 alive: no bar with an invalid quote, a missing-fields check that matched only a prefix, and no test of a unit that is both a weekly and a monthly. With tests added for each, all 25 are killed.
+  - **Found while building:** once `fetch` was built, the CLI's stub test for it opened a real LSEG session. The suite's network guard blocked it, so nothing was asked. That stub case is gone, and the fetch tests swap in `FakeMarket`.
+- **Outcome:** 2026-09-28 — an adversarial review of P1-08 (4 reviewers, 2 skeptics per finding): 34 findings, 28 unique. The 12 most severe were verified: 10 confirmed, 1 plausible, 1 refuted; 16 low ones went unverified. All 10 confirmed, the plausible one and all 16 low ones are fixed, most with regression tests:
+  - **Confirmed, medium:**
+    - **A window ending on a weekend or holiday** left every unit ending there (the next weekly and every monthly) measured on a day with no bars, so their bands took the probe report's step and were cached that way. The window's ends must now be sessions, checked before any request.
+    - **A probe report that stopped early**, which `pmcc probe` writes on purpose, or one that can't be read, ended the command with a traceback. It now stops with a message, before asking anything.
+    - **The README** still said only `pmcc probe` works.
+    - **Test gaps** that let plausible bugs through: the region of an unmeasured band's fallback; near-the-money on a merged unit, on deep bands and at the band's top; the fetch date that picks the RIC form (DEC-45); the 8 fields asked; which neighbour's step is taken (the finer one, never the unanswered anchor's offsets); coverage counting a bar outside the session or a day early; the estimate's per-kind rows and its "to write" count.
+  - **Plausible, medium:** the near-the-money line counted a merged unit's near strikes over its whole span. Put to the PO, who chose the weekly part only (DEC-16).
+  - **Refuted:** that DEC-16 recorded ENG choices as the PO's answer. Per-unit coverage does reach the screen, through the log.
+  - **Unverified, low, fixed:**
+    - a reversed window asked for the stock tape first; now refused before any request;
+    - this entry's $999.99 claim was wrong (the step asks came first); the plan is now checked (above);
+    - the estimate understated the re-asks, so it now prints a low and a high figure (above); its docstring's "errs high" was false;
+    - the stock tape's log events had no `symbol` or `unit`;
+    - the printed estimate held `§`, which Git Bash on Windows shows garbled (DEC-58); the estimate and the summary are now ASCII, and tested so;
+    - the CLI tests left structlog configured for later tests; it is reset after each;
+    - tests for: the sidecar's anchors and answers on a neighbour or fallback band, both neighbours asked in one request, a neighbour band not flagged, the kind table's unit counts, a cached unit with the same bands but other dates, and the command handing the probe report's steps over as the fallback;
+    - docs: `--plan-only` does ask LSEG for the tape (README); FakeMarket serves puts and the daily step asks, and stands in for FakeProvider in P1-08's done-when (TEST-STRATEGY); DEC-83's note on where the loop lives; IV failures join at P2-04, not P2-02 (DEC-16).
+    - The deep-ITM fallback drawing on both monthly records is kept, and its reading of DEC-14 is written down above.
+  - **Now:** 77 new tests in P1-08 (`test_pull.py` 37, `test_estimate.py` 13, `test_coverage.py` 6, the CLI's fetch tests 10, and 11 across `test_discovery.py`, `test_load.py` and `test_cache.py`), 748 in the suite. **Mutants:** 51 re-run on the reviewed code (round 1's 23 whose code is unchanged, and 28 for the review's findings and fixes, the reviewers' surviving mutants included). One survived, a strike check on too fine a step, and was killed by a new test: all 51 are killed.
 
 ## E. Analytics definitions
 
