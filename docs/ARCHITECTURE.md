@@ -59,7 +59,7 @@ pmcc/
   domain/        money.py (Price, Money), instruments.py (OptionId, Right, Side), rules.py (RuleId),
                  clock.py (ET, bar_end), sessions.py (Session, session bars) (DEC-81),
                  calendar.py (SessionCalendar: sessions, week-open/final, weekly and monthly
-                 expiries; DEC-33, DEC-84)
+                 expiries; DEC-33, DEC-84), quotes.py (Quote: a valid BID/ASK and its mid; DEC-89)
   config/        pydantic config models; YAML loader (extends/overrides); hashing; rule-text rendering;
                  calendar.py (configs/calendar.yaml → SessionCalendar, DEC-84);
                  universe.py (configs/universe.yaml → Universe: window, r, symbols; DEC-86);
@@ -91,7 +91,9 @@ pmcc/
                  (DEC-46, DEC-87)
     load.py      load_symbol → SymbolData (no network): verified units, integer prices,
                  bar_end, session bars, quote validity (DEC-87)
-  pricing/       black_scholes.py, iv.py (vectorized), chain.py (per-bar snapshots), measures.py (EM, ATM IV, RV20)
+  pricing/       black_scholes.py (price, greeks), expiry.py (T and DTE, DEC-24), iv.py (implied_vol,
+                 IvCode), measures.py (close, ATM strike and IV, EM, RV20; DEC-23, DEC-25, DEC-26),
+                 chain.py (price_quotes for one bar; price_symbol → PricedSymbol, memoized) (DEC-89)
   strategy/      ports.py (MarketView, PositionState), selectors.py, trigger.py, gates.py, exits.py, registry.py
   engine/        market_view.py (as-of gate), loop.py, legs.py (state machines), fills.py, invariants.py
   accounting/    events.py, book.py, marks.py, regt.py, ledger.py
@@ -104,7 +106,7 @@ configs/         _shared.yaml, baseline_pmcc.yaml, quant_pmcc.yaml, ablations/a1
 data_cache/      raw data (gitignored, §6.4)
 results/         committed results (§12)
 tests/           unit/, property/, scenario/, architecture/, fixtures/synthetic/
-typings/lseg/    minimal stubs for pyright strict
+typings/         minimal stubs for pyright strict: lseg/ (DEC-42), scipy/ (DEC-89)
 web/             frontend (§13)
 .github/workflows/ci.yml · justfile · pyproject.toml · uv.lock · .python-version · .pre-commit-config.yaml · .gitattributes
 ```
@@ -115,11 +117,11 @@ The reference files at the repo root (`LSEG-DATA-GUIDE.md`, `DESIGN-GUIDE.md`, `
 
 | Package | One job | Main API | Depends on |
 | --- | --- | --- | --- |
-| `domain` | Types and time rules everyone shares | `Price`, `Money`, `OptionId`, `RuleId`, `Session`, `SessionCalendar`, `bar_end()` | stdlib |
+| `domain` | Types and time rules everyone shares | `Price`, `Money`, `Quote`, `OptionId`, `RuleId`, `Session`, `SessionCalendar`, `bar_end()` | stdlib |
 | `config` | Turn YAML into validated, hashed, rendered config | `load_run_config()` → `RunConfig`; `load_calendar()` → `SessionCalendar`; `load_universe()` → `Universe` | domain, pydantic, pyyaml |
 | `data.lseg` | Talk to LSEG | `lseg_session()` → `LsegProvider` | `data.provider`, lseg.data, pandas, polars |
-| `data` (rest) | Know RICs; check the tape against the calendar; probe, plan, fetch, cache, load | `HistoryProvider`, `build_ric()`, `parse_ric()`, `sessions_from_tape()`, `run_probe()`, `plan_symbol()`, `fetch_rics()`, `fetch_contracts()`, `prepare()`, `pull_units()`, `estimate()`, `coverage()`, `SymbolCache.write_unit()`, `load_symbol()` | domain, config, polars, numpy; only `fetch` may use `data.lseg` |
-| `pricing` | Turn quotes into IV, Greeks and measures | `implied_vol()`, `greeks()`, `price_chain()`, `expected_move()`, `rv20()` | domain, numpy, scipy |
+| `data` (rest) | Know RICs; check the tape against the calendar; probe, plan, fetch, cache, load | `HistoryProvider`, `build_ric()`, `parse_ric()`, `sessions_from_tape()`, `run_probe()`, `plan_symbol()`, `fetch_rics()`, `fetch_contracts()`, `prepare()`, `pull_units()`, `estimate()`, `coverage()`, `SymbolCache.write_unit()`, `load_symbol()` | domain, config, polars, numpy; `pricing` for the coverage summary's IV failures (DEC-89); only `fetch` may use `data.lseg` |
+| `pricing` | Turn quotes into IV, Greeks and measures | `implied_vol()`, `greeks()`, `price_quotes()`, `price_symbol()` → `PricedSymbol.snapshot()`, `atm_iv()`, `expected_move()`, `rv20()` | domain, numpy, scipy, polars (the loader's frames, never `pmcc.data`; DEC-89) |
 | `strategy` | Decide what to trade | `build_strategy(cfg)` → `Strategy` | domain, config, pricing, `strategy.ports` |
 | `engine` | Run the clock; route decisions to fills and the book | `run_backtest(data, cfg)` → `RunOutput` | domain, config, pricing, strategy, accounting |
 | `accounting` | Record and value positions | `Book.apply()`, `value()`, `regt()` | domain |
@@ -150,6 +152,7 @@ The test also checks that one planted forbidden import per rule is caught, inclu
 | --- | --- | --- |
 | `Price` | frozen dataclass over an `int` of $0.0001 units per share | quotes quantized once at load (round half-even; a float by its shortest repr) |
 | `Money` | frozen dataclass over an `int` of $0.0001 units | cash, market values, P&L; `Price.notional(multiplier, qty)` is exact |
+| `Quote` | a valid BID and ASK (`Price`s: BID > 0, ASK ≥ BID) | `mid` rounds (BID + ASK) / 2 half-even to $0.0001, as a fill at mid does; EM adds two of them (DEC-25, DEC-89) |
 | multiplier | 100 per option contract; 1 per share | |
 | `float64` | IV, Greeks, ratios, analytics | never cash |
 
@@ -203,11 +206,11 @@ class HistoryProvider(Protocol):                              # pmcc/data/provid
 class MarketView(Protocol):                                   # pmcc/strategy/ports.py
     @property
     def now(self) -> datetime: ...                            # decision time = bar_end
-    def spot(self) -> Price: ...                              # underlying TRDPRC_1 in the current bar
+    def spot(self) -> Price | None: ...                       # underlying TRDPRC_1 in the current bar; None if it didn't trade (DEC-23)
     def quote(self, opt: OptionId) -> Quote | None: ...       # fresh BID/ASK at now, else None
-    def chain(self, expiry: date, right: Right) -> ChainSnapshot: ...   # listed at now (DEC-32), IV/Greeks/eligibility
+    def chain(self, expiry: date, right: Right) -> ChainSnapshot: ...   # listed at now (DEC-32): PricedSymbol.snapshot's PricedQuotes, listed strikes only
     def expiries(self, kind: ExpiryKind) -> Sequence[date]: ...          # listed as of now
-    def session_closes(self, n: int) -> Sequence[Price]: ...             # completed sessions only
+    def close_trades(self) -> Mapping[datetime, Price]: ...              # close-bar TRDPRC_1 of completed sessions, by bar_end (rv20, DEC-26)
     def calendar(self) -> SessionCalendar: ...                           # reference data (DEC-33)
 ```
 
@@ -296,9 +299,10 @@ def regt(book: Book, v: Valuation) -> RegT           # IM, MM, available funds, 
 5. Close the session and print the coverage summary from the cache (DEC-16): per kind, contracts
    requested, answered and unanswered and the % of calendar session bars with a valid mid;
    near-the-money weekly calls, over each weekly's own dates (a merged monthly unit's weekly
-   part only); bands whose step wasn't measured, units that answered nothing, fields that never
-   came back; the log file path. IV failures aren't counted until the chain pricer adds them
-   (P2-04).
+   part only); IV failures: of the session contract-bars with a valid quote before the expiry
+   close, how many the chain pricer couldn't solve at the universe's r, by reason (P2-04);
+   bands whose step wasn't measured, units that answered nothing, fields that never came back;
+   the log file path.
 ```
 
 - **Resume:** a crash or outage loses at most the unit in flight, and the command exits 1. Re-running the same command plans from the cached stock tape and skips units whose sidecar exists. A process killed between a unit's parquet and its sidecar leaves an orphan parquet, which stops that unit's write (and the loader) until the user moves it aside (§6.4).
@@ -397,18 +401,20 @@ C  = S·N(d1) − K·e^(−rT)·N(d2)                P  = K·e^(−rT)·N(−d2)
 θC = −S·φ(d1)·σ/(2√T) − r·K·e^(−rT)·N(d2)     θP = −S·φ(d1)·σ/(2√T) + r·K·e^(−rT)·N(−d2)
 ```
 
-- **Vectorized IV solver** over a chain snapshot:
-  - **Bracket:** σ ∈ [1e-4, 5.0].
-  - **Newton step:** taken on each lane.
-  - **Bisection fallback:** any lane whose step leaves the bracket, or whose vega < 1e-8, switches to bisection.
-  - **Stop:** at |model − mid| < 1e-6·max(1, mid), or after 100 iterations.
-  - **Failure codes:** `NO_QUOTE`, `BELOW_FLOOR` (mid < max(0, S − K·e^(−rT))), `ABOVE_CAP` (mid ≥ S), `NO_CONVERGENCE`, `EXPIRED`.
+- **T and DTE (DEC-24):** T is elapsed time from the decision to the expiry session's close, in years, ACT/365, measured in UTC so a clock change counts its hour (`years_to_expiry`). DTE is calendar days from the decision's ET date (`days_to_expiry`).
+- **Vectorized IV solver** (`implied_vol`) over any number of lanes (DEC-89):
+  - **Codes, checked in this order:** `EXPIRED` (T ≤ 0), `NO_QUOTE`, `NO_SPOT` (the underlying didn't trade on the bar), `BELOW_FLOOR` (mid < max(0, S − K·e^(−rT)) for a call, max(0, K·e^(−rT) − S) for a put), `ABOVE_CAP` (mid ≥ S for a call, K·e^(−rT) for a put), then `NO_CONVERGENCE` or `OK`.
+  - **Bracket:** σ ∈ [1e-4, 5.0]. A lane no vol in it can price is `NO_CONVERGENCE` before iterating.
+  - **Newton step,** safeguarded: each lane keeps a bracket holding its root, and a step that would leave it, or a vega < 1e-8, bisects instead. It starts from Manaster and Koehler's vol.
+  - **Stop:** at |model − mid| < 1e-9·max(1, mid), or a bracket narrower than 1e-12, or after 100 iterations (`NO_CONVERGENCE`). It pins σ to 1e-6 wherever vega ≥ 1e-3·max(1, mid); where the price barely moves with vol, σ is looser but still reprices the mid (DEC-89).
   - **Test:** a scalar `scipy.optimize.brentq` solve serves as the reference.
-- **Chain pricing:** `price_chain(snapshot, spot, now, r)` returns IV, δ, Γ, θ, ν, eligibility and spread % for every contract at one bar.
-  - It uses only that bar's data.
-  - It is memoized per (bar, expiry, right), so all runs for a symbol in a batch share it.
-- **Measures:** `expected_move()` and `atm_iv()` (DEC-25), `rv20()` (DEC-26), and `extrinsic = mid − max(0, spot − strike)` (Spec › E-L3).
-- **Held contracts** with a failed IV use DEC-27.
+- **Chain pricing** (`chain.py`):
+  - `price_quotes` prices one bar's contracts from their quotes. It returns, per contract: the exact mid, spread % of mid, IV, code, δ, Γ, θ, ν, extrinsic (mid − max(0, S − K) for a call, Spec › E-L3; mid − max(0, K − S) for a put), and eligibility, which means the IV solved. It uses only that bar's data.
+  - `price_symbol` prices every session bar of every chain unit that `load_symbol` loaded, one vectorized pass per unit. Spot is the stock's TRDPRC_1 on the same `bar_end` (DEC-23), and T comes from `years_to_expiry`.
+  - `PricedSymbol.snapshot(bar_end, expiry, right)` is memoized per (bar, expiry, right), so all runs for a symbol in a batch share it. `PricedSymbol.codes(expiry, right)` counts a unit's outcomes for the coverage summary (DEC-16).
+  - NVDA's full window, 400,784 session contract-bars, prices in about 1.4 s.
+- **Measures** (`measures.py`): `session_close()` and `itm_at_expiry()` (DEC-23); `atm_strike()`, `atm_iv()` and `expected_move()` (DEC-25); `rv20()` (DEC-26). They take what MarketView hands them: listed strikes, fresh quotes, and close-bar trades by `bar_end`.
+- **Held contracts** with a failed IV use DEC-27: a call below its floor gets δ = 1, Γ = ν = 0, θ = −r·K·e^(−rT), and stays ineligible. Any other failure leaves its Greeks unknown.
 
 ## 8. Engine
 

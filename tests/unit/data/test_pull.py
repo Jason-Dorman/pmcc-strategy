@@ -40,6 +40,7 @@ from pmcc.domain.money import Price
 from tests.fakes.market import FakeMarket
 
 CAL = load_calendar()
+R = 0.0371  # DEC-11
 NOW = datetime(2026, 9, 27, 12, tzinfo=ET)
 WINDOW = (date(2026, 9, 14), date(2026, 9, 18))
 TARGET = Target("NVDA", "NVDA.O", "NVDA")
@@ -469,7 +470,7 @@ def test_pull_asks_expired_contracts_caret_first_and_live_ones_live(cache: Symbo
 def test_pull_coverage_counts_only_session_bars_over_the_unit_dates(cache: SymbolCache) -> None:
     _fetch(_market(), cache)  # the fake quotes every bar, extended hours and the 16:00 stub too
 
-    cov = coverage(cache.root, "NVDA", CAL)
+    cov = coverage(cache.root, "NVDA", CAL, R)
 
     for kind, tally in cov.by_kind.items():
         assert tally.expected > 0, kind

@@ -14,12 +14,15 @@ from typer.testing import CliRunner
 from pmcc import cli
 from pmcc.cli import app
 from pmcc.config.calendar import load_calendar
+from pmcc.config.universe import load_universe
 from pmcc.data.cache import SymbolCache
+from pmcc.data.coverage import Coverage
 from pmcc.data.discovery import StepSource
 from pmcc.data.fetch import Retry
 from pmcc.data.probe import run_probe
 from pmcc.data.provider import Interval, RawHistory
 from pmcc.data.pull import prepare, pull_units
+from pmcc.domain.calendar import SessionCalendar
 from pmcc.domain.clock import ET
 from tests.fakes.market import FakeMarket
 
@@ -230,8 +233,26 @@ def test_cli_fetch_caches_every_unit_and_prints_the_coverage(
     units = _cache().unit_names()
     assert f"{len(units)} units written" in said
     assert "NVDA coverage" in said
-    assert "IV failures: not counted" in said
+    assert "IV failures (session bars with a valid mid" in said
     assert "Log: logs/fetch_" in said
+
+
+def test_cli_fetch_prices_the_coverage_at_the_universes_r(
+    fetch_market: FakeMarket, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    rates: list[float] = []
+    real = cli.coverage.coverage
+
+    def spy(root: Path, symbol: str, calendar: SessionCalendar, rate: float) -> Coverage:
+        rates.append(rate)
+        return real(root, symbol, calendar, rate)
+
+    monkeypatch.setattr(cli.coverage, "coverage", spy)
+
+    code, output = _fetch()
+
+    assert code == 0, output
+    assert rates == [load_universe(load_calendar()).risk_free_rate.value]  # DEC-11, DEC-16
 
 
 def test_cli_fetch_resumes_after_an_outage(fetch_market: FakeMarket, events: list[Event]) -> None:

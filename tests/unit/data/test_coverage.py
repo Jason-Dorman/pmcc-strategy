@@ -5,6 +5,10 @@ session bars, and the fake's bars start 13:00, 14:00 and 15:00 ET. The stock quo
 $100 call quotes the first two (its third bar has no values, so LSEG leaves it out), and the $105
 call's second quote has a zero bid, so only its first is valid. The weekly's step was found on a
 neighbour anchor, which is measured, so it is never flagged (PO, DEC-14).
+
+Priced at r = 0.0371 with the stock near $180, both calls are $75+ in the money at a mid near
+$1.10, under the no-arbitrage floor: their 3 valid quotes fail as below the floor (DEC-27). The
+$100 put is far out of the money, and its 2 valid quotes solve.
 """
 
 from datetime import date, datetime
@@ -15,10 +19,11 @@ from structlog.testing import capture_logs
 
 from pmcc.config.calendar import load_calendar
 from pmcc.data.cache import SymbolCache
-from pmcc.data.coverage import IV_NOTE, coverage, describe
+from pmcc.data.coverage import IvTally, coverage, describe
 from pmcc.data.discovery import Band, Pad, Region, StepMeasure, StepSource, Unit, UnitKind
 from pmcc.domain.instruments import Right
 from pmcc.domain.money import Price
+from pmcc.pricing.iv import IvCode
 from tests.fakes.lseg import Bars
 from tests.fakes.pulls import (
     CHAIN,
@@ -32,6 +37,7 @@ from tests.fakes.pulls import (
 )
 
 CAL = load_calendar()
+R = 0.0371  # DEC-11
 SESSION_BARS = 7
 NEAR = Band(Region.NEAR_MONEY, Price.from_dollars(99), Price.from_dollars(101), Pad(4), Pad(6))
 DEEP = Band(Region.DEEP_ITM, Price.from_dollars(60), Price.from_dollars(90), Pad(2), Pad(2))
@@ -55,7 +61,7 @@ def cached(tmp_path: Path) -> SymbolCache:
 
 
 def test_coverage_counts_valid_mids_over_every_calendar_session_bar(tmp_path: Path) -> None:
-    cov = coverage(tmp_path, "NVDA", CAL)
+    cov = coverage(tmp_path, "NVDA", CAL, R)
 
     weekly = cov.by_kind[UnitKind.WEEKLY_CALLS]
     assert (weekly.requested, weekly.answered, weekly.unanswered) == (3, 2, 1)
@@ -66,16 +72,16 @@ def test_coverage_counts_valid_mids_over_every_calendar_session_bar(tmp_path: Pa
 
 
 def test_coverage_near_the_money_is_weekly_calls_inside_the_stock_range(tmp_path: Path) -> None:
-    cov = coverage(tmp_path, "NVDA", CAL)
+    cov = coverage(tmp_path, "NVDA", CAL, R)
 
     near = cov.near_money
     assert near.answered == 1  # $100 is inside $99-$101; $105 isn't, and puts never count
     assert (near.expected, near.valid) == (SESSION_BARS, 2)
 
 
-def test_coverage_describes_kinds_near_money_and_leaves_iv_failures_out(tmp_path: Path) -> None:
+def test_coverage_describes_kinds_near_money_and_iv_failures(tmp_path: Path) -> None:
     with capture_logs() as logs:
-        text = describe(coverage(tmp_path, "NVDA", CAL))
+        text = describe(coverage(tmp_path, "NVDA", CAL, R))
 
     # units, requested, answered, unanswered, valid mid
     rows = {line.split()[0]: line.split()[-5:] for line in text.splitlines()[2:5]}
@@ -86,12 +92,51 @@ def test_coverage_describes_kinds_near_money_and_leaves_iv_failures_out(tmp_path
     }
     assert "28.6% of 7 session bars, 1 contracts" in text  # near the money: 2 of 7
     assert "Near-the-money weekly calls" in text
-    assert IV_NOTE in text
+    assert (
+        "IV failures (session bars with a valid mid, before the expiry close): 60.0%, 3 of 5 "
+        "(below the floor 3, above the cap 0, no convergence 0, no spot 0)"
+    ) in text.splitlines()
     assert text.isascii()  # Git Bash prints it in cp1252 on Windows (DEC-58)
-    assert "not counted until the chain pricer adds them (P2-04" in IV_NOTE
     units = [e for e in logs if e["event"] == "fetch.coverage.unit"]
     assert {e["unit"] for e in units} == {"stock", CHAIN.name, PUTS.name}
     assert [e for e in logs if e["event"] == "fetch.coverage"]
+
+
+def test_coverage_counts_iv_failures_per_unit_over_valid_quotes(tmp_path: Path) -> None:
+    with capture_logs() as logs:
+        cov = coverage(tmp_path, "NVDA", CAL, R)
+        describe(cov)
+
+    iv = {u.name: (u.iv.priced, u.iv.failures) for u in cov.units}
+    assert iv == {"stock": (0, 0), CHAIN.name: (3, 3), PUTS.name: (2, 0)}
+    weekly = next(u for u in cov.units if u.name == CHAIN.name)
+    assert weekly.iv.failed[IvCode.BELOW_FLOOR] == 3  # the zero-bid bar isn't priced
+    logged = {e["unit"]: e["iv_failed"] for e in logs if e["event"] == "fetch.coverage.unit"}
+    assert logged == {"stock": 0, CHAIN.name: 3, PUTS.name: 0}
+
+
+def test_coverage_iv_counts_a_no_spot_bar_but_not_the_expiry_close_or_a_missing_quote() -> None:
+    # DEC-16: of the session bars with a valid quote before the expiry close; no spot is a failure.
+    codes = {
+        IvCode.OK: 5,
+        IvCode.EXPIRED: 3,
+        IvCode.NO_QUOTE: 2,
+        IvCode.NO_SPOT: 1,
+        IvCode.BELOW_FLOOR: 4,
+        IvCode.ABOVE_CAP: 1,
+        IvCode.NO_CONVERGENCE: 1,
+    }
+
+    iv = IvTally.of(codes)
+
+    assert iv.priced == 5 + 1 + 4 + 1 + 1
+    assert iv.failures == 1 + 4 + 1 + 1
+    assert iv.failed == {
+        IvCode.BELOW_FLOOR: 4,
+        IvCode.ABOVE_CAP: 1,
+        IvCode.NO_CONVERGENCE: 1,
+        IvCode.NO_SPOT: 1,
+    }
 
 
 def test_coverage_flags_unmeasured_steps_silent_units_and_missing_fields(tmp_path: Path) -> None:
@@ -102,7 +147,7 @@ def test_coverage_flags_unmeasured_steps_silent_units_and_missing_fields(tmp_pat
     unmeasured = StepMeasure(EXPIRY, (8_000, 7_000, 9_000), (), 500, StepSource.PROBE_REPORT)
     cache.write_unit(pull_chain(fake, [999], unit=later, steps=[500], increments=[unmeasured]))
 
-    text = describe(coverage(tmp_path / "flags", "NVDA", CAL))
+    text = describe(coverage(tmp_path / "flags", "NVDA", CAL, R))
 
     assert "wasn't measured (DEC-14): chains/2026-09-25_C" in text
     assert "Units that answered nothing: chains/2026-09-25_C" in text
@@ -110,7 +155,7 @@ def test_coverage_flags_unmeasured_steps_silent_units_and_missing_fields(tmp_pat
 
 
 def test_coverage_flags_nothing_on_a_clean_cache(tmp_path: Path) -> None:
-    text = describe(coverage(tmp_path, "NVDA", CAL))
+    text = describe(coverage(tmp_path, "NVDA", CAL, R))
 
     assert "wasn't measured (DEC-14): none" in text
     assert "Units that answered nothing: none" in text
@@ -142,7 +187,7 @@ def _merged_cache(root: Path) -> SymbolCache:
 def test_coverage_near_money_counts_a_merged_unit_over_its_weekly_part(tmp_path: Path) -> None:
     _merged_cache(tmp_path / "merged")
 
-    cov = coverage(tmp_path / "merged", "NVDA", CAL)
+    cov = coverage(tmp_path / "merged", "NVDA", CAL, R)
 
     near = cov.near_money
     assert near.answered == 2  # $100 and $101 (the band's top); $80 is in the deep band

@@ -194,7 +194,7 @@ Panels that depend on the data follow the selected symbol and show pooled figure
 | --- | --- | --- | --- |
 | — | Data and RIC scheme | 5 | Prose: LSEG hourly bars, RIC grammar, caret rule, guess-and-check, cache and manifest |
 | 1 | Data coverage | 5 | contracts requested / answered / unanswered, mid availability, IV failures, stale-mark rate, unavailable fields |
-| — | Bar timing and look-ahead guard | 10 | Prose: the verified convention (DEC-06), decision time = bar end, MarketView's structural guarantee |
+| — | Bar timing and look-ahead guard | 10 | Prose: the verified convention (DEC-06), decision time = bar end, MarketView's structural guarantee; the session close is the close bar's last trade, not the official closing auction (DEC-23) |
 | — | Fill model | 10 | Prose + key/value: mid fills, no quote → no fill, `spread_capture`, fees |
 | 2 | Mid vs print — weekly shorts | 5 | scatter + fit + R² |
 | 3 | Mid vs print — long-dated longs | 5 | scatter + fit + R² (expected to fit worse, and reported as such) |

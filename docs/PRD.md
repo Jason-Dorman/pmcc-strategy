@@ -82,11 +82,11 @@ Every row points to its source. "Verified by" names the invariant test (INV-nn),
 
 | ID | Requirement | Source | Verified by |
 | --- | --- | --- | --- |
-| FR-P1 | Black-Scholes Greeks with IV solved from the bar's mid, vectorized across the chain snapshot (Newton with bisection fallback) | Spec › Greeks and pricing | IV solver vs scalar reference (P2-02) |
+| FR-P1 | Black-Scholes Greeks with IV solved from the bar's mid, vectorized across the chain snapshot (Newton with bisection fallback); T and Greek units per DEC-24 | Spec › Greeks and pricing; DEC-24, DEC-89 | `tests/unit/pricing/test_black_scholes.py`, `test_expiry.py`; IV solver vs scalar reference (`test_iv.py`, P2-02) |
 | FR-P2 | One constant r for the window, with source and value stated on the site; q = 0. r = 0.0371, from FRED DGS3MO (3.73% on Mar 27 2026), continuously compounded | Spec; DEC-11 | `tests/unit/config/test_universe_file.py`; Methodology page |
-| FR-P3 | EM = mid of the weekly ATM straddle | Spec; DEC-25 | P2-03 tests |
-| FR-P4 | RV20 = annualized close-to-close vol over the prior 20 sessions, from hourly-derived daily closes | Spec; DEC-26 | P2-03 tests |
-| FR-P5 | A failed IV solve makes a contract ineligible on that bar | Spec; DEC-27 | P2-02, P2-04 tests |
+| FR-P3 | EM = mid of the weekly ATM straddle; unavailable without both quotes | Spec; DEC-25 | `tests/unit/pricing/test_measures.py` (P2-03) |
+| FR-P4 | RV20 = annualized close-to-close vol over the prior 20 sessions, from hourly-derived daily closes | Spec; DEC-26 | `tests/unit/pricing/test_measures.py` (P2-03) |
+| FR-P5 | A failed IV solve makes a contract ineligible on that bar; a held call below its floor keeps deep ITM Greeks | Spec; DEC-27 | `tests/unit/pricing/test_iv.py`, `test_chain.py` (P2-02, P2-04) |
 
 ### 6.3 Engine and conventions
 
@@ -229,6 +229,7 @@ Every row points to its source. "Verified by" names the invariant test (INV-nn),
 - q = 0, and one constant r.
 - Black-Scholes values American calls exactly under q = 0.
 - Fills at the mid of the bar's final BID/ASK, which isn't proven to be the NBBO.
+- A session's close, which decides ITM at expiry, is the close bar's last trade; it can differ from the official closing auction by up to about 0.09% (DEC-23).
 - The exchange calendar is known in advance.
 
 ## 10. Deliverables

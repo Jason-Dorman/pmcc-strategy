@@ -8,6 +8,7 @@ import structlog
 import typer
 
 from pmcc.config.calendar import load_calendar
+from pmcc.config.universe import Universe as UniverseConfig
 from pmcc.config.universe import load_universe
 from pmcc.data import coverage, estimate
 from pmcc.data.cache import CacheError, SymbolCache
@@ -16,7 +17,6 @@ from pmcc.data.lseg import lseg_session
 from pmcc.data.probe import ProbeStoppedError, probe_path, run_probe, write_report
 from pmcc.data.provider import ProviderOutageError
 from pmcc.data.pull import PlanError, Target, prepare, pull_units
-from pmcc.domain.calendar import SessionCalendar
 from pmcc.domain.clock import ET
 from pmcc.log import configure_logging
 
@@ -57,7 +57,8 @@ def fetch(
     """Pull a symbol's stock and option history from LSEG into the local cache."""
     log_path = configure_logging("fetch")
     sym, calendar = symbol.upper(), load_calendar()
-    target = _target(sym, calendar)
+    universe = load_universe(calendar)
+    target = _target(sym, universe)
     try:
         steps = estimate.assumed_steps(estimate.latest_probe_report(probes, sym))
     except estimate.NoProbeReportError as exc:
@@ -81,13 +82,14 @@ def fetch(
     except (PlanError, CalendarMismatchError, CacheError, FileExistsError) as exc:
         _fail(f"{sym}: {exc}")
     _say(f"{sym}: {len(written)} units written.")
-    _say(coverage.describe(coverage.coverage(cache, sym, calendar)))
+    rate = universe.risk_free_rate.value
+    _say(coverage.describe(coverage.coverage(cache, sym, calendar, rate)))
     _say(f"Log: {log_path.as_posix()}")
 
 
-def _target(symbol: str, calendar: SessionCalendar) -> Target:
+def _target(symbol: str, universe: UniverseConfig) -> Target:
     """The symbol's identifiers from `configs/universe.yaml`."""
-    for underlying in load_universe(calendar).symbols:
+    for underlying in universe.symbols:
         if underlying.symbol == symbol:
             return Target(symbol, underlying.stock_ric, underlying.option_root)
     _fail(f"{symbol} isn't in configs/universe.yaml (DEC-15)")

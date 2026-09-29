@@ -11,7 +11,9 @@
 - **Counts:** contracts requested, answered and unanswered, per unit and per kind (LDG §5).
 - **Flags:** bands whose step wasn't measured (DEC-14), units that answered nothing (DEC-83's
   residual risk) and fields that never came back (DEC-13).
-- **IV failures** aren't counted until the chain pricer adds them (P2-04; PO, DEC-16).
+- **IV failures (P2-04; PO, DEC-16):** session bars with a valid quote before the expiry close,
+  priced by the chain pricer at the universe's r, whose IV didn't solve, by reason: below the
+  no-arbitrage floor, above the cap, no convergence, no spot.
 """
 
 from collections.abc import Sequence
@@ -28,9 +30,13 @@ from pmcc.data.discovery import Region, StepSource, UnitKind, unit_kind, weekly_
 from pmcc.data.load import SymbolData, load_symbol
 from pmcc.data.ric import parse_ric
 from pmcc.domain.calendar import SessionCalendar
+from pmcc.pricing.chain import PricedSymbol, price_symbol
+from pmcc.pricing.iv import IvCode
 
 _DAY = timedelta(days=1)
-IV_NOTE = "IV failures: not counted until the chain pricer adds them (P2-04; PO, DEC-16)."
+# Why a quoted contract got no IV. NO_QUOTE is the valid-mid line's; EXPIRED is the expiry close.
+IV_FAILURES = (IvCode.BELOW_FLOOR, IvCode.ABOVE_CAP, IvCode.NO_CONVERGENCE, IvCode.NO_SPOT)
+_NOT_PRICED = (IvCode.NO_QUOTE, IvCode.EXPIRED)
 
 log = structlog.get_logger()
 
@@ -59,6 +65,29 @@ class Tally:
         return self.valid / self.expected if self.expected else None
 
 
+@dataclass
+class IvTally:
+    """Session bars with a valid quote before the expiry close (`priced`), and why those whose
+    IV didn't solve failed."""
+
+    priced: int = 0
+    failed: dict[IvCode, int] = field(default_factory=lambda: dict.fromkeys(IV_FAILURES, 0))
+
+    @classmethod
+    def of(cls, codes: dict[IvCode, int]) -> "IvTally":
+        priced = sum(n for code, n in codes.items() if code not in _NOT_PRICED)
+        return cls(priced, {code: codes.get(code, 0) for code in IV_FAILURES})
+
+    def add(self, other: "IvTally") -> None:
+        self.priced += other.priced
+        for code, n in other.failed.items():
+            self.failed[code] += n
+
+    @property
+    def failures(self) -> int:
+        return sum(self.failed.values())
+
+
 @final
 @dataclass(frozen=True, slots=True)
 class UnitCoverage:
@@ -68,6 +97,7 @@ class UnitCoverage:
     kind: UnitKind
     tally: Tally
     near: Tally
+    iv: IvTally
     unmeasured: int  # bands whose step is the probe report's
     fields_missing: tuple[str, ...]
 
@@ -86,18 +116,33 @@ class Coverage:
             total.add(unit.near)
         return total
 
+    @property
+    def iv(self) -> IvTally:
+        total = IvTally()
+        for unit in self.units:
+            total.add(unit.iv)
+        return total
 
-def coverage(root: Path, symbol: str, calendar: SessionCalendar) -> Coverage:
-    """Every cached unit's coverage, loaded as the backtest loads it."""
+
+def coverage(root: Path, symbol: str, calendar: SessionCalendar, rate: float) -> Coverage:
+    """Every cached unit's coverage, loaded and priced as the backtest loads and prices it, with
+    `rate` as r (DEC-11)."""
     data = load_symbol(root, symbol, calendar)
-    units = tuple(_unit(u, data) for u in SymbolCache(root, symbol).units())
+    priced = price_symbol(data.stock, data.chains, calendar, rate)
+    units = tuple(_unit(u, data, _iv(u, priced)) for u in SymbolCache(root, symbol).units())
     by_kind: dict[UnitKind, Tally] = {}
     for unit in units:
         by_kind.setdefault(unit.kind, Tally()).add(unit.tally)
     return Coverage(symbol, units, by_kind)
 
 
-def _unit(unit: CachedUnit, data: SymbolData) -> UnitCoverage:
+def _iv(unit: CachedUnit, priced: PricedSymbol) -> IvTally:
+    if unit.expiry is None or unit.right is None:
+        return IvTally()  # the stock
+    return IvTally.of(priced.codes(unit.expiry, unit.right))
+
+
+def _unit(unit: CachedUnit, data: SymbolData, iv: IvTally) -> UnitCoverage:
     kind = unit_kind(unit.right, {b.region for b in unit.bands})
     if unit.expiry is None or unit.right is None:
         frame = data.stock
@@ -123,6 +168,7 @@ def _unit(unit: CachedUnit, data: SymbolData) -> UnitCoverage:
         kind=kind,
         tally=tally,
         near=near,
+        iv=iv,
         unmeasured=sum(b.source is StepSource.PROBE_REPORT for b in unit.bands),
         fields_missing=tuple(f for f in unit.fields if answered and f not in unit.fields_returned),
     )
@@ -166,6 +212,8 @@ def describe(cov: Coverage) -> str:
             unanswered=unit.tally.unanswered,
             valid_mid=_pct(unit.tally),
             near_money_valid_mid=_pct(unit.near) if unit.near.answered else None,
+            iv_priced=unit.iv.priced,
+            iv_failed=unit.iv.failures,
             unmeasured_bands=unit.unmeasured,
             fields_missing=list(unit.fields_missing),
         )
@@ -187,16 +235,35 @@ def describe(cov: Coverage) -> str:
         f"Near-the-money weekly calls (strike inside the unit's stock range): {_pct(near)} of "
         f"{near.expected:,} session bars, {near.answered:,} contracts"
     )
-    lines.append(IV_NOTE)
+    lines.append(_iv_line(cov.iv))
     lines.extend(_flags(cov))
     log.info(
         "fetch.coverage",
         symbol=cov.symbol,
         units=len(cov.units),
         near_money_valid_mid=_pct(near),
+        iv_priced=cov.iv.priced,
+        iv_failed=cov.iv.failures,
         **{k.value: _pct(t) for k, t in cov.by_kind.items()},
     )
     return "\n".join(lines)
+
+
+def _iv_line(iv: IvTally) -> str:
+    share = "n/a" if not iv.priced else f"{100 * iv.failures / iv.priced:.1f}%"
+    reasons = ", ".join(f"{_REASONS[c]} {n:,}" for c, n in iv.failed.items())
+    return (
+        f"IV failures (session bars with a valid mid, before the expiry close): {share}, "
+        f"{iv.failures:,} of {iv.priced:,} ({reasons})"
+    )
+
+
+_REASONS = {
+    IvCode.BELOW_FLOOR: "below the floor",
+    IvCode.ABOVE_CAP: "above the cap",
+    IvCode.NO_CONVERGENCE: "no convergence",
+    IvCode.NO_SPOT: "no spot",
+}
 
 
 def _flags(cov: Coverage) -> list[str]:

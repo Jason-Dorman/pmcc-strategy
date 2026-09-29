@@ -43,11 +43,11 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-20 | Week-open session and order of operations | ASK | P3-07 |
 | DEC-21 | Selection freeze and E-T1 | ASK | P3-07 |
 | DEC-22 | Gates and the gate log | ASK | P3-07 |
-| DEC-23 | Spot, close, ITM at expiry | ASK | P2-03 |
-| DEC-24 | Time to expiry and Greek units | ASK | P2-01 |
-| DEC-25 | ATM strike, ATM IV, expected move | ASK | P2-03 |
-| DEC-26 | RV20 | ASK | P2-03 |
-| DEC-27 | Greeks for held contracts; fresh quotes only | ASK | P2-04 |
+| DEC-23 | Spot, close, ITM at expiry | SETTLED (PO) | — |
+| DEC-24 | Time to expiry and Greek units | SETTLED (PO) | — |
+| DEC-25 | ATM strike, ATM IV, expected move | SETTLED (PO) | — |
+| DEC-26 | RV20 | SETTLED (PO) · a missing close: ASK | asked 2026-09-29 (P2 review) |
+| DEC-27 | Greeks for held contracts; fresh quotes only | SETTLED (PO) | — |
 | DEC-28 | Exits without a valid quote | ASK | P3-07 |
 | DEC-29 | Tie-breaks | ASK | P3-06 |
 | DEC-30 | Starting capital (E-L4) | ASK | P3-09 |
@@ -99,6 +99,7 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-86 | Universe config and strict YAML | ENG | — |
 | DEC-87 | Cache writes, sidecars and the loader | ENG | — |
 | DEC-88 | The fetch command: plan, estimate, unit loop | ENG | — |
+| DEC-89 | Pricing: Black-Scholes, the IV solver, measures, the chain pricer | ENG | — |
 
 ---
 
@@ -418,7 +419,7 @@ The results are reported to the PO at P1-05. A result that contradicts the spec 
   - **Fetch:** roughly 2–2.5 h for the three over the 26-week window (ARCHITECTURE §6.3), before DEC-48's wider long bands.
 
 ### DEC-16 — Fetch coverage summary
-**Status:** SETTLED · **Basis:** PO, 2026-09-28 (asked at P1-08, and after its review) · **Affects:** P1-08, P1-09, P1-10, P2-04, ARCHITECTURE §6.1
+**Status:** SETTLED · **Basis:** PO, 2026-09-28 (asked at P1-08, and after its review; IV failures built at P2-04) · **Affects:** P1-08, P1-09, P1-10, P2-04, ARCHITECTURE §6.1
 
 - **The gap:** ARCHITECTURE §6.1 step 5 asked the fetch to print "% session bars with a valid mid, unanswered counts, IV-failure counts". Two points were open:
   - **IV failures** need the IV solver (P2-02), which isn't built. Offered: count bars whose mid is below S − K·e^(−rT), the no-IV condition of DEC-08 and DEC-27, as a lower bound (recommended); leave them out until P2-02; build P2-02 first.
@@ -430,6 +431,7 @@ The results are reported to the PO at P1-05. A result that contradicts the spec 
   - **Flags:** bands whose step wasn't measured (DEC-14), units that answered nothing (DEC-83's residual risk), and fields that never came back (DEC-13).
   - Built in `pmcc/data/coverage.py`. It reads the cache through `load_symbol`, after the LSEG session has closed (DEC-88).
 - **Outcome:** 2026-09-28 — PO, asked after P1-08's review: which dates the near-the-money line counts for a **merged unit**, a monthly Friday that is also a weekly expiry. In the PO's window the Aug 21 and Sep 18 2026 units run from Mar 30, their first long-candidate session, so their near-money strikes were counted over about five months, not the weekly's two weeks. Offered: the weekly part only (recommended); the whole unit, as built. The PO chose the **weekly part only**: from the prior week's first session to the expiry (or the window's end), the dates a weekly unit covers. The per-kind table still counts the whole unit. `weekly_dates` in `pmcc/data/discovery.py` gives those dates to both the planner and the summary.
+- **Outcome:** 2026-09-28 — **IV failures joined the summary at P2-04**, as settled above. `coverage()` prices the cache with the chain pricer at the universe's r (DEC-11) and prints one line: the share of session contract-bars with a valid quote, before the expiry close, whose IV failed, with the count by reason (below the floor, above the cap, no convergence, no spot). Each unit's log line carries `iv_priced` and `iv_failed`. A bar with no valid quote is the valid-mid line's, not an IV failure, and the expiry session's close bar isn't priced (DEC-89). NVDA: 8.3%, 32,403 of 390,652 (31,966 below the floor, 437 no convergence).
 
 ## C. Rule interpretations
 
@@ -475,46 +477,59 @@ Each of these decides trading behaviour the spec leaves open, so each goes to th
 - **Outcome:** —
 
 ### DEC-23 — Spot, close, ITM at expiry
-**Status:** ASK · **Ask at:** P2-03 · **Affects:** P3-06
+**Status:** SETTLED · **Basis:** PO, 2026-09-28 (asked at P2-03) · **Affects:** P2-03, P3-02, P3-06, X-S4, X-S5
 
 - **Recommendation:**
   - **Spot** at a decision bar is the underlying's TRDPRC_1 (last trade) in that bar.
   - **Closing spot** is the spot of the session's close bar (16:00 ET, or 13:00 on a half-day).
   - **ITM at expiry (X-S4/X-S5):** the short is ITM if and only if closing spot > strike. OCC auto-exercises at $0.01 ITM, so equal counts as OTM.
-- **Outcome:** —
+- **Outcome:** 2026-09-28 — PO: as recommended. The P1-04 evidence went with the question: the close bar's last trade matched the official closing auction in 9 of 48 sessions and sat up to 0.09% from it (JPM), with the largest dollar gaps on META ($0.40) and TSLA ($0.27) (DEC-06, R-21). The close bar's last trade is kept, since the cache holds only the hourly tape; the gap is for the Methodology page.
+  - Built in `pmcc/pricing/measures.py`: `session_close` (the close bar's TRDPRC_1, keyed by `bar_end`) and `itm_at_expiry` (DEC-89). Spot itself is MarketView's accessor (P3-02), and the chain pricer reads it the same way. The spec is unchanged: this settles what it leaves open.
 
 ### DEC-24 — Time to expiry and Greek units
-**Status:** ASK · **Ask at:** P2-01 · **Affects:** P6-04
+**Status:** SETTLED · **Basis:** PO, 2026-09-28 (asked at P2-01) · **Affects:** P2-01, P2-04, E-L2, X-L2, P6-04
 
 - **Recommendation:**
   - **T:** calendar time from the decision time to the expiry session's close (16:00 ET, or 13:00 on a half-day), in years, ACT/365 (seconds ÷ 31,536,000).
   - **Units:** δ per $1; Γ per $1²; θ per year (Δt in years); ν per 1.00 of volatility (Δσ in vol units). Attribution uses the same units.
   - **DTE (E-L2, X-L2):** calendar days from the decision date to the expiry date.
-- **Outcome:** —
+- **Outcome:** 2026-09-28 — PO: as recommended. Built in `pmcc/pricing/expiry.py` (`years_to_expiry`, `days_to_expiry`) and `pmcc/pricing/black_scholes.py` (DEC-89). T is elapsed time, measured in UTC, so a clock change between the decision and the expiry counts its hour; the first version subtracted two ET times, which Python does by wall clock, and a test across the Nov 1 2026 change caught it. The decision date for DTE is the ET date. The spec is unchanged: this settles what it leaves open.
 
 ### DEC-25 — ATM strike, ATM IV, expected move
-**Status:** ASK · **Ask at:** P2-03 · **Affects:** E-S3 (quant), G-3, G-4, X-S3
+**Status:** SETTLED · **Basis:** PO, 2026-09-28 (asked at P2-03) · **Affects:** P2-03, E-S3 (quant), G-3, G-4, X-S3
 
 - **Recommendation:**
   - **ATM strike:** the listed strike nearest spot (tie → the lower strike).
   - **ATM IV (G-3, G-4):** the IV of the ATM **call**. Under the spec's q = 0 assumption, an American call is priced exactly by Black-Scholes, so calls avoid the early-exercise bias that puts carry.
   - **EM:** ATM call mid + ATM put mid for the front week, at the decision bar. Both quotes must be valid. Otherwise EM is unavailable, and quant E-S3 can't select on that bar.
-- **Outcome:** —
+- **Outcome:** 2026-09-28 — PO: as recommended. Built in `pmcc/pricing/measures.py` (`atm_strike`, `atm_iv`, `expected_move`; DEC-89).
+  - Distances to spot are compared in $0.0001 units, so a tie is exact.
+  - Each mid is `Quote.mid`, rounded half-even to $0.0001 as a fill at mid would be (DEC-44), so EM is a `Price`.
+  - ATM IV is unavailable when the ATM call has no row on the bar or its IV fails. Which strikes are listed is MarketView's (DEC-32, P3-02). The spec is unchanged: this settles what it leaves open.
 
 ### DEC-26 — RV20
-**Status:** ASK · **Ask at:** P2-03 · **Affects:** G-4
+**Status:** SETTLED, except a missing close (ASK, 2026-09-29) · **Basis:** PO, 2026-09-28 (asked at P2-03) · **Affects:** P2-03, G-4
 
 - **Recommendation:** RV20 at a decision bar is the sample standard deviation of the last 20 daily log returns × √252. The returns come from the 21 most recent completed session closes before the current session. A session close is the TRDPRC_1 of the close bar.
 - **Fetch:** the fetch already pulls 30 warm-up sessions (DEC-48), which covers any reasonable answer.
-- **Outcome:** —
+- **Outcome:** 2026-09-28 — PO: as recommended. Built in `pmcc/pricing/measures.py` (`rv20`, `realized_vol`; DEC-89). The 21 sessions come from the calendar (`sessions_before`), so the current session's bars never count, even at its close; a half-day's close is its 13:00 bar. The spec is unchanged: this settles what it leaves open.
+- **Not asked, so not settled:** what RV20 is when one of the 21 closes is missing (the close bar has no trade). The code makes RV20 unavailable rather than compute it from fewer closes, so G-4 can't evaluate for the next 21 sessions. That changes when a gate evaluates, so it goes to the PO; the P2 review found it recorded above as the PO's answer. **Asked 2026-09-29, answer pending.** NVDA's stock has a trade on every session bar (P2-04), so it doesn't arise there.
 
 ### DEC-27 — Greeks for held contracts; fresh quotes only
-**Status:** ASK · **Ask at:** P2-04 · **Affects:** X-S2, X-L1
+**Status:** SETTLED · **Basis:** PO, 2026-09-28 (asked at P2-04) · **Affects:** P2-04, P3-02, P3-07, X-S2, X-L1
 
 - **Selection:** an IV failure makes a contract ineligible (spec).
 - **Recommendation (held contracts):** if the mid is below the no-arbitrage floor, `mid < max(0, S − K·e^(−rT))`, the contract gets δ := 1.0 (the σ → 0 limit for an ITM call), Γ = ν := 0, θ := −r·K·e^(−rT). X-S2 and X-L1 therefore still see a deep ITM leg.
 - **Recommendation (fresh quotes only):** rules evaluate only on bars where the contract has a fresh valid quote. Stale carried marks value the book, but they never trigger a rule or a fill.
-- **Outcome:** —
+- **Outcome:** 2026-09-28 — PO: as recommended.
+  - **Built** in `pmcc/pricing/chain.py` (DEC-89): a call below its floor gets the limit Greeks and stays ineligible. The limit is a call's, and only calls are ever held, so a put below its floor gets no Greeks. Every other failure (above the cap, no convergence, no spot) leaves the Greeks unknown.
+  - **Fresh quotes only** is MarketView's and the engine's (P3-02, P3-07). The pricer prices only the rows a bar has, and a bar without a valid quote is `NO_QUOTE`, so it never supplies Greeks from a stale mark.
+  - **Measured on NVDA (P2-04):** 31,966 of 390,652 quoted session contract-bars before expiry are below the floor, 8.2%. They are very deep in the money: 83% have K/S ≤ 0.6, and at 120–270 DTE all but 16 of 13,084 do (the 16, on 11 contracts, reach K/S 0.66), far below the 0.70–0.90 delta band, where 51,889 contract-bars are eligible. Nearer the money they come from contracts close to their own expiry. A long held while NVDA rallies can reach them, which is the case this rule covers.
+  - **Open for P3:** a held call whose IV fails another way has no delta on that bar, and P3-06/P3-07 must say what X-S2 and X-L1 do then:
+    - **no convergence:** on NVDA, 437 contract-bars, all deep ITM calls within a week of their expiry (297 on expiry day, 140 one to seven days before);
+    - **no spot:** never on NVDA;
+    - **the expiry session's close bar:** T = 0, so every contract there is `EXPIRED` and a held short has no delta on the bar where DEC-20 still runs short exits before X-S4/X-S5. This happens to every short, every week (found by the P2 review).
+  - The spec is unchanged: this settles what it leaves open.
 
 ### DEC-28 — Exits without a valid quote
 **Status:** ASK · **Ask at:** P3-07
@@ -816,6 +831,7 @@ Development runs in Git Bash on Windows (DEC-02) and CI runs on Ubuntu. Both mus
 - **The agent may** run read-only git commands (`status`, `diff`, `log`, `show`, `ls-files`, `check-ignore`) to check done-when lines and draft commit messages.
 - **The agent never** runs a git or gh command that changes the repo or GitHub (`init`, `add`, `commit`, `push`, `branch`, `tag`, `stash`, `reset`, `checkout`, `gh repo`, `gh api` writes, and so on).
 - **Workflow:** the agent finishes an item's work, docs and tick in the working tree, then hands the PO the list of files and a proposed commit message (`P0-03: python project`). "Commit" and "push" anywhere in the docs mean the PO's action.
+- **Outcome:** 2026-09-28 — PO: all of P2 (P2-01 to P2-04) is built in one pass and goes in as **one commit**, not one per item as CLAUDE.md's backlog rule says. The PO will give the reason later. The four items are still ticked separately in BUILD-PLAN. This applies to P2 only.
 
 ### DEC-77 — Quality-gate configuration
 **Status:** ENG · **Affects:** P0-04, P0-05, P0-06
@@ -1181,6 +1197,57 @@ Development runs in Git Bash on Windows (DEC-02) and CI runs on Ubuntu. Both mus
     - docs: `--plan-only` does ask LSEG for the tape (README); FakeMarket serves puts and the daily step asks, and stands in for FakeProvider in P1-08's done-when (TEST-STRATEGY); DEC-83's note on where the loop lives; IV failures join at P2-04, not P2-02 (DEC-16).
     - The deep-ITM fallback drawing on both monthly records is kept, and its reading of DEC-14 is written down above.
   - **Now:** 77 new tests in P1-08 (`test_pull.py` 37, `test_estimate.py` 13, `test_coverage.py` 6, the CLI's fetch tests 10, and 11 across `test_discovery.py`, `test_load.py` and `test_cache.py`), 748 in the suite. **Mutants:** 51 re-run on the reviewed code (round 1's 23 whose code is unchanged, and 28 for the review's findings and fixes, the reviewers' surviving mutants included). One survived, a strike check on too fine a step, and was killed by a new test: all 51 are killed.
+
+### DEC-89 — Pricing: Black-Scholes, the IV solver, measures, the chain pricer
+**Status:** ENG · **Affects:** P2-01 to P2-04, P3-02, P3-06, P3-07; DEC-16, DEC-23 to DEC-27, DEC-44
+
+- **Where:** `pmcc/pricing/`, one module per job:
+  - `black_scholes.py`: `price`, `greeks` (both check their inputs) and `price_vega` (the solver's unchecked inner loop).
+  - `expiry.py`: T and DTE (DEC-24).
+  - `iv.py`: `implied_vol` and the `IvCode`s.
+  - `measures.py`: spot and close, ATM, EM, RV20 (DEC-23, DEC-25, DEC-26).
+  - `chain.py`: `price_quotes` (one bar) and `price_symbol` → `PricedSymbol` (a whole symbol, memoized).
+  - `pmcc/domain/quotes.py`: `Quote`, a valid BID/ASK and its mid, which MarketView's `quote()` will return (P3-02).
+- **Dependencies:** `pricing` still imports only `pmcc.domain` from the package (ARCHITECTURE §3.3 rule 4). Outside it, it uses numpy, scipy (`scipy.special.ndtr` for N) and polars: `chain.py` reads the loader's frames by their columns (`bar_end`, `strike_cents`, `BID`, `ASK`, `valid_quote`, `session_bar`, `TRDPRC_1`) without importing `pmcc.data`. `pmcc.data.coverage` now imports `pricing` for the IV-failure line (DEC-16). pyright gets minimal scipy stubs in `typings/scipy/` (`ndtr`; `brentq` for the tests), like the lseg ones (DEC-42).
+- **Black-Scholes:** ARCHITECTURE §7's formulas with q = 0, vectorized; every argument broadcasts. A put uses N(−d) directly rather than parity, which would lose precision to cancellation on a tiny, far out-of-the-money put.
+- **The IV solver:**
+  - **Codes, in the order they're checked:** `EXPIRED` (T ≤ 0), `NO_QUOTE`, `NO_SPOT`, `BELOW_FLOOR`, `ABOVE_CAP`, `NO_CONVERGENCE`.
+    - `NO_SPOT` is new to ARCHITECTURE §7's list: a bar where the underlying didn't trade has no spot (DEC-23), so nothing on it can be priced.
+    - `NO_QUOTE` outranks `NO_SPOT`, so an IV failure always means the contract itself had a valid quote. The coverage line counts it that way.
+  - **A put's bounds** are European: floor max(0, K·e^(−rT) − S), cap K·e^(−rT). Puts feed only EM, which uses their mids; no rule reads a put's IV.
+  - **Tolerance:** ARCHITECTURE §7 said stop at |model − mid| < 1e-6·max(1, mid). P2-02's done-when asks for |Δσ| < 1e-6, and a price tolerance of 1e-6 gives that only when vega exceeds max(1, mid), which a deep ITM long-dated call often doesn't. The solver stops at 1e-9·max(1, mid), or when its bracket is narrower than 1e-12. That pins σ to 1e-6 wherever vega ≥ 1e-3·max(1, mid). Where the price barely moves with vol the solved vol is looser, though it still reprices the mid: 719 of NVDA's solved lanes, off `brentq` by up to 3e-5 of vol, with a delta difference under 1e-8.
+  - **Method:** Newton, safeguarded. Each lane keeps a bracket known to hold its root, starting at [1e-4, 5.0]. A step that would leave the bracket, or a vega under 1e-8, bisects instead. The start is Manaster and Koehler's vol, where vega peaks.
+  - **`NO_CONVERGENCE`** means no vol in [1e-4, 5.0] prices the mid (checked before iterating), or 100 iterations ran out. On NVDA all 437 are the first kind: deep ITM calls within a week of their expiry (297 on expiry day, 140 one to seven days before), whose extrinsic no vol up to 500% explains.
+  - **A mid exactly on the floor** solves at a vol near zero; only a mid under it is `BELOW_FLOOR`.
+- **The chain pricer:**
+  - **Mid:** a contract's IV comes from (BID + ASK) / 2 exactly, not the $0.0001-rounded `Quote.mid` that fills and EM use (DEC-44). The difference is at most $0.00005.
+  - **Eligible** means the IV solved (Spec › Greeks and pricing). DEC-27's limit Greeks go on calls below their floor, which stay ineligible.
+  - **Columns per contract:** mid, spread % of mid, IV, code, δ, Γ, θ, ν, and extrinsic: mid − max(0, S − K) for a call (Spec › E-L3), mid − max(0, K − S) for a put.
+  - **A whole symbol:** `price_symbol` prices each unit's session bars in one vectorized pass. It joins the stock's TRDPRC_1 on the same `bar_end` and takes T from `years_to_expiry` per bar, so it has one source for T. `PricedSymbol.snapshot(bar_end, expiry, right)` slices a bar and keeps it, and `codes(expiry, right)` counts the unit's outcomes.
+  - ARCHITECTURE's `price_chain(snapshot, spot, now, r)` became `price_quotes` (one bar's arrays) plus `price_symbol` and `PricedSymbol.snapshot` (the memo), so a batch prices a symbol once and every run shares it.
+- **Measures:** `atm_strike` takes the strikes it's given; which are listed is MarketView's (DEC-32). `atm_iv` takes that strike and a priced call chain. `expected_move` takes two `Quote`s or None and returns a `Price`. `rv20` takes the calendar, the decision time and the close-bar trades by `bar_end`.
+- **Tests:** 110 new, 858 in the suite (`tests/unit/pricing/`, `tests/unit/domain/test_quotes.py`, two in `test_coverage.py`, one in `test_cli.py`), after the review below.
+  - The Black-Scholes reference values were computed once with mpmath at 50 digits (run in a throwaway environment, not a dependency) and agree with Hull's worked example (15.6) to its four decimals.
+  - Hypothesis checks put–call parity, each Greek against a central difference, the solver against scalar `brentq` where the mid pins the vol down, and a solved vol repricing its mid everywhere else. Its spot step scales with S·σ·√T, since a fixed step blurred short, calm options.
+- **Outcome:** 2026-09-28 — P2's done-when lines hold.
+  - **P2-01:** the reference values match to 1e-8, and parity and the finite-difference Greeks hold (300 derandomized examples, plus 8 random seeds).
+  - **P2-02:** |Δσ| < 1e-6 against `brentq` where solvable, and each code has a test.
+  - **P2-03:** a missing put quote leaves EM unavailable, and RV20 ignores the current session's bars, even at its close.
+  - **P2-04:** NVDA's full window (400,784 session contract-bars) prices in 1.4 s, after a 0.6 s load (limit 10 s). The coverage summary shows IV failures: 8.3%, 32,403 of 390,652 (DEC-16, DEC-27).
+  - **Found while building:**
+    - T across a clock change was an hour short, because Python subtracts two times in the same zone by wall clock; now in UTC (DEC-24).
+    - NVDA's empty May 2027 unit (DEC-08) crashed the pricer; an empty unit now prices to nothing, with a test.
+- **Outcome:** 2026-09-29 — an adversarial review of P2 (4 reviewers, 2 skeptics per finding): 28 findings, 18 unique. The 12 most severe were verified: 10 confirmed, 1 plausible, 1 refuted; 6 low ones went unverified. All the confirmed and plausible ones and all 6 low ones are fixed or put to the PO:
+  - **Confirmed, medium:**
+    - **Test gaps** that let plausible bugs through: the coverage line's denominator (an expiry-close bar counted, or a no-spot bar dropped); DEC-27's limit Greeks spread to no convergence, no spot or the expiry close; `pmcc fetch` pricing the summary at the wrong r; the snapshot memo keyed without right or expiry. Each now has a test.
+    - **Wrong NVDA figures in the docs:** the 437 no-convergence bars aren't all on expiry day (297 are; 140 fall one to seven days before), and 16 below-floor bars at 120–270 DTE, not one, exceed K/S 0.6. Corrected in DEC-27, here and in BUILD-PLAN.
+    - **ARCHITECTURE §5.2's MarketView** didn't match the measures: `spot()` couldn't say there was no trade, and `session_closes(n)` can't feed `rv20`. §5.2 now sketches `spot() -> Price | None` and `close_trades()`, still indicative until P3-02.
+    - **A held short has no delta on its expiry close bar,** where DEC-20 still runs short exits. Added to DEC-27's open items for P3.
+  - **Confirmed, low:** the 1e-6 vol guarantee holds only where vega ≥ 1e-3·max(1, mid) (qualified above, in ARCHITECTURE §7 and in `iv.py`); the EM rounding test couldn't tell each mid rounded from the straddle rounded (a test now can).
+  - **Plausible, medium:** `snapshot()` read a naive time in the machine's zone, so Windows and Ubuntu CI would pick different bars (DEC-58). It now refuses a naive time, as `to_et` does.
+  - **Refuted:** that the float spread % misjudges E-T1's 3% and 10% limits at the boundary. No rule compares it yet; E-T1 and DEC-29 are P3-06's.
+  - **Unverified, low, fixed:** tests for the IV coming from the exact mid, an option bar the stock tape lacks (a left join, so it is `NO_SPOT`), and the solver's bisection fallback (from three starts where Newton alone fails); DEC-23 now credits the 0.09% gap to JPM (DEC-06); this entry's reason for pricing puts directly. And DEC-26's missing-close rule, recorded as the PO's answer though it was never asked, is now put to the PO (DEC-26).
+  - **Mutants:** the 14 the reviewers left alive, re-run on the fixed code, are all killed.
 
 ## E. Analytics definitions
 

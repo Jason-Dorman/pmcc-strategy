@@ -29,7 +29,7 @@ Sep 25, 2026 · schedule from Spec › Build order · **due Fri Oct 9, 11:59 pm*
 | P0 Foundations | Sat Sep 26 | `just check` green in Git Bash and in CI; credentials ignored; LSEG session opens from Git Bash | Done locally 2026-09-25; CI run for P0-07/08 pending the PO's push |
 | P1 Data layer and open items | Sat Sep 26 – Sun Sep 27 | NVDA's full chain cached; INV-11, INV-12 pass; window, r and identifiers recorded; universe fetch started | Done 2026-09-28 (P1 exit): P1-01 to P1-09 (window Mar 30 – Sep 25 2026, r = 0.0371, universe QQQ, NVDA, TSLA; cache and loader per DEC-46; `pmcc fetch` per DEC-88; NVDA's chain cached, near-money weekly mids 97.7%) |
 | P1-10 Universe fetch (background) | Sun Sep 27 – Sat Oct 3 | QQQ and TSLA cached with coverage summaries (NVDA at P1-09) | Estimates shown 2026-09-28 (QQQ 183–547 min, TSLA 98–293 min); the PO scheduled the pull overnight |
-| P2 Pricing | Mon Sep 28 | IV solver matches the reference; EM, ATM IV, RV20 tested | Not started |
+| P2 Pricing | Mon Sep 28 | IV solver matches the reference; EM, ATM IV, RV20 tested | Done 2026-09-28, as one commit (PO, DEC-59): Black-Scholes, T and DTE, the IV solver, measures and the chain pricer (DEC-24 to DEC-27 settled; DEC-89). NVDA prices in 1.4 s; IV failures 8.3%, mostly very deep ITM; DEC-26's missing-close rule is with the PO |
 | P3 Engine, accounting, baseline | Mon Sep 28 – Wed Sep 30 | **M1:** baseline blotter, ledger, NAV, Reg T for NVDA; INV-01–10 and 13 pass | Not started |
 | P4 Quant layer and site skeleton | Thu Oct 1 – Fri Oct 2 | **M2:** quant + A1–A5 on NVDA; Pages serves the skeleton from sample JSON; INV-14, 15 in CI | Not started |
 | P5 Universe batch and sensitivity | Sat Oct 3 – Sun Oct 4 | **M3:** all results JSON written and verified | Not started |
@@ -50,6 +50,7 @@ Nothing needs answering up front. This is when each open question in [DECISIONS]
 | P2-01 Black-Scholes · Mon Sep 28 | Time and Greek units | DEC-24 |
 | P2-03 Measures · Mon Sep 28 | Spot and close, ATM IV and EM, RV20 | DEC-23, DEC-25, DEC-26 |
 | P2-04 Chain pricer · Mon Sep 28 | Greeks when IV fails; fresh quotes only | DEC-27 |
+| P2 review · Tue Sep 29 | RV20 when one of the 21 closes is missing | DEC-26 |
 | P3-02 MarketView · Mon Sep 28 | Point-in-time listing | DEC-32 |
 | P3-04 Accounting core · Mon Sep 28 | The short stock's margin after X-S5 while the long call is held (found at P1-05) | DEC-10 |
 | P3-06 Rule modules · Tue Sep 29 | Tie-breaks | DEC-29 |
@@ -227,23 +228,23 @@ P8 release                                                                      
 
 ### P2 — Pricing · Mon Sep 28
 
-- [ ] **P2-01 · Black-Scholes and Greeks**
+- [x] **P2-01 · Black-Scholes and Greeks** — done 2026-09-28; `pmcc/pricing/black_scholes.py` and `expiry.py`. The PO took DEC-24 as recommended: T is ACT/365 to the expiry session's close, and δ, Γ, θ, ν are per $1, per $1², per year and per 1.00 of vol. Reference values (mpmath, 50 digits; Hull 15.6 to 4 dp) match to 1e-8, and parity and the finite-difference Greeks hold. A test across the Nov 1 clock change caught T an hour short (Python subtracts same-zone times by wall clock); T is now measured in UTC. P2 went in as one commit (PO, DEC-59)
   - Ask first: DEC-24.
   - Vectorized call and put price, δ, Γ, θ and ν, with q = 0.
   - Done when: reference values match to 1e-8, and put–call parity and finite-difference Greek checks hold (hypothesis).
   - Needs: P1-01
-- [ ] **P2-02 · Vectorized IV solver**
+- [x] **P2-02 · Vectorized IV solver** — done 2026-09-28; `pmcc/pricing/iv.py`. Safeguarded Newton from Manaster and Koehler's start; |Δσ| < 1e-6 against `brentq` where the mid pins the vol down. The price tolerance is 1e-9·max(1, mid), not ARCHITECTURE's 1e-6, which couldn't give that on deep ITM calls. It adds a code, `NO_SPOT`, and checks `NO_QUOTE` first so an IV failure always means a quoted contract (DEC-89)
   - Newton with a bisection fallback, and failure codes per ARCHITECTURE §7.
   - Done when: it matches a scalar `brentq` reference on hypothesis inputs (|Δσ| < 1e-6 where solvable), and each failure code has a test.
   - Needs: P2-01
-- [ ] **P2-03 · Measures**
+- [x] **P2-03 · Measures** — done 2026-09-28; `pmcc/pricing/measures.py` and `pmcc/domain/quotes.py` (`Quote`). The PO took DEC-23, DEC-25 and DEC-26 as recommended: the close is the close bar's last trade (R-21's gap goes on Methodology); ATM is the nearest listed strike, the lower on a tie; ATM IV is the call's; EM is call mid + put mid, unavailable without both; RV20 is from the 21 closes before the current session, unavailable if one is missing
   - Ask first: DEC-23, DEC-25, DEC-26.
   - EM, ATM strike and ATM IV, RV20, and extrinsic value.
   - Done when fixture tests pass, including:
     - a missing put quote leaves EM unavailable
     - RV20 uses only completed sessions
   - Needs: P2-02
-- [ ] **P2-04 · Chain pricer**
+- [x] **P2-04 · Chain pricer** — done 2026-09-28; `pmcc/pricing/chain.py` (`price_quotes`, `price_symbol` → `PricedSymbol`). The PO took DEC-27 as recommended: a call below its floor gets δ = 1, Γ = ν = 0, θ = −r·K·e^(−rT) and stays ineligible; fresh-quotes-only is P3's. NVDA's full window (400,784 session contract-bars) prices in 1.4 s. The coverage summary counts IV failures (DEC-16): 8.3% on NVDA: 31,966 below the floor (83% at K/S ≤ 0.6, none in the long band) and 437 no convergence (deep ITM calls within a week of expiry). NVDA's empty May 2027 unit crashed the first version; fixed with a test. Left for P3-06/P3-07: what X-S2 and X-L1 do when a held call's IV fails another way, including on its expiry close bar (DEC-27). An adversarial review (4 reviewers, 2 skeptics per finding) confirmed 10 findings (6 test gaps, 2 wrong NVDA figures, ARCHITECTURE §5.2 out of step with the measures, a held short with no delta on its expiry close bar), rated 1 plausible (a naive time keyed by the machine's zone) and refuted 1; all are fixed, with the 6 unverified lows, and DEC-26's missing-close rule went to the PO. 110 new tests, 858 in the suite; the reviewers' 14 surviving mutants are killed (DEC-89)
   - Ask first: DEC-27.
   - Per-bar IV, Greeks and eligibility for a symbol; the held-contract rule; memoized.
   - Done when: NVDA's full window prices in under 10 s, and IV-failure counts appear in the coverage summary.
@@ -482,4 +483,4 @@ The spec sets the order. Cut the next item only when its trigger fires, and mark
 | R-18 | Pulls need the PO's machine on and signed in to Workspace | High | Med | Schedule pulls with the PO; batch them overnight | P1-10 |
 | R-19 | A late PO answer stalls the items that depend on it | Med | Med | Batch questions per item and ask one item ahead (§2) | §2 |
 | R-20 | A guessed RIC fails with a code that isn't a no-data code, so the fetch stops as an outage | Med | Med | P1-04 records the real codes before any pull; widening the no-data codes is a DEC-83 decision. **Retired by P1-04:** both never-listed codes are no-data codes (DEC-83) | P1-04 |
-| R-21 | The close bar's last trade differs from the official close (up to 0.09% in the probes), so a short pinned near its strike can be ITM by one and OTM by the other | Med | Med | DEC-23 (asked at P2-03) decides which close X-S4/X-S5 use; the probe numbers go with the question | P2-03 |
+| R-21 | The close bar's last trade differs from the official close (up to 0.09% in the probes), so a short pinned near its strike can be ITM by one and OTM by the other | Med | Med | DEC-23 (asked at P2-03) decides which close X-S4/X-S5 use; the probe numbers go with the question. **P2-03:** the PO kept the close bar's last trade (the cache has no daily close); the gap is disclosed on Methodology (P7) | P7 |
