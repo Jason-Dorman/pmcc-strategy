@@ -31,7 +31,7 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-05 | LSEG terms: raw cache and derived series | ASK | P3-10 |
 | DEC-06 | Bar timestamps, decision time, session bars | SETTLED (PO) | — |
 | DEC-07 | Backtest window | SETTLED (PO) | — |
-| DEC-08 | Long-dated coverage | VERIFY: sampled; full measure at P1-09, P1-10 | P1-09, P1-10 |
+| DEC-08 | Long-dated coverage | VERIFY: NVDA measured (P1-09); QQQ, TSLA at P1-10 | P1-10 |
 | DEC-09 | Live-contract RIC form | SETTLED (spec, probed) | — |
 | DEC-10 | Reg T and FINRA 4210 citations | ASK: short stock after X-S5 · citations found | P3-04; quotes by P7-04 |
 | DEC-11 | Risk-free rate | SETTLED (PO) | — |
@@ -252,6 +252,17 @@ The results are reported to the PO at P1-05. A result that contradicts the spec 
   - On the 7 symbols whose median long spread exceeds 3%, expect late long entries, and perhaps none on TLT or XLE.
   - Measured in full over the window's own monthlies (Aug 2026 – Jun 2027, DEC-07): NVDA at P1-09, the other 11 at P1-10.
 - **Outcome:** 2026-09-28 — the PO cut the universe to QQQ, NVDA and TSLA (DEC-15), the three with the tightest long-leg spreads (1.4%, 1.4%, 2.1%). NVDA is measured at P1-09, QQQ and TSLA at P1-10.
+- **Outcome:** 2026-09-28 — **NVDA, measured in full at P1-09**, on the cached chain (63 units, fetched Sep 29 01:54–02:34 UTC).
+  - **What was measured:** every answered monthly call on every session bar of the window (875) where it is 120–270 DTE and its Black-Scholes delta is 0.70–0.90. The delta uses r = 0.0371 (DEC-11), T = DTE ÷ 365, and σ = RV20 as of the prior session. The pricer is P2's, so the band is an estimate; it doesn't depend on the contract's own quote, so a contract that didn't quote is still counted. This was a one-off script over `load_symbol`, not a command.
+  - **Every session bar has at least one in-band long candidate with a valid mid** (875 of 875), across 10 monthlies from Aug 2026 to Jun 2027.
+  - **Valid mid:** 90.7% of 47,787 contract-bars (DEC-16's denominator: a bar that never came back counts as no mid). Counted from each contract's first LSEG bar, **100%** (43,327 of 43,327). The whole gap is contracts not listed yet, not missing quotes:
+    - **Feb 19 2027** is a candidate from May 26 and first traded Jun 30. **Apr 16 2027** is a candidate from Jul 20 and first traded Sep 11.
+    - **May 21 2027** is a candidate from Aug 24 and **wasn't listed by Sep 25**. All 39 strikes and all 9 step anchors came back "not found" (codes 70005 and 90001, as for a never-listed strike). The Jun 17 2027 unit, fetched next in the same session, answered 38 of 38. The unit is cached empty and the coverage summary flags it.
+    - Strikes on the near monthlies (Aug–Oct 2026) that NVDA's rise added partway through.
+    - This is DEC-32's point-in-time listing, which MarketView must honour (P3-02).
+  - **Median spread:** 1.52% of mid; 89.6% of valid bars are within E-T1's 3%. By expiry, the median runs from 1.10% (Jan 2027) to 3.25% (Apr 2027, in its first two weeks of listing).
+  - **Below S − K·e^(−rT):** 0 bars, so no IV failures from the no-arbitrage floor. The chain pricer counts the rest (P2-04, DEC-16).
+  - Expect E-L3 to find candidates on every week-open session. E-T1 retries will be rare, and most likely on a newly listed expiry.
 
 ### DEC-09 — Live-contract RICs
 **Status:** SETTLED · **Basis:** Spec › RIC builder, confirmed by the P1-04 probes and reported to the PO at P1-05 (2026-09-28) · **Affects:** P1-02, P1-03
@@ -390,6 +401,7 @@ The results are reported to the PO at P1-05. A result that contradicts the spec 
   - Ask the anchors $10 below and $10 above, each with its four offsets, in one request. If either answers, take the finer step they show.
   - If none answers, the band takes the probe report's step for its symbol and region, and is flagged: `probe_report` in the unit's sidecar, a `fetch.increment.unmeasured` log event, and a line in the coverage summary (DEC-16).
   - Built in `pmcc/data/pull.py` (`measure_step`, DEC-88).
+- **Outcome:** 2026-09-28 — NVDA's fetch (P1-09) measured 83 of its 86 bands. Near the money every band was $2.50 (53). Deep in the money the bands were $5 (24), $2.50 (3) and $1 (3). The 3 unmeasured bands are all on May 21 2027, which wasn't listed in the window (DEC-08), so they took the probe report's $5 as designed. The daily step asks' date edges (DEC-47) held on LSEG.
 
 ### DEC-15 — Universe size
 **Status:** SETTLED · **Basis:** PO, 2026-09-28 · **Affects:** Spec › Universe, `configs/universe.yaml`, P1-10, P3-09, P5, P6 (pooled statistics), P7-05; the cut list
@@ -558,6 +570,7 @@ Distances are compared in integer price units, so float noise can't create or br
   - A contract is "listed" at time t once it has had a valid quote at or before t.
   - Chain snapshots, "lowest listed strike" and the ATM strike use only listed contracts.
   - The fetch band can include strikes that are listed later, and MarketView hides them until their first quote.
+- **Evidence (P1-09, 2026-09-28):** NVDA's cache shows listing happening inside the window. Whole long-dated expiries appear late: Feb 2027 from Jun 30, Apr 2027 from Sep 11, and May 2027 not by Sep 25, although each is 120–270 DTE earlier. New strikes also appear on the near monthlies as the stock moves. Before its first bar, a contract has no rows at all in the cache (DEC-08).
 - **Outcome:** —
 
 ### DEC-33 — Expiry calendar

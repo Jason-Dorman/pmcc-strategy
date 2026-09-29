@@ -338,9 +338,11 @@ The stock RIC and daily bars come first, since every later check needs them, the
 - **Examples:**
   - The spec's CLI example window (Jul 6 → Sep 18 2026) needs the monthlies Nov 20 2026 through May 21 2027 (7 expiries).
   - The PO's window (Mar 30 → Sep 25 2026, DEC-07) needs a warm-up from Feb 13 2026 and the monthlies Aug 21 2026 through Jun 17 2027 (11 expiries). `tests/unit/config/test_universe_file.py` plans it on the shipped calendar.
+  - The plan follows the calendar, not the listing, so a planned expiry can come back empty. For NVDA (P1-09), May 21 2027 wasn't listed by Sep 25, so its unit is cached with no rows and the coverage summary flags it. Feb and Apr 2027 were listed partway through their units (DEC-08, DEC-32).
 - **Estimate:** the low figure is Σ strikes + 5 per band (the step asks), one form per contract. An hourly batch holding an unlisted strike is asked again one RIC at a time, and a recently expired contract can be asked in both forms, so the high figure is three times that; fetches on the fake market asked 2.3 to 2.5 times the low figure (DEC-88). LDG measured about 44 RIC requests per minute (~1,100 in ~25 min).
   - An 11-week window is about 700 requests, ~16 min per symbol, or ~3–4 h for all 12.
   - The PO's 26-week window scales that by about 2.4, roughly 40 min per symbol or 2–2.5 h for the three (DEC-15), and DEC-48's wider long bands add to it. `--plan-only` prints the real figure.
+  - **NVDA, measured (P1-09):** 63 units estimated at 2,263 to 6,789 requests and 52 to 155 min. It took 40 min, with one connection reset that recovered on its retry. The printed figure is conservative.
 
 ### 6.4 Cache layout (DEC-46)
 
