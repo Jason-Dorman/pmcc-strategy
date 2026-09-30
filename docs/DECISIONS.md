@@ -50,7 +50,7 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-27 | Greeks for held contracts; fresh quotes only | SETTLED (PO) | — |
 | DEC-28 | Exits without a valid quote; when the long is checked | SETTLED (PO) | — |
 | DEC-29 | Tie-breaks | SETTLED (PO) | — |
-| DEC-30 | Starting capital (E-L4) | ASK | P3-09 |
+| DEC-30 | Starting capital (E-L4) | ASK · cash source answered (PO, P3-08) | P3-09 |
 | DEC-31 | Entry-timing sensitivity | ASK | P5-02 |
 | DEC-32 | Point-in-time listing | SETTLED (PO) | — |
 | DEC-33 | Expiry calendar | SETTLED (PO) | — |
@@ -576,7 +576,7 @@ Distances are compared in integer price units, so float noise can't create or br
 **Outcome:** 2026-09-29 — PO: as recommended, the quant row included (built at P4-01). Built in `pmcc/strategy/selectors.py` (P3-06, DEC-91): DTE is whole days and strikes are integer units, so those ties are exact; spread % is compared as an exact fraction of the integer BID and ASK. A delta is a float from the IV solve, so its distance to the target is rounded to 9 decimal places before comparing: without that, 0.85 and 0.75 aren't equally far from 0.80 in binary floating point, and float noise would break the tie the PO settled (a unit test caught it). The spec is unchanged: this settles what it leaves open.
 
 ### DEC-30 — Starting capital (E-L4)
-**Status:** ASK · **Ask at:** P3-09 · **Affects:** P5-01
+**Status:** ASK (the calibration); the cash source SETTLED by the PO on 2026-09-30 · **Ask at:** P3-09 · **Affects:** P3-08, P5-01
 
 - **Recommendation:**
   - `pmcc calibrate` runs every universe symbol under `baseline_pmcc` and `quant_pmcc` at `spread_capture` 0, with provisional cash.
@@ -798,6 +798,7 @@ Every rule in the YAML carries a `rationale` (Spec › Rule write-up source), bu
   - **What counts as dirty:** a tracked file modified, staged or deleted, or an untracked file git doesn't ignore, anywhere but `results/`. An untracked config or module can change a run, so it counts; a run's own results don't.
   - **Starting cash** (asked with it, recorded under DEC-30): `pmcc run` reads it only from `configs/universe.yaml`, with no CLI override.
   - The spec's Run manifest paragraph and invariant 13 now say this. Built in P3-08 (DEC-92): `pmcc/export/canonical.py`, `manifest.py`, and INV-13's test, which runs the same config twice in two fresh processes with different hash seeds and compares the files once the timestamp is dropped.
+- **Outcome:** 2026-09-30 — PO, on a finding of P3-08's adversarial review: INV-13 also drops `git_sha`. A publishable result records the clean commit it ran from, and committing the results makes a newer commit, so a re-run from any later checkout (P8-01's clean clone) records another SHA and INV-13 on real data could never hold. Every other byte must still match: the config, data and lockfile hashes, `git_dirty`, and every number. Invariant 13 in the spec says so; built as `canonical.drop_volatile` (DEC-92).
 
 ### DEC-51 — Invariants in CI without data
 **Status:** ENG
@@ -1128,7 +1129,7 @@ Development runs in Git Bash on Windows (DEC-02) and CI runs on Ubuntu. Both mus
   - `risk_free_rate` (DEC-11): the value used, plus the quote, series, date and source it came from;
   - `symbols` (DEC-12): symbol, stock RIC and option root.
 
-  `starting_cash` joins with P3-09 (DEC-30) and the bootstrap seed with P6-05 (DEC-61). Until then an unknown key is refused.
+  `starting_cash` joined, optional, at P3-08, and P3-09 sets its value (DEC-30, DEC-92); the bootstrap seed joins with P6-05 (DEC-61). Until then any other unknown key is refused.
 - **What it refuses:**
   - a window that doesn't run from a week-open session to a week-final session, spans fewer than 10 weekly expiries (Spec › Universe), or falls outside the calendar;
   - an r quoted on or after the window's first day, which the first decision couldn't have known;
@@ -1325,7 +1326,7 @@ Development runs in Git Bash on Windows (DEC-02) and CI runs on Ubuntu. Both mus
   - It covers `RunConfig`: the resolved strategy (id, name, fill model, each rule's kind, params and templates) plus the universe's window and r. It is the sha256 of `canonical_json()`: `model_dump(mode="json")` as JSON with sorted keys, no whitespace, non-ASCII kept, in UTF-8.
   - Only resolved content counts, so the same rules spread across `extends` or flattened into one file hash the same.
   - The symbol list is left out: the symbol is a run's input, recorded in its manifest, so every symbol run on one config shares a hash.
-  - `starting_cash` joins at P3-09 (DEC-30). Report sections (DEC-54) join at P4-05.
+  - `starting_cash` stays out of it: it lives in the universe file, and each result records it beside the hash (DEC-92). Report sections (DEC-54) join at P4-05.
 - **JSON Schema:** each kind has its own params model, so `Rule.params` is described as what every dump holds, a map of names to numbers or strings, rather than as the empty base model pydantic would emit. P4-05 exports the schema.
 - **Lint:** ruff's `allowed-confusables` adds `×` and `−` to `›`: the spec writes rule text with them (`spot ≥ short strike − 0.25 × EM`), and the YAML and its tests quote it.
 - **For P5-02:** `configs/sensitivity.yaml` lists many variants in one file (ARCHITECTURE §10), and `load_strategy` resolves one strategy per file. P5-02 adds the entry point that folds each listed variant onto its parent.
@@ -1435,32 +1436,52 @@ Development runs in Git Bash on Windows (DEC-02) and CI runs on Ubuntu. Both mus
 **Status:** ENG · **Affects:** P3-08, P3-09, P3-10, P4-05, P4-06, P5-03; DEC-30, DEC-49, DEC-50
 
 - **Where (ARCHITECTURE §3.1):**
-  - `pmcc/export/`: `canonical.py` (canonical JSON, `drop_run_timestamp`), `models.py` (the pydantic result models), `manifest.py` (git, lockfile and version provenance), `results.py` (`write_result`).
-  - `pmcc/runner.py` (new, beside `cli.py`): `run_symbol` loads a cache, runs the engine and builds the `RunResult`. It needs `data`, `engine` and `export`, and `export` must not depend on the engine or the data layer (§3.2), so it sits above them. `pmcc calibrate` and `pmcc batch` reuse its `run_loaded`.
+  - `pmcc/export/`: `canonical.py` (canonical JSON, `drop_volatile`, `verbatim_floats`), `models.py` (the pydantic result models), `manifest.py` (git, lockfile and version provenance), `results.py` (`write_result`).
+  - `pmcc/runner.py` (new, beside `cli.py`): `run_symbol` loads a cache, runs the engine and builds the `RunResult`. It needs the loader, the engine and `export`, and `export` doesn't run the engine or load a cache (it uses only `data.files` for whole-file writes, §3.2), so the runner sits above them.
+  - A symbol is priced once: `Market.prepare(loaded, root, r)` builds `MarketData` (every chain priced) and the RIC names, and `run_market(market, config, …)` runs one config on it. `run_loaded` does both for one run. `pmcc calibrate` and `pmcc batch` prepare each symbol once and run every config on it (ARCHITECTURE §11); `run_market` refuses a config whose r isn't the one the market was priced at (`MarketData.rate`).
+  - **A window the cache doesn't cover (PO, 2026-09-30):** `check_covers` refuses a run, with `CacheError`, unless the cached stock tape has session bars on every session of the window, naming the gap and `pmcc fetch`. Without it, a cache narrower than the window ran to a result of empty 'no long held' weeks and exited 0.
 - **The result file (provisional until P4-05):** `results/{SYM}/{run_id}.json` holds `schema_version` (1), `manifest`, `config` (the resolved `RunConfig`, dumped exactly as its hash covers it), `rule_text` (each rule's rendered condition, action and rationale), `starting_cash`, `blotter`, `ledger` and `gate_log`. The summary, cycles and attribution join at P4-05 and P6, with the JSON Schema.
   - An instrument is `{ric, occ, kind, expiry, strike}`. `ric` is the RIC the cache answered with (the expired `^` form for a contract fetched after expiry), read from the chain frames, so a blotter row leads straight to its raw quotes (TEST-STRATEGY §8). The stock is its tape's RIC, with `occ`, `expiry` and `strike` null.
   - The blotter's audit and the gate log's values pass through as the engine records them; the audit's `bid`, `ask` and `funds_after` stay in $0.0001 units (DEC-91), which `pmcc verify` reads.
+  - **Dollars in those value maps (PO, 2026-09-30):** exact 4-dp strings (`"82.9900"`), as the engine records them; the typed fields (fills, cash, NAV, marks, strikes) are 4-dp numbers. The selector's `mid` was the one exception, a float rounded to 4 dp that could differ from the fill's half-even mid; it is now the quote's exact mid as a 4-dp string.
+  - A value in those maps must be exactly a JSON scalar type (`ScalarMap`): pydantic's strict float would otherwise take a `Decimal`, a numpy number or a numpy bool as a float.
   - `run_id` is the config's `id`; `strategy_id` is the part before `--` (`quant_pmcc--a3` → `quant_pmcc`).
 - **Canonical JSON (DEC-50):**
   - One line, no whitespace, sorted keys, UTF-8 with non-ASCII kept, one final newline.
-  - Result dollars are `Decimal` and print as 4-dp JSON numbers (`1234.5000`); the config section keeps its own dump, dollars as `"0.1000"` strings, because that is what `config_hash` covers.
+  - Result dollars are `Decimal` and print as 4-dp JSON numbers (`1234.5000`); the config section keeps its own dump, dollars as `"0.1000"` strings and floats unrounded (`verbatim_floats`), because that is what `config_hash` covers, so the file's config always rehashes to `manifest.config_hash`.
   - Other floats round to 6 dp and print by shortest repr. NaN and infinities print as `null`, −0.0 as `0.0`, and a naive time is refused.
   - Arrays come only from lists and tuples, so `bytes` or a set is refused rather than printed as numbers.
-  - `loads` keeps each number's text, so reading a canonical file and dumping it again gives back its bytes, and `drop_run_timestamp` is exact.
+  - `loads` keeps each number's text, so reading a canonical file and dumping it again gives back its bytes, and `drop_volatile` (INV-13's comparison: without `run_timestamp` and `git_sha`, PO, DEC-50) is exact.
 - **Provenance:** git runs read-only (`rev-parse`, `status --porcelain` with `--no-optional-locks`), with `results/` excluded by pathspec (DEC-59). `lock_hash` is the sha256 of `uv.lock`, which is LF on every OS; `pmcc_version` is the installed package's. No git, no commit, or no lockfile fails the run before anything is written.
-- **`pmcc run --symbol S --config C [--universe U] [--cache data_cache] [--out results]`:**
+- **`pmcc run --symbol S --config C [--cache data_cache] [--out results]`:**
+  - The window, r and starting cash come only from `configs/universe.yaml`, found from the package, not the working directory (PO, DEC-30). There is no `--universe` option.
   - `data_source` is `lseg`: the runner's caller says where the data came from, since a synthetic cache looks the same on disk. Tests and P4's sample site pass `synthetic`.
   - `run_timestamp` is the start of the run, in ET.
-  - A re-run replaces its file whole (`replace_file`). A cache, calendar, provenance or engine error, a failed invariant included, exits 1 with nothing written (DEC-49), and a bad config path or YAML exits 1 naming the file.
+  - A re-run replaces its file whole (`replace_file`). A cache, calendar, provenance or engine error (a failed invariant included), a window the cache doesn't cover, a quant kind not built yet (`NotBuiltError`) or a runner `ValueError` exits 1 with nothing written (DEC-49), and a bad universe or config file (missing, bad YAML, a value refused) exits 1 naming the file.
   - It prints the trade, bar and week counts, the final NAV and the path, and says to commit first when the tree is dirty. Log events: `run.done` and `run.abort`.
 - **`Universe.starting_cash`:** optional (`DollarMoney | None`) until P3-09 writes it with its basis (DEC-30). It isn't in `config_hash`, which covers the strategy, the window and r (DEC-90); the result records it as `starting_cash`.
 - **The large-file hook:** a 26-week full result is about 0.5 MB (575 bytes per ledger bar on the synthetic market; NVDA's window has 875 bars), at pre-commit's default 500 KB `check-added-large-files` limit, which would stop the PO's P3-10 commit. `results/` now has its own 2 MB limit; every other path keeps 500 KB. Checked in a throwaway repository: a 1 MB result passes, a 3 MB result and a 600 KB file elsewhere fail.
 - **Tests (78 new, 1,481 in the suite):**
   - `tests/unit/export/`: canonical JSON, including a hypothesis round trip, and provenance on a throwaway git repository (`tests/fakes/git_repo.py`). It lives in pytest's temporary directory, with the global and system git config shut out; the project's repository is only read.
   - `tests/scenario/test_run_result.py`: every blotter, ledger and gate-log row mirrors the engine's; RICs; the manifest; the file's config hashes to its `config_hash`; a dirty tree records `git_dirty: true`.
-  - INV-13: `random_walk` cached once, then run by `tests/scenario/inv13_run.py` in two fresh processes with `PYTHONHASHSEED` 1 and 2 and different run timestamps. The files differ, and are byte-identical once `run_timestamp` is dropped, so no set or dict order leaks into a result.
+  - INV-13: `random_walk`, and `friday_unquoted_at_check` without X-S1, cached once, then run by `tests/scenario/inv13_run.py` in two fresh processes with different run timestamps and commits and `PYTHONHASHSEED` 2 and 6. The second market's ledger has rows with two flags (`exit_pending`, `stale_short`), the one array a result builds from a set, and those seeds put the two in opposite set orders; so an unsorted flags tuple fails the test (checked with the mutant planted). The files differ, and are byte-identical once `run_timestamp` and `git_sha` are dropped.
   - `tests/unit/test_cli_run.py`: `pmcc run` end to end on the synthetic cache, the P3-09 stop, a dirty tree, an engine error and a bad config writing nothing.
 - **Outcome:** 2026-09-30 — P3-08's done-when holds: INV-13 passes on synthetic data, and a dirty tree records `git_dirty: true`.
+- **Outcome:** 2026-09-30 — an adversarial review of P3-08 (4 reviewers, 2 skeptics per finding): 27 findings, 19 unique. The 12 most severe were verified: 11 confirmed, 0 plausible, 1 refuted; 7 low ones went unverified. All 11 and the 7 are fixed, with regression tests (34 new, 1,515 in the suite):
+  - **Confirmed, medium:**
+    - The config section's floats were rounded to 6 dp, so a param like 0.1234567 was published as 0.123457 and the file's config no longer hashed to `manifest.config_hash`. Now printed unrounded.
+    - `pmcc run` wrote a result of empty weeks, exit 0, for a window its cache didn't cover. Now refused (PO).
+    - INV-13's market never had a ledger row with two flags, so the hash seeds couldn't expose a set-order leak. It now runs a second market that does, with seeds that order its flags oppositely.
+    - `pmcc run`'s `--universe` let starting cash come from any file, against the PO's DEC-30 answer, and its default was relative to the working directory; a bad universe file, a quant kind and a runner `ValueError` ended in a traceback. The option is gone, and each exits 1 with a message.
+    - DEC-86 and DEC-90 still said `starting_cash` joins at P3-09 and the config hash. Fixed.
+    - The RIC test only checked that each RIC parses to the right contract; it now compares the chain frame's RIC.
+    - The mirror tests skipped stock ledger rows, limit ≠ fill, fees, gate reasons and rule actions. They now run four markets that reach each, and check each.
+    - The selector's `mid` was a float among 4-dp dollar strings (above, PO).
+    - INV-13 could never hold on real data, since `git_sha` changes once results are committed. It now drops `git_sha` too (PO, DEC-50).
+    - `run_loaded` re-priced every chain on every run, against ARCHITECTURE §11's price-once batch. Split into `Market.prepare` and `run_market`.
+  - **Refuted:** that the serialization JSON Schema types money as strings (P4-05 generates the schema from these models and owns that).
+  - **Unverified, low, fixed:** the provenance, calendar and refused-rule error paths untested; no test for `status.showUntrackedFiles=no`; 4-dp padding never exercised; ARCHITECTURE §3.2's runner dependencies; DEC-30's status line and `universe.py` citing DEC-50; value maps silently turning `Decimal` and numpy values into floats.
+  - **Unverified, low, not changed:** `pmcc run` always records `data_source: lseg`, so P4's synthetic sample site needs its own entry point that passes `synthetic` to the runner; that is P4-06's to build.
 
 ## E. Analytics definitions
 

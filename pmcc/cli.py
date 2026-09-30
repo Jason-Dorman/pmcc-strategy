@@ -28,6 +28,7 @@ from pmcc.export.models import DataSource, RunResult
 from pmcc.export.results import write_result
 from pmcc.log import configure_logging
 from pmcc.runner import Stamp, run_symbol
+from pmcc.strategy.registry import NotBuiltError
 
 app = typer.Typer(help="PMCC backtester: fetch LSEG data, run backtests, export the site.")
 log = structlog.get_logger()
@@ -140,22 +141,29 @@ def _fail(message: str) -> NoReturn:
 def run(
     symbol: Symbol,
     config: Annotated[Path, typer.Option(help="Strategy config YAML.")],
-    universe: Universe = Path("configs/universe.yaml"),
     cache: Cache = Path("data_cache"),
     out: Annotated[Path, typer.Option(help="Results directory.")] = Path("results"),
 ) -> None:
-    """Backtest one strategy config on one symbol, from the cache only."""
+    """Backtest one strategy config on one symbol, from the cache only. The window, r and
+    starting cash come only from configs/universe.yaml (PO, DEC-30)."""
     log_path = configure_logging("run")
     sym, calendar = symbol.upper(), load_calendar()
-    settings = load_universe(calendar, universe)
+    settings = _universe(calendar)
     underlying = _underlying(sym, settings)
     cash = settings.starting_cash
     if cash is None:
-        _fail(f"{universe.as_posix()} has no starting_cash yet: P3-09 sets it (DEC-30)")
+        _fail("configs/universe.yaml has no starting_cash yet: P3-09 sets it (DEC-30)")
     result = _backtest(cache, underlying, calendar, _run_config(config, settings), cash)
     path = write_result(result, out)
     _say(_describe_run(result, path))
     _say(f"Log: {log_path.as_posix()}")
+
+
+def _universe(calendar: SessionCalendar) -> UniverseConfig:
+    try:
+        return load_universe(calendar)
+    except (OSError, ValueError, yaml.YAMLError) as exc:  # no file; bad YAML; a value refused
+        _fail(f"configs/universe.yaml: {exc}")
 
 
 def _run_config(path: Path, settings: UniverseConfig) -> RunConfig:
@@ -171,7 +179,8 @@ def _backtest(cache: Path, underlying: Underlying, calendar: SessionCalendar,
     try:
         stamp = Stamp(provenance(), DataSource.LSEG, _now())
         return run_symbol(cache, underlying, calendar, config, cash, stamp)
-    except (CacheError, CalendarMismatchError, ProvenanceError, EngineError) as exc:
+    except (CacheError, CalendarMismatchError, ProvenanceError, EngineError, NotBuiltError,
+            ValueError) as exc:  # fmt: skip
         log.exception("run.abort", symbol=underlying.symbol, run_id=config.strategy.id)
         _fail(f"{underlying.symbol}: {exc}; nothing was written")
 

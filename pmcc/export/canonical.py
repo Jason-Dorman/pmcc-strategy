@@ -5,10 +5,13 @@
 - Any other float (IV, Greeks, ratios) is rounded to 6 dp and printed by its shortest repr;
   NaN and infinities become `null`, and −0.0 prints as `0.0`.
 - Times are ISO 8601 with their offset; dates are `YYYY-MM-DD`.
+- A `Number` prints verbatim: `verbatim_floats` wraps a dump's floats so they print exactly as
+  `json.dumps` does, unrounded, for the config section its hash covers (DEC-92).
 
-INV-13 compares whole files once `manifest.run_timestamp`, the only value that changes from run to
-run, is dropped (`drop_run_timestamp`). `loads` keeps every number's text, so reading a canonical
-file and dumping it again gives back its bytes.
+INV-13 compares whole files once `manifest.run_timestamp` and `manifest.git_sha` are dropped
+(`drop_volatile`): the run time, and the commit, which moves on once results are committed (PO,
+DEC-50). `loads` keeps every number's text, so reading a canonical file and dumping it again gives
+back its bytes.
 """
 
 import json
@@ -20,7 +23,7 @@ from typing import Any, cast, final
 
 FLOAT_PLACES = 6  # IV, Greeks and ratios
 DOLLAR_PLACES = 4  # dollars and prices: whole $0.0001 units (DEC-44)
-VOLATILE = ("manifest", "run_timestamp")  # the one value INV-13 ignores
+VOLATILE = ("run_timestamp", "git_sha")  # the manifest values INV-13 ignores (PO, DEC-50)
 
 
 @final
@@ -44,13 +47,28 @@ def loads(text: str | bytes) -> object:
     return json.loads(text, parse_float=Number, parse_int=Number)
 
 
-def drop_run_timestamp(raw: bytes) -> bytes:
-    """A result file's bytes without `manifest.run_timestamp`: what INV-13 compares."""
+def drop_volatile(raw: bytes) -> bytes:
+    """A result file's bytes without the manifest's `VOLATILE` values: what INV-13 compares.
+    Raises `KeyError` if one is missing."""
     data = cast(dict[str, object], loads(raw))
-    section, key = VOLATILE
-    manifest = cast(dict[str, object], data[section])
-    del manifest[key]
+    manifest = cast(dict[str, object], data["manifest"])
+    for key in VOLATILE:
+        del manifest[key]
     return to_bytes(data)
+
+
+def verbatim_floats(value: object) -> object:
+    """`value` with each float replaced by a `Number` holding `json.dumps`'s text for it, so it
+    prints unrounded. Only for finite floats: a JSON dump has no others."""
+    if isinstance(value, float):
+        if not math.isfinite(value):
+            raise ValueError(f"not a JSON number: {value!r}")
+        return Number(json.dumps(value))
+    if isinstance(value, Mapping):
+        return {k: verbatim_floats(v) for k, v in cast(Mapping[str, object], value).items()}
+    if isinstance(value, list | tuple):
+        return [verbatim_floats(v) for v in cast(Sequence[object], value)]
+    return value
 
 
 def _encode(value: object) -> str:

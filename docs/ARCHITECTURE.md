@@ -139,7 +139,7 @@ The reference files at the repo root (`LSEG-DATA-GUIDE.md`, `DESIGN-GUIDE.md`, `
 | `accounting` | Record and value positions | `Book.apply()`, `carry()`, `value()`, `regt()`, `funds_after()`, `ledger_row()` | domain |
 | `analytics` | Summarize runs | `compute_metrics()`, `bootstrap_ci()`, … | domain, accounting read models |
 | `export` | Result models, manifest, canonical JSON, site data, verify | `write_result()`, `export_site()`, `verify()` | domain, config, accounting, analytics; `data.files` for whole-file writes (DEC-92) |
-| `runner` | Run one config on one symbol's cache into a result | `run_symbol()`, `run_loaded()` → `RunResult` | config, data, engine, strategy, export (DEC-92) |
+| `runner` | Run configs on one symbol's cache into results | `run_symbol()`, `run_loaded()`; `Market.prepare()` once per symbol, then `run_market()` per config → `RunResult` | domain, config, accounting, data, engine, strategy, export, polars (DEC-92) |
 | `log` | Configure structured logging for one command | `configure_logging()` | structlog |
 | `cli` | Wire commands | `pmcc` | everything |
 
@@ -624,7 +624,7 @@ Determinism controls (INV-13):
 | Randomness (bootstrap) | Seeded PCG64 from `universe.yaml`; seed recorded |
 | Parallelism | Runs are independent; one file each; content never depends on completion order |
 | Serialization | Canonical JSON (DEC-50) |
-| Clock | `run_timestamp` only in the manifest, excluded from INV-13 |
+| Clock | `run_timestamp` only in the manifest, excluded from INV-13 with `git_sha` (DEC-50) |
 | Environment | `uv.lock`, Python 3.12 pin, `package-lock.json` |
 | Operating system | LF line endings (`.gitattributes`; writers pass `newline="\n"`), `tzdata` for time zones, bash for recipes, so Windows and Ubuntu produce the same bytes (DEC-58) |
 
@@ -663,14 +663,15 @@ cycles[]    full
 attribution leg{…}, greek{…} (if declared)                                                          full
 ```
 
-An `instrument` is `{ric, occ, kind, expiry, strike}`: `ric` is the RIC the cache answered with, so a row leads to its raw quotes; the stock has `kind: stock` and null `occ`, `expiry` and `strike`. The audit's `bid`, `ask` and `funds_after` are $0.0001 units, as the engine records them (DEC-91).
+An `instrument` is `{ric, occ, kind, expiry, strike}`: `ric` is the RIC the cache answered with, so a row leads to its raw quotes; the stock has `kind: stock` and null `occ`, `expiry` and `strike`. The audit's `bid`, `ask` and `funds_after` are $0.0001 units, as the engine records them (DEC-91), and dollars inside the audit and the gate-log value maps are exact 4-dp strings (`"82.9900"`; PO, DEC-92); a value in those maps is always a JSON scalar.
 
 - **Canonical JSON** (DEC-50, `export/canonical.py`):
   - one line, sorted keys, no whitespace, UTF-8 with non-ASCII kept, one final newline
   - dollars and prices to 4 dp, as JSON numbers (the config section keeps its hashed dump); IV, Greeks and ratios to 6 dp
   - ISO-8601 times with offset
   - `null` instead of NaN
-  - INV-13 compares whole files after dropping `manifest.run_timestamp` (`drop_run_timestamp`)
+  - the config section's floats print unrounded, as `config_hash` covers them
+  - INV-13 compares whole files after dropping `manifest.run_timestamp` and `manifest.git_sha` (`drop_volatile`; PO, DEC-50)
   - `\n` line endings on every OS
 - **`pmcc export --out web/public/data/`:**
   - validates and copies `results/`

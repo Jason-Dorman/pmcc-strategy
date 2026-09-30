@@ -51,6 +51,14 @@ def test_dec_50_an_untracked_file_makes_the_tree_dirty(repo: Path) -> None:
     assert git_state(repo).dirty is True
 
 
+def test_dec_50_an_untracked_file_counts_even_when_git_is_set_to_hide_them(repo: Path) -> None:
+    git(repo, "config", "status.showUntrackedFiles", "no")  # a user's setting, in the throwaway
+    (repo / "configs").mkdir()
+    (repo / "configs" / "variant.yaml").write_text("id: x\n", encoding="utf-8")
+
+    assert git_state(repo).dirty is True
+
+
 def test_dec_50_an_ignored_file_leaves_the_tree_clean(repo: Path) -> None:
     (repo / "data_cache").mkdir()
     (repo / "data_cache" / "stock.parquet").write_bytes(b"x")

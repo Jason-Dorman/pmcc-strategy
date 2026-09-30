@@ -373,7 +373,7 @@ These tests prove logical consistency and must pass on every run, for every symb
 10. Short and long quantities stay equal whenever a short is open.
 11. RIC parser reads known examples as the right contracts (including `UUUUH212601450.U^H26` and the unpadded `AAPLF52619000.U^F26`); the builder emits the zero-padded day, round-trips its own spelling, and emits no caret for live contracts (DEC-01).
 12. Missing RICs return empty series, never exceptions.
-13. Re-running a config on cached data produces byte-identical results, once the run timestamp, the one value that changes from run to run, is dropped (DEC-50).
+13. Re-running a config on cached data produces byte-identical results, once the run timestamp and the git commit SHA are dropped: the time changes on every run, and the commit moves on once results are committed (DEC-50).
 14. The frontend type-checks against TypeScript types generated from the current result schema.
 15. The Playwright smoke test loads every page for one symbol with no console errors.
 

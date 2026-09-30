@@ -120,21 +120,65 @@ def test_dec_50_reading_and_dumping_again_gives_the_same_bytes(value: object) ->
     assert canonical.to_bytes(canonical.loads(raw)) == raw
 
 
-def _result(hour: int) -> dict[str, object]:
-    manifest = {"run_timestamp": datetime(2026, 9, 30, hour, tzinfo=ET), "git_sha": "a"}
+def _result(hour: int, sha: str) -> dict[str, object]:
+    when = datetime(2026, 9, 30, hour, tzinfo=ET)
+    manifest = {"run_timestamp": when, "git_sha": sha, "config_hash": "c", "git_dirty": False}
     return {"manifest": manifest, "ledger": [{"nav": Decimal("1.0000"), "delta": 0.5}]}
 
 
-def test_inv_13_dropping_the_run_timestamp_removes_only_that_value() -> None:
-    a, b = canonical.to_bytes(_result(9)), canonical.to_bytes(_result(11))
+def test_inv_13_dropping_the_volatile_values_removes_only_them() -> None:
+    a, b = canonical.to_bytes(_result(9, "a" * 40)), canonical.to_bytes(_result(11, "b" * 40))
 
     assert a != b
-    assert canonical.drop_run_timestamp(a) == canonical.drop_run_timestamp(b)
-    assert canonical.drop_run_timestamp(a) == (
-        b'{"ledger":[{"delta":0.5,"nav":1.0000}],"manifest":{"git_sha":"a"}}\n'
+    assert canonical.drop_volatile(a) == canonical.drop_volatile(b)
+    assert canonical.drop_volatile(a) == (
+        b'{"ledger":[{"delta":0.5,"nav":1.0000}],"manifest":{"config_hash":"c","git_dirty":false}}\n'
     )
 
 
-def test_inv_13_a_file_with_no_run_timestamp_is_refused() -> None:
+def test_inv_13_any_other_manifest_value_still_counts() -> None:
+    changed = _result(9, "a" * 40)
+    changed["manifest"] = {**changed["manifest"], "git_dirty": True}  # type: ignore[dict-item]
+
+    first = canonical.drop_volatile(canonical.to_bytes(_result(9, "a" * 40)))
+    assert first != canonical.drop_volatile(canonical.to_bytes(changed))
+
+
+@pytest.mark.parametrize("missing", ["run_timestamp", "git_sha"])
+def test_inv_13_a_file_missing_a_volatile_value_is_refused(missing: str) -> None:
+    data = _result(9, "a" * 40)
+    del data["manifest"][missing]  # type: ignore[attr-defined]
+
     with pytest.raises(KeyError):
-        canonical.drop_run_timestamp(b'{"manifest":{}}\n')
+        canonical.drop_volatile(canonical.to_bytes(data))
+
+
+PADDED = [
+    ("1234.5", "1234.5000"),
+    ("10000", "10000.0000"),
+    ("1E+1", "10.0000"),
+    ("-3.25", "-3.2500"),
+]
+
+
+@pytest.mark.parametrize(("value", "text"), PADDED)
+def test_dec_50_dollars_short_of_four_places_are_padded(value: str, text: str) -> None:
+    assert canonical.dumps(Decimal(value)) == text + "\n"
+
+
+def test_dec_92_verbatim_floats_print_unrounded() -> None:
+    config = {"params": {"short_max_spread": 0.1234567, "em_buffer": 1e-7}, "n": [0.30, 2, "x"]}
+
+    text = canonical.dumps(canonical.verbatim_floats(config))
+
+    assert text == '{"n":[0.3,2,"x"],"params":{"em_buffer":1e-07,"short_max_spread":0.1234567}}\n'
+
+
+def test_dec_92_verbatim_floats_leave_other_values_alone() -> None:
+    assert canonical.verbatim_floats({"a": True, "b": None, "c": 3, "d": "0.1000"}) == {
+        "a": True, "b": None, "c": 3, "d": "0.1000"}  # fmt: skip
+
+
+def test_dec_92_verbatim_floats_refuse_nan() -> None:
+    with pytest.raises(ValueError, match="JSON number"):
+        canonical.verbatim_floats({"x": math.nan})

@@ -5,6 +5,7 @@ from datetime import date, datetime
 from pmcc.domain.clock import ET
 from pmcc.domain.instruments import OptionId, Right
 from pmcc.domain.money import Price
+from pmcc.domain.quotes import Quote
 from pmcc.pricing.iv import IvCode
 from pmcc.strategy.ports import ExpiryKind, HeldLeg
 from pmcc.strategy.selectors import (
@@ -103,6 +104,18 @@ def test_e_l3_selection_values_explain_the_pick() -> None:
     assert selected.values["target_delta"] == 0.80
     assert selected.values["dte"] == 180
     assert selected.values["strike"] == "80.0000"
+    assert selected.values["mid"] == "22.2000"
+
+
+def test_e_l3_selection_mid_is_the_quotes_exact_mid_as_four_dp_text() -> None:
+    """An odd BID + ASK: the mid is the fill's half-even $0.0001 mid, not a rounded float
+    (PO, DEC-92)."""
+    view = long_view(Row(80, "22.0001", "22.0004", 0.81))
+    selected = LongSelector(NearestDteExpiry(180), NearestDeltaLong(0.80)).select(view)
+    exact = Quote(Price.from_dollars("22.0001"), Price.from_dollars("22.0004")).mid
+
+    assert selected is not None
+    assert selected.values["mid"] == str(exact.to_dollars()) == "22.0002"
 
 
 # ---- E-S2: the week's final session ----------------------------------------------------------

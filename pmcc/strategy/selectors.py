@@ -168,6 +168,7 @@ def _selection(view: MarketView, chain: ChainSnapshot, row: int, *, target_delta
                spot: Price | None = None) -> Selection:  # fmt: skip
     q = chain.quotes
     option = OptionId(view.root, chain.expiry, chain.right, chain.strike(row))
+    quote = q.quote(row)  # the exact mid, as fills use it; not the float column (DEC-92)
     return Selection(
         option,
         {
@@ -177,7 +178,7 @@ def _selection(view: MarketView, chain: ChainSnapshot, row: int, *, target_delta
             "delta": round(float(q.delta[row]), 6),
             "target_delta": target_delta,
             "iv": round(float(q.iv[row]), 6),
-            "mid": round(float(q.mid[row]), 4),
+            "mid": None if quote is None else str(quote.mid.to_dollars()),
             "spread_pct": round(float(q.spread_pct[row]), 6),
             **({} if spot is None else {"spot": str(spot.to_dollars())}),
         },

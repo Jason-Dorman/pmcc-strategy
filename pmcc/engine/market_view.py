@@ -68,12 +68,14 @@ class MarketData:
         self,
         root: str,
         calendar: SessionCalendar,
+        rate: float,
         stock: Mapping[int, _StockBar],
         priced: PricedSymbol,
         listing: Mapping[UnitKey, Mapping[int, int]],
     ) -> None:
         self.root = root
         self.calendar = calendar
+        self.rate = rate  # the r its chains are priced at; every run on it must use the same
         self._stock = dict(stock)
         self._priced = priced
         self._listing = {key: dict(strikes) for key, strikes in listing.items()}
@@ -96,6 +98,7 @@ class MarketData:
         return cls(
             root=root,
             calendar=calendar,
+            rate=rate,
             stock=_stock_bars(stock),
             priced=price_symbol(stock, chains, calendar, rate),
             listing={key: _first_listed(frame) for key, frame in chains.items()},

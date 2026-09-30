@@ -3,7 +3,11 @@
 `run_symbol` loads the cache (no network), prices it, runs the engine and turns its blotter,
 ledger and gate log into the result's rows, stamped with the run's manifest. The engine checks the
 runtime invariants on every bar and raises on a failure, so a result exists only for a run that
-held them all (DEC-49). `pmcc calibrate` and `pmcc batch` reuse `run_loaded` on a loaded cache.
+held them all (DEC-49).
+
+A symbol is priced once (`Market.prepare`) and each config runs on it (`run_market`), so
+`pmcc calibrate` and `pmcc batch` price a symbol once for all its runs (ARCHITECTURE §11). A run
+whose window the cached stock tape doesn't cover is refused before it starts (PO, DEC-92).
 """
 
 from collections.abc import Mapping
@@ -20,6 +24,7 @@ from pmcc.accounting.events import Event, Instrument, StockId
 from pmcc.accounting.ledger import LedgerRow, LegRow, StockRow
 from pmcc.config.strategy import RunConfig
 from pmcc.config.universe import Underlying
+from pmcc.data.cache import CacheError
 from pmcc.data.load import SymbolData, load_symbol
 from pmcc.data.ric import occ_symbol
 from pmcc.domain.calendar import SessionCalendar
@@ -61,6 +66,22 @@ class Stamp:
     run_timestamp: datetime
 
 
+@final
+@dataclass(frozen=True, slots=True)
+class Market:
+    """One symbol's cache, loaded and priced at one r, ready for any number of runs."""
+
+    loaded: SymbolData
+    data: MarketData
+    names: "_Names"
+
+    @classmethod
+    def prepare(cls, loaded: SymbolData, root: str, rate: float) -> "Market":
+        """Price `loaded` at `rate`, its options named under `root`."""
+        data = MarketData.build(loaded.stock, loaded.chains, loaded.calendar, rate, root)
+        return cls(loaded, data, _Names.of(loaded))
+
+
 def run_symbol(cache: Path, underlying: Underlying, calendar: SessionCalendar, config: RunConfig,
                starting_cash: Money, stamp: Stamp) -> RunResult:  # fmt: skip
     """Load `underlying`'s cache under `cache` and run `config` on it."""
@@ -71,19 +92,48 @@ def run_symbol(cache: Path, underlying: Underlying, calendar: SessionCalendar, c
 def run_loaded(loaded: SymbolData, root: str, config: RunConfig, starting_cash: Money,
                stamp: Stamp) -> RunResult:  # fmt: skip
     """Run `config` on a loaded cache whose options are named under `root`."""
-    rate = config.risk_free_rate.value
-    data = MarketData.build(loaded.stock, loaded.chains, loaded.calendar, rate, root)
-    output = run_backtest(data, config, build_strategy(config.strategy), starting_cash)
-    result = to_result(output, loaded, config, stamp)
-    log.info("run.done", symbol=loaded.symbol, run_id=config.strategy.id,
+    check_covers(loaded, config)  # before pricing: a short cache fails fast
+    market = Market.prepare(loaded, root, config.risk_free_rate.value)
+    return run_market(market, config, starting_cash, stamp)
+
+
+def run_market(market: Market, config: RunConfig, starting_cash: Money,
+               stamp: Stamp) -> RunResult:  # fmt: skip
+    """Run `config` on a prepared market. Raises `ValueError` if the market was priced at another
+    r, and `CacheError` if its stock tape doesn't cover the window."""
+    if config.risk_free_rate.value != market.data.rate:
+        raise ValueError(
+            f"{config.strategy.id} runs at r = {config.risk_free_rate.value}, but the market was "
+            f"priced at {market.data.rate}"
+        )
+    check_covers(market.loaded, config)
+    output = run_backtest(market.data, config, build_strategy(config.strategy), starting_cash)
+    result = to_result(output, market, config, stamp)
+    log.info("run.done", symbol=market.loaded.symbol, run_id=config.strategy.id,
              trades=len(result.blotter), bars=len(result.ledger), weeks=len(result.gate_log),
              git_dirty=stamp.provenance.git.dirty)  # fmt: skip
     return result
 
 
-def to_result(output: RunOutput, loaded: SymbolData, config: RunConfig,
+def check_covers(loaded: SymbolData, config: RunConfig) -> None:
+    """Raises `CacheError` unless the cached stock tape has bars on every session of the window
+    (PO, DEC-92): a run over sessions with no data would write a result of empty weeks."""
+    window = config.window
+    sessions = [s.day for s in loaded.calendar.sessions(window.start, window.end)]
+    taped: set[date] = set(
+        loaded.stock.filter(pl.col("session_bar"))["bar_end"].dt.date().unique().to_list()
+    )
+    missing = [day for day in sessions if day not in taped]
+    if missing:
+        raise CacheError(
+            f"{loaded.symbol}'s cache has no stock bars on {len(missing)} of the window's "
+            f"{len(sessions)} sessions ({missing[0]} to {missing[-1]}); fetch them with pmcc fetch"
+        )
+
+
+def to_result(output: RunOutput, market: Market, config: RunConfig,
               stamp: Stamp) -> RunResult:  # fmt: skip
-    names = _Names.of(loaded)
+    loaded, names = market.loaded, market.names
     return RunResult(
         manifest=_manifest(loaded, config, stamp),
         config=config,

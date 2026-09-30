@@ -16,8 +16,11 @@ def result_path(out: Path, symbol: str, run_id: str) -> Path:
 
 
 def to_bytes(result: RunResult) -> bytes:
-    """The result as canonical JSON (DEC-50)."""
-    return canonical.to_bytes(result.model_dump(mode="python"))
+    """The result as canonical JSON (DEC-50). The config's floats print unrounded, as its hash
+    covers them, so the file's config always hashes to `manifest.config_hash` (DEC-92)."""
+    data = result.model_dump(mode="python")
+    data["config"] = canonical.verbatim_floats(data["config"])
+    return canonical.to_bytes(data)
 
 
 def write_result(result: RunResult, out: Path) -> Path:

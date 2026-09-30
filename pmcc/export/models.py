@@ -4,25 +4,44 @@ Provisional (P3-08): the manifest, the resolved config with its rendered rule te
 cash, and the run's records (blotter, ledger, gate log). The summary, cycles and attribution join
 at P4-05 and P6, and the JSON Schema with them.
 
-Dollars and prices are `Decimal` (exact $0.0001 units, DEC-44) and serialize as 4-dp JSON
-numbers; the config keeps its own dump, dollars as "0.1000" strings, since that is what its hash
-covers (DEC-90). Write a result through `pmcc.export.results`, never `model_dump_json`: only the
-canonical writer is byte-stable (DEC-50).
+Typed dollars and prices are `Decimal` (exact $0.0001 units, DEC-44) and serialize as 4-dp JSON
+numbers. The config keeps its own dump, dollars as "0.1000" strings, since that is what its hash
+covers (DEC-90); and the free-form maps (blotter audit, gate-log values) carry dollars as the engine
+records them, exact 4-dp strings (PO, DEC-92). Write a result through `pmcc.export.results`, never
+`model_dump_json`: only the canonical writer is byte-stable (DEC-50).
 """
 
 from collections.abc import Mapping
 from datetime import date, datetime
 from decimal import Decimal
 from enum import StrEnum
-from typing import Any
+from typing import Annotated, Any
 
-from pydantic import BaseModel, ConfigDict, Field, field_serializer
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, WithJsonSchema, field_serializer
 
 from pmcc.config.strategy import RunConfig
 
 SCHEMA_VERSION = 1
 
-type Scalar = float | int | str | bool | None  # a blotter audit or gate-log value
+_SCALAR_TYPES = (float, int, str, bool, type(None))
+_JSON_SCALARS = ["number", "string", "boolean", "null"]
+
+
+def _exact_scalars(values: Mapping[str, Any]) -> Mapping[str, Any]:
+    """Refuses a value that isn't exactly a JSON scalar type: strict mode alone would read a
+    `Decimal`, a numpy number or a numpy bool as a float."""
+    for key, value in values.items():
+        if type(value) not in _SCALAR_TYPES:
+            raise ValueError(f"{key}: {type(value).__name__} isn't a JSON scalar: {value!r}")
+    return values
+
+
+# A blotter audit or gate-log value map.
+ScalarMap = Annotated[
+    Mapping[str, Any],
+    AfterValidator(_exact_scalars),
+    WithJsonSchema({"type": "object", "additionalProperties": {"type": _JSON_SCALARS}}),
+]
 
 
 class DataSource(StrEnum):
@@ -35,8 +54,8 @@ class _Model(BaseModel):
 
 
 class Manifest(_Model):
-    """What produced the run (Spec › Run manifest). `run_timestamp` is the one volatile field;
-    INV-13 ignores it (DEC-50)."""
+    """What produced the run (Spec › Run manifest). INV-13 ignores `run_timestamp` and `git_sha`
+    (PO, DEC-50)."""
 
     run_id: str
     symbol: str
@@ -82,7 +101,7 @@ class BlotterRow(_Model):
     cash_delta: Decimal
     rule_id: str
     notes: str
-    audit: Mapping[str, Scalar]
+    audit: ScalarMap
 
 
 class LegOut(_Model):
@@ -119,7 +138,7 @@ class LedgerRowOut(_Model):
 class GateOut(_Model):
     rule_id: str
     status: str
-    values: Mapping[str, Scalar]
+    values: ScalarMap
     reason: str
 
 
@@ -133,7 +152,7 @@ class GateLogRowOut(_Model):
 
     session: date
     decision_time: datetime | None
-    selected: Mapping[str, Scalar] | None
+    selected: ScalarMap | None
     gates: tuple[GateOut, ...]
     outcome: OutcomeOut
     notes: str

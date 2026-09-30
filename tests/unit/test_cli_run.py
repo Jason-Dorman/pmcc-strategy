@@ -1,8 +1,9 @@
 """`pmcc run` (P3-08): one config on one symbol's cache, written to `results/{SYM}/{run_id}.json`.
 
-The market is the synthetic `random_walk`, cached in the working directory. Its window is four
-weeks, shorter than a universe may be, so the universe is read without the calendar's ten-week
-check. Provenance is fixed, so no test depends on this checkout's git state.
+The market is the synthetic `random_walk`, cached in a temporary directory. The universe always
+comes from configs/universe.yaml (PO, DEC-30), so these tests stand a test universe in for it:
+`universe.yaml` in the working directory, read without the calendar's ten-week check, since the
+market's window is four weeks. Provenance is fixed, so no test depends on this checkout's git state.
 """
 
 import json
@@ -16,11 +17,13 @@ from typer.testing import CliRunner
 from pmcc import cli
 from pmcc.cli import app
 from pmcc.config.strategy import CONFIGS_DIR
-from pmcc.config.universe import UNIVERSE_PATH, read_universe_file
+from pmcc.config.universe import UNIVERSE_PATH, Universe, read_universe_file
+from pmcc.data.calendar import CalendarMismatchError
 from pmcc.domain.calendar import SessionCalendar
 from pmcc.domain.clock import ET
 from pmcc.domain.errors import EngineError
-from pmcc.export.manifest import GitState, Provenance
+from pmcc.export.manifest import GitState, Provenance, ProvenanceError
+from pmcc.strategy.registry import NotBuiltError
 from tests.fixtures.synthetic.market import generate
 from tests.fixtures.synthetic.scenarios import random_walk
 
@@ -35,12 +38,13 @@ def _provenance(dirty: bool = False) -> Provenance:
     return Provenance(GitState("a" * 40, dirty), "b" * 64, "0.0.0")
 
 
-def _universe(cash: str = "starting_cash: 10000\n") -> str:
+def _universe(cash: str = "starting_cash: 10000\n", window: str = "") -> str:
     spec = random_walk()
     shipped = UNIVERSE_PATH.read_text(encoding="utf-8")
     rate = shipped[shipped.index("risk_free_rate:") : shipped.index("# The universe")]
+    window = window or f"{{start: {spec.window_start}, end: {spec.window_end}}}"
     return (
-        f"window: {{start: {spec.window_start}, end: {spec.window_end}}}\n{rate}"
+        f"window: {window}\n{rate}"
         "symbols:\n  - {symbol: SYN, stock_ric: SYN.O, option_root: SYN}\n"
         f"{cash}"
     )
@@ -55,22 +59,23 @@ def market(tmp_path_factory: pytest.TempPathFactory) -> Path:
 
 @pytest.fixture
 def workdir(tmp_path: Path, market: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    """The working directory: the cached market, a universe file, a fixed clock and provenance."""
+    """The working directory: a test universe standing in for the shipped one, a fixed clock and
+    provenance."""
     monkeypatch.chdir(tmp_path)  # logs/ and results/ land here
     Path("universe.yaml").write_text(_universe(), encoding="utf-8", newline="\n")
 
-    def short_window_universe(_calendar: SessionCalendar, path: Path) -> object:
-        return read_universe_file(path)
+    def stand_in(_calendar: SessionCalendar) -> Universe:
+        return read_universe_file(Path("universe.yaml"))
 
-    monkeypatch.setattr(cli, "load_universe", short_window_universe)
+    monkeypatch.setattr(cli, "load_universe", stand_in)
     monkeypatch.setattr(cli, "provenance", _provenance)
     monkeypatch.setattr(cli, "_now", lambda: NOW)
     return tmp_path
 
 
 def _run(cache: Path, symbol: str = "syn", config: str = BASELINE) -> tuple[int, str]:
-    base = ["run", "--symbol", symbol, "--config", config, "--universe", "universe.yaml"]
-    result = runner.invoke(app, [*base, "--cache", str(cache)])
+    args = ["run", "--symbol", symbol, "--config", config, "--cache", str(cache)]
+    result = runner.invoke(app, args)
     return result.exit_code, result.output
 
 
@@ -99,6 +104,15 @@ def test_cli_run_takes_starting_cash_from_the_universe(workdir: Path, market: Pa
 
     assert code == 0, output
     assert b'"starting_cash":25000.0000' in RESULT.read_bytes()
+
+
+def test_dec_30_cli_run_has_no_universe_override(workdir: Path, market: Path) -> None:
+    """Starting cash comes only from configs/universe.yaml (PO, DEC-30)."""
+    args = ["run", "--symbol", "SYN", "--config", BASELINE, "--cache", str(market)]
+    result = runner.invoke(app, [*args, "--universe", "universe.yaml"])
+
+    assert result.exit_code == 2  # typer: no such option
+    assert not Path("results").exists()
 
 
 def test_dec_50_cli_run_on_a_dirty_tree_records_it_and_says_to_commit(
@@ -130,13 +144,28 @@ def test_dec_30_cli_run_without_starting_cash_stops_naming_p3_09(
 def test_dec_30_cli_run_on_the_shipped_universe_stops_naming_p3_09(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.chdir(tmp_path)
+    monkeypatch.chdir(tmp_path)  # the shipped universe is found from the package, not the cwd
 
-    result = runner.invoke(app, ["run", "--symbol", "NVDA", "--config", BASELINE,
-                                 "--universe", str(UNIVERSE_PATH)])  # fmt: skip
+    result = runner.invoke(app, ["run", "--symbol", "NVDA", "--config", BASELINE])
 
     assert result.exit_code == 1
-    assert "P3-09" in result.output
+    assert "configs/universe.yaml has no starting_cash yet: P3-09" in result.output
+    assert not Path("results").exists()
+
+
+@pytest.mark.usefixtures("workdir")
+@pytest.mark.parametrize(
+    "body",
+    ["window: [unclosed\n", _universe("starting_cash: 10000.00005\n"), _universe("cash: 1\n")],
+    ids=["bad-yaml", "sub-unit-cash", "unknown-key"],
+)
+def test_cli_run_a_bad_universe_fails_loudly(market: Path, body: str) -> None:
+    Path("universe.yaml").write_text(body, encoding="utf-8")
+
+    code, output = _run(market)
+
+    assert code == 1
+    assert "configs/universe.yaml:" in output
     assert not Path("results").exists()
 
 
@@ -156,13 +185,39 @@ def test_cli_run_without_a_cache_fails_loudly_and_writes_nothing(tmp_path: Path)
     assert not Path("results").exists()
 
 
+def test_dec_92_cli_run_refuses_a_window_its_cache_doesnt_cover(
+    workdir: Path, market: Path
+) -> None:
+    window = "{start: 2026-03-30, end: 2026-09-25}"  # the market starts in July
+    Path("universe.yaml").write_text(_universe(window=window), encoding="utf-8")
+
+    code, output = _run(market)
+
+    assert code == 1
+    assert "no stock bars on" in output
+    assert "pmcc fetch" in output
+    assert not Path("results").exists()
+
+
+def _variant(params: str) -> str:
+    for name in ("_shared.yaml", "baseline_pmcc.yaml"):
+        Path(name).write_bytes((CONFIGS_DIR / name).read_bytes())
+    lines = ["id: baseline_pmcc--bad", "name: Bad", "extends: baseline_pmcc.yaml", "overrides:",
+             f"  E-T1: {{params: {params}}}"]  # fmt: skip
+    Path("variant.yaml").write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
+    return "variant.yaml"
+
+
 @pytest.mark.usefixtures("workdir")
 @pytest.mark.parametrize(
     ("config", "said"),
-    [("missing.yaml", "no config file"), ("broken.yaml", "broken.yaml")],
-)
+    [("missing.yaml", "no config file"), ("broken.yaml", "broken.yaml"),
+     ("refused", "variant.yaml")],
+)  # fmt: skip
 def test_cli_run_a_bad_config_fails_loudly(market: Path, config: str, said: str) -> None:
     Path("broken.yaml").write_text("id: [unclosed\n", encoding="utf-8")
+    if config == "refused":
+        config = _variant("{short_max_spread: 2}")  # a fraction must be below 1
 
     code, output = _run(market, config=config)
 
@@ -171,18 +226,39 @@ def test_cli_run_a_bad_config_fails_loudly(market: Path, config: str, said: str)
     assert not Path("results").exists()
 
 
-def test_cli_run_an_engine_error_writes_nothing(
-    workdir: Path, market: Path, monkeypatch: pytest.MonkeyPatch
+@pytest.mark.parametrize(
+    "error",
+    [EngineError("NAV doesn't reconcile"), CalendarMismatchError("a tape day isn't a session"),
+     NotBuiltError("expected_move_strike lands with P4-01"), ValueError("two RICs")],
+    ids=["engine", "calendar", "not-built", "value"],
+)  # fmt: skip
+def test_cli_run_a_run_error_writes_nothing(
+    workdir: Path, market: Path, monkeypatch: pytest.MonkeyPatch, error: Exception
 ) -> None:
     def fail(*_args: object) -> object:
-        raise EngineError("NAV doesn't reconcile")
+        raise error
 
     monkeypatch.setattr(cli, "run_symbol", fail)
 
     code, output = _run(market)
 
     assert code == 1
-    assert "NAV doesn't reconcile; nothing was written" in output
+    assert f"{error}; nothing was written" in output
+    assert not Path("results").exists()
+
+
+def test_cli_run_a_provenance_error_writes_nothing(
+    workdir: Path, market: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def fail() -> Provenance:
+        raise ProvenanceError("git isn't installed; a run records its commit")
+
+    monkeypatch.setattr(cli, "provenance", fail)
+
+    code, output = _run(market)
+
+    assert code == 1
+    assert "git isn't installed" in output
     assert not Path("results").exists()
 
 

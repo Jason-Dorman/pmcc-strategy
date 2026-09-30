@@ -3,7 +3,7 @@
 One window for every symbol (DEC-07), one constant r stated with its source (DEC-11), and each
 symbol's stock RIC and option root (DEC-12). The file is found from this module, not the working
 directory, like the calendar. `starting_cash` is optional until P3-09 sets it with its basis
-(DEC-30), and `pmcc run` refuses to run without it (PO, DEC-50); the bootstrap seed joins with
+(DEC-30), and `pmcc run` refuses to run without it (PO, DEC-30); the bootstrap seed joins with
 P6-05 (DEC-61).
 """
 

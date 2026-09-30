@@ -86,7 +86,7 @@ just reproduce                                                          # cached
 Results are committed in `results/`. Raw LSEG data is not. To reproduce from scratch:
 
 1. Fetch the universe into `data_cache/` with `pmcc fetch`. This needs LSEG access. Each symbol needs its probe report first (`pmcc probe`), whose strike steps feed the estimate; `--plan-only` prints the estimate after asking LSEG for the stock tape only. The window's `--start` and `--end` must both be sessions. If a fetch stops (Workspace signs out, say), run the same command again: it picks up at the first unit not yet cached.
-2. Run `just reproduce`. It re-runs every configuration on the cached data, verifies the results, exports them and builds the site. Re-running a configuration on the same cached data produces byte-identical results.
+2. Run `just reproduce`. It re-runs every configuration on the cached data, verifies the results, exports them and builds the site. Re-running a configuration on the same cached data produces byte-identical results, apart from each manifest's run time and commit.
 
 Each result's manifest records the commit, config, data manifest and lockfile that produced it, and whether the working tree had uncommitted changes (`git_dirty`, ignoring `results/`). Commit the code before a publishable run: `pmcc verify` rejects dirty results (DEC-50).
 

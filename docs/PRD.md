@@ -150,7 +150,7 @@ Every row points to its source. "Verified by" names the invariant test (INV-nn),
 | FR-X1 | One results JSON per symbol per run (committed), plus JSON Schema generated from the pydantic result models | Spec › Architecture | `tests/scenario/test_run_result.py` (P3-08); schema at P4-05 |
 | FR-X2 | Every result carries a run manifest: git SHA and whether the tree was dirty, config hash, data-manifest hash, lockfile hash, run timestamp. Published results come from a clean tree | Spec › Run manifest; DEC-50 | `test_manifest.py`, `test_run_result.py`; `pmcc verify` (P4-05) |
 | FR-X3 | `pmcc export --out web/public/data/` writes the per-run files, the index, the rules and the schema | Spec › Frontend constraints | P4-05 |
-| FR-X4 | Re-running a config on cached data gives byte-identical results (excluding the run timestamp) | Spec › Invariant tests; DEC-50 | INV-13 (`test_run_result.py`) |
+| FR-X4 | Re-running a config on cached data gives byte-identical results (excluding the run timestamp and the commit SHA) | Spec › Invariant tests; DEC-50 | INV-13 (`test_run_result.py`) |
 
 ### 6.9 Site
 
