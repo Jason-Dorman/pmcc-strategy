@@ -55,6 +55,7 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-32 | Point-in-time listing | ASK | P3-02 |
 | DEC-33 | Expiry calendar | SETTLED (PO) | — |
 | DEC-34 | Rule stamping for multi-rule events | ASK | P3-07 |
+| DEC-35 | Rule write-up: names and rationales | SETTLED (PO) | — |
 | DEC-40 | Source of truth | SETTLED (PO) | — |
 | DEC-41 | Frontend stack follows the spec | SETTLED (spec) | — |
 | DEC-42 | Python environment | ENG | — |
@@ -100,6 +101,7 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-87 | Cache writes, sidecars and the loader | ENG | — |
 | DEC-88 | The fetch command: plan, estimate, unit loop | ENG | — |
 | DEC-89 | Pricing: Black-Scholes, the IV solver, measures, the chain pricer | ENG | — |
+| DEC-90 | Strategy config: kinds, the loader and the config hash | ENG | — |
 
 ---
 
@@ -621,6 +623,26 @@ Distances are compared in integer price units, so float noise can't create or br
 
 **Outcome:** —
 
+### DEC-35 — Rule write-up: names and rationales
+**Status:** SETTLED · **Basis:** PO, 2026-09-29 (asked at P3-01) · **Affects:** P3-01, P4-03, P7-03 (Trade rules page)
+
+Every rule in the YAML carries a `rationale` (Spec › Rule write-up source), but the spec explains only some of them: E-S5, G-1, G-3, and the three "why" paragraphs under the exits. BUILD-PLAN put those paragraphs into "the X-S3, X-S5 and no-roll rationales", and no rule is named for rolls.
+
+- **Asked:** which rules carry the spec's "Why there are no rolls" paragraph, and what the other rules' rationales say.
+- **Outcome:** 2026-09-29 — PO:
+  - **Rationales come from the spec,** in the PO's plain-language summary of its entry, skip-week and exit tables. Both strategies use the same entry timing and exits and differ only in selection and skips, so any difference in results comes from selection, not trade management. No PO decision so far changes these rules.
+  - **The no-roll paragraph goes on all five short exits, X-S1 to X-S5,** word for word as their first paragraph. The PO's summary heads the short-call exits with "there are no rolls, and the plan is never to get assigned", and that line opens the paragraph. X-S3 then carries the Friday-buffer paragraph and X-S5 the never-exercised one.
+- **Built** in `configs/_shared.yaml` and `configs/baseline_pmcc.yaml` (P3-01):
+  - Names follow the spec's tables. X-S4, unnamed there, is "Expires out of the money", as in the PO's summary.
+  - Rationales state only what the spec does, in the PO's wording where the summary has it.
+  - A threshold in a rationale is a placeholder, like one in a condition, so it can't drift from the param (DEC-52).
+  - A test holds the five no-roll paragraphs identical.
+  - The spec is unchanged: this settles what it leaves open.
+- **Outcome:** 2026-09-29 — the adversarial review of P3-01 (DEC-90) found the text not yet as settled. Fixed, with tests:
+  - **E-S2 was wrong:** "a holiday week expires on Thursday". Only a week whose Friday is closed does; the Memorial Day and Labor Day weeks lose their Monday and still expire on Friday. It now reads "a holiday week never gets an invented Friday expiry: when the Friday is a holiday, it expires on Thursday".
+  - **Claims the spec doesn't make are gone:** E-T1 (a tight spread making mid "a realistic fill"), E-L1 ("invested from the start", "rather than paying a wide spread"), E-L3 ("a fraction of the price of 100 shares"), E-L4 ("keeps results comparable"), X-S1 ("most of the premium is already earned"), X-L1 ("no longer does that well") and X-E1 ("no trade the rules didn't call for"). Each now says what the spec or the PO's summary says.
+  - **Wording follows the spec's tables exactly** where they have it: every rule's name, G-1's and G-2's conditions, and every exit's action (X-S5, X-L1 and X-L2 had been reworded). Tests read these from the spec file and compare, and another reads the spec's no-roll paragraph from it and checks all five short exits open with it word for word.
+
 ## D. Architecture and environment
 
 ### DEC-40 — Source of truth
@@ -773,6 +795,7 @@ INV-14 and INV-15 run in the web job.
 - Each YAML rule carries `id, name, kind, params, condition, action, rationale`.
 - `condition` and `action` are templates (`"short delta > {max_delta}"`) rendered from `params` at load.
 - A config test fails if a placeholder is unresolved or a param is never referenced, so the published text can't drift from the thresholds the engine uses.
+- **Outcome:** 2026-09-29 — built in P3-01 (`pmcc/config/rule_text.py`, DEC-90). The loader enforces both checks, and the tests run them on the shipped files. `rationale` is a template too, so a threshold it quotes can't drift either (DEC-35).
 
 ### DEC-53 — Composition over flags
 **Status:** ENG
@@ -781,6 +804,7 @@ INV-14 and INV-15 run in the web job.
 - "Off" means absent from the list, never a boolean passed into rule logic (EP › Low coupling).
 - Variants use `extends` plus `overrides` keyed by rule ID (`params` patch, `replace`, or `remove`).
 - Rules shared by both strategies live once, in `configs/_shared.yaml`.
+- **Outcome:** 2026-09-29 — built in P3-01 (`pmcc/config/kinds.py`, `extends.py`, `strategy.py`; DEC-90). A kind names the one rule ID it implements, and the rules a variant may remove are G-3, G-4, G-5 and X-S1; every other spec rule is required.
 
 ### DEC-54 — Result detail levels and report sections
 **Status:** ASK · **Ask at:** P4-05 · **Affects:** P7-01
@@ -1248,6 +1272,73 @@ Development runs in Git Bash on Windows (DEC-02) and CI runs on Ubuntu. Both mus
   - **Refuted:** that the float spread % misjudges E-T1's 3% and 10% limits at the boundary. No rule compares it yet; E-T1 and DEC-29 are P3-06's.
   - **Unverified, low, fixed:** tests for the IV coming from the exact mid, an option bar the stock tape lacks (a left join, so it is `NO_SPOT`), and the solver's bisection fallback (from three starts where Newton alone fails); DEC-23 now credits the 0.09% gap to JPM (DEC-06); this entry's reason for pricing puts directly. And DEC-26's missing-close rule, recorded as the PO's answer though it was never asked, is now put to the PO (DEC-26).
   - **Mutants:** the 14 the reviewers left alive, re-run on the fixed code, are all killed.
+
+### DEC-90 — Strategy config: kinds, the loader and the config hash
+**Status:** ENG · **Affects:** P3-01, P3-05, P3-06, P3-08, P4-03, P4-05, P5-02; DEC-44, DEC-52, DEC-53
+
+- **Where:** `pmcc/config/`, one module per job:
+  - `kinds.py`: the kind registry, `SPEC_RULE_IDS` (the spec tables' order) and `OPTIONAL_RULE_IDS`.
+  - `extends.py`: the `extends` chain and `overrides`, over raw rules.
+  - `rule_text.py`: placeholders and rendering (DEC-52).
+  - `strategy.py`: `Rule`, `FillModel`, `StrategyConfig`, `RunConfig`, `load_strategy()`, `load_run_config()`.
+  - `fields.py`: pydantic field types for dollars (`Price`, `Money`), an ET clock time and a rule ID.
+- **Kinds:**
+  - A kind implements exactly one spec rule ID. `nearest_delta_short` and `expected_move_strike` are both E-S3, so A2 swaps the kind under the same ID. A rule whose kind implements another ID is refused, and so is any ID outside the spec, since no kind implements one.
+  - Each kind has a params model: strict (the string "0.3" and `true` aren't numbers), closed to unknown keys, and range-checked (deltas and spread limits in (0, 1), DTE ≥ 1, min ≤ max).
+  - Money thresholds (G-5's $0.10, the fee) are held as `Price` and `Money` (DEC-44), written in YAML as a dollar number. They're strict like the rest: a string is refused unless it is the `"0.1000"` form they serialize to, and an amount not exact to $0.0001 is refused rather than rounded (a $0.00005 G-5 would round to $0 and never fire). A clock time (X-S3's 15:00) must be a quoted `"HH:MM"`: unquoted, YAML 1.1 reads `15:00` as the integer 900.
+  - A params error names the rule and the param: `X-S2 params: max_delt: Extra inputs are not permitted`.
+  - The params models live in `config`, because `config` can't import `strategy` (ARCHITECTURE §3.2). `strategy/registry.py` (P3-06) maps each kind to its code, and a test will hold the two key sets equal.
+  - All 26 kinds are registered now, the quant ones included, since each is a params model and the spec fixes its rule. `quant_pmcc.yaml` uses them at P4-03; the fixed-bar trigger (DEC-31) joins at P5-02.
+- **Required rules:** every spec rule except G-3, G-4, G-5 and X-S1, the layers the spec's strategies and ablations switch off. A strategy without any other rule fails at load. "Off" is absence (DEC-53).
+- **The loader:**
+  - A file extends at most one parent, by a relative path with forward slashes to a `.yaml` file, so a config means the same on every machine (DEC-58). An absolute path, a drive, a backslash or another suffix is refused; a missing file or a directory raises `FileNotFoundError` on both OSs. A cycle is refused.
+  - A child adds rules the parent doesn't define. Redefining one is refused: it must use `overrides`, keyed by rule ID, with exactly one of `params` (a non-empty patch), `replace` (a whole rule, same ID; nothing is filled in from the old one) or `remove: true`. An override of a rule no parent defines, including one the same file defines, is refused.
+  - `fill_model` is patched field by field. `id` and `name` are never inherited, so the file loaded names the strategy, and `_shared.yaml` alone isn't one.
+  - Rules come out in the spec's order, whatever the files' order. A strategy's `rule_ids` are the valid stamps for its blotter and gate log (INV-09).
+- **The fill model** (`spread_capture`, `fee_per_contract`) is in the strategy config, beside the rules, since the friction runs vary it (Spec › Sensitivity checks). It is not a rule, so it has no rule ID: a fill carries the ID of the decision that made it.
+- **Rule text:**
+  - A placeholder is a bare param name with an optional format spec. An attribute or index lookup, a conversion or a positional field is refused.
+  - `rationale` is rendered like `condition` and `action`, so a threshold quoted in it (X-S3's 0.25 × EM) can't drift.
+  - Every param must appear in the condition or the action; the rationale alone doesn't count.
+- **The config hash:**
+  - It covers `RunConfig`: the resolved strategy (id, name, fill model, each rule's kind, params and templates) plus the universe's window and r. It is the sha256 of `canonical_json()`: `model_dump(mode="json")` as JSON with sorted keys, no whitespace, non-ASCII kept, in UTF-8.
+  - Only resolved content counts, so the same rules spread across `extends` or flattened into one file hash the same.
+  - The symbol list is left out: the symbol is a run's input, recorded in its manifest, so every symbol run on one config shares a hash.
+  - `starting_cash` joins at P3-09 (DEC-30). Report sections (DEC-54) join at P4-05.
+- **JSON Schema:** each kind has its own params model, so `Rule.params` is described as what every dump holds, a map of names to numbers or strings, rather than as the empty base model pydantic would emit. P4-05 exports the schema.
+- **Lint:** ruff's `allowed-confusables` adds `×` and `−` to `›`: the spec writes rule text with them (`spot ≥ short strike − 0.25 × EM`), and the YAML and its tests quote it.
+- **For P5-02:** `configs/sensitivity.yaml` lists many variants in one file (ARCHITECTURE §10), and `load_strategy` resolves one strategy per file. P5-02 adds the entry point that folds each listed variant onto its parent.
+- **Tests:** 286 new, 1144 in the suite: `tests/unit/config/test_baseline_config.py` (the shipped files, read against the spec's tables), `test_strategy_loader.py`, `test_rule_text.py` and `test_kinds.py`.
+- **Outcome:** 2026-09-29 — P3-01's done-when holds: the config tests pass for unique IDs, resolving placeholders, referenced params, and every spec rule the baseline runs (all but G-3 to G-5).
+  - 28 planted mutants were run: each refusal above, the spec order, the hash's coverage, strictness and ranges, and three changes to the shipped YAML. Three survived at first:
+    - a check that a rule ID is in the spec, redundant with the kind check, so it was removed;
+    - the model's duplicate-ID check, which the loader can't reach, now tested on the model itself, as a config read back from JSON would reach it;
+    - cycle detection, which a depth limit also passed, now pinned to the chain it names.
+  - All are now killed.
+- **Outcome:** 2026-09-29 — an adversarial review of P3-01 (4 reviewers, 2 skeptics per finding): 40 findings, 27 unique. The 12 most severe were verified: 8 confirmed, 3 plausible, 1 refuted; 15 low ones went unverified. Every confirmed and plausible finding, and the unverified ones, is fixed:
+  - **Confirmed, high:** the new files failed ruff with 16 errors: E501, RUF001/RUF002 (`×`, `−`), RUF043 and SIM905. `just check` stayed green because `pre-commit run --all-files` lints only tracked files, and these were untracked. Fixed, and the confusables allowed as above. Ruff and pyright now run clean over `pmcc` and `tests` directly.
+  - **Confirmed, medium:** the E-S2 rationale was wrong about holiday weeks (DEC-35). Six test gaps, each now tested:
+    - the hash's coverage of the fill model, window, id and name;
+    - the fill model's strictness, extra keys and [0, 1] range;
+    - `match="id"`, which matches any pydantic "valid"/"validation" message;
+    - `match="X-S2|remove"`, which a both-operations override removing X-S1 would pass;
+    - `replace` as a whole rule;
+    - a dollar param rendered through `Rule.text()`.
+  - **Plausible, medium:**
+    - the JSON Schema typed params as an empty object (fixed as above);
+    - names, conditions and actions weren't pinned to the spec, and the no-roll paragraph wasn't checked against the spec's words. Both are now read from the spec file (DEC-35).
+  - **Refuted:** E-L4 lacks the starting-cash multiplier and rounding. That is DEC-30's, asked at P3-09.
+  - **Unverified, low, fixed:**
+    - `extends` took an absolute path, any suffix, or a directory, which raised a different error on each OS;
+    - an empty `params` patch was accepted;
+    - dollar params took any numeric string and rounded below $0.0001;
+    - the canonical hash form, a parent-only override, override extra keys, min = max bands, frozen params and `ConfigError`'s file name weren't pinned;
+    - rationale claims beyond the spec (DEC-35);
+    - BUILD-PLAN §2 had no DEC-35 row;
+    - ARCHITECTURE §16's new-kind steps and §10's "unreferenced placeholder" were stale;
+    - the BUILD-PLAN tick miscounted the mutation fixes;
+    - `sensitivity.yaml` needs a P5-02 entry point (noted above).
+  - **Mutants:** 41 are killed: every survivor the reviewers reported, and 7 against the new checks. The first 28 still are, except the 2 whose code is gone.
 
 ## E. Analytics definitions
 

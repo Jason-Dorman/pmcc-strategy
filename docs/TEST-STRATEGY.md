@@ -25,7 +25,7 @@ Sep 25, 2026 · implements Spec › Invariant tests and EP › Testing mindset �
 | Scenario | Engine end to end on a synthetic market: one scenario per exit, gate and edge case (§5) | pytest | CI |
 | Determinism | The same synthetic run twice gives byte-identical files (INV-13) | pytest | CI |
 | Architecture | Import boundaries (ARCHITECTURE §3.3), in `tests/architecture/test_imports.py`, with one planted violation per rule | pytest (AST) | CI |
-| Config | Rule IDs unique and complete; placeholders resolve; every param referenced; each ablation differs from quant only in its layer | pytest | CI |
+| Config | Rule IDs unique and complete; placeholders resolve; every param referenced; each shipped threshold is the spec's; names, gate conditions and exit actions read against the spec's tables, and the no-roll paragraph against its words, on every short exit (DEC-35); `extends` and `overrides`, kinds and their params, required rules, spec order and the config hash (`tests/unit/config/test_baseline_config.py`, `test_strategy_loader.py`, `test_rule_text.py`, `test_kinds.py`; DEC-90); each ablation differs from quant only in its layer (P4-03) | pytest | CI |
 | Results | Schema check plus invariants re-derived from committed results (DEC-51) | `pmcc verify` | CI |
 | Runtime | Invariants checked every bar of every real run; a failure writes nothing | engine | every run |
 | Frontend unit | Formatters, transforms, token-lint, contrast | Vitest | CI |
@@ -47,7 +47,7 @@ Numbering follows Spec › Invariant tests.
 | 06 | Every short entry satisfied E-S5 at its decision bar | runtime · unit · verify | `tests/unit/strategy/test_constraint.py`; `pmcc verify` (E-S5 terms in the audit) |
 | 07 | No short call is open after its expiry session | runtime · scenario · verify | `tests/scenario/test_expiry.py`; `pmcc verify` |
 | 08 | Available funds ≥ 0 at every entry decision | runtime · property · verify | property tests; `pmcc verify` (post-trade funds in the audit) |
-| 09 | Every blotter and gate-log row carries a valid rule ID from the config | runtime · config · verify | `tests/unit/config/`; `pmcc verify` |
+| 09 | Every blotter and gate-log row carries a valid rule ID from the config | runtime · config · verify | `tests/unit/config/` (`StrategyConfig.rule_ids`: spec IDs only, each once); `pmcc verify` |
 | 10 | Short qty = long qty whenever a short is open | runtime · property · verify | property tests; `pmcc verify` |
 | 11 | Known examples parse as the right contracts (the spec's unpadded one included); the builder emits the zero-padded day, round-trips its own spelling and puts no caret on live contracts (DEC-01) | unit · property | `tests/unit/data/test_ric.py` |
 | 12 | Missing RICs return empty series, never exceptions | unit | `tests/unit/data/test_fetch.py` (FakeProvider) |

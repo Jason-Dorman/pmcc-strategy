@@ -47,8 +47,9 @@ force-exclude = true
 
 [tool.ruff.lint]
 select = ["E", "W", "F", "I", "B", "UP", "SIM", "N", "PT", "RUF", "C90"]
-# `›` is the docs' citation separator (Spec › CLI).
-allowed-confusables = ["›"]
+# `›` is the docs' citation separator (Spec › CLI). `×` and `−` are the spec's math signs in rule
+# text (`spot ≥ short strike − 0.25 × EM`), which the rule YAML and its tests quote (DEC-90).
+allowed-confusables = ["›", "×", "−"]
 
 [tool.ruff.lint.mccabe]
 max-complexity = 10

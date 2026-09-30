@@ -1,0 +1,38 @@
+# The baseline PMCC (Spec › Strategies): the textbook PMCC. Fixed selection (E-L2 and E-L3 by
+# target DTE and delta, E-S3 at a fixed delta), gates G-1 and G-2 only, and the shared exits.
+# Everything else is in _shared.yaml; this file adds only what the baseline selects by.
+
+id: baseline_pmcc
+name: Baseline PMCC
+extends: _shared.yaml
+
+rules:
+  - id: E-L2
+    name: Long leg expiry
+    kind: nearest_dte_expiry
+    params: {target_dte: 180}
+    condition: Monthly expiries listed at the decision bar
+    action: Choose the monthly expiry nearest {target_dte} days to expiry
+    rationale: >-
+      The textbook PMCC long: a monthly about {target_dte} days out. A listed option with 9 months
+      or less to expiry has no loan value under Reg T, so the long is always fully paid.
+
+  - id: E-L3
+    name: Long leg strike
+    kind: nearest_delta_long
+    params: {target_delta: 0.80}
+    condition: Eligible calls on the E-L2 expiry
+    action: Choose the strike with delta nearest {target_delta:.2f}
+    rationale: >-
+      The long call is the stock substitute: a deep in-the-money, long-dated call, here at the
+      textbook PMCC's delta of {target_delta:.2f}.
+
+  - id: E-S3
+    name: Short leg strike
+    kind: nearest_delta_short
+    params: {target_delta: 0.30}
+    condition: Eligible out-of-the-money calls on the E-S2 expiry
+    action: Choose the strike with delta nearest {target_delta:.2f}
+    rationale: >-
+      The textbook PMCC short: a weekly call out of the money at a fixed delta. If the selected
+      strike fails E-T1 or E-S5, the skip-week gates decide; no other strike is substituted.

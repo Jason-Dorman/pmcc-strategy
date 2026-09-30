@@ -60,7 +60,10 @@ pmcc/
                  clock.py (ET, bar_end), sessions.py (Session, session bars) (DEC-81),
                  calendar.py (SessionCalendar: sessions, week-open/final, weekly and monthly
                  expiries; DEC-33, DEC-84), quotes.py (Quote: a valid BID/ASK and its mid; DEC-89)
-  config/        pydantic config models; YAML loader (extends/overrides); hashing; rule-text rendering;
+  config/        kinds.py (the kind registry: params per kind, SPEC_RULE_IDS), extends.py (extends and
+                 overrides), rule_text.py (placeholders, rendering; DEC-52), strategy.py (Rule,
+                 StrategyConfig, RunConfig, the config hash), fields.py (dollars, clock times,
+                 rule IDs as pydantic fields) (DEC-90);
                  calendar.py (configs/calendar.yaml → SessionCalendar, DEC-84);
                  universe.py (configs/universe.yaml → Universe: window, r, symbols; DEC-86);
                  yaml_file.py (read_yaml: safe YAML refusing a key given twice; DEC-86)
@@ -118,7 +121,7 @@ The reference files at the repo root (`LSEG-DATA-GUIDE.md`, `DESIGN-GUIDE.md`, `
 | Package | One job | Main API | Depends on |
 | --- | --- | --- | --- |
 | `domain` | Types and time rules everyone shares | `Price`, `Money`, `Quote`, `OptionId`, `RuleId`, `Session`, `SessionCalendar`, `bar_end()` | stdlib |
-| `config` | Turn YAML into validated, hashed, rendered config | `load_run_config()` → `RunConfig`; `load_calendar()` → `SessionCalendar`; `load_universe()` → `Universe` | domain, pydantic, pyyaml |
+| `config` | Turn YAML into validated, hashed, rendered config | `load_strategy()` → `StrategyConfig`; `load_run_config(path, universe)` → `RunConfig` (`config_hash()`, `Rule.text()`); `load_calendar()` → `SessionCalendar`; `load_universe()` → `Universe` | domain, pydantic, pyyaml |
 | `data.lseg` | Talk to LSEG | `lseg_session()` → `LsegProvider` | `data.provider`, lseg.data, pandas, polars |
 | `data` (rest) | Know RICs; check the tape against the calendar; probe, plan, fetch, cache, load | `HistoryProvider`, `build_ric()`, `parse_ric()`, `sessions_from_tape()`, `run_probe()`, `plan_symbol()`, `fetch_rics()`, `fetch_contracts()`, `prepare()`, `pull_units()`, `estimate()`, `coverage()`, `SymbolCache.write_unit()`, `load_symbol()` | domain, config, polars, numpy; `pricing` for the coverage summary's IV failures (DEC-89); only `fetch` may use `data.lseg` |
 | `pricing` | Turn quotes into IV, Greeks and measures | `implied_vol()`, `greeks()`, `price_quotes()`, `price_symbol()` → `PricedSymbol.snapshot()`, `atm_iv()`, `expected_move()`, `rv20()` | domain, numpy, scipy, polars (the loader's frames, never `pmcc.data`; DEC-89) |
@@ -508,9 +511,9 @@ A failure raises `InvariantViolation`; the run writes nothing and exits non-zero
 
 | File | Holds |
 | --- | --- |
-| `configs/_shared.yaml` | Rules identical in both strategies (E-T1, E-L1, E-L4, E-S1, E-S2, E-S4, E-S5, G-1, G-2, all exits) |
-| `configs/baseline_pmcc.yaml` | `extends: _shared.yaml`; baseline E-L2, E-L3, E-S3; report sections |
-| `configs/quant_pmcc.yaml` | `extends: _shared.yaml`; quant E-L2, E-L3, E-S3; G-3, G-4, G-5; report sections |
+| `configs/_shared.yaml` | Rules identical in both strategies (E-T1, E-L1, E-L4, E-S1, E-S2, E-S4, E-S5, G-1, G-2, all exits) and the fill model (`spread_capture`, `fee_per_contract`). Only ever extended: it has no `id` |
+| `configs/baseline_pmcc.yaml` | `extends: _shared.yaml`; baseline E-L2, E-L3, E-S3. Report sections join at P4-05 (DEC-54) |
+| `configs/quant_pmcc.yaml` | `extends: _shared.yaml`; quant E-L2, E-L3, E-S3; G-3, G-4, G-5 (P4-03). Report sections join at P4-05 (DEC-54) |
 | `configs/ablations/a1…a5.yaml` | `extends: ../quant_pmcc.yaml` + `overrides` keyed by rule ID |
 | `configs/sensitivity.yaml` | friction, timing and grid variants (§11) |
 | `configs/universe.yaml` | the window (DEC-07); r with the quote, series, date and source it came from (DEC-11); symbols with stock RIC and option root (DEC-12). Starting cash with its basis joins at P3-09, the bootstrap seed at P6-05. Loaded by `pmcc/config/universe.py`, which checks the window's sessions against the calendar (DEC-86) |
@@ -538,8 +541,22 @@ overrides:
   G-3: {remove: true}
 ```
 
-- **Resolution:** `universe.yaml` + the strategy YAML (with extends and overrides) → frozen `RunConfig` → `config_hash` = sha256 of the resolved config's canonical JSON.
-- **Load errors:** an unknown `kind`, an unknown param, a duplicate rule ID, a missing required slot, or an unresolved placeholder all fail at load.
+- **Kinds (DEC-90):** a `kind` implements exactly one spec rule ID and has a params model (`pmcc/config/kinds.py`): strict, closed to unknown keys, range-checked. Dollars are held as `Price` or `Money` (DEC-44); a clock time is a quoted `"HH:MM"`. `strategy/registry.py` maps each kind to its code (P3-06).
+- **Resolution:** the strategy YAML's `extends` chain and `overrides` (`pmcc/config/extends.py`) → frozen `StrategyConfig`, rules in the spec's order → plus `universe.yaml`'s window and r → frozen `RunConfig`.
+  - A file extends one parent, by a relative path with forward slashes to a `.yaml` file.
+  - A child adds rules the parent lacks and changes the parent's only through `overrides` keyed by rule ID: `params` (a patch), `replace` (a whole rule) or `remove: true`.
+  - `fill_model` is patched field by field. `id` and `name` are never inherited.
+- **Required rules:** every spec rule but G-3, G-4, G-5 and X-S1, the layers variants switch off (DEC-53).
+- **Rule text (DEC-52):** `condition`, `action` and `rationale` are templates with bare-name placeholders (`{max_delta:.2f}`), rendered by `Rule.text()`. Every param must appear in the condition or the action.
+- **`config_hash`:** the sha256 of `RunConfig` as JSON with sorted keys, no whitespace and UTF-8. It covers the resolved strategy and the window and r, not the file layout or the symbol list (DEC-90).
+- **Load errors:** all of these fail at load:
+  - an unknown `kind`, or a kind for another rule ID;
+  - an unknown or missing param, or one out of range;
+  - a rule defined twice, or an override of a rule no parent defines;
+  - a missing required rule;
+  - a placeholder with no param, or a param no placeholder in the condition or action uses;
+  - an `extends` that is absolute, has a backslash or isn't a `.yaml` file;
+  - an `extends` cycle.
 
 ## 11. Runs, batch and determinism
 
@@ -697,7 +714,7 @@ CI (`.github/workflows/ci.yml`, on push and PR; DEC-79):
 
 | Change | Steps; nothing else should need editing |
 | --- | --- |
-| New rule kind (selector, gate, exit) | Implement the protocol in `strategy/`; add a params model; register the `kind`; reference it in YAML; add a unit and a scenario test |
+| New rule kind (selector, gate, exit) | Add its params model and `KINDS` entry in `config/kinds.py` (the rule ID it implements); implement the protocol in `strategy/` and map the kind in `strategy/registry.py` (DEC-90); reference it in YAML; add a unit and a scenario test |
 | New metric | Function in `analytics/`; field on the result model; regenerate the schema; `tsc` then shows where the UI must change |
 | New run variant | Entry in `sensitivity.yaml` or a new ablation file; no code |
 | New page panel | Component on the page; data comes only from results JSON; tokens only for style |
