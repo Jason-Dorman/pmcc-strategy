@@ -1745,6 +1745,7 @@ How P4-05 builds the results contract (ARCHITECTURE §12). None of it changes wh
   - `--schema-only` writes just the schemas, which the site's types need, so `just check` needs no results.
 - **Logging:** `export.done`, `export.abort`, `verify.done`, `verify.failed`; `run.done` gains `detail`.
 - **Outcome:** 2026-09-30 — on dirty-tree runs of NVDA's baseline, quant and A4 at schema 2, verify found only `git_dirty` (one INV-06 false positive, the audit's `"45.0000"` against a Decimal read back as `45`, fixed by comparing values). Every hand-corrupted copy fails on the invariant it targets and no other (`tests/scenario/test_verify.py`).
+- **Outcome:** 2026-09-30 — NVDA's seven results re-run from the code commit `69c01b2` on a clean tree (DEC-59). The baseline's and quant's blotter, ledger, gate log, starting cash and rule text are identical to P4-04's (end NAV $18,672.50 and $18,303.50); the ablations are summaries of 23 KB. `pmcc verify results/` passes all 7, and `pmcc export` and `npm run build` run on them.
 
 ### DEC-97 — The web scaffold: packages, tokens and shell, types, loader, routes, tests
 **Status:** ENG · packages approved (PO, 2026-09-30) · **Affects:** P4-06, P4-07, P4-08, P7; DEC-03, DEC-70 to DEC-74, DEC-78
