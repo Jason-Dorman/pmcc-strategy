@@ -5,6 +5,7 @@
 id: quant_pmcc--a2
 name: "A2: quant with the 0.30-delta short"
 extends: ../quant_pmcc.yaml
+report: {detail: summary}  # an ablation keeps a summary (PO, DEC-54)
 
 overrides:
   E-S3:

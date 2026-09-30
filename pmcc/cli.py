@@ -1,4 +1,4 @@
-"""The `pmcc` command line. Each command is a stub until its backlog item lands."""
+"""The `pmcc` command line. A command not built yet is a stub naming its backlog item."""
 
 from datetime import datetime
 from pathlib import Path
@@ -32,6 +32,10 @@ from pmcc.domain.money import Money
 from pmcc.export.manifest import ProvenanceError, provenance
 from pmcc.export.models import DataSource, RunResult
 from pmcc.export.results import write_result
+from pmcc.export.schema import write_schemas
+from pmcc.export.site import Exported, ExportError, export_site
+from pmcc.export.verify import Verified
+from pmcc.export.verify import verify as verify_results
 from pmcc.log import configure_logging
 from pmcc.runner import Market, Stamp, run_symbol
 
@@ -194,18 +198,23 @@ def _backtest(cache: Path, underlying: Underlying, calendar: SessionCalendar,
 
 def _describe_run(result: RunResult, path: Path) -> str:
     manifest = result.manifest
-    lines = [
-        f"{manifest.symbol} {manifest.run_id}: {len(result.blotter)} trades over "
-        f"{len(result.ledger)} bars and {len(result.gate_log)} weeks; final NAV "
-        f"{result.ledger[-1].nav} from {result.starting_cash}.",
-        f"Written to {path.as_posix()}",
-    ]
+    lines = [_describe_rows(result), f"Written to {path.as_posix()}"]
     if manifest.git_dirty:
         lines.append(
             "git_dirty: true (uncommitted changes outside results/). Commit the code before a "
             "publishable run: pmcc verify rejects dirty results (DEC-50)."
         )
     return "\n".join(lines)
+
+
+def _describe_rows(result: RunResult) -> str:
+    manifest = result.manifest
+    head = f"{manifest.symbol} {manifest.run_id}:"
+    blotter, ledger, gate_log = result.blotter, result.ledger, result.gate_log
+    if blotter is None or ledger is None or gate_log is None:
+        return f"{head} a summary, without its rows (DEC-54)."
+    return (f"{head} {len(blotter)} trades over {len(ledger)} bars and {len(gate_log)} weeks; "
+            f"final NAV {ledger[-1].nav} from {result.starting_cash}.")  # fmt: skip
 
 
 @app.command()
@@ -325,18 +334,65 @@ def validate_universe(text: str, calendar: SessionCalendar) -> None:
     UniverseConfig.model_validate(parse_yaml(text)).window.check_sessions(calendar)
 
 
+Results = Annotated[Path, typer.Option(help="The results directory.")]
+
+
 @app.command()
 def export(
     out: Annotated[Path, typer.Option(help="Site data directory.")] = Path("web/public/data"),
+    results: Results = Path("results"),
+    schema_only: Annotated[
+        bool, typer.Option(help="Write only the JSON Schemas, which the site's types come from.")
+    ] = False,
 ) -> None:
-    """Write site data and JSON Schema from committed results."""
-    _not_built("P4-05")
+    """Rebuild the site's data from results: JSON Schemas, the results files, index.json and
+    rules.json. Refuses results that fail pmcc verify, a dirty tree aside."""
+    configure_logging("export")
+    if schema_only:
+        written = write_schemas(out)
+        _say(f"{len(written)} schemas written to {(out / 'schema').as_posix()}")
+        return
+    try:
+        exported = export_site(results, out)
+    except (ExportError, OSError) as exc:  # OSError: no results, or --out is a file
+        log.error("export.abort", message=str(exc))
+        _fail(f"{exc}\nNothing was exported.")
+    log.info("export.done", runs=exported.runs, symbols=exported.symbols, files=exported.files,
+             unpublishable=len(exported.unpublishable))  # fmt: skip
+    _say(_describe_export(exported, out))
+
+
+def _describe_export(exported: Exported, out: Path) -> str:
+    lines = [f"Exported {exported.runs} runs for {exported.symbols} symbol(s), {exported.files} "
+             f"results files, to {out.as_posix()}"]  # fmt: skip
+    if exported.unpublishable:
+        lines.append(
+            "Not publishable, from a dirty tree (pmcc verify refuses them; DEC-50): "
+            + ", ".join(exported.unpublishable)
+        )
+    return "\n".join(lines)
 
 
 @app.command()
 def verify(results: Annotated[Path, typer.Argument()] = Path("results")) -> None:
-    """Re-derive invariants from results and reject any that fail."""
-    _not_built("P4-05")
+    """Check results without the cache: layout, schema, canonical bytes, a clean tree, the config
+    hash, and the invariants re-derived from each full run's rows (DEC-51)."""
+    configure_logging("verify")
+    try:
+        verified = verify_results(results)
+    except FileNotFoundError as exc:
+        _fail(str(exc))
+    for problem in verified.problems:
+        typer.echo(str(problem), err=True)
+    if verified.problems:
+        log.error("verify.failed", files=verified.files, problems=len(verified.problems))
+        _fail(f"{len(verified.problems)} problem(s) in {_counted(verified)}.")
+    log.info("verify.done", runs=verified.runs, files=verified.files)
+    _say(f"Verified {_counted(verified)}: every check passed.")
+
+
+def _counted(verified: Verified) -> str:
+    return f"{verified.files} files ({verified.runs} runs)"
 
 
 @app.command()

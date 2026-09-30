@@ -147,9 +147,9 @@ Every row points to its source. "Verified by" names the invariant test (INV-nn),
 
 | ID | Requirement | Source | Verified by |
 | --- | --- | --- | --- |
-| FR-X1 | One results JSON per symbol per run (committed), plus JSON Schema generated from the pydantic result models | Spec › Architecture | `tests/scenario/test_run_result.py` (P3-08); schema at P4-05 |
-| FR-X2 | Every result carries a run manifest: git SHA and whether the tree was dirty, config hash, data-manifest hash, lockfile hash, run timestamp. Published results come from a clean tree | Spec › Run manifest; DEC-50 | `test_manifest.py`, `test_run_result.py`; `pmcc verify` (P4-05) |
-| FR-X3 | `pmcc export --out web/public/data/` writes the per-run files, the index, the rules and the schema | Spec › Frontend constraints | P4-05 |
+| FR-X1 | One results JSON per symbol per run (committed), plus JSON Schema generated from the pydantic result models. Strategies keep full detail; ablation and sensitivity runs a summary (PO, DEC-54) | Spec › Architecture | `tests/scenario/test_run_result.py` (P3-08); `tests/unit/export/test_schema.py`, `tests/scenario/test_export.py` (P4-05) |
+| FR-X2 | Every result carries a run manifest: git SHA and whether the tree was dirty, config hash, data-manifest hash, lockfile hash, run timestamp. Published results come from a clean tree | Spec › Run manifest; DEC-50 | `test_manifest.py`, `test_run_result.py`; `pmcc verify` in CI (`tests/scenario/test_verify.py`, P4-05) |
+| FR-X3 | `pmcc export --out web/public/data/` writes the per-run files, the index, the rules and the schema | Spec › Frontend constraints | `tests/scenario/test_export.py`, `tests/unit/test_cli_export.py` (P4-05) |
 | FR-X4 | Re-running a config on cached data gives byte-identical results (excluding the run timestamp and the commit SHA) | Spec › Invariant tests; DEC-50 | INV-13 (`test_run_result.py`) |
 
 ### 6.9 Site
@@ -161,14 +161,14 @@ Every row points to its source. "Verified by" names the invariant test (INV-nn),
 | FR-S3 | Traceability: each blotter rule ID links to its rule, each gate-log entry to its gate | Spec › Traceability | smoke test |
 | FR-S4 | The Trade rules page and write-up are generated from config: live parameter values plus each rule's rationale | Spec › Rule write-up source; DEC-52 | config tests; P7-03 |
 | FR-S5 | Static output only: results load from the site's own origin; no calls to LSEG or any external API; hash routes survive a refresh | Spec › Frontend constraints; DEC-72, DEC-73 | dist guard; smoke test |
-| FR-S6 | TypeScript types generated from the result schema; a mismatch fails type-checking | Spec › Typed results | INV-14 |
-| FR-S7 | Per-run files fetched on demand, plus a small index file | Spec › Per-run data files | P4-06 |
+| FR-S6 | TypeScript types generated from the result schema; a mismatch fails type-checking | Spec › Typed results | INV-14 (`npm run typecheck` runs `gen:types` first, P4-06) |
+| FR-S7 | Per-run files fetched on demand, plus a small index file | Spec › Per-run data files | `web/src/data/loader.test.ts` (P4-06) |
 | FR-S8 | Blotter, ledger and gate log use TanStack Table: sortable, filterable by rule ID and side, virtualized ledger | Spec › Tables | P7-01 |
-| FR-S9 | ECharts with mouseover on every time series; NAV charts show IM, MM and available funds on a shared time axis; theme-aware; readable on mobile | Spec › Charts; DEC-04 | P7-01, P7-07 |
-| FR-S10 | Light and dark themes | Spec › Frontend constraints; DEC-03 | contrast test; P7-07 |
-| FR-S11 | The run manifest in the footer of every page | Spec › Run manifest | smoke test |
+| FR-S9 | ECharts with mouseover on every time series; NAV charts show IM, MM and available funds on a shared time axis; styled from the tokens; readable on mobile | Spec › Charts; DEC-04 | P7-01, P7-07 |
+| FR-S10 | One dark theme, the baseline look of DESIGN-GUIDE.md and theme.py unchanged; no light theme (PO, DEC-03) | Spec › Frontend constraints; DEC-03 | contrast and token-lint tests (P4-06); P7-07 |
+| FR-S11 | The run manifest in the footer of every page | Spec › Run manifest | `web/src/app/routes.test.tsx` (P4-06); smoke test |
 | FR-S12 | The Data page shows "Data connection required" on github.io | Spec › Site and UI; DEC-75 | smoke test |
-| FR-S13 | Pages built from synthetic data show a warning banner | DEC-74 | smoke test |
+| FR-S13 | Pages built from synthetic data show a warning banner | DEC-74 | `web/src/app/routes.test.tsx` (P4-06); smoke test |
 
 ### 6.10 CLI and delivery
 
@@ -204,7 +204,7 @@ Every row points to its source. "Verified by" names the invariant test (INV-nn),
 | NFR-06 | Site weight | First load ≤ 2 s on broadband; a full run file ≤ 2 MB; tables stay responsive at 5,000 ledger rows |
 | NFR-07 | Observability | structlog JSON. Every soft fetch failure is a searchable event with symbol, unit, RIC, form, reason and the service's codes (DEC-83). |
 | NFR-08 | Security | Credentials never committed or printed; CI holds no secrets; the site makes no cross-origin requests |
-| NFR-09 | Accessibility | WCAG AA text contrast in both themes; keyboard-reachable controls; a caption explains each chart |
+| NFR-09 | Accessibility | WCAG AA text contrast (the one theme, DEC-03); keyboard-reachable controls; a caption explains each chart |
 | NFR-10 | Responsive | Usable at 390 px wide; tables and charts scroll rather than squash |
 | NFR-11 | Static hosting | Static files only; HashRouter; relative base path |
 | NFR-12 | Platform parity | Git Bash on Windows (development) and Ubuntu (CI) behave identically: LF line endings, `tzdata`, bash recipes (DEC-58) |
@@ -244,7 +244,7 @@ Every row points to its source. "Verified by" names the invariant test (INV-nn),
 - [ ] CI is green on `main`: lint, type-check (Python and TS), tests, `pmcc verify`, build, smoke test.
 - [ ] Results are committed from a clean tree for every symbol × run in the universe (after any cuts per BUILD-PLAN §5).
 - [ ] Every spec open item is resolved in DECISIONS.
-- [ ] The site passes the full read-through (P7-08) in both themes at 390, 1100, 1366 and 1600 px.
+- [ ] The site passes the full read-through (P7-08) at 390, 1100, 1366 and 1600 px.
 - [ ] The footer manifest matches the committed results, the site makes no cross-origin requests, and the Data page shows "Data connection required".
 - [ ] A clean clone plus the cache reproduces byte-identical results (P8-01).
 - [ ] The URL is submitted.

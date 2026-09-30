@@ -352,10 +352,10 @@ A static React app on GitHub Pages with a global symbol selector; the comparison
 - **Per-run data files.** One JSON file per symbol per strategy or ablation, fetched on demand when the symbol or page changes, plus a small index file listing what exists.
 - **Global state.** Selected symbol lives in app state and the URL, so every page and chart follows it.
 - **Tables.** Blotter, ledger, and gate log use TanStack Table: sortable, filterable by rule ID and side, virtualized for long hourly ledgers.
-- **Styling.** Tailwind with shadcn/ui components; light and dark themes.
+- **Styling.** Tailwind with shadcn/ui components, in one dark theme: the look of `DESIGN-GUIDE.md` and `theme.py`, unchanged (DEC-03).
 - **Run manifest footer** on every page.
 
-**Charts.** ECharts with mouseover on all time series; NAV charts show IM, MM, and available funds on a shared time axis. Theme-aware and readable on mobile.
+**Charts.** ECharts with mouseover on all time series; NAV charts show IM, MM, and available funds on a shared time axis. Styled from the design tokens and readable on mobile.
 
 ## Invariant tests
 

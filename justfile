@@ -14,14 +14,15 @@ default:
 # Install the Python and web environments and the git hooks
 setup:
     uv sync --frozen
-    if [ -f web/package.json ]; then cd web && npm ci; else echo "web/ not scaffolded yet (P4-06): skipping npm ci"; fi
+    cd web && npm ci
     {{uv}} pre-commit install
 
-# Lint, format check, pyright and guards on all files, then pytest, then the web checks
+# Lint, format check, pyright and guards on all files, then pytest, then the web checks (their types come from the JSON Schema, so no results are needed)
 check:
     {{uv}} pre-commit run --all-files
     {{uv}} pytest
-    if [ -f web/package.json ]; then cd web && npm run lint && npm run typecheck && npm run test; else echo "web/ not scaffolded yet (P4-06): skipping web checks"; fi
+    {{uv}} pmcc export --schema-only --out web/public/data/
+    cd web && npm run lint && npm run typecheck && npm run test
 
 # Run pytest (dev hypothesis profile unless HYPOTHESIS_PROFILE is set)
 test *ARGS:
@@ -55,16 +56,16 @@ export:
 verify:
     {{uv}} pmcc verify results/
 
-# Start the Vite dev server
-web-dev: _need-web
+# Start the Vite dev server over the exported results
+web-dev: export
     cd web && npm run dev
 
-# Build the static site into web/dist
-web-build: _need-web
+# Build the static site into web/dist from the exported results
+web-build: export
     cd web && npm run build
 
 # Run the Playwright smoke test
-e2e: _need-web
+e2e:
     cd web && npm run e2e
 
 # Serve the built site and the local data endpoints on 127.0.0.1
@@ -73,6 +74,3 @@ serve:
 
 # Cached data -> all runs -> verify -> export -> built site (Spec › CLI)
 reproduce: batch verify export web-build
-
-_need-web:
-    @test -f web/package.json || { echo "Not built yet: see docs/BUILD-PLAN.md P4-06." >&2; exit 1; }

@@ -5,11 +5,15 @@ every rule against its kind: known kind, the rule ID it implements, its params, 
 placeholders all resolve and which references every param (DEC-52). Rules come out in the spec's
 order whatever the files' order. `load_run_config` adds the universe's window and r, and
 `RunConfig.config_hash` is the sha256 of the result as canonical JSON (DEC-90).
+
+A strategy's `report` block says how much detail its results keep and which optional sections its
+page shows (PO, DEC-54). It is part of the config, and so of its hash.
 """
 
 import hashlib
 import json
 from dataclasses import dataclass
+from enum import StrEnum
 from pathlib import Path
 from typing import Annotated, Self, cast
 
@@ -140,15 +144,53 @@ class FillModel(BaseModel):
     fee_per_contract: DollarMoney
 
 
-class StrategyConfig(BaseModel):
-    """A strategy or variant: its run ID, name, fill model and rules, in the spec's order."""
+class Detail(StrEnum):
+    """How much of a run its result file keeps (PO, DEC-54)."""
+
+    FULL = "full"  # the blotter, ledger and gate log, and at P6 the cycles and attribution
+    SUMMARY = "summary"  # the summary only: ablation and sensitivity runs
+
+
+class Section(StrEnum):
+    """A strategy page's optional sections; the rest every strategy page shows (PO, DEC-54)."""
+
+    GATE_LOG = "gate_log"
+    GREEK_ATTRIBUTION = "greek_attribution"
+
+
+class Report(BaseModel):
+    """A strategy's `report` block. A file without one keeps its parent's; a strategy none of
+    whose files has one keeps a summary."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
+
+    detail: Detail
+    sections: tuple[Section, ...] = ()
+
+    @model_validator(mode="after")
+    def _consistent(self) -> Self:
+        twice = sorted({s for s in self.sections if self.sections.count(s) > 1})
+        if twice:
+            raise ValueError(f"report sections given more than once: {twice}")
+        if self.sections and self.detail is not Detail.FULL:
+            raise ValueError("report sections need full detail: a summary has no rows to show")
+        return self
+
+
+class StrategyConfig(BaseModel):
+    """A strategy or variant: its run ID, name, fill model, rules in the spec's order, and what its
+    results report."""
+
+    # A dump always holds `report`, so the results schema marks it required (P4-05).
+    model_config = ConfigDict(
+        extra="forbid", frozen=True, json_schema_serialization_defaults_required=True
+    )
 
     id: str = Field(pattern=_RUN_ID)
     name: str = Field(pattern=r"\S")
     fill_model: FillModel
     rules: tuple[Rule, ...]
+    report: Report = Report(detail=Detail.SUMMARY)
 
     @field_validator("rules")
     @classmethod
@@ -198,12 +240,14 @@ class RunConfig(BaseModel):
 def load_strategy(path: Path) -> StrategyConfig:
     """The strategy `path` defines, with its `extends` chain and `overrides` applied."""
     resolved = resolve(path)
+    report = {} if resolved.report is None else {"report": resolved.report}
     return StrategyConfig.model_validate(
         {
             "id": resolved.id,
             "name": resolved.name,
             "fill_model": resolved.fill_model,
             "rules": tuple(resolved.rules.values()),
+            **report,
         }
     )
 

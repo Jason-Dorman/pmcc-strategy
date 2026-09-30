@@ -5,6 +5,7 @@
 id: quant_pmcc--a1
 name: "A1: quant with the baseline long leg"
 extends: ../quant_pmcc.yaml
+report: {detail: summary}  # an ablation keeps a summary (PO, DEC-54)
 
 overrides:
   E-L2:

@@ -1,0 +1,50 @@
+/*
+ * Design tokens (DEC-70): the only place in the site a colour or a font stack exists.
+ *
+ * The values are theme.py's, unchanged: the baseline look the PO carried over from Options Surface
+ * Lab (DESIGN-GUIDE.md). One theme, dark: the PO kept the site identical to that look, with no
+ * light theme (PO, DEC-03). Names mirror theme.py's, so a palette change is one edit here.
+ * Components read these through classes in shell.css, Tailwind utilities (tailwind.css) or
+ * tokens.ts; never as literals (the token-lint test).
+ */
+:root {
+  /* surfaces */
+  --bg: #060b16; /* BG: page background, deep navy */
+  --surface: #0c1526; /* SURFACE: panels, chart paper */
+  --surface-alt: #111e33; /* SURFACE_ALT: panel headers, plot interior, empty cells */
+  --border: #1b2a44; /* BORDER: hairlines */
+  --grid: #1f3152; /* GRID: gridlines */
+
+  /* type */
+  --text: #e8e3d9; /* TEXT: body, warm off-white */
+  --text-muted: #94897a; /* TEXT_MUTED: captions, ticks, labels */
+  --text-inverse: #060b16; /* TEXT_INVERSE: type on amber */
+
+  /* chrome: amber is type and chrome, never data */
+  --accent: #ffb000; /* ACCENT */
+  --accent-dim: #8a6a1e; /* ACCENT_DIM: inactive chrome */
+
+  /* data encodings */
+  --mark: #22e3d0; /* MARK: a quoted mid, circle */
+  --trade: #ff2e88; /* TRADE: a trade print, diamond */
+  --trade-edge: #ff8fbc; /* TRADE_EDGE: the diamond's outline */
+  --positive: #2fd4a0; /* POSITIVE: BUY, cash in, gains */
+  --negative: #ff4d6d; /* NEGATIVE: SELL, cash out, losses, breaches */
+  --warn: #ffb000; /* WARN: skip reasons, words only */
+  --nav-line: #a78bfa; /* NAV_LINE: the NAV series */
+  --margin-im: #7fa8d9; /* MARGIN_IM: initial margin, a ruler */
+  --margin-mm: #6e8cb8; /* MARGIN_MM: maintenance margin, a ruler */
+  --fit-line: #7fa8d9; /* FIT_LINE: OLS fit */
+  --identity-line: #94897a; /* IDENTITY_LINE: y = x, TEXT_MUTED */
+
+  /* derived */
+  --negative-tint: color-mix(in srgb, var(--negative) 14%, transparent); /* warning ground */
+
+  /* type stacks (self-hosted, DEC-72) */
+  --font-display: "Space Grotesk", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-body: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, sans-serif;
+  --font-mono:
+    "JetBrains Mono", ui-monospace, SFMono-Regular, "Cascadia Mono", Menlo, Consolas, monospace;
+
+  color-scheme: dark;
+}

@@ -110,9 +110,12 @@ pmcc/
                  legs.py (Trader: the leg state machines and the gate log), fills.py, invariants.py
   accounting/    events.py, book.py, marks.py, valuation.py (market values, NAV), regt.py, ledger.py
   analytics/     performance.py, cycles.py, attribution.py, bootstrap.py, robustness.py, fillcheck.py, suitability.py
-  export/        canonical.py (canonical JSON, INV-13's timestamp drop), models.py (pydantic results),
-                 manifest.py (git SHA and dirtiness, lockfile hash, version), results.py (write_result)
-                 (P3-08, DEC-92); schema.py, site.py, verify.py (P4-05)
+  export/        canonical.py (canonical JSON, INV-13's timestamp drop), manifest.py (git SHA and
+                 dirtiness, lockfile hash, version), results.py (write_result) (P3-08, DEC-92);
+                 base.py (the strict model, dollars, schema version), models.py (a run's file),
+                 analytics_models.py (P6 sections, per-symbol and universe files), site_models.py
+                 (index.json, rules.json), schema.py (JSON Schema), verify.py and rederive.py
+                 (pmcc verify), site.py (pmcc export) (P4-05, DEC-96)
   runner.py      run_symbol: load a cache, run the engine, build the RunResult (DEC-92)
   calibration.py calibrate: measure each run's first long entry, verify the value (DEC-93)
   log.py         structlog JSON setup: stderr + logs/{command}_{timestamp}.jsonl (DEC-80)
@@ -142,7 +145,7 @@ The reference files at the repo root (`LSEG-DATA-GUIDE.md`, `DESIGN-GUIDE.md`, `
 | `engine` | Run the clock; route decisions to fills and the book | `MarketData.build(stock, chains, calendar, r, root)`; `run_backtest(data, run_config, strategy, starting_cash)` → `RunOutput` (DEC-91) | domain, config, pricing, strategy, accounting; the loader's frames, never `pmcc.data` |
 | `accounting` | Record and value positions | `Book.apply()`, `carry()`, `value()`, `regt()`, `funds_after()`, `ledger_row()` | domain |
 | `analytics` | Summarize runs | `compute_metrics()`, `bootstrap_ci()`, … | domain, accounting read models |
-| `export` | Result models, manifest, canonical JSON, site data, verify | `write_result()`, `export_site()`, `verify()` | domain, config, accounting, analytics; `data.files` for whole-file writes (DEC-92) |
+| `export` | Result models, manifest, canonical JSON, JSON Schema, site data, verify | `write_result()`, `write_schemas()`, `export_site()`, `verify()`, `rederive()` | domain, config, accounting, analytics; `data.files` for whole-file writes (DEC-92); `engine.invariants` for the names of the runtime invariants a summary records (DEC-96) |
 | `runner` | Run configs on one symbol's cache into results | `run_symbol()`, `run_loaded()`; `Market.prepare()` once per symbol, then `run_market()` per config → `RunResult`, or `run_output()` → the engine's `RunOutput` | domain, config, accounting, data, engine, strategy, export, polars (DEC-92) |
 | `calibration` | Calibrate the starting cash (E-L4) | `calibrate(markets, configs, universe)` → `Calibration` (the `StartingCash` and each run's `RunFunds`); `cash_rule()`, `measure()`, `first_long_entry()`, `verify()`, `run_funds()`, `blocked_entries()` | domain, config, accounting (the `Event` type), engine, runner (DEC-93) |
 | `log` | Configure structured logging for one command | `configure_logging()` | structlog |
@@ -555,9 +558,9 @@ A failure logs `invariant.failed` and raises `InvariantViolation` (an `EngineErr
 | File | Holds |
 | --- | --- |
 | `configs/_shared.yaml` | Rules identical in both strategies (E-T1, E-L1, E-L4, E-S1, E-S2, E-S4, E-S5, G-1, G-2, all exits) and the fill model (`spread_capture`, `fee_per_contract`). E-L4's params include the starting cash's rule, `cash_multiple` and `cash_round_to`, which `pmcc calibrate` reads (DEC-30, DEC-93). Only ever extended: it has no `id` |
-| `configs/baseline_pmcc.yaml` | `extends: _shared.yaml`; baseline E-L2, E-L3, E-S3. Report sections join at P4-05 (DEC-54) |
-| `configs/quant_pmcc.yaml` | `extends: _shared.yaml`; quant E-L2, E-L3, E-S3; G-3, G-4, G-5 (P4-03, DEC-95). Report sections join at P4-05 (DEC-54) |
-| `configs/ablations/a1…a5.yaml` | `extends: ../quant_pmcc.yaml` + `overrides` keyed by rule ID: A1 and A2 `replace` the quant selectors with the baseline's rules, word for word; A3, A4 and A5 `remove` G-3, G-4 and X-S1 (P4-03, DEC-95) |
+| `configs/baseline_pmcc.yaml` | `extends: _shared.yaml`; baseline E-L2, E-L3, E-S3; `report: {detail: full}` (DEC-54) |
+| `configs/quant_pmcc.yaml` | `extends: _shared.yaml`; quant E-L2, E-L3, E-S3; G-3, G-4, G-5 (P4-03, DEC-95); `report: {detail: full, sections: [gate_log, greek_attribution]}` (DEC-54) |
+| `configs/ablations/a1…a5.yaml` | `extends: ../quant_pmcc.yaml` + `overrides` keyed by rule ID: A1 and A2 `replace` the quant selectors with the baseline's rules, word for word; A3, A4 and A5 `remove` G-3, G-4 and X-S1 (P4-03, DEC-95); `report: {detail: summary}` (DEC-54) |
 | `configs/sensitivity.yaml` | friction, timing and grid variants (§11) |
 | `configs/universe.yaml` | the window (DEC-07); r with the quote, series, date and source it came from (DEC-11); symbols with stock RIC and option root (DEC-12); last, the `starting_cash` block `pmcc calibrate` writes: the value, whether it's provisional, the calibration cash and each run's first long entry (DEC-30, DEC-93). The bootstrap seed joins at P6-05, above that block. Loaded by `pmcc/config/universe.py`, which checks the window's sessions against the calendar (DEC-86) |
 | `configs/calendar.yaml` | NYSE holidays and early closes 2025–2027, with sources (DEC-33) |
@@ -593,6 +596,7 @@ overrides:
   - A file extends one parent, by a relative path with forward slashes to a `.yaml` file.
   - A child adds rules the parent lacks and changes the parent's only through `overrides` keyed by rule ID: `params` (a patch), `replace` (a whole rule) or `remove: true`.
   - `fill_model` is patched field by field. `id` and `name` are never inherited.
+  - `report` (what the results keep and the page shows, DEC-54) is inherited, and a child's replaces its parent's whole. A strategy none of whose files has one keeps a summary. It is part of the config hash.
 - **Required rules:** every spec rule but G-3, G-4, G-5 and X-S1, the layers variants switch off (DEC-53).
 - **Rule text (DEC-52):** `condition`, `action` and `rationale` are templates with bare-name placeholders (`{max_delta:.2f}`), rendered by `Rule.text()`. Every param must appear in the condition or the action.
 - **`config_hash`:** the sha256 of `RunConfig` as JSON with sorted keys, no whitespace and UTF-8. It covers the resolved strategy and the window and r, not the file layout or the symbol list (DEC-90).
@@ -640,9 +644,7 @@ Determinism controls (INV-13):
 ## 12. Results contract and export
 
 ```
-results/                            committed
-  index.json                        runs per symbol, window, r, starting cash, export manifest
-  rules.json                        rendered rules per strategy and variant (Trade rules page)
+results/                            committed; every file here is one the pipeline writes (verify)
   universe/pooled.json              pooled metrics + week-block bootstrap CIs
   universe/headline.json            per-symbol headline table
   universe/suitability.json         symbol suitability screen
@@ -652,24 +654,28 @@ results/                            committed
   {SYM}/coverage.json               derived data-coverage counts
 ```
 
-`RunResult` (pydantic; JSON Schema generated by `pmcc export`). P3-08 writes the manifest, config, rule text, starting cash, blotter, ledger and gate log; the summary, cycles and attribution join at P4-05 and P6 (DEC-92):
+`pmcc export` derives two more files from the results into its output, never committed under `results/`, so they can't disagree with the runs (DEC-96): `index.json` (per symbol, its runs with their detail, sections, path, data source, config hash and commit, and the analytics files present; the window, r and starting cash every run shares; the exporter's version) and `rules.json` (per run ID, the rules as it ran them: params, rendered text, and a variant's changes against its strategy).
+
+`RunResult` (pydantic; JSON Schema written by `pmcc export`), schema version 2 (P4-05, DEC-96). The detail is the strategy's `report.detail` (DEC-54): a summary run keeps no rows. The summary's analytics, the cycles and the attribution are null until P6 (PO, DEC-54):
 
 ```
-schema_version
+schema_version  2
 manifest    run_id, symbol, strategy_id, git_sha, git_dirty, config_hash, data_manifest_hash,
             lock_hash, run_timestamp, data_source (lseg|synthetic), pmcc_version
-config      the resolved RunConfig, dumped exactly as config_hash covers it (dollars as "0.1000")
+config      the resolved RunConfig, dumped exactly as config_hash covers it (dollars as "0.1000");
+            its strategy's report {detail, sections} tells the site what to show
 rule_text   {rule_id: {condition, action, rationale}}, rendered from the params
 starting_cash
-summary     metrics, cycle_stats, exit_mix, skips_by_rule, weekly_returns, nav_close[], flag counts, invariants[]
+summary     metrics, cycle_stats, exit_mix, skips_by_rule, nav_close[], weekly_returns[] (P6; null
+            until then), flag_counts {flag: ledger rows}, invariants[{id, held}] (P4-05)
 blotter[]   time, instrument{…}, side, qty, limit, fill, fee, cash_delta, rule_id, notes, audit{…}     full
 ledger[]    time, long{instrument{…}, qty, mark, delta, stale}, short{…},
             stock{instrument{…}, shares, mark, stale}, cash, nav, im, mm, available_funds,
             excess_equity, flags[]                                                                   full
 gate_log[]  session, decision_time, selected{…}, gates[{rule_id, status, values, reason}],
             outcome{kind, rule_id}, notes                                                          full, if declared
-cycles[]    full
-attribution leg{…}, greek{…} (if declared)                                                          full
+cycles[]    full (P6)
+attribution leg{…}, greek{…} (if declared)                                                          full (P6)
 ```
 
 An `instrument` is `{ric, occ, kind, expiry, strike}`: `ric` is the RIC the cache answered with, so a row leads to its raw quotes; the stock has `kind: stock` and null `occ`, `expiry` and `strike`. The audit's `bid`, `ask` and `funds_after` are $0.0001 units, as the engine records them (DEC-91), and dollars inside the audit and the gate-log value maps are exact 4-dp strings (`"82.9900"`; PO, DEC-92); a value in those maps is always a JSON scalar.
@@ -682,29 +688,38 @@ An `instrument` is `{ric, occ, kind, expiry, strike}`: `ric` is the RIC the cach
   - the config section's floats print unrounded, as `config_hash` covers them
   - INV-13 compares whole files after dropping `manifest.run_timestamp` and `manifest.git_sha` (`drop_volatile`; PO, DEC-50)
   - `\n` line endings on every OS
-- **`pmcc export --out web/public/data/`:**
-  - validates and copies `results/`
-  - writes `schema/*.schema.json` from the result models
-  - writes the files the frontend reads
-- **`pmcc verify results/`** (CI, DEC-51):
-  - schema validation
-  - `git_dirty` must be false
-  - re-derives INV-01, 02, 03, 05, 06, 07, 08, 09 and 10 from the blotter, ledger and gate log
-  - every summary run's recorded invariants must pass
+- **`pmcc export --results results/ --out web/public/data/`** (`export/site.py`, DEC-96):
+  - refuses results that fail `pmcc verify`, a dirty tree aside (a local preview; CI's verify keeps dirty results off the site), and writes nothing then
+  - rebuilds the output directory whole, refusing one it didn't write
+  - writes `schema/*.schema.json`, one per model (`export/schema.py`), in serialization mode: dollars are numbers, a result's config is its dump, and every field is required
+  - copies every results file byte for byte, and writes `index.json` and `rules.json`
+  - `--schema-only` writes only the schemas, which the site's types need (`just check`)
+- **`pmcc verify results/`** (`export/verify.py`, CI, DEC-51, DEC-96):
+  - layout: every file is one the pipeline writes, where it writes it
+  - schema validation, through the same pydantic models the schema comes from
+  - canonical bytes; the manifest's symbol and run ID match the path
+  - `git_dirty` must be false; the config hashes to `manifest.config_hash`; the rule text is the config's
+  - every run's summary records every runtime invariant as held
+  - a full run's rows re-derive INV-01, 02, 03, 05, 06, 07, 08, 09 and 10 (`export/rederive.py`, with its own arithmetic, not the engine's)
 
 ## 13. Frontend
 
 ```
-web/
+web/                            P4-06 (DEC-97); Node 22 (.nvmrc, engines)
+  scripts/gen-types.mjs         public/data/schema → src/types/generated/ (+ version.ts)
   src/
-    app/        HashRouter, AppShell, providers (symbol, theme)
-    data/       index loader, per-run loader with cache, schema_version check
+    app/        App (HashRouter + IndexProvider), routes (the table), AppShell (command bar, banners),
+                pages (paths), site (repo URL, wordmark)
+    data/       loader (index, per-run cache, schema_version check), IndexContext, useRun, state
     types/generated/   json-schema-to-typescript output (gitignored; regenerated before typecheck/build)
-    theme/      tokens.css, tokens.ts, echarts.ts
-    components/ CommandBar, Readouts, PanelGrid, Panel, Caption, DataTable, charts/*, ManifestFooter, WarningBanner
-    pages/      Comparison, Strategy, Rules, Methodology, Universe, Data
-    format/     money, percent, time (ET), ric/occ
-  e2e/          Playwright smoke test
+    theme/      tokens.css (theme.py's values), shell.css (PAGE_CSS, ported), index.css (Tailwind +
+                tokens), tokens.ts, fonts.ts; echarts.ts with the first chart (P7-01)
+    components/ CommandBar, Readouts, PanelGrid, Panel, Note (Details, Empty, Loading), PageFrame,
+                ManifestFooter, WarningBanner, ui/select; DataTable and charts/* at P7
+    pages/      Comparison, Strategy, Rules, Methodology, Universe, Data (placeholders until P7)
+    format/     money, time (ET), hash; percent and ric/occ at P7
+    test/       fixtures for the route and loader tests
+  e2e/          Playwright smoke test (P4-08)
   public/data/  written by pmcc export (gitignored)
 ```
 
@@ -715,35 +730,35 @@ web/
 - **State:**
   - The URL is the state; the symbol comes from the route.
   - Symbol-less routes remember the last symbol for links back.
-  - The theme preference is kept in `localStorage`, wrapped in try/catch.
+  - One theme, so no theme state (PO, DEC-03).
 - **Types:** `npm run gen:types` runs before `typecheck` and `build`. A schema change the UI doesn't handle fails `tsc` (INV-14).
 - **Charts:** modular `echarts/core` via `echarts-for-react`. The theme is built from the CSS variables. Animation is off.
 - **Tables:** TanStack Table plus TanStack Virtual for the ledger and blotter.
 - **Tests:**
-  - Vitest: formatters, transforms, token-lint, contrast.
+  - Vitest (jsdom; `css: true`, so a stylesheet read `?raw` has its text): formatters, the loader, every route, token-lint, contrast.
   - Playwright: every route, console errors, cross-origin requests, screenshots.
 - **Build:** Vite `base: './'` with HashRouter (DEC-73). The static `dist/` makes no cross-origin requests (fonts are bundled, DEC-72).
 
 ## 14. Tooling and CI/CD
 
-Recipes run under bash (`set shell := ["bash", "-cu"]`): Git Bash locally, bash on the CI runners (DEC-58). Python tools run through `uv run --frozen` (DEC-77). A recipe whose command isn't built yet fails with exit 1, naming its backlog item; until `web/` exists (P4-06), `setup` and `check` skip their web steps with a note, and the web recipes fail (DEC-78).
+Recipes run under bash (`set shell := ["bash", "-cu"]`): Git Bash locally, bash on the CI runners (DEC-58). Python tools run through `uv run --frozen` (DEC-77). A recipe whose command isn't built yet fails with exit 1, naming its backlog item (DEC-78).
 
 | just recipe | Does |
 | --- | --- |
 | `setup` | `uv sync --frozen`, `npm ci` in `web/`, `pre-commit install` |
-| `check` | pre-commit on all files, pytest, web lint/typecheck/vitest |
+| `check` | pre-commit on all files, pytest, `pmcc export --schema-only`, web lint/typecheck/vitest |
 | `test *ARGS` | pytest (dev profile unless `HYPOTHESIS_PROFILE` is set), extra args passed through |
 | `probe SYM` · `fetch SYM START END *ARGS` | LSEG probes / pull (local only); `fetch` passes extra args, e.g. `--plan-only` |
 | `run SYM CONFIG` · `batch` · `calibrate *ARGS` | backtests; `calibrate` passes extra args, e.g. `--symbol NVDA --config configs/baseline_pmcc.yaml` or `--check` (DEC-93) |
 | `export` · `verify` | site data / results validation |
-| `web-dev` · `web-build` · `e2e` · `serve` | frontend |
+| `web-dev` · `web-build` · `e2e` · `serve` | frontend; `web-dev` and `web-build` run `export` first; `e2e` is a stub naming P4-08 |
 | `reproduce` | cached data → batch → verify → export → web build (Spec › CLI) |
 
 CI (`.github/workflows/ci.yml`, on push and PR; DEC-79):
 
 | Job | Steps |
 | --- | --- |
-| `python` | credentials guard (`git ls-files`) → setup-uv → `uv sync --frozen` → `pre-commit run --all-files` (ruff, format, pyright, guards) → `pytest` (ci profile) → `pmcc verify results/` (added with P4-05) |
+| `python` | credentials guard (`git ls-files`) → setup-uv → `uv sync --frozen` → `pre-commit run --all-files` (ruff, format, pyright, guards) → `pytest` (ci profile) → `pmcc verify results/` (P4-05) |
 | `web` | `uv sync --frozen` → `pmcc export --out web/public/data/` → `npm ci` → `gen:types` → `lint` → `typecheck` → `vitest` → `build` → dist guard → Playwright smoke → upload the Pages artifact |
 | `deploy` | `main` only; needs `python` and `web`; `actions/deploy-pages` |
 
@@ -758,7 +773,7 @@ CI (`.github/workflows/ci.yml`, on push and PR; DEC-79):
   - A command calls `pmcc.log.configure_logging(command)` once at startup; every other module calls `structlog.get_logger()`.
   - Each event carries `event`, `level`, `timestamp` (ISO 8601, UTC) and `command`; exceptions are rendered as text in `exception`. Level INFO and up.
   - Every soft fetch failure is one `fetch.ric.unanswered` event, logged once per RIC the service left unanswered, with `symbol`, `unit`, `ric`, `form` (for an option RIC), `reason` (`no_data` or `empty`), `codes` and `message` (Spec › Stack, DEC-83). `fetch.batch.rejected` and `fetch.retry` carry `size` and the error.
-  - Event names: `fetch.plan`, `fetch.unit.start|done`, `fetch.increment.unmeasured`, `fetch.ric.unanswered`, `fetch.batch.rejected`, `fetch.retry`, `fetch.abort.outage`, `fetch.coverage`, `fetch.coverage.unit`, `engine.entry.retry`, `engine.gate.fired`, `engine.exit.pending`, `engine.exit.unevaluated` (a rule on a fresh quote missing an input, with `rule`, `option` and `iv_code`; DEC-27), `invariant.failed`, `run.done` (with `trades`, `bars`, `weeks` and `git_dirty`), `run.abort` (DEC-92), `calibrate.measured` (with `symbol`, `run_id`, `time`, `contract` and `cost`), `calibrate.verified` (with `symbol`, `run_id`, `lowest`, `lowest_at` and `negative_bars`), `calibrate.done` (with `value`, `provisional` and `runs`), `calibrate.abort` (DEC-93).
+  - Event names: `fetch.plan`, `fetch.unit.start|done`, `fetch.increment.unmeasured`, `fetch.ric.unanswered`, `fetch.batch.rejected`, `fetch.retry`, `fetch.abort.outage`, `fetch.coverage`, `fetch.coverage.unit`, `engine.entry.retry`, `engine.gate.fired`, `engine.exit.pending`, `engine.exit.unevaluated` (a rule on a fresh quote missing an input, with `rule`, `option` and `iv_code`; DEC-27), `invariant.failed`, `run.done` (with `trades`, `bars`, `weeks`, `detail` and `git_dirty`), `run.abort` (DEC-92), `export.done` (with `runs`, `symbols`, `files` and `unpublishable`), `export.abort`, `verify.done` (with `runs` and `files`), `verify.failed` (with `files` and `problems`) (DEC-96), `calibrate.measured` (with `symbol`, `run_id`, `time`, `contract` and `cost`), `calibrate.verified` (with `symbol`, `run_id`, `lowest`, `lowest_at` and `negative_bars`), `calibrate.done` (with `value`, `provisional` and `runs`), `calibrate.abort` (DEC-93).
 - **Errors:** the failure taxonomy is DEC-49.
 - **Secrets:**
   - `lseg-data.config.json` is gitignored, blocked by a pre-commit hook, and checked in CI (`git ls-files` must not list it).

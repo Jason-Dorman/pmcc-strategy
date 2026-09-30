@@ -16,10 +16,11 @@ def result_path(out: Path, symbol: str, run_id: str) -> Path:
 
 
 def to_bytes(result: RunResult) -> bytes:
-    """The result as canonical JSON (DEC-50). The config's floats print unrounded, as its hash
-    covers them, so the file's config always hashes to `manifest.config_hash` (DEC-92)."""
+    """The result as canonical JSON (DEC-50). The config is its JSON dump, whose floats print
+    unrounded, as its hash covers them, so the file's config always hashes to
+    `manifest.config_hash` (DEC-92)."""
     data = result.model_dump(mode="python")
-    data["config"] = canonical.verbatim_floats(data["config"])
+    data["config"] = canonical.verbatim_floats(result.config.model_dump(mode="json"))
     return canonical.to_bytes(data)
 
 

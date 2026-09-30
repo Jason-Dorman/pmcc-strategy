@@ -1,8 +1,10 @@
 """Result models: one run's file, `results/{SYM}/{run_id}.json` (ARCHITECTURE §12).
 
-Provisional (P3-08): the manifest, the resolved config with its rendered rule text, the starting
-cash, and the run's records (blotter, ledger, gate log). The summary, cycles and attribution join
-at P4-05 and P6, and the JSON Schema with them.
+A result holds the manifest, the resolved config with its rendered rule text, the starting cash
+and the summary. A full-detail run adds its records (blotter, ledger, gate log) and, from P6, its
+cycles and attribution; a summary run holds none of them (PO, DEC-54). The strategy's `report`
+block decides which (`config.strategy.report`). The summary's analytics are null until P6 fills
+them; P4-05 records the invariants the run held and the ledger's flag counts.
 
 Typed dollars and prices are `Decimal` (exact $0.0001 units, DEC-44) and serialize as 4-dp JSON
 numbers. The config keeps its own dump, dollars as "0.1000" strings, since that is what its hash
@@ -13,44 +15,27 @@ records them, exact 4-dp strings (PO, DEC-92). Write a result through `pmcc.expo
 
 from collections.abc import Mapping
 from datetime import date, datetime
-from decimal import Decimal
 from enum import StrEnum
-from typing import Annotated, Any
+from typing import Self
 
-from pydantic import AfterValidator, BaseModel, ConfigDict, Field, WithJsonSchema, field_serializer
+from pydantic import Field, model_validator
 
-from pmcc.config.strategy import RunConfig
-
-SCHEMA_VERSION = 1
-
-_SCALAR_TYPES = (float, int, str, bool, type(None))
-_JSON_SCALARS = ["number", "string", "boolean", "null"]
-
-
-def _exact_scalars(values: Mapping[str, Any]) -> Mapping[str, Any]:
-    """Refuses a value that isn't exactly a JSON scalar type: strict mode alone would read a
-    `Decimal`, a numpy number or a numpy bool as a float."""
-    for key, value in values.items():
-        if type(value) not in _SCALAR_TYPES:
-            raise ValueError(f"{key}: {type(value).__name__} isn't a JSON scalar: {value!r}")
-    return values
-
-
-# A blotter audit or gate-log value map.
-ScalarMap = Annotated[
-    Mapping[str, Any],
-    AfterValidator(_exact_scalars),
-    WithJsonSchema({"type": "object", "additionalProperties": {"type": _JSON_SCALARS}}),
-]
+from pmcc.config.strategy import Detail, RunConfig
+from pmcc.export.analytics_models import (
+    Attribution,
+    Cycle,
+    CycleStats,
+    Metrics,
+    NavPoint,
+    WeeklyReturn,
+)
+from pmcc.export.base import SCHEMA_VERSION, Dollars, ScalarMap, SchemaVersion
+from pmcc.export.base import Model as _Model
 
 
 class DataSource(StrEnum):
     LSEG = "lseg"
     SYNTHETIC = "synthetic"  # the site shows a banner (DEC-74)
-
-
-class _Model(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
 
 
 class Manifest(_Model):
@@ -84,7 +69,7 @@ class InstrumentOut(_Model):
     occ: str | None
     kind: str  # "call", "put" or "stock"
     expiry: date | None
-    strike: Decimal | None
+    strike: Dollars | None
 
 
 class BlotterRow(_Model):
@@ -95,10 +80,10 @@ class BlotterRow(_Model):
     instrument: InstrumentOut
     side: str
     qty: int
-    limit: Decimal | None
-    fill: Decimal | None
-    fee: Decimal
-    cash_delta: Decimal
+    limit: Dollars | None
+    fill: Dollars | None
+    fee: Dollars
+    cash_delta: Dollars
     rule_id: str
     notes: str
     audit: ScalarMap
@@ -107,7 +92,7 @@ class BlotterRow(_Model):
 class LegOut(_Model):
     instrument: InstrumentOut
     qty: int
-    mark: Decimal
+    mark: Dollars
     stale: bool
     delta: float | None
 
@@ -115,7 +100,7 @@ class LegOut(_Model):
 class StockOut(_Model):
     instrument: InstrumentOut
     shares: int  # negative when short
-    mark: Decimal
+    mark: Dollars
     stale: bool
 
 
@@ -126,12 +111,12 @@ class LedgerRowOut(_Model):
     long: LegOut | None
     short: LegOut | None
     stock: StockOut | None
-    cash: Decimal
-    nav: Decimal
-    im: Decimal
-    mm: Decimal
-    available_funds: Decimal
-    excess_equity: Decimal
+    cash: Dollars
+    nav: Dollars
+    im: Dollars
+    mm: Dollars
+    available_funds: Dollars
+    excess_equity: Dollars
     flags: tuple[str, ...]
 
 
@@ -158,19 +143,55 @@ class GateLogRowOut(_Model):
     notes: str
 
 
+class InvariantCheck(_Model):
+    """A runtime invariant the engine checked on every bar or event of the run (ARCHITECTURE §8.4).
+    A run that broke one writes nothing (DEC-49), so a result records only invariants that held;
+    `pmcc verify` refuses a file saying otherwise."""
+
+    id: str = Field(pattern=r"^INV-\d{2}$")
+    held: bool
+
+
+class Summary(_Model):
+    """Every run's summary (PO, DEC-54). The analytics are null until P6 computes them (DEC-60,
+    DEC-62)."""
+
+    metrics: Metrics | None = None
+    cycle_stats: CycleStats | None = None
+    exit_mix: Mapping[str, int] | None = None  # by rule ID
+    skips_by_rule: Mapping[str, int] | None = None
+    nav_close: tuple[NavPoint, ...] | None = None
+    weekly_returns: tuple[WeeklyReturn, ...] | None = None
+    flag_counts: Mapping[str, int]  # ledger rows carrying each flag
+    invariants: tuple[InvariantCheck, ...]
+
+
 class RunResult(_Model):
     """One run on one symbol: `results/{symbol}/{run_id}.json`."""
 
-    schema_version: int = Field(default=SCHEMA_VERSION)
+    schema_version: SchemaVersion = Field(default=SCHEMA_VERSION)
     manifest: Manifest
     config: RunConfig
     rule_text: Mapping[str, RuleTextOut]
-    starting_cash: Decimal
-    blotter: tuple[BlotterRow, ...]
-    ledger: tuple[LedgerRowOut, ...]
-    gate_log: tuple[GateLogRowOut, ...]
+    starting_cash: Dollars
+    summary: Summary
+    blotter: tuple[BlotterRow, ...] | None = None  # full detail only
+    ledger: tuple[LedgerRowOut, ...] | None = None
+    gate_log: tuple[GateLogRowOut, ...] | None = None
+    cycles: tuple[Cycle, ...] | None = None  # full detail, from P6
+    attribution: Attribution | None = None
 
-    @field_serializer("config")
-    def _config_as_hashed(self, config: RunConfig) -> dict[str, Any]:
-        """The config exactly as its hash covers it (`RunConfig.canonical_json`)."""
-        return config.model_dump(mode="json")
+    @model_validator(mode="after")
+    def _detail(self) -> Self:
+        """A full run keeps its records; a summary run keeps none (DEC-54)."""
+        records = {"blotter": self.blotter, "ledger": self.ledger, "gate_log": self.gate_log}
+        if self.config.strategy.report.detail is Detail.FULL:
+            missing = [k for k, v in records.items() if v is None]
+            if missing:
+                raise ValueError(f"a full-detail result needs its {', '.join(missing)}")
+        else:
+            records |= {"cycles": self.cycles, "attribution": self.attribution}
+            kept = [k for k, v in records.items() if v is not None]
+            if kept:
+                raise ValueError(f"a summary result keeps no {', '.join(kept)}")
+        return self

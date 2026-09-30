@@ -5,11 +5,16 @@ ledger and gate log into the result's rows, stamped with the run's manifest. The
 runtime invariants on every bar and raises on a failure, so a result exists only for a run that
 held them all (DEC-49).
 
+The strategy's `report` block decides the detail (PO, DEC-54): a full run keeps its rows, a
+summary run only its summary. Every result's summary records the runtime invariants the run held
+and how many ledger rows carried each flag; P6 adds the analytics.
+
 A symbol is priced once (`Market.prepare`) and each config runs on it (`run_market`), so
 `pmcc calibrate` and `pmcc batch` price a symbol once for all its runs (ARCHITECTURE §11). A run
 whose window the cached stock tape doesn't cover is refused before it starts (PO, DEC-92).
 """
 
+from collections import Counter
 from collections.abc import Mapping
 from dataclasses import asdict, dataclass
 from datetime import date, datetime
@@ -22,7 +27,7 @@ import structlog
 
 from pmcc.accounting.events import Event, Instrument, StockId
 from pmcc.accounting.ledger import LedgerRow, LegRow, StockRow
-from pmcc.config.strategy import RunConfig
+from pmcc.config.strategy import Detail, RunConfig
 from pmcc.config.universe import Underlying
 from pmcc.data.cache import CacheError
 from pmcc.data.load import SymbolData, load_symbol
@@ -30,6 +35,7 @@ from pmcc.data.ric import occ_symbol
 from pmcc.domain.calendar import SessionCalendar
 from pmcc.domain.instruments import Right
 from pmcc.domain.money import Money, Price
+from pmcc.engine.invariants import RUNTIME_INVARIANTS
 from pmcc.engine.legs import GateLogRow
 from pmcc.engine.loop import RunOutput, run_backtest
 from pmcc.engine.market_view import MarketData
@@ -40,6 +46,7 @@ from pmcc.export.models import (
     GateLogRowOut,
     GateOut,
     InstrumentOut,
+    InvariantCheck,
     LedgerRowOut,
     LegOut,
     Manifest,
@@ -47,6 +54,7 @@ from pmcc.export.models import (
     RuleTextOut,
     RunResult,
     StockOut,
+    Summary,
 )
 from pmcc.strategy.ports import GateResult
 from pmcc.strategy.registry import build_strategy
@@ -100,9 +108,11 @@ def run_loaded(loaded: SymbolData, root: str, config: RunConfig, starting_cash: 
 def run_market(market: Market, config: RunConfig, starting_cash: Money,
                stamp: Stamp) -> RunResult:  # fmt: skip
     """Run `config` on a prepared market into its result; raises as `run_output` does."""
-    result = to_result(run_output(market, config, starting_cash), market, config, stamp)
+    output = run_output(market, config, starting_cash)
+    result = to_result(output, market, config, stamp)
     log.info("run.done", symbol=market.loaded.symbol, run_id=config.strategy.id,
-             trades=len(result.blotter), bars=len(result.ledger), weeks=len(result.gate_log),
+             trades=len(output.blotter), bars=len(output.ledger), weeks=len(output.gate_log),
+             detail=config.strategy.report.detail.value,
              git_dirty=stamp.provenance.git.dirty)  # fmt: skip
     return result
 
@@ -138,15 +148,28 @@ def check_covers(loaded: SymbolData, config: RunConfig) -> None:
 
 def to_result(output: RunOutput, market: Market, config: RunConfig,
               stamp: Stamp) -> RunResult:  # fmt: skip
+    """The run's result, at the detail its strategy's `report` block asks for (DEC-54)."""
     loaded, names = market.loaded, market.names
+    full = config.strategy.report.detail is Detail.FULL
     return RunResult(
         manifest=_manifest(loaded, config, stamp),
         config=config,
         rule_text={r.id: RuleTextOut(**asdict(r.text())) for r in config.strategy.rules},
         starting_cash=output.starting_cash.to_dollars(),
-        blotter=tuple(_blotter_row(e, names) for e in output.blotter),
-        ledger=tuple(_ledger_row(r, names) for r in output.ledger),
-        gate_log=tuple(_gate_row(g) for g in output.gate_log),
+        summary=_summary(output),
+        blotter=tuple(_blotter_row(e, names) for e in output.blotter) if full else None,
+        ledger=tuple(_ledger_row(r, names) for r in output.ledger) if full else None,
+        gate_log=tuple(_gate_row(g) for g in output.gate_log) if full else None,
+    )
+
+
+def _summary(output: RunOutput) -> Summary:
+    """What P4-05 summarizes: the invariants held (a run that broke one returned nothing, DEC-49)
+    and the ledger's flag counts. The analytics join at P6 (DEC-60, DEC-62)."""
+    flags = Counter(flag for row in output.ledger for flag in row.flags)
+    return Summary(
+        flag_counts=dict(sorted(flags.items())),
+        invariants=tuple(InvariantCheck(id=i, held=True) for i in RUNTIME_INVARIANTS),
     )
 
 

@@ -47,7 +47,9 @@ def _flat_rules(configs: Path) -> list[dict[str, Any]]:
 
 def _flat_file(configs: Path, rules: list[dict[str, Any]]) -> Path:
     shared = yaml.safe_load((configs / "_shared.yaml").read_text(encoding="utf-8"))
-    doc = {"id": "baseline_pmcc", "name": "Baseline PMCC", "fill_model": shared["fill_model"]}
+    baseline = yaml.safe_load((configs / "baseline_pmcc.yaml").read_text(encoding="utf-8"))
+    doc = {"id": "baseline_pmcc", "name": "Baseline PMCC", "fill_model": shared["fill_model"],
+           "report": baseline["report"]}  # fmt: skip
     path = configs / "flat.yaml"
     path.write_text(yaml.safe_dump({**doc, "rules": rules}, allow_unicode=True), encoding="utf-8")
     return path

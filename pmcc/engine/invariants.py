@@ -32,6 +32,9 @@ from pmcc.engine.fills import fill_price
 log = structlog.get_logger()
 
 ENTRY_RULES = frozenset({RuleId("E-L1"), RuleId("E-S1")})
+# What every run checks, on every bar or event; a result records them (PO, DEC-54).
+RUNTIME_INVARIANTS = ("INV-01", "INV-02", "INV-03", "INV-05", "INV-06", "INV-07", "INV-08",
+                      "INV-09", "INV-10")  # fmt: skip
 
 
 class InvariantViolation(EngineError):  # noqa: N818 (the spec's name)

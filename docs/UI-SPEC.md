@@ -18,7 +18,7 @@ No rounded corners, no shadows, no floating cards, no whitespace gaps. shadcn/ui
 
 | DG block | React component | Notes |
 | --- | --- | --- |
-| Command bar | `CommandBar` | **Left:** the wordmark (Space Grotesk, amber, uppercase, 2px tracking); "PMCC BACKTEST" is a placeholder. **Right:** ident `NVDA · hourly · 2026-07-06 → 2026-09-18`, nav, symbol select, theme toggle |
+| Command bar | `CommandBar` | **Left:** the wordmark (Space Grotesk, amber, uppercase, 2px tracking); "PMCC BACKTEST" is a placeholder. **Right:** ident `NVDA · hourly · 2026-03-30 → 2026-09-25`, nav (wrapping onto a second line on a phone: seven pages, where the baseline had two), symbol select. No theme toggle: one theme (PO, DEC-03) |
 | Nav | inside `CommandBar` | Compare · Baseline · Quant · Rules · Methodology · Universe · Data. Muted at rest; the current page is amber |
 | Readout strip | `Readouts` | Per KPI: label (muted caps), value (amber mono, 20px), and a one-line hint defining the number |
 | Panel grid | `PanelGrid` | 10 columns. Widths: 10 (full), 5 + 5, 6 + 4. A row's widths sum to 10 |
@@ -37,7 +37,7 @@ No rounded corners, no shadows, no floating cards, no whitespace gaps. shadcn/ui
 
 ## 3. Tokens (DEC-70)
 
-`web/src/theme/tokens.css` is the only place colours and font stacks exist. Dark values start as `theme.py`'s (the baseline). Light values follow the PO's answer to DEC-03.
+`web/src/theme/tokens.css` is the only place colours and font stacks exist. Its values are `theme.py`'s, unchanged. There is one theme, dark: the PO kept the look identical to `DESIGN-GUIDE.md` and `theme.py`, with no light theme (PO, DEC-03). The panel chrome is `web/src/theme/shell.css`, `theme.py`'s `PAGE_CSS` ported rule for rule with a `pm-` prefix; Tailwind's utilities read the tokens by name (`web/src/theme/index.css`).
 
 | theme.py | CSS variable | Role |
 | --- | --- | --- |
@@ -265,7 +265,7 @@ Panels that depend on the data follow the selected symbol and show pooled figure
 
 ## 10. Responsive and accessibility checks
 
-- **Widths:** 390, 1100, 1366 and 1600 px, in both themes. Playwright captures screenshots in CI, and they are reviewed by eye at P7-08. DG §6: check the rendered page, not only the tests.
-- **Contrast:** every text pairing clears AA (4.5:1) in both themes, and data marks clear 3:1. `web/src/theme/contrast.test.ts` pins this.
+- **Widths:** 390, 1100, 1366 and 1600 px. Playwright captures screenshots in CI, and they are reviewed by eye at P7-08. DG §6: check the rendered page, not only the tests.
+- **Contrast:** every text pairing clears AA (4.5:1), and data marks clear 3:1, on the grounds they sit on. `web/src/theme/contrast.test.ts` pins this, and that `shell.css`'s grid and breakpoints match `tokens.ts`.
 - **Keyboard:** every control can be reached by keyboard, with an amber focus ring (chrome). Every chart has an HTML caption, and its values are also available in a table.
 - **Token lint:** `web/src/theme/tokenlint.test.ts` fails on a hex colour, `rgb()`, a font-family name, or an arbitrary `[Npx]` value anywhere outside `web/src/theme/`. This ports the old repo's grep test (DG §5, rule 1).

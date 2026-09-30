@@ -44,8 +44,6 @@ def test_cli_help_lists_every_command() -> None:
     ("args", "item"),
     [
         (["batch", "--universe", "configs/universe.yaml"], "P5-03"),
-        (["export", "--out", "web/public/data/"], "P4-05"),
-        (["verify", "results/"], "P4-05"),
         (["serve"], "P7-06"),
     ],
 )

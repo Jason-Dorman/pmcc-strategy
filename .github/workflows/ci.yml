@@ -1,6 +1,7 @@
 # CI (ARCHITECTURE §14). Builds only from committed files: no cache, no secrets,
 # never contacts LSEG (§15). Tools run at the uv.lock versions (DEC-77).
-# The `pmcc verify` step lands with P4-05; the `web` and `deploy` jobs with P4-07.
+# `pmcc verify` checks the committed results (P4-05, DEC-51); the `web` and `deploy` jobs land
+# with P4-07.
 name: ci
 
 on:
@@ -50,3 +51,6 @@ jobs:
         run: uv run --frozen pytest
         env:
           HYPOTHESIS_PROFILE: ci
+
+      - name: Verify the committed results (DEC-51)
+        run: uv run --frozen pmcc verify results/

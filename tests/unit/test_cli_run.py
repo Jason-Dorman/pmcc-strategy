@@ -292,3 +292,14 @@ def test_cli_run_replaces_an_earlier_result(workdir: Path, market: Path) -> None
 
     assert code == 0, output
     assert _manifest()["run_id"] == "baseline_pmcc"
+
+
+def test_dec_54_cli_run_of_an_ablation_writes_a_summary(workdir: Path, market: Path) -> None:
+    ablation = (CONFIGS_DIR / "ablations" / "a3.yaml").as_posix()
+
+    code, output = _run(market, config=ablation)
+
+    assert code == 0, output
+    assert "SYN quant_pmcc--a3: a summary, without its rows (DEC-54)." in output
+    written = cast(dict[str, Any], json.loads(Path("results/SYN/quant_pmcc--a3.json").read_bytes()))
+    assert (written["blotter"], written["ledger"], written["gate_log"]) == (None, None, None)

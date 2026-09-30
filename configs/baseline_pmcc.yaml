@@ -6,6 +6,10 @@ id: baseline_pmcc
 name: Baseline PMCC
 extends: _shared.yaml
 
+# What its results keep and its page shows (PO, DEC-54): every row, and no optional section.
+report:
+  detail: full
+
 rules:
   - id: E-L2
     name: Long leg expiry

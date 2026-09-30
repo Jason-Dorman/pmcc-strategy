@@ -8,8 +8,9 @@ define, patches `fill_model` field by field, and changes the parent's rules only
 - `replace`: a whole new rule under the same ID (a variant swaps a kind this way);
 - `remove: true`: drop the rule ("off" is absence, never a flag).
 
-`id` and `name` are never inherited: the file loaded names the strategy. Rules stay raw mappings
-here; `pmcc.config.strategy` validates the result.
+`id` and `name` are never inherited: the file loaded names the strategy. A `report` block is
+inherited, and a child's replaces its parent's whole (PO, DEC-54). Rules stay raw mappings here;
+`pmcc.config.strategy` validates the result.
 """
 
 from dataclasses import dataclass, field
@@ -55,6 +56,7 @@ class StrategyFile(BaseModel):
     name: str | None = None
     extends: str | None = None
     fill_model: dict[str, object] = {}
+    report: dict[str, object] | None = None
     rules: tuple[RawRule, ...] = ()
     overrides: dict[RuleIdField, Override] = {}
 
@@ -74,12 +76,14 @@ class StrategyFile(BaseModel):
 
 @dataclass(frozen=True, slots=True)
 class Resolved:
-    """A file with its parents folded in: the loaded file's id and name, and raw rules by ID."""
+    """A file with its parents folded in: the loaded file's id and name, the nearest report block,
+    and raw rules by ID."""
 
     id: str | None = None
     name: str | None = None
     fill_model: dict[str, object] = field(default_factory=dict[str, object])
     rules: dict[RuleId, RawRule] = field(default_factory=dict[RuleId, RawRule])
+    report: dict[str, object] | None = None
 
 
 class ConfigError(ValueError):
@@ -121,7 +125,8 @@ def _fold(parent: Resolved, file: StrategyFile) -> Resolved:
         if rule_id not in parent.rules:
             raise ConfigError(f"overrides {rule_id}, which no parent defines")
         _apply(rules, rule_id, override)
-    return Resolved(file.id, file.name, {**parent.fill_model, **file.fill_model}, rules)
+    report = parent.report if file.report is None else file.report
+    return Resolved(file.id, file.name, {**parent.fill_model, **file.fill_model}, rules, report)
 
 
 def _apply(rules: dict[RuleId, RawRule], rule_id: RuleId, override: Override) -> None:

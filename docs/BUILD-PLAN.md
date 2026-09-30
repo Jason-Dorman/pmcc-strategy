@@ -31,7 +31,7 @@ Sep 25, 2026 · schedule from Spec › Build order · **due Fri Oct 9, 11:59 pm*
 | P1-10 Universe fetch (background) | Sun Sep 27 – Sat Oct 3 | QQQ and TSLA cached with coverage summaries (NVDA at P1-09) | Estimates shown 2026-09-28 (QQQ 183–547 min, TSLA 98–293 min); the PO scheduled the pull overnight. Seen 2026-09-30: TSLA's pull stopped at 01:14 on Sep 29 with its 53 weekly units cached and none of its 9 monthlies (Oct 2026 – Jun 2027); QQQ not started. Re-running TSLA's fetch resumes at the first missing unit. **Paused 2026-09-30** (PO, DEC-15): QQQ and TSLA set aside, NVDA perhaps the only symbol; more at the end if time allows |
 | P2 Pricing | Mon Sep 28 | IV solver matches the reference; EM, ATM IV, RV20 tested | Done 2026-09-28, as one commit (PO, DEC-59): Black-Scholes, T and DTE, the IV solver, measures and the chain pricer (DEC-24 to DEC-27 settled; DEC-89). NVDA prices in 1.4 s; IV failures 8.3%, mostly very deep ITM; DEC-26's missing-close rule is with the PO |
 | P3 Engine, accounting, baseline | Mon Sep 28 – Wed Sep 30 | **M1:** baseline blotter, ledger, NAV, Reg T for NVDA; INV-01–10 and 13 pass | Done 2026-09-30 (**M1**): P3-01 done 2026-09-29 (DEC-35, DEC-90); P3-02 to P3-07 as one commit (DEC-91); P3-08 (`pmcc run`, DEC-50, DEC-92); P3-09 (starting cash $10,000, provisional, from NVDA; DEC-30, DEC-93); P3-10 (NVDA's baseline, $10,000 to $13,672.50, 35 trades; hand-audited; NVDA's raw cache committed per DEC-05; DEC-94). Next P4-01 |
-| P4 Quant layer and site skeleton | Thu Oct 1 – Fri Oct 2 | **M2:** quant + A1–A5 on NVDA; Pages serves the skeleton from sample JSON; INV-14, 15 in CI | In progress: P4-01 to P4-03 done 2026-09-30 (quant selectors, gates G-3 to G-5, quant and ablation configs; DEC-95), with the G-5 finding, five rationales and the provisional starting cash ($15,000 with quant built) put to the PO; an adversarial review's 10 confirmed and 1 plausible findings fixed. P4-04 done 2026-09-30: starting cash $15,000, provisional (DEC-30); quant and A1–A5 on NVDA run, reviewed with the PO and committed with the baseline re-run (DEC-95). Next P4-05 (DEC-54 answered: as recommended) |
+| P4 Quant layer and site skeleton | Thu Oct 1 – Fri Oct 2 | **M2:** quant + A1–A5 on NVDA; Pages serves the skeleton from sample JSON; INV-14, 15 in CI | In progress: P4-01 to P4-03 done 2026-09-30 (quant selectors, gates G-3 to G-5, quant and ablation configs; DEC-95), with the G-5 finding, five rationales and the provisional starting cash ($15,000 with quant built) put to the PO; an adversarial review's 10 confirmed and 1 plausible findings fixed. P4-04 done 2026-09-30: starting cash $15,000, provisional (DEC-30); quant and A1–A5 on NVDA run, reviewed with the PO and committed with the baseline re-run (DEC-95). P4-05 and P4-06 built 2026-09-30 (DEC-96, DEC-97; the PO answered DEC-03: no light theme, and DEC-54's summary: analytics null until P6); per the PO's two-commit plan (DEC-59), NVDA's seven results are re-run at schema 2 from the committed code and ticked with it. Next P4-07 |
 | P5 Universe batch and sensitivity | Sat Oct 3 – Sun Oct 4 | **M3:** all results JSON written and verified | Not started |
 | P6 Analytics | Mon Oct 5 – Tue Oct 6 | **M4:** every table and series in results JSON | Not started |
 | P7 Site pages and write-up | Wed Oct 7 – Thu Oct 8 | **M5:** CI builds and deploys after `pmcc export`; the site passes a full read-through | Not started |
@@ -61,8 +61,8 @@ Nothing needs answering up front. This is when each open question in [DECISIONS]
 | P3-09 Capital · Wed Sep 30 | Starting-capital calibration | DEC-30 |
 | P3-10 Baseline on NVDA · Wed Sep 30 | LSEG terms, before real results go to the public repo | DEC-05 |
 | P4-01 to P4-03 handover · Wed Sep 30 | G-5 fires only on a locked quote (E-T1's 10% needs a mid ≥ $0.10); the five quant rationales the spec doesn't give; the provisional starting cash, $15,000 with quant built against the committed $10,000 (found by the review) | DEC-95, DEC-30 |
-| P4-05 Export · Thu Oct 1 | Detail levels and report sections | DEC-54 |
-| P4-06 Web scaffold · Thu Oct 1 | Light theme | DEC-03 |
+| P4-05 Export · Wed Sep 30 | Detail levels and report sections (answered at P4-04's handover); the summary's analytics until P6 | DEC-54 |
+| P4-06 Web scaffold · Wed Sep 30 | Light theme (answered: none) | DEC-03 |
 | P5-02 Sensitivity · Sat Oct 3 | Entry-timing variant | DEC-31 |
 | P6 start · Mon Oct 5 | Analytics definitions and the Greek display | DEC-60, DEC-61, DEC-62, DEC-63, DEC-64, DEC-76 |
 | P7-01 Strategy page · Wed Oct 7 | Chart colour roles | DEC-04 |
@@ -418,12 +418,12 @@ P8 release                                                                      
 - [ ] **P7-04 · Methodology page** — UI-SPEC §6.4, with the Reg T citations (DEC-10) — Needs: P6-09
 - [ ] **P7-05 · Universe page** — UI-SPEC §6.5 — Needs: P6-09
 - [ ] **P7-06 · Data page** — Ask first: DEC-75. The github.io banner, plus the local mode if the PO wants it — Needs: P4-06
-- [ ] **P7-07 · Themes and responsiveness**
-  - The light theme (DEC-03) and the contrast test in both themes, with screenshots reviewed at 4 widths.
-  - Done when: the contrast tests pass in both themes and the screenshots show no clipping or overlap.
+- [ ] **P7-07 · Responsiveness**
+  - Screenshots reviewed at 4 widths. One theme: the PO dropped the light theme (DEC-03, 2026-09-30).
+  - Done when: the contrast tests pass and the screenshots show no clipping or overlap.
   - Needs: P7-01…P7-06
 - [ ] **P7-08 · Full read-through** **[PO]**
-  - Every page, in both themes, at 4 widths: no placeholder text, every number traceable, the fix list closed.
+  - Every page at 4 widths: no placeholder text, every number traceable, the fix list closed.
   - Done when: CI builds and deploys after `pmcc export`, and the read-through passes.
   - **M5 (Thu Oct 8).**
   - Needs: P7-07
@@ -479,7 +479,7 @@ The spec sets the order. Cut the next item only when its trigger fires, and mark
 | R-10 | The schedule compresses | High | High | Cut list with triggers; parallel web track; M1 gate | status board |
 | R-11 | LSEG terms forbid publishing raw-derived series | Med | Med | DEC-05 asked at P3-10; binned scatter as the fallback. **Retired at P3-10:** the PO accepted LSEG's terms for the raw cache and every derived series, raw scatter points included (DEC-05) | P3-10, P6-07 |
 | R-12 | pyright strict clashes with untyped libraries (lseg-data, scipy) | Med | Low | Local stubs; typed adapters; narrow ignores, each with a reason | P0-03 |
-| R-13 | Results JSON is too heavy for the site | Low | Med | Detail levels (DEC-54); virtualized tables; per-run lazy loading | P4-05 |
+| R-13 | Results JSON is too heavy for the site | Low | Med | Detail levels (DEC-54); virtualized tables; per-run lazy loading. **P4-05:** a summary run's file is about 23 KB against a full run's 430 KB over NVDA's 26 weeks, and the site loads each run on demand (P4-06) | P4-05 |
 | R-14 | Quant E-L3 favours wide-spread contracts, so E-T1 keeps failing | Med | Med | Report retry counts; no tuning after the first run (spec) | P4-04 |
 | R-15 | Holiday and half-day edge cases | Med | Med | Calendar tests on known dates. **P1-06:** they pass, and the table matched LSEG's trading days for all 12 from Jan 2025 (DEC-33) | P1-06 |
 | R-16 | The Workspace session drops mid-pull | Med | Med | A dead Workspace never changes the session's state (DEC-83), so failing requests are retried 3 times, then abort the unit as an outage; resume | P1-08 |

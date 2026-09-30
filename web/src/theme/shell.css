@@ -1,0 +1,413 @@
+/*
+ * The terminal shell (UI-SPEC §1–2): theme.py's PAGE_CSS, ported rule for rule to the site's
+ * components. A command bar, a strip of readouts, then numbered square panels butted together on
+ * a hairline grid. No rounded corners, no shadows, no floating cards. Every px value the site
+ * uses lives here or in tokens.ts (the token-lint test).
+ *
+ * Breakpoints are tokens.ts's BREAK_TWO_COL (1400) and BREAK_ONE_COL (1100); the width classes
+ * are GRID_COLUMNS' ten, written out (a test holds both to tokens.ts, DG §6).
+ */
+
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 13px;
+  padding: 14px;
+}
+:focus-visible {
+  outline: 1px solid var(--accent); /* focus is chrome (UI-SPEC §10) */
+  outline-offset: 1px;
+}
+
+/* ---- command bar: wordmark left, identity, nav and symbol right ---- */
+.pm-bar {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 10px 14px;
+}
+.pm-wordmark {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 19px;
+  letter-spacing: 2px;
+  color: var(--accent);
+  text-transform: uppercase;
+}
+.pm-bar-right {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.pm-ident {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+  text-align: right;
+}
+.pm-ident b {
+  color: var(--text);
+  font-weight: 700;
+}
+.pm-nav {
+  display: flex;
+  flex-wrap: wrap; /* seven pages, not the baseline's two: they wrap on a phone, never overflow */
+  column-gap: 16px;
+  row-gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.pm-nav a {
+  color: var(--text);
+  text-decoration: none;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 2px;
+  white-space: nowrap;
+}
+.pm-nav a:hover,
+.pm-nav a.on {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* ---- the symbol select (shadcn/ui Select, restyled: DEC-71) ---- */
+.pm-select-trigger {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  background: var(--surface-alt);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 2px 8px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  cursor: pointer;
+}
+.pm-select-trigger:hover {
+  border-color: var(--accent);
+}
+.pm-select-caret {
+  color: var(--accent);
+}
+.pm-select-content {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  z-index: 10;
+}
+.pm-select-item {
+  padding: 4px 10px;
+  color: var(--text);
+  cursor: pointer;
+  outline: none;
+}
+.pm-select-item[data-highlighted] {
+  background: var(--surface-alt);
+  color: var(--accent);
+}
+
+/* ---- readout strip: KPIs butted together under the bar ---- */
+.pm-readouts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(158px, 1fr));
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-top: 0;
+  margin-bottom: 10px;
+}
+.pm-readout {
+  background: var(--surface);
+  padding: 9px 12px 10px 12px;
+}
+.pm-readout-label {
+  color: var(--text-muted);
+  font-size: 10px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+.pm-readout-value {
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 20px;
+  font-weight: 700;
+  margin-top: 3px;
+  line-height: 1.15;
+}
+.pm-readout-hint {
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 10px;
+  line-height: 1.35;
+  margin-top: 4px;
+  overflow-wrap: anywhere;
+}
+
+/* ---- the panel grid: 10 columns, so 6 + 4 and 5 + 5 both divide cleanly ---- */
+.pm-grid {
+  display: grid;
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  gap: 10px;
+  align-items: start;
+}
+.pm-w1 { grid-column: span 1; }
+.pm-w2 { grid-column: span 2; }
+.pm-w3 { grid-column: span 3; }
+.pm-w4 { grid-column: span 4; }
+.pm-w5 { grid-column: span 5; }
+.pm-w6 { grid-column: span 6; }
+.pm-w7 { grid-column: span 7; }
+.pm-w8 { grid-column: span 8; }
+.pm-w9 { grid-column: span 9; }
+.pm-w10 { grid-column: span 10; }
+@media (max-width: 1399px) and (min-width: 1101px) {
+  .pm-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .pm-w1, .pm-w2, .pm-w3, .pm-w4, .pm-w5, .pm-w6, .pm-w7, .pm-w8, .pm-w9, .pm-w10 {
+    grid-column: span 1;
+  }
+  .pm-w4, .pm-w6, .pm-w10 {
+    grid-column: span 2; /* the hero, its sidecar and a full panel take the row */
+  }
+  .pm-panel .pm-caption {
+    min-height: calc(3 * 1.45em + 8px);
+  }
+}
+@media (max-width: 1100px) {
+  .pm-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .pm-w1, .pm-w2, .pm-w3, .pm-w4, .pm-w5, .pm-w6, .pm-w7, .pm-w8, .pm-w9, .pm-w10 {
+    grid-column: span 1;
+  }
+}
+
+/* ---- a panel: [n] NAME and a note, then the body, then the caption ---- */
+.pm-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  min-width: 0;
+}
+.pm-panel-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--surface-alt);
+  border-bottom: 1px solid var(--border);
+  padding: 7px 12px;
+}
+.pm-panel-head > div:first-child {
+  white-space: nowrap;
+}
+.pm-panel-n {
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  margin-right: 8px;
+}
+.pm-panel-name {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 12px;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--text);
+}
+.pm-panel-note {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.pm-panel-body {
+  padding: 10px 12px 12px 12px;
+  overflow-x: auto;
+}
+.pm-caption {
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 11px;
+  line-height: 1.45;
+  padding: 8px 12px 0 12px;
+  min-height: calc(2 * 1.45em + 8px);
+}
+.pm-figure {
+  min-width: 520px; /* FIGURE_MIN_WIDTH: the panel scrolls rather than squeeze a chart */
+}
+.pm-loading {
+  background: var(--surface-alt); /* a flat block while data loads; no spinner (UI-SPEC §8) */
+  min-height: 120px;
+}
+
+/* ---- prose ---- */
+.pm-note {
+  color: var(--text);
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+.pm-note b {
+  color: var(--accent);
+  font-weight: 600;
+}
+.pm-empty {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+.pm-details {
+  border-top: 1px solid var(--border);
+  margin-top: 14px;
+  padding-top: 10px;
+}
+.pm-details > summary {
+  cursor: pointer;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
+  list-style: none;
+}
+.pm-details > summary::before {
+  content: "▸ ";
+  color: var(--accent);
+}
+.pm-details[open] > summary::before {
+  content: "▾ ";
+}
+.pm-details > summary:hover {
+  color: var(--accent);
+}
+
+/* ---- tables (TanStack at P7): hairlines, no zebra, sticky header, mono numbers ---- */
+.pm-table-scroll {
+  max-height: 420px; /* TABLE_MAX_HEIGHT */
+  overflow: auto;
+  border: 1px solid var(--border);
+}
+.pm-table {
+  width: 100%;
+  min-width: 720px; /* TABLE_MIN_WIDTH */
+  border-collapse: collapse;
+  font-family: var(--font-mono);
+  font-size: 11.5px; /* TABLE_FONT_SIZE */
+  line-height: 1.5;
+}
+.pm-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface-alt);
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
+  text-align: left;
+  white-space: nowrap;
+  padding: 5px 10px;
+  box-shadow: inset 0 -1px 0 var(--border); /* a rule that travels with a sticky header */
+}
+.pm-table td {
+  padding: 5px 10px;
+  border-top: 1px solid var(--border);
+  color: var(--text);
+  white-space: nowrap;
+}
+.pm-table tbody tr:hover td {
+  background: var(--surface-alt);
+}
+.pm-table .pm-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.pm-table .pm-label {
+  color: var(--text-muted);
+}
+.pm-table .pm-subcell {
+  color: var(--text-muted);
+  font-size: 9.5px;
+  line-height: 1.3;
+  margin-top: 1px;
+  white-space: pre; /* OCC symbols keep their spaces */
+}
+.pm-table .pm-skip {
+  color: var(--warn);
+  font-weight: 700;
+}
+.pm-table .pm-flag {
+  color: var(--negative);
+  font-weight: 700;
+}
+.pm-table .pm-up {
+  color: var(--positive);
+}
+.pm-table .pm-down {
+  color: var(--negative);
+}
+.pm-table-kv {
+  min-width: 0;
+}
+.pm-table-kv td:first-child {
+  color: var(--text-muted);
+  width: 38%;
+  white-space: normal;
+}
+
+/* ---- warnings: synthetic data, a schema mismatch, a Reg T breach ---- */
+.pm-warn {
+  background: var(--negative-tint);
+  border: 1px solid var(--negative);
+  color: var(--negative);
+  padding: 10px 14px;
+  margin-bottom: 10px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+/* ---- the manifest footer: what produced the numbers on screen ---- */
+.pm-footer {
+  margin-top: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 8px 14px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+.pm-footer a {
+  color: var(--text);
+}
+.pm-footer a:hover {
+  color: var(--accent);
+}
+.pm-footer b {
+  color: var(--text);
+  font-weight: 700;
+}

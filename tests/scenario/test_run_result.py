@@ -27,7 +27,14 @@ from pmcc.domain.clock import ET
 from pmcc.engine.loop import RunOutput
 from pmcc.export import canonical
 from pmcc.export.manifest import Provenance, provenance
-from pmcc.export.models import DataSource, GateOut, RunResult
+from pmcc.export.models import (
+    BlotterRow,
+    DataSource,
+    GateLogRowOut,
+    GateOut,
+    LedgerRowOut,
+    RunResult,
+)
 from pmcc.export.results import result_path, to_bytes, write_result
 from pmcc.runner import Market, Stamp, run_loaded, run_market
 from tests.fakes.git_repo import make_repo
@@ -40,6 +47,21 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 WHEN = datetime(2026, 9, 30, 9, tzinfo=ET)
 PROVENANCE = inv13_run.PROVENANCE
 FRICTION = "{spread_capture: 0.5, fee_per_contract: 0.65}"  # limit ≠ fill, and fees
+
+
+def _blotter(result: RunResult) -> tuple[BlotterRow, ...]:
+    assert result.blotter is not None  # a full-detail run (DEC-54)
+    return result.blotter
+
+
+def _ledger(result: RunResult) -> tuple[LedgerRowOut, ...]:
+    assert result.ledger is not None
+    return result.ledger
+
+
+def _gate_log(result: RunResult) -> tuple[GateLogRowOut, ...]:
+    assert result.gate_log is not None
+    return result.gate_log
 
 
 def _stamp(provenance: Provenance = PROVENANCE, when: datetime = WHEN) -> Stamp:
@@ -104,8 +126,8 @@ def pairs(synthetic: SyntheticMarkets, tmp_path_factory: pytest.TempPathFactory)
 
 def test_run_result_blotter_mirrors_the_engine(pairs: list[Pair]) -> None:
     for engine, result in pairs:
-        assert len(result.blotter) == len(engine.blotter) >= 3
-        for row, event in zip(result.blotter, engine.blotter, strict=True):
+        assert len(_blotter(result)) == len(engine.blotter) >= 3
+        for row, event in zip(_blotter(result), engine.blotter, strict=True):
             assert (row.time, row.side, row.qty, row.rule_id, row.notes) == (
                 event.time, event.side.value, event.qty, event.rule_id, event.notes)  # fmt: skip
             assert row.cash_delta == event.cash_delta.to_dollars()
@@ -117,8 +139,8 @@ def test_run_result_blotter_mirrors_the_engine(pairs: list[Pair]) -> None:
 
 def test_run_result_rows_reach_every_shape(pairs: list[Pair]) -> None:
     """The mirror tests above and below would pass vacuously without these."""
-    rows = [row for _engine, result in pairs for row in result.blotter]
-    bars = [bar for _engine, result in pairs for bar in result.ledger]
+    rows = [row for _engine, result in pairs for row in _blotter(result)]
+    bars = [bar for _engine, result in pairs for bar in _ledger(result)]
     assert any(r.limit is not None and r.fill is not None and r.limit != r.fill for r in rows)
     assert any(r.fee > 0 for r in rows)
     assert {r.side for r in rows if r.instrument.kind == "stock"} == {"SELL", "BUY"}
@@ -128,8 +150,8 @@ def test_run_result_rows_reach_every_shape(pairs: list[Pair]) -> None:
 
 def test_run_result_ledger_mirrors_the_engine(pairs: list[Pair]) -> None:
     for engine, result in pairs:
-        assert len(result.ledger) == len(engine.ledger) > 0
-        for row, bar in zip(result.ledger, engine.ledger, strict=True):
+        assert len(_ledger(result)) == len(engine.ledger) > 0
+        for row, bar in zip(_ledger(result), engine.ledger, strict=True):
             assert row.time == bar.time
             assert (row.cash, row.nav, row.im, row.mm) == tuple(
                 m.to_dollars() for m in (bar.cash, bar.nav, bar.im, bar.mm))  # fmt: skip
@@ -150,13 +172,13 @@ def test_run_result_ledger_mirrors_the_engine(pairs: list[Pair]) -> None:
 
 def test_run_result_ledger_flags_are_sorted(pairs: list[Pair]) -> None:
     for _engine, result in pairs:
-        assert all(list(bar.flags) == sorted(bar.flags) for bar in result.ledger)
+        assert all(list(bar.flags) == sorted(bar.flags) for bar in _ledger(result))
 
 
 def test_run_result_gate_log_mirrors_the_engine(pairs: list[Pair]) -> None:
     for engine, result in pairs:
-        assert len(result.gate_log) == len(engine.gate_log) > 0
-        for row, week in zip(result.gate_log, engine.gate_log, strict=True):
+        assert len(_gate_log(result)) == len(engine.gate_log) > 0
+        for row, week in zip(_gate_log(result), engine.gate_log, strict=True):
             assert (row.session, row.decision_time, row.notes) == (
                 week.session, week.decision_time, week.notes)  # fmt: skip
             assert (row.outcome.kind, row.outcome.rule_id) == (week.outcome, week.rule_id)
@@ -172,8 +194,8 @@ def test_run_result_names_each_option_by_the_ric_its_cache_answered(
     """Exactly the chain frame's RIC, the expired `^` form included, not one rebuilt from the
     contract (DEC-92)."""
     chains = _walk(synthetic).chains
-    named = [r.instrument for r in result.blotter if r.instrument.kind == "call"]
-    named += [b.long.instrument for b in result.ledger if b.long is not None]
+    named = [r.instrument for r in _blotter(result) if r.instrument.kind == "call"]
+    named += [b.long.instrument for b in _ledger(result) if b.long is not None]
 
     assert named
     assert any("^" in n.ric for n in named)
@@ -200,8 +222,8 @@ def test_run_result_starting_cash_and_rule_text(result: RunResult) -> None:
 
 def test_run_result_short_stock_is_named_by_the_tape_ric(pairs: list[Pair]) -> None:
     _engine, surge = pairs[2]
-    stock_rows = [r.instrument for r in surge.blotter if r.instrument.kind == "stock"]
-    held = [r.stock.instrument for r in surge.ledger if r.stock is not None]
+    stock_rows = [r.instrument for r in _blotter(surge) if r.instrument.kind == "stock"]
+    held = [r.stock.instrument for r in _ledger(surge) if r.stock is not None]
 
     assert stock_rows
     assert held

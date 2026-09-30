@@ -7,6 +7,12 @@ id: quant_pmcc
 name: Quant PMCC
 extends: _shared.yaml
 
+# What its results keep and its page shows (PO, DEC-54): every row, plus the gate log and the Greek
+# attribution, which the baseline's page doesn't show. The ablations keep a summary.
+report:
+  detail: full
+  sections: [gate_log, greek_attribution]
+
 rules:
   - id: E-L2
     name: Long leg expiry

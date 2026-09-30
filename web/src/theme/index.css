@@ -1,0 +1,29 @@
+/*
+ * The site's stylesheet: Tailwind, the tokens, and the terminal shell (UI-SPEC §1–2).
+ *
+ * Tailwind's utilities read the tokens by name (`bg-surface`, `text-accent`), so a component
+ * never holds a colour. The panel chrome itself is shell.css, ported from theme.py's PAGE_CSS.
+ */
+@import "tailwindcss";
+@import "./tokens.css";
+@import "./shell.css";
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-alt: var(--surface-alt);
+  --color-border: var(--border);
+  --color-grid: var(--grid);
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-text-inverse: var(--text-inverse);
+  --color-accent: var(--accent);
+  --color-accent-dim: var(--accent-dim);
+  --color-mark: var(--mark);
+  --color-trade: var(--trade);
+  --color-positive: var(--positive);
+  --color-negative: var(--negative);
+  --color-warn: var(--warn);
+  --radius-*: initial; /* square corners everywhere (DEC-71) */
+  --shadow-*: initial; /* no shadows */
+}

@@ -4,6 +4,7 @@
 id: quant_pmcc--a5
 name: "A5: quant without take profit"
 extends: ../quant_pmcc.yaml
+report: {detail: summary}  # an ablation keeps a summary (PO, DEC-54)
 
 overrides:
   X-S1: {remove: true}
