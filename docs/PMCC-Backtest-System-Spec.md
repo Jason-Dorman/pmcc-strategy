@@ -240,7 +240,8 @@ An OTM expiry is one `EXPIRE` row at $0. A missed assignment (X-S5) is an `ASSIG
 | --- | --- |
 | Long call requirement | 100% of long call market value. Listed options with 9 months or less to expiry have no loan value; E-L2 caps DTE at 270, so the long is always fully paid |
 | Covered short call | $0, when long strike ≤ short strike and long expiry ≥ short expiry. E-S5 and the X-L1 ordering guarantee this; an uncovered short is an engine error, not a margin case |
-| Short stock (X-S5 only) | Initial: additional 50% of short value (150% total with proceeds). Maintenance: 30% |
+| Short stock (X-S5 only), while long calls covering the shares are held | Initial: none beyond the sale proceeds. Maintenance: 10% of the long calls' aggregate exercise price plus their out-of-the-money amount, capped at the greater of $5 a share and 30% of the short stock's value (12 CFR 220.12(c)(2); FINRA 4210(f)(2)(H)(v)a; DEC-10) |
+| Short stock (X-S5 only), without such long calls | Initial: additional 50% of short value (150% total with proceeds). Maintenance: 30% |
 | Initial margin (IM) | Long call requirement + short stock initial |
 | Maintenance margin (MM) | Long call requirement + short stock maintenance |
 | Available funds | NAV − IM |
@@ -403,6 +404,6 @@ Resolve these by Sep 27; each one affects every fill or the backtest window.
 - [x] **History depth.** How far back LSEG hourly BID/ASK goes for expired weeklies and for long-dated contracts. This sets the backtest window for all symbols. *Resolved in DEC-07: back to late Oct 2025; the window is Mar 30 – Sep 25 2026.*
 - [ ] **Long-dated coverage.** Whether hourly BID/ASK exists for deep ITM, 120–270 DTE strikes on each universe symbol, and how sparse it is. Sparse data will limit E-L3's candidate set. *DEC-08: sampled at P1-04; measured in full at P1-09 and P1-10 (by Sat Oct 3).*
 - [x] **Live-contract RICs.** Confirm that long legs still listed at fetch time resolve without the caret suffix. *Resolved in DEC-09: confirmed on all 12 symbols.*
-- [ ] **Reg T text.** Confirm the long-option loan value (≤ 9 months: none) and the covered-diagonal treatment against the Reg T and FINRA 4210 text, and cite it on the Methodology page. *DEC-10: both confirmed and cited; the short stock after X-S5 goes to the PO at P3-04 (Mon Sep 28), and the quotes go on Methodology at P7-04 (Wed Oct 7).*
+- [ ] **Reg T text.** Confirm the long-option loan value (≤ 9 months: none) and the covered-diagonal treatment against the Reg T and FINRA 4210 text, and cite it on the Methodology page. *DEC-10: both confirmed and cited. The PO settled the short stock after X-S5 on Sep 29 (the hedged requirement, now in the NAV and Reg T table); the quotes go on Methodology at P7-04 (Wed Oct 7).*
 - [x] **Risk-free rate.** Choose the source and value of r, and state it on the site. *Resolved in DEC-11: FRED DGS3MO, 3.73% on Mar 27 2026, so r = 0.0371.*
 - [ ] **LSEG terms.** Confirm whether raw cached data may be committed to a public repo; default to committing derived results only. *DEC-05: asked at P3-10 (Wed Sep 30), before real results go to the public repo.*

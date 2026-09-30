@@ -33,28 +33,28 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-07 | Backtest window | SETTLED (PO) | — |
 | DEC-08 | Long-dated coverage | VERIFY: NVDA measured (P1-09); QQQ, TSLA at P1-10 | P1-10 |
 | DEC-09 | Live-contract RIC form | SETTLED (spec, probed) | — |
-| DEC-10 | Reg T and FINRA 4210 citations | ASK: short stock after X-S5 · citations found | P3-04; quotes by P7-04 |
+| DEC-10 | Reg T and FINRA 4210 citations | SETTLED (PO): hedged short stock after X-S5 · citations found | quotes by P7-04 |
 | DEC-11 | Risk-free rate | SETTLED (PO) | — |
 | DEC-12 | Per-symbol identifiers, splits, max strike | SETTLED (PO) | — |
 | DEC-13 | Hourly field availability | SETTLED (spec, probed) | — |
 | DEC-14 | Strike increments | ENG method · values probed · unmeasured anchor SETTLED (PO) | — |
 | DEC-15 | Universe size | SETTLED (PO) | — |
 | DEC-16 | Fetch coverage summary | SETTLED (PO) | — |
-| DEC-20 | Week-open session and order of operations | ASK | P3-07 |
-| DEC-21 | Selection freeze and E-T1 | ASK | P3-07 |
-| DEC-22 | Gates and the gate log | ASK | P3-07 |
+| DEC-20 | Week-open session and order of operations | SETTLED (PO) | — |
+| DEC-21 | Selection freeze and E-T1 | SETTLED (PO) | — |
+| DEC-22 | Gates and the gate log | SETTLED (PO) | — |
 | DEC-23 | Spot, close, ITM at expiry | SETTLED (PO) | — |
 | DEC-24 | Time to expiry and Greek units | SETTLED (PO) | — |
 | DEC-25 | ATM strike, ATM IV, expected move | SETTLED (PO) | — |
 | DEC-26 | RV20 | SETTLED (PO) · a missing close: ASK | asked 2026-09-29 (P2 review) |
 | DEC-27 | Greeks for held contracts; fresh quotes only | SETTLED (PO) | — |
-| DEC-28 | Exits without a valid quote | ASK | P3-07 |
-| DEC-29 | Tie-breaks | ASK | P3-06 |
+| DEC-28 | Exits without a valid quote; when the long is checked | SETTLED (PO) | — |
+| DEC-29 | Tie-breaks | SETTLED (PO) | — |
 | DEC-30 | Starting capital (E-L4) | ASK | P3-09 |
 | DEC-31 | Entry-timing sensitivity | ASK | P5-02 |
-| DEC-32 | Point-in-time listing | ASK | P3-02 |
+| DEC-32 | Point-in-time listing | SETTLED (PO) | — |
 | DEC-33 | Expiry calendar | SETTLED (PO) | — |
-| DEC-34 | Rule stamping for multi-rule events | ASK | P3-07 |
+| DEC-34 | Rule stamping for multi-rule events | SETTLED (PO) | — |
 | DEC-35 | Rule write-up: names and rationales | SETTLED (PO) | — |
 | DEC-40 | Source of truth | SETTLED (PO) | — |
 | DEC-41 | Frontend stack follows the spec | SETTLED (spec) | — |
@@ -102,6 +102,7 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-88 | The fetch command: plan, estimate, unit loop | ENG | — |
 | DEC-89 | Pricing: Black-Scholes, the IV solver, measures, the chain pricer | ENG | — |
 | DEC-90 | Strategy config: kinds, the loader and the config hash | ENG | — |
+| DEC-91 | MarketView, synthetic market, accounting, fills, rules, engine loop | ENG · 3 edge cases put to the PO | handover 2026-09-30 |
 
 ---
 
@@ -277,7 +278,7 @@ The results are reported to the PO at P1-05. A result that contradicts the spec 
   - Weeklies expired 9 days earlier answered in the caret form, 12 of 12 (DEC-14's check).
 
 ### DEC-10 — Reg T and FINRA 4210 citations
-**Status:** ASK (the short stock after X-S5) · **Ask at:** P3-04 · **Quotes due:** P7-04 · **Affects:** P3-04, Methodology page, Spec › NAV and Reg T
+**Status:** SETTLED (the short stock after X-S5: PO, 2026-09-29) · citations found · **Quotes due:** P7-04 · **Affects:** P3-04, Methodology page, Spec › NAV and Reg T
 
 - **Confirm and cite:**
   - A long listed option with 9 months or less to expiry has no loan value (paid in full).
@@ -310,6 +311,10 @@ The results are reported to the PO at P1-05. A result that contradicts the spec 
     - Plain 150%/30% would apply only if the long were gone. Under DEC-20's recommended order the cover comes before any long exit, so it never is.
   - **Alternative:** keep 150%/30% as a conservative simplification, and reword the site's negative-funds statement. Otherwise the site would say a position couldn't have been held when the rules allow it.
   - Either way, Spec › NAV and Reg T changes in the commit that answers this.
+- **Outcome:** 2026-09-29 — PO, asked at P3-04: **the hedged requirement**, as recommended. Spec › NAV and Reg T now has a row for it.
+  - **While long calls covering the shares are held:** no initial requirement beyond the sale proceeds. Maintenance is 10% of the long calls' aggregate exercise price plus their out-of-the-money amount at the stock's mark, capped at the greater of $5 a share and 30% of the short stock's market value.
+  - **Without such a long:** the spec's 150% initial (proceeds plus 50%) and 30% maintenance.
+  - Built in `pmcc/accounting/regt.py` (P3-04, DEC-91). A requirement that isn't a whole $0.0001 is rounded up, never down.
 
 ### DEC-11 — Risk-free rate
 **Status:** SETTLED · **Basis:** PO, 2026-09-28 · **Affects:** pricing, eligibility, Methodology, `configs/universe.yaml`
@@ -440,7 +445,7 @@ The results are reported to the PO at P1-05. A result that contradicts the spec 
 Each of these decides trading behaviour the spec leaves open, so each goes to the PO.
 
 ### DEC-20 — Week-open session and order of operations
-**Status:** ASK · **Ask at:** P3-07
+**Status:** SETTLED · **Basis:** PO, 2026-09-29 (asked at P3-07, with P3-02 to P3-06) · **Affects:** P3-07, every rule
 
 - **Recommendation:** "Monday" in E-S1, X-L1, X-L2, the gates and the gate log means the **week-open session**: the first trading session of the calendar week (Tuesday after a Monday holiday).
 - **Recommendation:** within each decision bar, in this order:
@@ -452,10 +457,10 @@ Each of these decides trading behaviour the spec leaves open, so each goes to th
   5. Expiry resolution X-S4/X-S5 on the close bar of the short's expiry session.
   6. Marks, the ledger row, and runtime invariants.
 - This extends the spec's order (long exits → short exits → short entry) without changing it.
-- **Outcome:** —
+- **Outcome:** 2026-09-29 — PO: as recommended, both parts. Built in `pmcc/engine/loop.py` (P3-07, DEC-91). The spec is unchanged: this settles what it leaves open. When the long is checked within the week-open session is DEC-28's.
 
 ### DEC-21 — Selection freeze and E-T1
-**Status:** ASK · **Ask at:** P3-07 · **Affects:** G-1
+**Status:** SETTLED · **Basis:** PO, 2026-09-29 (asked at P3-07) · **Affects:** G-1, P3-07
 
 - **Recommendation (short):** on the week-open session, the first bar where the short selector returns a contract freezes that contract for the rest of the session.
   - E-T1 is checked on that bar and on each later bar; the first pass is the **decision bar**.
@@ -463,10 +468,10 @@ Each of these decides trading behaviour the spec leaves open, so each goes to th
   - The engine never re-selects or substitutes a strike (Spec › Trade rules: entry).
 - **Recommendation (long):** the same freeze applies within a session. If E-T1 never passes, E-L1 retries the next session with a fresh selection.
 - **Eligibility:** selectors consider only contracts that are eligible on that bar (valid quote and a successful IV solve).
-- **Outcome:** —
+- **Outcome:** 2026-09-29 — PO: as recommended. Built in `pmcc/engine/legs.py` (P3-07, DEC-91). The spec is unchanged: this settles what it leaves open.
 
 ### DEC-22 — Gates and the gate log
-**Status:** ASK · **Ask at:** P3-07 · **Affects:** P4-02, INV-09
+**Status:** SETTLED · **Basis:** PO, 2026-09-29 (asked at P3-07) · **Affects:** P4-02, INV-09
 
 - **Recommendation (evaluation):**
   - G-2–G-5 are evaluated at the decision bar. Every gate the strategy has is evaluated and recorded (pass or fire, with values).
@@ -476,7 +481,7 @@ Each of these decides trading behaviour the spec leaves open, so each goes to th
 - **Recommendation (rows):** one gate-log row per strategy per week-open session.
   - A week with no long held logs outcome `E-S1`.
   - A week blocked by an unfinished long reset logs `X-L1` or `X-L2`.
-- **Outcome:** —
+- **Outcome:** 2026-09-29 — PO: as recommended. Built in `pmcc/engine/legs.py` and `pmcc/strategy/gates.py` (P3-06, P3-07, DEC-91). A week whose long couldn't be checked logs `E-S1` too (DEC-28's outcome). The spec is unchanged: this settles what it leaves open.
 
 ### DEC-23 — Spot, close, ITM at expiry
 **Status:** SETTLED · **Basis:** PO, 2026-09-28 (asked at P2-03) · **Affects:** P2-03, P3-02, P3-06, X-S4, X-S5
@@ -487,6 +492,10 @@ Each of these decides trading behaviour the spec leaves open, so each goes to th
   - **ITM at expiry (X-S4/X-S5):** the short is ITM if and only if closing spot > strike. OCC auto-exercises at $0.01 ITM, so equal counts as OTM.
 - **Outcome:** 2026-09-28 — PO: as recommended. The P1-04 evidence went with the question: the close bar's last trade matched the official closing auction in 9 of 48 sessions and sat up to 0.09% from it (JPM), with the largest dollar gaps on META ($0.40) and TSLA ($0.27) (DEC-06, R-21). The close bar's last trade is kept, since the cache holds only the hourly tape; the gap is for the Methodology page.
   - Built in `pmcc/pricing/measures.py`: `session_close` (the close bar's TRDPRC_1, keyed by `bar_end`) and `itm_at_expiry` (DEC-89). Spot itself is MarketView's accessor (P3-02), and the chain pricer reads it the same way. The spec is unchanged: this settles what it leaves open.
+- **Outcome:** 2026-09-29 — PO, asked while building P3-07, two inputs the spec leaves open. Both taken as recommended:
+  - **The stock's mark** (StockMV, only after X-S5) is its BID/ASK mid, like an option's. Without a valid quote, the last valid mid is carried and flagged stale (`stale_stock`).
+  - **The closing spot when the close bar has no trade** (X-S4/X-S5) is the last TRDPRC_1 on a session bar at or before the close bar in that session. With no trade in the whole session, the run stops with an `EngineError` rather than guess. NVDA trades on every session bar (P2-04), so it doesn't arise there.
+  - Built in `pmcc/engine/legs.py` (the stock's first mark), `pmcc/accounting/marks.py` (carrying it stale) and `pmcc/engine/loop.py` (`closing_spot`) (P3-07, DEC-91). The spec is unchanged: this settles what it leaves open.
 
 ### DEC-24 — Time to expiry and Greek units
 **Status:** SETTLED · **Basis:** PO, 2026-09-28 (asked at P2-01) · **Affects:** P2-01, P2-04, E-L2, X-L2, P6-04
@@ -532,9 +541,10 @@ Each of these decides trading behaviour the spec leaves open, so each goes to th
     - **no spot:** never on NVDA;
     - **the expiry session's close bar:** T = 0, so every contract there is `EXPIRED` and a held short has no delta on the bar where DEC-20 still runs short exits before X-S4/X-S5. This happens to every short, every week (found by the P2 review).
   - The spec is unchanged: this settles what it leaves open.
+- **Outcome:** 2026-09-29 — PO, asked at P3-06/P3-07, the open item above: **a rule that needs a delta the bar doesn't have doesn't fire, and it is logged** (`engine.exit.unevaluated`, with the rule, the contract and the IV code). So X-S2 doesn't fire on a short with no delta; X-S3 still checks it at the Friday check, and on the expiry close bar X-S4/X-S5 decide. X-L1 doesn't fire on a long with no delta; X-L2 still checks its DTE. The alternative, reading a missing delta as 1 when the contract is in the money, was declined. Built in `pmcc/strategy/exits.py` (DEC-91).
 
 ### DEC-28 — Exits without a valid quote
-**Status:** ASK · **Ask at:** P3-07
+**Status:** SETTLED · **Basis:** PO, 2026-09-29 (asked at P3-07) · **Affects:** X-S3, X-S5, X-L1, X-L2, P3-07
 
 - **X-S1, X-S2:** their conditions need a fresh quote, so a trigger can always fill.
 - **Recommendation (X-S3):** if it triggers on the check bar with no valid quote, the close fills at the first later bar of that session that has one. The row is still ruled `X-S3`, noted "delayed fill". If there is none before the close, X-S4/X-S5 resolve the short at the close.
@@ -542,10 +552,15 @@ Each of these decides trading behaviour the spec leaves open, so each goes to th
   - If the reset doesn't complete in session, there is no short that week (gate log `X-L1`/`X-L2`).
   - The pending reset carries to the next session.
 - **Recommendation (X-S5 cover):** fills at the first bar of the next session with a valid stock BID/ASK.
-- **Outcome:** —
+- **Outcome:** 2026-09-29 — PO: as recommended.
+- **Outcome:** 2026-09-29 — PO, asked while building P3-07: **when the long is checked.** DEC-27 lets a rule run only on a fresh quote, so X-L1 and X-L2 can't be checked on a bar where the long has none. Recommended and taken:
+  - X-L1 and X-L2 are checked once a week, at the first bar of the week-open session where the long has a fresh quote, and a sale fills on that bar. So the sale never waits for a quote; "a reset that doesn't complete" is a re-entry that doesn't pass E-T1 in the session, which E-L1 retries next session.
+  - Short entry waits until that check has passed, since a reset later in the session would leave the short uncovered.
+  - If the long has no fresh quote on any bar of the week-open session, it isn't checked that week and no short is sold. The gate log's outcome is `E-S1`, noted "long not checked: no fresh long quote".
+  - Built in `pmcc/engine/legs.py` (DEC-91). The spec is unchanged: this settles what it leaves open.
 
 ### DEC-29 — Tie-breaks
-**Status:** ASK · **Ask at:** P3-06 · **Affects:** P4-01
+**Status:** SETTLED · **Basis:** PO, 2026-09-29 (asked at P3-06) · **Affects:** P3-06, P4-01
 
 | Rule | Recommended tie-break order |
 | --- | --- |
@@ -557,7 +572,7 @@ Each of these decides trading behaviour the spec leaves open, so each goes to th
 
 Distances are compared in integer price units, so float noise can't create or break a tie.
 
-**Outcome:** —
+**Outcome:** 2026-09-29 — PO: as recommended, the quant row included (built at P4-01). Built in `pmcc/strategy/selectors.py` (P3-06, DEC-91): DTE is whole days and strikes are integer units, so those ties are exact; spread % is compared as an exact fraction of the integer BID and ASK. A delta is a float from the IV solve, so its distance to the target is rounded to 9 decimal places before comparing: without that, 0.85 and 0.75 aren't equally far from 0.80 in binary floating point, and float noise would break the tie the PO settled (a unit test caught it). The spec is unchanged: this settles what it leaves open.
 
 ### DEC-30 — Starting capital (E-L4)
 **Status:** ASK · **Ask at:** P3-09 · **Affects:** P5-01
@@ -578,17 +593,18 @@ Distances are compared in integer price units, so float noise can't create or br
   - At bar k the selector runs, and the selected contract must have a valid quote and pass the E-T1 spread threshold. Otherwise G-1 fires.
   - Other bars are never scanned.
 - **Everything else is unchanged,** including long entry. The fixed-bar trigger replaces E-T1 under the same rule ID.
+- **Ready for it (P3-07, DEC-91):** E-T1 is a port, `EntryTrigger`, with `can_decide(view, leg)` and `check(view, option, leg)`. The loop selects and freezes a contract only on a bar the trigger `can_decide`, so a fixed-bar trigger selects at bar k, as recommended, with no change to the loop.
 - **Outcome:** —
 
 ### DEC-32 — Point-in-time listing
-**Status:** ASK · **Ask at:** P3-02 · **Affects:** E-S3 (quant), ATM strike
+**Status:** SETTLED · **Basis:** PO, 2026-09-29 (asked at P3-01 for P3-02) · **Affects:** E-S3 (quant), ATM strike, P3-02
 
 - **Recommendation:**
   - A contract is "listed" at time t once it has had a valid quote at or before t.
   - Chain snapshots, "lowest listed strike" and the ATM strike use only listed contracts.
   - The fetch band can include strikes that are listed later, and MarketView hides them until their first quote.
 - **Evidence (P1-09, 2026-09-28):** NVDA's cache shows listing happening inside the window. Whole long-dated expiries appear late: Feb 2027 from Jun 30, Apr 2027 from Sep 11, and May 2027 not by Sep 25, although each is 120–270 DTE earlier. New strikes also appear on the near monthlies as the stock moves. Before its first bar, a contract has no rows at all in the cache (DEC-08).
-- **Outcome:** —
+- **Outcome:** 2026-09-29 — PO, asked early while P3-01 was built: as recommended. The PO first wrote "contracts take the mid", then, asked to clarify, chose "listed once it has had a mid" over "listed only on bars with a mid". So a contract is listed at t once it has had a valid BID/ASK on any session bar at or before t, and it stays listed. Built in `pmcc/engine/market_view.py` (P3-02, DEC-91): chain snapshots and the listed expiries show only listed contracts. The spec is unchanged: this settles what it leaves open.
 
 ### DEC-33 — Expiry calendar
 **Status:** SETTLED · **Basis:** PO, 2026-09-27 · **Affects:** P1-06, P1-07, P1-08, P3-02, E-L2, E-S1, E-S2
@@ -609,7 +625,7 @@ Distances are compared in integer price units, so float noise can't create or br
 - **Outcome:** 2026-09-27 — implemented in P1-06 (DEC-84). All four known cases pass (`tests/unit/config/test_calendar_file.py`). The P1-04 probes then checked the table against each symbol's LSEG daily bars, Jan 2 2025 to Sep 25 2026 (DEC-85): see DEC-12's outcome.
 
 ### DEC-34 — Rule stamping for multi-rule events
-**Status:** ASK · **Ask at:** P3-07 · **Affects:** INV-09
+**Status:** SETTLED · **Basis:** PO, 2026-09-29 (asked at P3-07) · **Affects:** INV-09, P3-07
 
 | Event | Blotter rows | Recommended rule |
 | --- | --- | --- |
@@ -621,7 +637,7 @@ Distances are compared in integer price units, so float noise can't create or br
 | Missed assignment | `ASSIGN` + stock `SELL` at the strike, then the next session's stock `BUY` | `X-S5` on all three |
 | End of backtest | no rows; final ledger marks | `X-E1` |
 
-**Outcome:** —
+**Outcome:** 2026-09-29 — PO: as recommended. Built in `pmcc/engine/legs.py` (P3-07, DEC-91). An entry row's notes and audit carry the selection's values from the bar it froze on (with `selected_at`), the E-T1 spread on the decision bar (`e_t1_spread`), and for the short the E-S5 terms (`strike_gap`, `net_debit`). The freeze bar's own mid and spread are left out, since the row's Limit and the E-T1 spread replace them. The adversarial review found the first version left them out (DEC-91). The spec is unchanged: this settles what it leaves open.
 
 ### DEC-35 — Rule write-up: names and rationales
 **Status:** SETTLED · **Basis:** PO, 2026-09-29 (asked at P3-01) · **Affects:** P3-01, P4-03, P7-03 (Trade rules page)
@@ -1339,6 +1355,76 @@ Development runs in Git Bash on Windows (DEC-02) and CI runs on Ubuntu. Both mus
     - the BUILD-PLAN tick miscounted the mutation fixes;
     - `sensitivity.yaml` needs a P5-02 entry point (noted above).
   - **Mutants:** 41 are killed: every survivor the reviewers reported, and 7 against the new checks. The first 28 still are, except the 2 whose code is gone.
+
+### DEC-91 — MarketView, the synthetic market, accounting, fills, rules and the engine loop
+**Status:** ENG, with three edge cases put to the PO (below) · **Affects:** P3-02 to P3-07, P3-08, P4-01, P4-02, P4-05; DEC-10, DEC-20 to DEC-23, DEC-27 to DEC-29, DEC-32, DEC-34, DEC-44, DEC-49
+
+- **Where (ARCHITECTURE §3.1):**
+  - `pmcc/strategy/`: `ports.py` (the `MarketView` protocol, `LookAheadError`, and the values rules return), `selectors.py` (E-L2/E-L3, E-S2/E-S3), `trigger.py` (E-T1), `gates.py` (E-S5, G-1, G-2), `exits.py` (X-S1 to X-S3, X-L1, X-L2, the X-S4/X-S5 resolver), `registry.py` (kinds → code, `build_strategy`).
+  - `pmcc/engine/`: `market_view.py` (`MarketData`, `HistoricalView`), `fills.py`, `legs.py` (`Trader`: the leg state machines and the gate log), `loop.py` (`run_backtest`), `invariants.py`.
+  - `pmcc/accounting/`: `events.py`, `book.py`, `marks.py`, `valuation.py` (new beside ARCHITECTURE's list, so NAV has one home), `regt.py`, `ledger.py`.
+  - `pmcc/domain/errors.py`: `EngineError`, so accounting can raise it without importing the engine (ARCHITECTURE §3.3 rule 4).
+- **MarketView (P3-02):**
+  - Every accessor takes an optional `at` (default `now`) and goes through one `_as_of` gate, so the done-when's "every accessor raises for t > now" is literal, and a rule can read an earlier bar. It adds `stock_quote()` (the X-S5 cover and stock marks, DEC-28, DEC-23) and `root` (to name contracts).
+  - `MarketData.build` takes the loader's frames, not `SymbolData`, so `engine` doesn't import `data`. It prices the symbol once (`price_symbol`), indexes each contract's first valid session quote for DEC-32's listing, and memoizes each listed snapshot, so every run over a symbol shares it.
+  - `PricedQuotes` gains the integer `bid`, `ask` and `valid` columns and `quote(row)`, so `quote()` returns the exact quote the fill uses, not a float mid. The IV is still solved from the exact float mid (DEC-89).
+  - An expiry is listed once one of its calls is. `expiries(WEEKLY)` includes the third Fridays, since a monthly expiry is also its week's final session.
+- **The synthetic market (P3-03, TEST-STRATEGY §5):** `tests/fixtures/synthetic/market.py` writes a symbol through `SymbolCache.write_unit`, so `load_symbol` reads it as it reads LSEG's. It uses the shipped calendar, and spot is a seeded walk or scripted knots. Quotes are Black-Scholes from an IV surface, rounded out to cents, with hooks for holes, wide spreads and missing rows. `scenarios.py` holds 19 builder functions (25 entries in `BUILDERS`, counting variants such as the delayed X-S3 fill), and the session-scoped `synthetic` fixture (`store.py`) generates each market once per test run. `extended_hours` also writes a pre-market and a post-close bar each session, so a test can check that no read comes from them.
+  - **Found while tuning:** at one IV for both legs, the baseline's E-S5 fails every week. A 0.80-delta 180-DTE long carries more extrinsic than a 0.30-delta weekly's out-of-the-money distance plus its premium: at 30% IV, a $17 gap against a $17.90 debit. The scenario markets therefore price monthlies at 20% and weeklies at 40%. Real data may show many G-2 weeks; P3-10 will tell.
+- **Accounting (P3-04):**
+  - An `Event` checks its own Cash Δ against its fill, quantity and fee when it's made. `EXPIRE` fills at $0 and `ASSIGN` has no fill; both have no cash and no fee. The fee is per option contract, so stock rows have none.
+  - `Book.apply` is the only mutator. It refuses a flip (a sale bigger than the long), an expiry or assignment off the expiry day, puts, and any book leaving a short uncovered (strike, expiry, quantity) or unequal to the long (INV-05, INV-10), raising `EngineError`.
+  - Reg T follows the spec and the PO's DEC-10 answer. A requirement that isn't a whole $0.0001 is rounded up. `funds_after(book, marks, event)` values the book after an entry, with the new leg marked at its limit: it is E-L4's check, and the audit's `funds_after` (INV-08).
+- **Fills (P3-05):** mid ± capture × half-spread, worked out exactly (the capture read as its decimal) and rounded half-even once. So capture 0 fills at exactly `Quote.mid`, the Limit column. The audit carries BID, ASK and the capture, so `pmcc verify` can re-derive the fill.
+- **Rules (P3-06):**
+  - E-T1 compares (ASK − BID) ≤ limit × mid exactly; a spread on the limit passes.
+  - The DEC-29 ties are exact. A delta distance is rounded to 9 places, since 0.85 and 0.75 aren't equally far from 0.80 in binary floating point (DEC-29).
+  - X-S1 runs until X-S3's check time, read from X-S3's params, so moving the check moves both. X-S3 fires on spot alone; only its fill needs a quote (DEC-28).
+  - The registry maps all 26 kinds. The quant kinds raise `NotBuiltError` naming P4-01 or P4-02 until then, and E-L1, E-S1, E-S4, X-S4, X-S5 and X-E1 are markers the loop enforces.
+  - E-T1 is a port, `EntryTrigger` (`can_decide`, `check`), not the concrete `SpreadTrigger`, so DEC-31's fixed-bar trigger swaps in by kind (DEC-31).
+- **The engine (P3-07):**
+  - `run_backtest(data, run_config, strategy, starting_cash)` walks the window's session bars in DEC-20's order and returns the blotter, the ledger (one row per bar) and the gate log. Starting cash is an argument until P3-09 settles it (DEC-30).
+  - A long bought on a week-open session needs no reset check, so the short can be sold on the same bar, in DEC-20's order. At most one short is sold per week: a short closed early isn't replaced until the next week-open session (Spec › X-S1, X-S2).
+  - The runtime invariants run on every event and bar (ARCHITECTURE §8.4). A failure logs `invariant.failed` and raises `InvariantViolation`, an `EngineError`.
+  - A new log event, `engine.exit.unevaluated`, records a rule that couldn't evaluate, with the rule, the contract and the IV code (DEC-27).
+  - Entry rows carry DEC-34's values: the selection's (with `selected_at`), the decision bar's E-T1 spread, and the short's E-S5 terms.
+  - An unfinished reset's gate-log row says why: the re-entry didn't pass E-T1, E-L4 blocked it, or no long was selected.
+  - A chain lists every listed contract, including one with no row on the bar (no quote, `NO_QUOTE`), so a listed ATM strike without a quote makes EM unavailable rather than silently moving to its neighbour (DEC-25, DEC-32).
+- **Put to the PO at handover (2026-09-30):** three edge cases the answers so far don't settle. They're built as recommended here, and each is a one-line change if the PO decides otherwise:
+  1. **X-S3 without an EM at entry** (the ATM put or call had no quote on the short's entry bar): X-S3 can't evaluate, so it doesn't fire and it's logged, as the PO's DEC-27 answer does for a missing delta. X-S4/X-S5 still resolve the short at the close.
+  2. **A short entry that would leave available funds negative** (possible after an X-S5 loss): no short that week, and the gate log's outcome is `E-L4`, noted "available funds would go negative" (INV-08; Spec › E-L4 "no entry (logged)").
+  3. **The stock's first mark after X-S5** when the stock has no valid quote on the assignment bar: the closing spot, flagged stale, until its next valid mid.
+- **Tests:** 259 new, 1,403 in the suite, after the review below: `tests/property/test_market_view.py` (INV-04), `tests/unit/engine/` (views, fills, invariants), `tests/unit/fixtures/`, `tests/property/test_accounting_invariants.py` (INV-01, 02, 08, 10), `tests/unit/accounting/`, `tests/unit/strategy/` (every rule at its boundaries, on the stub view `tests/fakes/view.py`), and `tests/scenario/` (42 full runs).
+- **Outcome:** 2026-09-30 — P3-02 to P3-07's done-when lines hold; `just check` is green, and pre-commit passes on the new files.
+  - **P3-02:** every accessor raises for a time after `now`. A hypothesis test finds no answer that depends on data after `now` (a view over the whole market against one cut off at `now`). Unlisted strikes and expiries stay hidden.
+  - **P3-03:** the same seed writes byte-identical files, and each builder has a smoke test.
+  - **P3-04:** the property tests for INV-01, 02, 08 and 10 pass over random fills, expiries, assignments, covers and stale marks (every path is reached: 14% of examples assign). An uncovered short raises `EngineError`.
+  - **P3-05:** INV-03 holds, fills at capture 0, 0.25 and 0.50 are exact in `Price` units, and the fee applies per contract.
+  - **P3-06:** every rule has boundary tests.
+  - **P3-07:** every baseline scenario passes, with the runtime INV-01 to INV-10 checked on every bar. G-3, G-4 and G-5 have their market builders now, but their engine scenarios wait for their code (P4-02's done-when now names them).
+- **Outcome:** 2026-09-30 — an adversarial review of P3-02 to P3-07 (4 reviewers, 2 skeptics per finding): 34 findings, 19 unique. The 12 most severe were verified: 11 confirmed, 1 plausible, 0 refuted; 7 low ones went unverified. Every one is fixed, with regression tests:
+  - **Confirmed, high:** entry notes broke DEC-34. They carried the freeze bar's mid and spread (40% on a short that filled at 5.4%) and no E-T1 spread or E-S5 terms, and the short's audit had no `e_t1_spread`. Fixed as above.
+  - **Confirmed, medium:**
+    - Nothing tested DEC-21's freezes or DEC-28's check-once: re-selecting the long or the short every bar, or checking the long on every week-open bar, passed the suite. New scenarios move spot after the freeze (`short_frozen_then_rally`, `long_frozen_then_rally`) and after the check (`long_falls_after_check`).
+    - Nothing tested the short's E-L4 skip, the stale stock mark or the unfinished-reset row. Each now has a scenario (`surge_no_stock_quote`, `reset_reentry_wide`, `long_delta_drop` with little cash).
+    - The G-3 to G-5 engine scenarios were deferred to P4-02, but P4-02's done-when didn't say so. It does now.
+    - E-T1 was typed as the concrete `SpreadTrigger`, so DEC-31's fixed-bar trigger couldn't swap in by kind. It's a port now (above).
+  - **Confirmed, low:**
+    - `exit_pending` stayed on the bar where X-S4/X-S5 resolved the short. The flag now comes from the bar's end state only.
+    - `engine.exit.unevaluated` lacked the contract and the IV code.
+    - An unfinished reset was always noted "didn't pass E-T1", even when E-L4 blocked the re-entry.
+    - DEC-23 cited `pmcc/engine/marks.py`, which doesn't exist.
+    - The builder count matched neither the functions nor `BUILDERS`.
+    - Two scenario assertions couldn't fail: a NAV check that reduced to nav == nav, and a date-only INV-07 check.
+  - **Plausible, medium:** a listed strike with no row on a bar dropped out of the chain, which DEC-32 says can't happen, so the ATM strike and EM could shift to a neighbour (81 listed NVDA contract-bars have no row). Fixed as above.
+  - **Unverified, low, fixed:**
+    - nothing tested that MarketView reads session bars only (`extended_hours` markets now do);
+    - the runtime INV-03 check was never failed for stock rows, zero bids or a wrong Limit;
+    - `close_trades` values were never checked;
+    - DEC-20's cover-before-check order and X-L1 over X-L2 on the same bar were untested;
+    - TEST-STRATEGY §5 had X-L2's `min_dte` the wrong way round;
+    - PRD FR-R2 still said the gates stop at the first fire.
+  - **Mutants:** the reviewers' surviving mutants (both freezes, the check-once, the reset row, the session-bar filter) now fail. One survives because it's equivalent: seeding the stock's first mark as fresh instead of stale, which the same bar's carry-forward marks stale anyway.
 
 ## E. Analytics definitions
 

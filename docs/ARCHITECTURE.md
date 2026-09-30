@@ -59,7 +59,9 @@ pmcc/
   domain/        money.py (Price, Money), instruments.py (OptionId, Right, Side), rules.py (RuleId),
                  clock.py (ET, bar_end), sessions.py (Session, session bars) (DEC-81),
                  calendar.py (SessionCalendar: sessions, week-open/final, weekly and monthly
-                 expiries; DEC-33, DEC-84), quotes.py (Quote: a valid BID/ASK and its mid; DEC-89)
+                 expiries; DEC-33, DEC-84), quotes.py (Quote: a valid BID/ASK and its mid; DEC-89),
+                 errors.py (EngineError, which accounting raises without importing the engine;
+                 DEC-91)
   config/        kinds.py (the kind registry: params per kind, SPEC_RULE_IDS), extends.py (extends and
                  overrides), rule_text.py (placeholders, rendering; DEC-52), strategy.py (Rule,
                  StrategyConfig, RunConfig, the config hash), fields.py (dollars, clock times,
@@ -97,9 +99,13 @@ pmcc/
   pricing/       black_scholes.py (price, greeks), expiry.py (T and DTE, DEC-24), iv.py (implied_vol,
                  IvCode), measures.py (close, ATM strike and IV, EM, RV20; DEC-23, DEC-25, DEC-26),
                  chain.py (price_quotes for one bar; price_symbol → PricedSymbol, memoized) (DEC-89)
-  strategy/      ports.py (MarketView, PositionState), selectors.py, trigger.py, gates.py, exits.py, registry.py
-  engine/        market_view.py (as-of gate), loop.py, legs.py (state machines), fills.py, invariants.py
-  accounting/    events.py, book.py, marks.py, regt.py, ledger.py
+  strategy/      ports.py (MarketView, LookAheadError, the values rules return), selectors.py
+                 (E-L2/E-L3, E-S2/E-S3), trigger.py (E-T1), gates.py (E-S5, G-1, G-2), exits.py
+                 (X-S1…X-S3, X-L1, X-L2, the X-S4/X-S5 resolver), registry.py (kinds → code,
+                 build_strategy) (DEC-91)
+  engine/        market_view.py (MarketData, HistoricalView: the as-of gate), loop.py (run_backtest),
+                 legs.py (Trader: the leg state machines and the gate log), fills.py, invariants.py
+  accounting/    events.py, book.py, marks.py, valuation.py (market values, NAV), regt.py, ledger.py
   analytics/     performance.py, cycles.py, attribution.py, bootstrap.py, robustness.py, fillcheck.py, suitability.py
   export/        models.py (pydantic results), manifest.py, canonical.py, schema.py, site.py, verify.py
   log.py         structlog JSON setup: stderr + logs/{command}_{timestamp}.jsonl (DEC-80)
@@ -126,8 +132,8 @@ The reference files at the repo root (`LSEG-DATA-GUIDE.md`, `DESIGN-GUIDE.md`, `
 | `data` (rest) | Know RICs; check the tape against the calendar; probe, plan, fetch, cache, load | `HistoryProvider`, `build_ric()`, `parse_ric()`, `sessions_from_tape()`, `run_probe()`, `plan_symbol()`, `fetch_rics()`, `fetch_contracts()`, `prepare()`, `pull_units()`, `estimate()`, `coverage()`, `SymbolCache.write_unit()`, `load_symbol()` | domain, config, polars, numpy; `pricing` for the coverage summary's IV failures (DEC-89); only `fetch` may use `data.lseg` |
 | `pricing` | Turn quotes into IV, Greeks and measures | `implied_vol()`, `greeks()`, `price_quotes()`, `price_symbol()` → `PricedSymbol.snapshot()`, `atm_iv()`, `expected_move()`, `rv20()` | domain, numpy, scipy, polars (the loader's frames, never `pmcc.data`; DEC-89) |
 | `strategy` | Decide what to trade | `build_strategy(cfg)` → `Strategy` | domain, config, pricing, `strategy.ports` |
-| `engine` | Run the clock; route decisions to fills and the book | `run_backtest(data, cfg)` → `RunOutput` | domain, config, pricing, strategy, accounting |
-| `accounting` | Record and value positions | `Book.apply()`, `value()`, `regt()` | domain |
+| `engine` | Run the clock; route decisions to fills and the book | `MarketData.build(stock, chains, calendar, r, root)`; `run_backtest(data, run_config, strategy, starting_cash)` → `RunOutput` (DEC-91) | domain, config, pricing, strategy, accounting; the loader's frames, never `pmcc.data` |
+| `accounting` | Record and value positions | `Book.apply()`, `carry()`, `value()`, `regt()`, `funds_after()`, `ledger_row()` | domain |
 | `analytics` | Summarize runs | `compute_metrics()`, `bootstrap_ci()`, … | domain, accounting read models |
 | `export` | Result models, manifest, canonical JSON, site data, verify | `write_result()`, `export_site()`, `verify()` | domain, config, accounting, analytics |
 | `log` | Configure structured logging for one command | `configure_logging()` | structlog |
@@ -209,64 +215,84 @@ class HistoryProvider(Protocol):                              # pmcc/data/provid
 class MarketView(Protocol):                                   # pmcc/strategy/ports.py
     @property
     def now(self) -> datetime: ...                            # decision time = bar_end
-    def spot(self) -> Price | None: ...                       # underlying TRDPRC_1 in the current bar; None if it didn't trade (DEC-23)
-    def quote(self, opt: OptionId) -> Quote | None: ...       # fresh BID/ASK at now, else None
-    def chain(self, expiry: date, right: Right) -> ChainSnapshot: ...   # listed at now (DEC-32): PricedSymbol.snapshot's PricedQuotes, listed strikes only
-    def expiries(self, kind: ExpiryKind) -> Sequence[date]: ...          # listed as of now
-    def close_trades(self) -> Mapping[datetime, Price]: ...              # close-bar TRDPRC_1 of completed sessions, by bar_end (rv20, DEC-26)
-    def calendar(self) -> SessionCalendar: ...                           # reference data (DEC-33)
+    @property
+    def root(self) -> str: ...                                # the option root, to name contracts
+    # `at` defaults to now; a later `at` raises LookAheadError
+    def spot(self, at=None) -> Price | None: ...              # underlying TRDPRC_1 on the bar; None if it didn't trade (DEC-23)
+    def stock_quote(self, at=None) -> Quote | None: ...       # the underlying's valid BID/ASK (X-S5 cover, stock marks)
+    def quote(self, opt: OptionId, at=None) -> Quote | None: ...          # fresh BID/ASK on the bar, else None
+    def chain(self, expiry: date, right: Right, at=None) -> ChainSnapshot: ...   # listed contracts only (DEC-32)
+    def expiries(self, kind: ExpiryKind, at=None) -> tuple[date, ...]: ...      # with a listed call, not yet expired
+    def close_trades(self, at=None) -> Mapping[datetime, Price]: ...            # close-bar TRDPRC_1 of sessions closed by `at` (rv20, DEC-26)
+    def calendar(self) -> SessionCalendar: ...                                  # reference data (DEC-33)
 ```
 
 `SessionCalendar` lives in `pmcc.domain` (DEC-84), so `strategy/ports.py` can name it without importing `data`. It is reference data, published in advance, so it answers for future days without the as-of gate (DEC-33).
 
-- The implementation (`engine/market_view.py`) keeps the loaded frames and priced snapshots private.
-- Every accessor resolves through a single `_as_of(t)` that raises `LookAheadError` when `t > now`.
+- The implementation (`engine/market_view.py`, DEC-91) has two parts. `MarketData.build` takes the loader's frames, prices the symbol once and indexes it. `MarketData.view(now)` gives a `HistoricalView`. Frames and snapshots stay private.
+- Every accessor resolves through a single `_as_of(t)` that raises `LookAheadError` (an `EngineError`) when `t > now`, and refuses a naive time.
+- Only session bars are read; any other time has no quote, no spot and an empty chain.
+- **Listing (PO, DEC-32):** a contract is listed at t once it has had a valid quote on a session bar at or before t, and it stays listed: on a bar where it has no row, the chain still holds it, with no quote (`NO_QUOTE`). An expiry is listed once one of its calls is. A `ChainSnapshot` holds the listed rows of `PricedSymbol.snapshot`, whose `PricedQuotes` carry the integer BID and ASK (DEC-91).
 - Strategies never receive a frame, so this gate is the structural guarantee the Methodology page cites.
-- INV-04 tests call every accessor with future arguments and expect the raise. A hypothesis test asserts that no returned row has `bar_end > now`.
+- **INV-04 tests** (`tests/property/test_market_view.py`) call every accessor with a later time and expect the raise. A hypothesis test asserts that every answer at `now` equals the answer from a market cut off at `now`, so nothing after `now` can leak in.
 
 ### 5.3 Rule protocols
 
 ```python
-class LongSelector(Protocol):                       # E-L2 + E-L3
-    def select(self, view: MarketView) -> Selection | None: ...
-class ShortSelector(Protocol):                      # E-S2 + E-S3
-    def select(self, view: MarketView, long: HeldLeg) -> Selection | None: ...
-class EntryTrigger(Protocol):                       # E-T1 (fixed_bar in timing runs, DEC-31)
-    def check(self, view: MarketView, sel: Selection, leg: Leg) -> TriggerResult: ...
-class Gate(Protocol):                               # G-1…G-5
+class LongExpiryRule(Protocol):                     # E-L2: candidate expiries
+    def candidates(self, view: MarketView) -> tuple[date, ...]: ...
+class LongStrikeRule(Protocol):                     # E-L3: the pick across them
+    def pick(self, view: MarketView, expiries: tuple[date, ...]) -> Selection | None: ...
+class ShortExpiryRule(Protocol):                    # E-S2
+    def expiry(self, view: MarketView) -> date: ...
+class ShortStrikeRule(Protocol):                    # E-S3
+    def pick(self, view: MarketView, expiry: date, long: HeldLeg) -> Selection | None: ...
+# LongSelector(E-L2, E-L3).select(view); ShortSelector(E-S2, E-S3).select(view, long)
+class EntryTrigger(Protocol):                       # E-T1: SpreadTrigger; fixed_bar in timing runs (DEC-31)
+    def can_decide(self, view: MarketView, leg: Leg) -> bool: ...     # the loop selects only on such bars
+    def check(self, view: MarketView, option: OptionId, leg: Leg) -> TriggerResult: ...
+class Gate(Protocol):                               # G-2…G-5; G-1 is decided at the session's end
     rule_id: RuleId
-    def evaluate(self, view: MarketView, d: ShortDecision) -> GateResult: ...   # PASS | FIRE | NA + values
+    def evaluate(self, view: MarketView, d: ShortDecision) -> GateResult: ...   # PASS | FIRE | n/a + values
 class ExitRule(Protocol):                           # X-S1…X-S3, X-L1, X-L2
     rule_id: RuleId
-    def check(self, view: MarketView, pos: PositionState) -> ExitSignal | None: ...
+    def check(self, view: MarketView, pos: PositionState) -> ExitOutcome | None: ...  # None: not its bar
 
 @dataclass(frozen=True)
 class Strategy:                                     # built by strategy.registry.build_strategy(cfg)
+    config: StrategyConfig                          # rule_ids: the valid stamps (INV-09)
     long_selector: LongSelector
     short_selector: ShortSelector
     trigger: EntryTrigger
     constraint: StructuralConstraint                # E-S5
-    sizing: Sizing                                  # E-L4, E-S4
-    gates: tuple[Gate, ...]                         # spec order; absent means off
+    long_contracts: int                             # E-L4; E-S4 matches it
+    no_quote: NoQuoteGate                           # G-1
+    gates: tuple[Gate, ...]                         # G-2…G-5, spec order; absent means off
     long_exits: tuple[ExitRule, ...]
     short_exits: tuple[ExitRule, ...]
+    friday_check: FridayCheck                       # X-S3, whose check time X-S1 also reads
     expiry: ExpiryResolver                          # X-S4, X-S5
 ```
 
-A `Selection` carries the contract plus the values that justified it (delta, extrinsic ÷ delta, EM, spread %). Those values become blotter notes and gate-log values.
+- A `Selection` carries the contract plus the values that justified it (delta, DTE, spread %, spot). Those values become blotter notes and gate-log values.
+- An `ExitOutcome` is fire, pass or unevaluated: a rule on a bar with a fresh quote but a missing input doesn't fire, and is logged (PO, DEC-27).
+- Every kind in `config.kinds.KINDS` has a factory in `registry.FACTORIES`, and a test holds the two key sets equal. The quant kinds raise `NotBuiltError` until P4-01/P4-02 (DEC-91).
 
 ### 5.4 Accounting
 
 ```python
 @dataclass(frozen=True)
-class Event:                                         # one blotter row
-    time: datetime; side: Literal["BUY", "SELL", "EXPIRE", "ASSIGN"]; instrument: Instrument
-    qty: int; limit: Price | None; fill: Price | None; cash_delta: Money
-    rule_id: RuleId; notes: str; audit: Audit       # bid, ask, spread %, selection values, E-S5 terms, funds after
-class Book:                                          # positions + cash; apply() is the only mutator
-    def apply(self, e: Event) -> "Book": ...         # new Book; raises EngineError on an uncovered short
+class Event:                                         # one blotter row (accounting/events.py)
+    time: datetime; side: Side; instrument: OptionId | StockId
+    qty: int; limit: Price | None; fill: Price | None; cash_delta: Money   # checked against the fill
+    rule_id: RuleId; notes: str; fee: Money
+    audit: Mapping[str, AuditValue]                  # bid, ask, capture, selection values, E-S5 terms, funds_after
+class Book:                                          # cash + signed positions; apply() is the only mutator
+    def apply(self, e: Event) -> "Book": ...         # new Book; EngineError on an uncovered or unequal short
+def carry(prev: Marks, fresh: Mapping[Instrument, Price | None], now) -> Marks   # stale carry-forward
 def value(book: Book, marks: Marks) -> Valuation     # LongMV, ShortCallMV, StockMV, NAV, stale flags
-def regt(book: Book, v: Valuation) -> RegT           # IM, MM, available funds, excess equity, flags
+def regt(book: Book, v: Valuation, marks: Marks) -> RegT   # IM, MM, available funds, excess equity
+def funds_after(book: Book, marks: Marks, e: Event) -> Money   # E-L4's check before any entry (INV-08)
 ```
 
 ## 6. Data layer
@@ -424,15 +450,16 @@ C  = S·N(d1) − K·e^(−rT)·N(d2)                P  = K·e^(−rT)·N(−d2)
 ### 8.1 Bar loop (order per DEC-20)
 
 ```
-for bar in session_bars(window):                           # ascending bar_end
-    view = MarketView(data, now=bar.end)
-    legs.cover_short_stock(view)                           # X-S5 follow-up
-    if bar.session.is_week_open: legs.long_exits(view)     # X-L1, X-L2 (pending until filled)
-    if book.long is None: legs.long_entry(view)            # E-L1…E-L4, session-frozen selection
-    if book.short: legs.short_exits(view)                  # X-S1, X-S2 any bar; X-S3 on the check bar
-    if bar.session.is_week_open: legs.short_entry(view)    # E-S1…E-S5, gates, gate-log row
-    if bar.is_close: legs.resolve_expiry(view)             # X-S4 / X-S5 on the expiry session
-    ledger.append(book, value(book, marks(view)), regt(...)); invariants.check_bar(...)
+for bar in session_bars(window):                             # ascending bar_end (engine/loop.py)
+    view = data.view(bar.end)
+    trader.cover_short_stock(view)                           # X-S5 follow-up
+    if week_open: trader.check_long(view)                    # X-L1, X-L2 at the first fresh long quote
+    trader.enter_long(view)                                  # if flat: E-L1…E-L4, session-frozen selection
+    trader.exit_short(view)                                  # X-S1, X-S2 any bar; X-S3 on the check bar
+    if week_open: trader.enter_short(view)                   # E-S1…E-S5, gates, gate-log row
+    if week_open and close bar: trader.close_week(view)      # the row for an undecided week
+    if the short's expiry close bar: trader.resolve_expiry(view, closing_spot)   # X-S4 / X-S5
+    check_event(each new row); marks; value; regt; ledger_row; check_bar(...)
 # X-E1: the final ledger row marks everything at the last bar; nothing is liquidated
 ```
 
@@ -443,31 +470,36 @@ LONG   FLAT ──selector returns c (session s)──────────�
        CANDIDATE ──E-T1 passes ∧ E-L4 funds ok──────────► HELD                       BUY  E-L1
        CANDIDATE ──E-L4 would go negative────────────────► FLAT (flag; retry next session)
        CANDIDATE ──session ends──────────────────────────► FLAT (retry next session)
-       HELD ──week-open ∧ (δ < 0.50 ∨ DTE < 90)──────────► RESETTING (short entry waits)
-       RESETTING ──fresh quote───────────────────────────► FLAT → re-entry this session  SELL X-L1|X-L2
+       HELD ──week-open, first bar with a fresh long quote: checked once (short entry waits for it)
+       HELD ──checked ∧ (δ < 0.50 ∨ DTE < 90)────────────► FLAT → re-entry this session  SELL X-L1|X-L2
+            (δ unknown: X-L1 unevaluated, logged; no fresh long quote all session: not checked)
 
 SHORT  (week-open session only)
-       IDLE ──long held ∧ no short───────────────────────► SELECTING
-       SELECTING ──selector returns c────────────────────► FROZEN(c)
+       IDLE ──long held and checked ∧ no short this week─► SELECTING
+       SELECTING ──selector returns c (on a bar E-T1 can_decide)► FROZEN(c)
        FROZEN ──E-T1 passes──► DECIDE ──G-2…G-5 all pass──► OPEN                     SELL E-S1
-                                      └─first gate fires──► SKIPPED(rule)
+                                      ├─first gate fires──► SKIPPED(rule)
+                                      └─funds would go < 0► SKIPPED(E-L4)
        SELECTING | FROZEN ──session ends─────────────────► SKIPPED(G-1)
+       no long, or not checked ──session ends────────────► SKIPPED(E-S1) (or X-L1|X-L2: re-entry unfinished)
        OPEN ──X-S1 | X-S2 | X-S3─────────────────────────► CLOSED                     BUY  X-S*
+       OPEN ──X-S3 fires without a quote─────────────────► PENDING (fills at the next bar with one)
        OPEN ──expiry close, OTM──────────────────────────► EXPIRED                    EXPIRE X-S4
        OPEN ──expiry close, ITM──────────────────────────► ASSIGNED                   ASSIGN + stock SELL X-S5
        ASSIGNED ──first valid bar, next session──────────► covered                    stock BUY X-S5
 ```
 
-Each week-open session writes exactly one gate-log row per strategy (DEC-22).
+Each week-open session writes exactly one gate-log row per strategy (DEC-22): the decision bar's gates (G-1 recorded as passed, G-2…G-5 each pass, fire or n/a), or, when the week isn't decided, G-1 fired with the rest `not_evaluated`, or `E-S1`/`X-L1`/`X-L2` with no gates. A short entry that would leave available funds negative is skipped as `E-L4` (DEC-91). The closing spot for X-S4/X-S5 is the close bar's trade, else the session's last trade before it (PO, DEC-23).
 
 ### 8.3 Fill simulator (Spec › Fill model)
 
 ```
-fill(quote, side, capture, fee) -> Fill | None
+fill(time, side, instrument, qty, quote, model, rule_id, notes, audit) -> Event | None   # engine/fills.py
   no fresh BID or no fresh ASK → None                     # no fill, never an invented print (INV-03)
-  mid = (BID + ASK)/2 ; half = (ASK − BID)/2
+  mid = (BID + ASK)/2 ; half = (ASK − BID)/2              # exact rationals; capture read as its decimal
   price = mid + capture·half  (BUY)   |   mid − capture·half  (SELL)   → quantized to Price, round half-even
-  cash_delta = −price·multiplier·qty (BUY) | +price·multiplier·qty (SELL)   − fee·contracts
+  cash_delta = −price·multiplier·qty (BUY) | +price·multiplier·qty (SELL)   − fee·contracts (options only)
+  audit += {bid, ask, spread_capture}                     # so verify can re-derive the fill
 ```
 
 The blotter's Limit column is the mid at decision time; its Fill column is `price`.
@@ -479,12 +511,12 @@ The blotter's Limit column is the mid at decision time; its Fill column is `pric
 | After every bar | INV-01, 02, 05, 07, 10 |
 | At every event | INV-03, 06, 08, 09 |
 
-A failure raises `InvariantViolation`; the run writes nothing and exits non-zero.
+A failure logs `invariant.failed` and raises `InvariantViolation` (an `EngineError`); the run writes nothing and exits non-zero. INV-03 is re-derived from the event's audit (BID, ASK, capture); the X-S5 stock sale at the strike isn't a quote fill and is exempt (`engine/invariants.py`).
 
 ## 9. Accounting and Reg T
 
 - **Cash:** changes only in `Book.apply(event)` (INV-01).
-- **Marks:** a fresh mid, or else the last fresh mid flagged `stale`. A stale mark never fills and never triggers a rule (DEC-27).
+- **Marks:** a fresh mid, or else the last fresh mid flagged `stale`. A stale mark never fills and never triggers a rule (DEC-27). The stock after X-S5 is marked at its BID/ASK mid too (PO, DEC-23); with no valid stock quote on the assignment bar, the closing spot seeds its mark, flagged stale (DEC-91).
 - **Market values:**
   - LongMV = mark × 100 × qty.
   - ShortCallMV = mark × 100 × qty.
@@ -496,12 +528,14 @@ A failure raises `InvariantViolation`; the run writes nothing and exits non-zero
   | --- | --- |
   | Long call | LongMV (100%) |
   | Covered short call | $0; an uncovered short is an `EngineError` |
-  | Short stock, initial | 50% × \|StockMV\| |
-  | Short stock, maintenance | 30% × \|StockMV\| |
+  | Short stock with covering long calls, initial (PO, DEC-10) | $0 beyond the proceeds |
+  | Short stock with covering long calls, maintenance (PO, DEC-10) | min(10% × long strikes × shares + the longs' OTM amount, max($5 × shares, 30% × \|StockMV\|)) |
+  | Short stock without them, initial | 50% × \|StockMV\| |
+  | Short stock without them, maintenance | 30% × \|StockMV\| |
 
-  - IM = long + short-stock initial. MM = long + short-stock maintenance.
+  - IM = long + short-stock initial. MM = long + short-stock maintenance. A requirement that isn't a whole $0.0001 is rounded up (DEC-91).
   - Available funds = NAV − IM. Excess equity = NAV − MM.
-- **Entry check:** before a long or short entry, the post-trade available funds are computed and must be ≥ 0. The value is recorded in the event's audit (INV-08).
+- **Entry check:** before a long or short entry, `funds_after` computes the post-trade available funds, with the new leg marked at its limit; they must be ≥ 0. The value is recorded in the event's audit (INV-08).
 - **Ledger flags:**
   - `stale_long`, `stale_short`, `stale_stock`
   - `funds_negative` — the site states the position couldn't have been held in a real Reg T account
@@ -703,7 +737,7 @@ CI (`.github/workflows/ci.yml`, on push and PR; DEC-79):
   - A command calls `pmcc.log.configure_logging(command)` once at startup; every other module calls `structlog.get_logger()`.
   - Each event carries `event`, `level`, `timestamp` (ISO 8601, UTC) and `command`; exceptions are rendered as text in `exception`. Level INFO and up.
   - Every soft fetch failure is one `fetch.ric.unanswered` event, logged once per RIC the service left unanswered, with `symbol`, `unit`, `ric`, `form` (for an option RIC), `reason` (`no_data` or `empty`), `codes` and `message` (Spec › Stack, DEC-83). `fetch.batch.rejected` and `fetch.retry` carry `size` and the error.
-  - Event names: `fetch.plan`, `fetch.unit.start|done`, `fetch.increment.unmeasured`, `fetch.ric.unanswered`, `fetch.batch.rejected`, `fetch.retry`, `fetch.abort.outage`, `fetch.coverage`, `fetch.coverage.unit`, `engine.entry.retry`, `engine.gate.fired`, `engine.exit.pending`, `invariant.failed`.
+  - Event names: `fetch.plan`, `fetch.unit.start|done`, `fetch.increment.unmeasured`, `fetch.ric.unanswered`, `fetch.batch.rejected`, `fetch.retry`, `fetch.abort.outage`, `fetch.coverage`, `fetch.coverage.unit`, `engine.entry.retry`, `engine.gate.fired`, `engine.exit.pending`, `engine.exit.unevaluated` (a rule on a fresh quote missing an input, with `rule`, `option` and `iv_code`; DEC-27), `invariant.failed`.
 - **Errors:** the failure taxonomy is DEC-49.
 - **Secrets:**
   - `lseg-data.config.json` is gitignored, blocked by a pre-commit hook, and checked in CI (`git ls-files` must not list it).

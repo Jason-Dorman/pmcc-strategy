@@ -104,7 +104,7 @@ Every row points to its source. "Verified by" names the invariant test (INV-nn),
 | ID | Requirement | Source | Verified by |
 | --- | --- | --- | --- |
 | FR-R1 | Entry rules E-T1, E-L1–E-L4, E-S1–E-S5 as specified for each strategy | Spec › Trade rules: entry; DEC-21, DEC-29 | rule unit tests; INV-05, 06, 08, 10 |
-| FR-R2 | Skip-week gates G-1–G-5, evaluated in order. The first gate to fire is logged with its values; one gate-log row per strategy per week-open session. | Spec › Skip-week gates; DEC-22 | rule and scenario tests |
+| FR-R2 | Skip-week gates G-1–G-5. At the decision bar every gate the strategy has is evaluated and recorded (pass, fire or n/a, with its values), and the first to fire in spec order is the outcome; if G-1 fires, the rest are `not_evaluated`. One gate-log row per strategy per week-open session, whose outcome can also be E-S1, X-L1/X-L2 or E-L4. | Spec › Skip-week gates; DEC-22, DEC-91 | rule and scenario tests |
 | FR-R3 | Exits X-S1–X-S5, X-L1, X-L2, X-E1, identical across strategies; the short is never exercised; no rolls | Spec › Trade rules: exits; DEC-28 | scenario tests; INV-07 |
 | FR-R4 | When the selected short fails E-T1 or E-S5, the gates decide; the engine never substitutes a different strike | Spec › Trade rules: entry; DEC-21 | scenario test |
 | FR-R5 | Every threshold is in YAML, validated by pydantic, with a stable rule ID and `id`, `name`, `condition`, `action`, `rationale` fields | Spec › Config-driven rules; DEC-35, DEC-52, DEC-90 | `tests/unit/config/test_baseline_config.py`, `test_strategy_loader.py` (P3-01) |
@@ -116,7 +116,7 @@ Every row points to its source. "Verified by" names the invariant test (INV-nn),
 | FR-A1 | Each strategy has its own blotter with the spec's columns, booked trades only, and the EXPIRE/ASSIGN row conventions | Spec › Blotter; DEC-34 | INV-01, INV-09 |
 | FR-A2 | A ledger row per session bar: long, short, stock, cash, NAV, IM, MM, available funds, excess equity. Stale marks are carried and flagged and never fill. | Spec › Ledger | INV-02, INV-03 |
 | FR-A3 | NAV = cash + LongMV − ShortCallMV + StockMV | Spec › NAV and Reg T | INV-02 |
-| FR-A4 | Reg T as in the spec table. An uncovered short is an engine error. Entries are blocked if they would make available funds negative. Negative available funds are flagged, with the site's Reg T statement. | Spec › NAV and Reg T; DEC-10 | INV-05, INV-08; P3-04 tests |
+| FR-A4 | Reg T as in the spec table, with X-S5's short stock at the hedged requirement while the long is held (PO, DEC-10). An uncovered short is an engine error. Entries are blocked if they would make available funds negative. Negative available funds are flagged, with the site's Reg T statement. | Spec › NAV and Reg T; DEC-10 | INV-05, INV-08; P3-04 tests |
 | FR-A5 | Cash moves only on blotter events | Spec › Accounting | INV-01 |
 
 ### 6.6 Runs

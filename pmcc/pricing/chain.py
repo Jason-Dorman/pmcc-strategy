@@ -30,6 +30,7 @@ from pmcc.domain.calendar import SessionCalendar
 from pmcc.domain.clock import to_et
 from pmcc.domain.instruments import Right
 from pmcc.domain.money import UNITS_PER_CENT, UNITS_PER_DOLLAR, Price
+from pmcc.domain.quotes import Quote
 from pmcc.domain.sessions import Session
 from pmcc.pricing.black_scholes import BoolArray, FloatArray, Floats, Rights, greeks
 from pmcc.pricing.expiry import years_to_expiry
@@ -46,9 +47,13 @@ _MICROSECOND = timedelta(microseconds=1)
 @dataclass(frozen=True, slots=True)
 class PricedQuotes:
     """One chain on one bar, a row per contract in strike order. Dollars are floats; NaN is
-    unknown. `code` says why a contract has no IV (`IvCode`)."""
+    unknown. `code` says why a contract has no IV (`IvCode`). `bid` and `ask` are the quote in
+    $0.0001 units where `valid` (0 elsewhere), so a fill or a spread test reads the exact quote."""
 
     strike: IntArray  # $0.0001 units
+    bid: IntArray
+    ask: IntArray
+    valid: BoolArray  # a valid BID/ASK on this bar (LDG §4.7)
     mid: FloatArray
     spread_pct: FloatArray  # (ASK - BID) / mid
     iv: FloatArray
@@ -68,11 +73,22 @@ class PricedQuotes:
         hits = np.flatnonzero(self.strike == strike.units)
         return int(hits[0]) if hits.size else None
 
+    def quote(self, row: int) -> Quote | None:
+        """The row's quote, or None if it has no valid BID/ASK on this bar."""
+        if not self.valid[row]:
+            return None
+        return Quote(Price(int(self.bid[row])), Price(int(self.ask[row])))
+
     def rows(self, start: int, stop: int) -> "PricedQuotes":
-        s = slice(start, stop)
-        return PricedQuotes(self.strike[s], self.mid[s], self.spread_pct[s], self.iv[s],
-                            self.code[s], self.delta[s], self.gamma[s], self.theta[s],
-                            self.vega[s], self.extrinsic[s])  # fmt: skip
+        return self.take(slice(start, stop))
+
+    def take(self, which: "slice | BoolArray | npt.NDArray[np.intp]") -> "PricedQuotes":
+        """The rows `which` selects (a slice, a mask or row indices), in that order."""
+        s = which
+        return PricedQuotes(self.strike[s], self.bid[s], self.ask[s], self.valid[s], self.mid[s],
+                            self.spread_pct[s], self.iv[s], self.code[s], self.delta[s],
+                            self.gamma[s], self.theta[s], self.vega[s],
+                            self.extrinsic[s])  # fmt: skip
 
 
 def price_quotes(*, strike: IntArray, bid: IntArray | FloatArray, ask: IntArray | FloatArray,
@@ -91,8 +107,11 @@ def price_quotes(*, strike: IntArray, bid: IntArray | FloatArray, ask: IntArray 
     solved = implied_vol(mid, s, k, t, rate, call)
     delta, gamma, theta, vega = _greeks(s, k, t, rate, call, solved)
     intrinsic = np.maximum(np.where(call, s - k, k - s), 0.0)
-    return PricedQuotes(strike, mid, spread, solved.vol, solved.code, delta, gamma, theta, vega,
-                        mid - intrinsic)  # fmt: skip
+    ok = np.asarray(valid, dtype=np.bool_)
+    bid_units = np.where(ok, np.rint(b), 0).astype(np.int64)
+    ask_units = np.where(ok, np.rint(a), 0).astype(np.int64)
+    return PricedQuotes(strike, bid_units, ask_units, ok, mid, spread, solved.vol, solved.code,
+                        delta, gamma, theta, vega, mid - intrinsic)  # fmt: skip
 
 
 def _greeks(s: FloatArray, k: FloatArray, t: FloatArray, rate: float, call: BoolArray,

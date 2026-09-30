@@ -30,7 +30,7 @@ Sep 25, 2026 · schedule from Spec › Build order · **due Fri Oct 9, 11:59 pm*
 | P1 Data layer and open items | Sat Sep 26 – Sun Sep 27 | NVDA's full chain cached; INV-11, INV-12 pass; window, r and identifiers recorded; universe fetch started | Done 2026-09-28 (P1 exit): P1-01 to P1-09 (window Mar 30 – Sep 25 2026, r = 0.0371, universe QQQ, NVDA, TSLA; cache and loader per DEC-46; `pmcc fetch` per DEC-88; NVDA's chain cached, near-money weekly mids 97.7%) |
 | P1-10 Universe fetch (background) | Sun Sep 27 – Sat Oct 3 | QQQ and TSLA cached with coverage summaries (NVDA at P1-09) | Estimates shown 2026-09-28 (QQQ 183–547 min, TSLA 98–293 min); the PO scheduled the pull overnight |
 | P2 Pricing | Mon Sep 28 | IV solver matches the reference; EM, ATM IV, RV20 tested | Done 2026-09-28, as one commit (PO, DEC-59): Black-Scholes, T and DTE, the IV solver, measures and the chain pricer (DEC-24 to DEC-27 settled; DEC-89). NVDA prices in 1.4 s; IV failures 8.3%, mostly very deep ITM; DEC-26's missing-close rule is with the PO |
-| P3 Engine, accounting, baseline | Mon Sep 28 – Wed Sep 30 | **M1:** baseline blotter, ledger, NAV, Reg T for NVDA; INV-01–10 and 13 pass | In progress: P3-01 done 2026-09-29 (strategy config and the baseline YAML; DEC-35, DEC-90) |
+| P3 Engine, accounting, baseline | Mon Sep 28 – Wed Sep 30 | **M1:** baseline blotter, ledger, NAV, Reg T for NVDA; INV-01–10 and 13 pass | In progress: P3-01 done 2026-09-29 (DEC-35, DEC-90); P3-02 to P3-07 done 2026-09-30 as one commit (DEC-91); next P3-08 (`pmcc run`), after the PO's code review |
 | P4 Quant layer and site skeleton | Thu Oct 1 – Fri Oct 2 | **M2:** quant + A1–A5 on NVDA; Pages serves the skeleton from sample JSON; INV-14, 15 in CI | Not started |
 | P5 Universe batch and sensitivity | Sat Oct 3 – Sun Oct 4 | **M3:** all results JSON written and verified | Not started |
 | P6 Analytics | Mon Oct 5 – Tue Oct 6 | **M4:** every table and series in results JSON | Not started |
@@ -52,10 +52,11 @@ Nothing needs answering up front. This is when each open question in [DECISIONS]
 | P2-04 Chain pricer · Mon Sep 28 | Greeks when IV fails; fresh quotes only | DEC-27 |
 | P2 review · Tue Sep 29 | RV20 when one of the 21 closes is missing | DEC-26 |
 | P3-01 Config · Tue Sep 29 | Rule rationales and the no-roll paragraph (asked when found) | DEC-35 |
-| P3-02 MarketView · Mon Sep 28 | Point-in-time listing | DEC-32 |
+| P3-02 MarketView · Mon Sep 28 | Point-in-time listing (answered at P3-01) | DEC-32 |
 | P3-04 Accounting core · Mon Sep 28 | The short stock's margin after X-S5 while the long call is held (found at P1-05) | DEC-10 |
 | P3-06 Rule modules · Tue Sep 29 | Tie-breaks | DEC-29 |
-| P3-07 Engine loop · Tue Sep 29 | Order of operations, selection freeze, gate log, exits without quotes, rule stamping | DEC-20, DEC-21, DEC-22, DEC-28, DEC-34 |
+| P3-07 Engine loop · Tue Sep 29 | Order of operations, selection freeze, gate log, exits without quotes, rule stamping; asked while building: rules without a delta, when the long is checked, the stock's mark and closing spot | DEC-20, DEC-21, DEC-22, DEC-23, DEC-27, DEC-28, DEC-34 |
+| P3-07 handover · Wed Sep 30 | X-S3 without an EM at entry; a short entry blocked by funds; the stock's first mark after X-S5 | DEC-91 |
 | P3-08 Results · Wed Sep 30 | Test 13 vs the run timestamp; dirty-tree rule | DEC-50 |
 | P3-09 Capital · Wed Sep 30 | Starting-capital calibration | DEC-30 |
 | P3-10 Baseline on NVDA · Wed Sep 30 | LSEG terms, before real results go to the public repo | DEC-05 |
@@ -258,7 +259,7 @@ P8 release                                                                      
   - `configs/_shared.yaml` and `configs/baseline_pmcc.yaml`, with every rule's name, condition, action and rationale. The spec's "why" paragraphs go into the X-S3, X-S5 and no-roll rationales.
   - Done when config tests pass: unique IDs, placeholders resolve, params referenced, every spec rule ID present.
   - Needs: P1-01
-- [ ] **P3-02 · MarketView**
+- [x] **P3-02 · MarketView** — done 2026-09-30, built with P3-03 to P3-07 in one pass and one commit (PO, DEC-59). The PO settled DEC-32 as recommended: listed once it has had a valid quote. `pmcc/strategy/ports.py` (the protocol) and `pmcc/engine/market_view.py` (`MarketData`, `HistoricalView`). Every accessor takes an `at` through one `_as_of` gate. `PricedQuotes` now carries the integer BID and ASK. INV-04's hypothesis test compares every answer against a market cut off at `now` (DEC-91)
   - Ask first: DEC-32.
   - The as-of gate and the accessors (ARCHITECTURE §5.2), with point-in-time listing.
   - Done when the INV-04 tests pass:
@@ -266,30 +267,30 @@ P8 release                                                                      
     - hypothesis finds no returned row after `now`
     - unlisted strikes stay hidden
   - Needs: P2-04
-- [ ] **P3-03 · Synthetic market**
+- [x] **P3-03 · Synthetic market** — done 2026-09-30; `tests/fixtures/synthetic/` (`market.py`, `scenarios.py` with 19 builder functions and 25 `BUILDERS` entries, `store.py` and the session-scoped `synthetic` fixture). The same seed writes byte-identical files, and each builder has a smoke test. Found while tuning: at one IV for both legs, E-S5 fails every week (a 0.80-delta 180-DTE long's extrinsic beats a 0.30-delta weekly's distance plus premium), so the scenario markets price monthlies at 20% and weeklies at 40% (DEC-91)
   - The generator and scenario builders (TEST-STRATEGY §5).
   - Done when: the same seed produces identical files, and each builder has a smoke test.
   - Needs: P1-07
-- [ ] **P3-04 · Accounting core**
+- [x] **P3-04 · Accounting core** — done 2026-09-30. The PO settled DEC-10: while the long is held, X-S5's short stock carries the hedged requirement (no initial beyond the proceeds; maintenance 10% of the long strikes plus their OTM amount, capped), and the spec's NAV and Reg T table is amended. `pmcc/accounting/` (`events`, `book`, `marks`, `valuation`, `regt`, `ledger`) and `pmcc/domain/errors.py`. The property tests for INV-01, 02, 08 and 10 reach every path: 14% of examples assign and cover (DEC-91)
   - Ask first: DEC-10 (the short stock's margin after X-S5 while the long call is held).
   - Events, the book, marks with stale carry-forward, ledger rows, NAV, Reg T and flags (ARCHITECTURE §9).
   - Done when:
     - property tests for INV-01, 02, 08 and 10 pass over random sequences of fills, expiries, assignments and marks
     - an uncovered short raises `EngineError`
   - Needs: P1-01
-- [ ] **P3-05 · Fill simulator**
+- [x] **P3-05 · Fill simulator** — done 2026-09-30; `pmcc/engine/fills.py`: exact rationals, rounded half-even once, so capture 0 fills at the Limit; the fee applies per option contract; the audit carries BID, ASK and the capture (DEC-91)
   - ARCHITECTURE §8.3.
   - Done when:
     - the INV-03 tests pass
     - fills at `spread_capture` 0, 0.25 and 0.50 are exact in `Price` units
     - per-contract fees apply
   - Needs: P3-04
-- [ ] **P3-06 · Baseline rule modules**
+- [x] **P3-06 · Baseline rule modules** — done 2026-09-30. The PO settled DEC-29 as recommended; delta distances are rounded to 9 places, since 0.85 and 0.75 aren't equally far from 0.80 in floating point (a unit test caught it). `pmcc/strategy/` (`selectors`, `trigger`, `gates`, `exits`, `registry`); boundary tests for every rule on a stub view (`tests/fakes/view.py`). The quant kinds raise `NotBuiltError` naming P4-01/P4-02. The PO settled DEC-27's open item: a rule missing a delta doesn't fire and is logged (DEC-91)
   - Ask first: DEC-29.
   - E-T1, E-L1–E-L4, E-S1–E-S5, G-1, G-2, X-S1–X-S5, X-L1, X-L2 and X-E1, with the baseline selectors and the registry.
   - Done when: every rule has boundary unit tests (TEST-STRATEGY §4).
   - Needs: P3-01, P3-02
-- [ ] **P3-07 · Engine loop**
+- [x] **P3-07 · Engine loop** — done 2026-09-30. The PO settled DEC-20, 21, 22, 28 and 34 as recommended, plus three questions found while building: the long is checked at the first week-open bar with a fresh long quote and the short waits for it (DEC-28); the stock is marked at its mid, and the closing spot falls back to the session's last trade (DEC-23). `pmcc/engine/` (`legs.py`, `loop.py`, `invariants.py`). 42 scenario runs; the runtime INV-01 to INV-10 hold on every bar. G-3 to G-5's engine scenarios wait for P4-02 (its done-when names them). Three edge cases went to the PO at handover (DEC-91). An adversarial review (4 reviewers, 2 skeptics per finding) confirmed 11 findings and rated 1 plausible, all fixed with the 7 unverified lows: entry notes now carry DEC-34's values, E-T1 is a port again (DEC-31), a listed strike with no row stays in the chain (DEC-32), and new scenarios pin the freezes, the check-once and the reset rows. 259 new tests, 1,403 in the suite
   - Ask first: DEC-20, DEC-21, DEC-22, DEC-28, DEC-34.
   - The bar loop and its order, the leg state machines, the gate log, rule stamping, and runtime invariants (ARCHITECTURE §8).
   - Done when: every TEST-STRATEGY §5 scenario passes, and runtime INV-01–10 hold on all of them.
@@ -323,7 +324,7 @@ P8 release                                                                      
   - Needs: P3-06
 - [ ] **P4-02 · Gates G-3, G-4, G-5**
   - With gate-log values and `n/a` handling (DEC-22).
-  - Done when: boundary tests pass, including missing next-week IV and missing RV20.
+  - Done when: boundary tests pass, including missing next-week IV and missing RV20, and each gate fires in a full engine run on its synthetic market (`event_week`, `rv_above_iv`, `tiny_premium`, built at P3-03; TEST-STRATEGY §4, §5), with the gate log recording it (deferred from P3-07, DEC-91).
   - Needs: P4-01
 - [ ] **P4-03 · Quant and ablation configs**
   - `configs/quant_pmcc.yaml` and `configs/ablations/a1…a5.yaml`.

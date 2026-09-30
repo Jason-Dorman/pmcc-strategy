@@ -20,9 +20,9 @@ Sep 25, 2026 · implements Spec › Invariant tests and EP › Testing mindset �
 
 | Layer | Covers | Tool | Runs in |
 | --- | --- | --- | --- |
-| Unit | Domain primitives (half-even quantizing, money arithmetic, `bar_end`, session bars; `tests/unit/domain/`), RIC grammar and OCC symbols (`tests/unit/data/test_ric.py`), the LSEG adapter and batched requests (`tests/unit/data/test_lseg_*.py`, `test_fetch.py`, §6), the calendar (`tests/unit/domain/test_calendar.py`, `tests/unit/config/test_calendar_file.py`, `tests/unit/data/test_tape_calendar.py`), the universe file, with its window planned on the shipped calendar (`tests/unit/config/test_universe_file.py`, DEC-86), increments, bands and the fetch plan (`tests/unit/data/test_discovery.py`), the probes (`tests/unit/data/test_probe.py`, §6), the cache and loader (`tests/unit/data/test_cache.py`, `test_load.py`, `test_files.py`: atomic writes, never overwriting, counts per contract, the data-manifest hash, a FakeProvider round trip; DEC-46, DEC-87), `pmcc fetch`'s plan, estimate, unit loop, resume and coverage summary (`tests/unit/data/test_pull.py`, `test_estimate.py`, `test_coverage.py`, and the fetch tests in `tests/unit/test_cli.py`; DEC-16, DEC-88), Black-Scholes, T and DTE, the IV solver's codes, measures and the chain pricer (`tests/unit/pricing/`: reference values computed with mpmath at 50 digits; DEC-24 to DEC-27, DEC-89), `Quote` (`tests/unit/domain/test_quotes.py`), selectors, trigger, gates, exits, fills, Reg T, metrics | pytest | `just test`, CI |
-| Property | Accounting invariants (INV-01, 02, 08, 10); Black-Scholes put–call parity and each Greek against a central difference; IV vs a scalar `brentq` reference where the mid pins the vol down, a solved vol repricing its mid everywhere else, and each lane solved as if alone (`tests/unit/pricing/`, DEC-89); MarketView as-of guard (INV-04); RIC round-trip (INV-11); every fetched contract answered or unanswered, never both; the loader's vectorized price quantizing equals `Price.from_dollars` (`test_load.py`); integer strike ladders (`test_discovery.py`); every session sits between its week-open and week-final sessions | hypothesis | CI |
-| Scenario | Engine end to end on a synthetic market: one scenario per exit, gate and edge case (§5) | pytest | CI |
+| Unit | Domain primitives (half-even quantizing, money arithmetic, `bar_end`, session bars; `tests/unit/domain/`), RIC grammar and OCC symbols (`tests/unit/data/test_ric.py`), the LSEG adapter and batched requests (`tests/unit/data/test_lseg_*.py`, `test_fetch.py`, §6), the calendar (`tests/unit/domain/test_calendar.py`, `tests/unit/config/test_calendar_file.py`, `tests/unit/data/test_tape_calendar.py`), the universe file, with its window planned on the shipped calendar (`tests/unit/config/test_universe_file.py`, DEC-86), increments, bands and the fetch plan (`tests/unit/data/test_discovery.py`), the probes (`tests/unit/data/test_probe.py`, §6), the cache and loader (`tests/unit/data/test_cache.py`, `test_load.py`, `test_files.py`: atomic writes, never overwriting, counts per contract, the data-manifest hash, a FakeProvider round trip; DEC-46, DEC-87), `pmcc fetch`'s plan, estimate, unit loop, resume and coverage summary (`tests/unit/data/test_pull.py`, `test_estimate.py`, `test_coverage.py`, and the fetch tests in `tests/unit/test_cli.py`; DEC-16, DEC-88), Black-Scholes, T and DTE, the IV solver's codes, measures and the chain pricer (`tests/unit/pricing/`: reference values computed with mpmath at 50 digits; DEC-24 to DEC-27, DEC-89), `Quote` (`tests/unit/domain/test_quotes.py`), MarketView's reads and point-in-time listing (`tests/unit/engine/test_market_view_reads.py`, DEC-32), fills (`tests/unit/engine/test_fills.py`), the runtime invariants and the closing spot (`tests/unit/engine/test_invariants.py`), events, the book, marks, Reg T and the ledger (`tests/unit/accounting/`, DEC-10), every baseline rule at its boundaries and the registry (`tests/unit/strategy/`, on the stub view `tests/fakes/view.py`), the synthetic market's builders (`tests/unit/fixtures/`), metrics | pytest | `just test`, CI |
+| Property | Accounting invariants (INV-01, 02, 08, 10) over random fills, expiries, assignments, covers and stale marks (`tests/property/test_accounting_invariants.py`); fills lie between mid and the far side (`test_fills.py`); Black-Scholes put–call parity and each Greek against a central difference; IV vs a scalar `brentq` reference where the mid pins the vol down, a solved vol repricing its mid everywhere else, and each lane solved as if alone (`tests/unit/pricing/`, DEC-89); MarketView's as-of guard (INV-04: every answer at `now` equals a market cut off at `now`, `tests/property/test_market_view.py`); RIC round-trip (INV-11); every fetched contract answered or unanswered, never both; the loader's vectorized price quantizing equals `Price.from_dollars` (`test_load.py`); integer strike ladders (`test_discovery.py`); every session sits between its week-open and week-final sessions | hypothesis | CI |
+| Scenario | Engine end to end on a synthetic market: one scenario per exit, gate and edge case (§5), `tests/scenario/test_scenario_*.py` over `harness.py`; the runtime invariants hold on every bar of each | pytest | CI |
 | Determinism | The same synthetic run twice gives byte-identical files (INV-13) | pytest | CI |
 | Architecture | Import boundaries (ARCHITECTURE §3.3), in `tests/architecture/test_imports.py`, with one planted violation per rule | pytest (AST) | CI |
 | Config | Rule IDs unique and complete; placeholders resolve; every param referenced; each shipped threshold is the spec's; names, gate conditions and exit actions read against the spec's tables, and the no-roll paragraph against its words, on every short exit (DEC-35); `extends` and `overrides`, kinds and their params, required rules, spec order and the config hash (`tests/unit/config/test_baseline_config.py`, `test_strategy_loader.py`, `test_rule_text.py`, `test_kinds.py`; DEC-90); each ablation differs from quant only in its layer (P4-03) | pytest | CI |
@@ -45,7 +45,7 @@ Numbering follows Spec › Invariant tests.
 | 04 | No decision reads data stamped after its decision time; MarketView raises | unit · property | `tests/property/test_market_view.py` |
 | 05 | Every short is covered: long strike ≤ short strike, long expiry ≥ short expiry, equal quantities | runtime · scenario · verify | `tests/scenario/`; `pmcc verify` |
 | 06 | Every short entry satisfied E-S5 at its decision bar | runtime · unit · verify | `tests/unit/strategy/test_constraint.py`; `pmcc verify` (E-S5 terms in the audit) |
-| 07 | No short call is open after its expiry session | runtime · scenario · verify | `tests/scenario/test_expiry.py`; `pmcc verify` |
+| 07 | No short call is open after its expiry session | runtime · scenario · verify | `tests/scenario/test_scenario_expiry.py`; `tests/unit/engine/test_invariants.py`; `pmcc verify` |
 | 08 | Available funds ≥ 0 at every entry decision | runtime · property · verify | property tests; `pmcc verify` (post-trade funds in the audit) |
 | 09 | Every blotter and gate-log row carries a valid rule ID from the config | runtime · config · verify | `tests/unit/config/` (`StrategyConfig.rule_ids`: spec IDs only, each once); `pmcc verify` |
 | 10 | Short qty = long qty whenever a short is open | runtime · property · verify | property tests; `pmcc verify` |
@@ -96,39 +96,44 @@ Every rule ID needs at least:
 
 ## 5. Synthetic market (`tests/fixtures/synthetic/`)
 
-A deterministic generator writes a dataset in the **cache format**: a parquet and a sidecar per unit, as `SymbolCache` writes them, since `load_symbol` reads the sidecars, never `manifest.json` (DEC-87). So the loader, pricing and engine are tested exactly as they run on real data.
+A deterministic generator (`market.py`, `generate(spec, root)`) writes a dataset in the **cache format**: a parquet and a sidecar per unit, written by `SymbolCache.write_unit`, since `load_symbol` reads the sidecars, never `manifest.json` (DEC-87). So the loader, pricing, MarketView and the engine are tested exactly as they run on real data. The same spec and seed write byte-identical files (P3-03, DEC-91).
 
 **Underlying**
 
-- An hourly tape from a seeded random walk.
-- A session calendar with a Monday holiday, a Friday holiday and a half-day.
-- Configurable drift and volatility.
+- An hourly tape from a seeded random walk (configurable drift and volatility), or a scripted path of knots (`SpotPath`). The stock quotes a cent either side of spot and trades at it.
+- The shipped calendar, so a window can hold a Monday holiday (Labor Day), a Friday holiday (Jul 3) and a half-day (Nov 27 2026).
+- A warm-up of 22 sessions before the window, for RV20.
 
 **Option chains**
 
-- Weekly and monthly calls, plus ATM puts, priced by Black-Scholes from a configurable IV surface.
-- The surface supports an event bump in the front week, for G-3.
+- Weekly calls (the prior week's open to the expiry), puts around the week-open spot, and monthly calls 90–280 days out, shaped like the fetch plan (ARCHITECTURE §6.3).
+- Priced by Black-Scholes from an `IvSurface`: a base, a weekly and a monthly level, and per-expiry overrides (the front-week event bump for G-3).
 
 **Market microstructure**
 
-- Bid/ask spreads as a % of mid, with configurable widening for deep ITM and long-dated contracts.
-- Missing quotes (holes).
-- Trade prints on a fraction of bars (mid plus noise).
+- Bid/ask spreads as a share of the price (`SpreadModel`, weekly and monthly), rounded out to whole cents. A bid under a cent is a zero bid: no valid quote.
+- Random holes (`hole_rate`), and trade prints on a fraction of bars.
+- Hooks that rewrite any contract-bar's quote or drop its row (`quote_hook`), and the stock's (`stock_hook`).
+- With `extended_hours`, a pre-market bar (ending 09:00) and a post-close bar each session, so tests can check that no read comes from them (DEC-06).
 
-**Scenario builders**
+**Scenario builders** (`scenarios.py`, `BUILDERS`)
 
-Each builder scripts the spot path and quotes to force one behaviour:
+Each builder scripts the spot path and quotes to force one behaviour, over Mon Aug 31 to Fri Sep 11 2026 unless it says otherwise. Weeklies trade at 40% IV and monthlies at 20%: at one IV for both, a 0.80-delta 180-DTE long carries more extrinsic than a 0.30-delta weekly's distance and premium, and G-2 would skip every week (DEC-91).
 
-- every exit rule
-- gates G-1…G-5
-- E-L4 underfunding
-- stale marks
-- negative available funds after X-S5
-- the half-day close
+- every exit rule: `premium_collapse` (X-S1), `rally_through_strike` (X-S2), `friday_within_buffer` (X-S3, and a delayed fill with `unquoted_at_check`), `quiet` (X-S4), `late_friday_surge` (X-S5 and its cover), `long_delta_drop` (X-L1); X-L2 and X-E1 run `quiet` with a higher `min_dte` (170, above the ~172-DTE long's 164 days at week 2) or an earlier window end;
+- gates G-1…G-5: `no_quote_monday`, `expensive_long`, and the quant gates' markets `event_week`, `rv_above_iv`, `tiny_premium`, whose engine scenarios join with their code (P4-02);
+- entry timing: `entry_retry` (E-L1), `first_bar_wide` (E-T1), `long_unquoted_at_open` (DEC-28's long check);
+- the freezes and the once-a-week long check: `first_bar_wide` with a rally (`short_frozen_then_rally`, `long_frozen_then_rally`, DEC-21) and `long_falls_after_check` (DEC-28);
+- the unfinished reset (`reset_reentry_wide`, DEC-22) and the stock without a quote at assignment (`surge_no_stock_quote`, DEC-91);
+- E-L4 underfunding, stale marks (`stale_long_marks`), and negative available funds after X-S5 (`late_friday_surge` with little cash);
+- the half-day close (`half_day_week`) and the Jul 3 week (`independence_day_week`);
+- a random market (`random_walk`) that must run clean through every invariant.
+
+X-S3, X-S4 and X-S5 run the baseline without X-S1 (A5's config), since on a flat path X-S1 takes the profit first. The session-scoped `synthetic` fixture (`store.py`) generates each market once per test run. Each builder has a smoke test (`tests/unit/fixtures/test_synthetic_market.py`).
 
 **Other uses**
 
-- The INV-13 determinism test.
+- The INV-13 determinism test (P3-08).
 - The P4 sample site, which runs on synthetic results under `data_source: synthetic` and therefore shows the banner.
 
 ## 6. FakeProvider
