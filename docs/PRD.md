@@ -76,7 +76,7 @@ Every row points to its source. "Verified by" names the invariant test (INV-nn),
 | FR-D4 | Chain discovery: weekly expiries are the last session of each week from the stock tape, whose trading days must match the NYSE holiday table (`configs/calendar.yaml`, 2025–2027) or the plan stops; monthly expiries are the third Friday (prior session if a holiday); strike increments are probed per symbol, expiry and region; bands follow the fetch plan. | Spec › Chain discovery; DEC-14, DEC-33, DEC-48, DEC-84 | `tests/unit/domain/test_calendar.py`, `tests/unit/config/test_calendar_file.py`, `tests/unit/data/test_tape_calendar.py`, `tests/unit/data/test_discovery.py` (P1-06) |
 | FR-D5 | Guess-and-check fails soft: a missing RIC returns an empty series and a log entry, never an exception. An outage aborts without writing anything. | Spec; LDG §4.3; DEC-49 | INV-12 |
 | FR-D6 | Cache: a parquet and a sidecar per fetch unit, plus a manifest (RIC, fetch time, row count, hash) per contract asked. Written whole or not at all, and never overwritten; a re-pull starts with moving the unit's files aside. The data-manifest hash ignores fetch times and the RIC form. Backtests read only the cache, and re-running never re-fetches. | Spec › Cache; DEC-46, DEC-87 | `test_cache.py`, `test_load.py`, `test_files.py` |
-| FR-D7 | The raw cache isn't committed unless LSEG terms allow it; derived results are committed. | Spec › Cache; DEC-05, DEC-56 | `.gitignore`; CI check |
+| FR-D7 | Derived results are committed, and so is the raw cache of each published symbol (NVDA's for now); other symbols' caches, probe reports and fetch logs stay local, and no hook rewrites the cache. | Spec › Cache; DEC-05, DEC-56 | `.gitignore`; `.pre-commit-config.yaml`; `tests/unit/test_repo_policy.py` |
 
 ### 6.2 Pricing
 
@@ -220,7 +220,7 @@ Every row points to its source. "Verified by" names the invariant test (INV-nn),
   - The data is hourly bars.
   - Expired contracts can't be found through the chain endpoint, so RICs are guessed and checked (LDG §4.1).
 - **Stack:** fixed by the spec, including its excluded technologies (backtesting frameworks, QuantLib, Docker, database servers, orchestration tools, ML).
-- **Data licensing:** the raw cache stays private by default (DEC-05).
+- **Data licensing:** the PO has accepted LSEG's terms for publishing the raw cache and every derived series (DEC-05).
 - **Team:** one developer plus a coding agent, over 14 days.
 
 **Modelling assumptions** (per the spec, published on Methodology)

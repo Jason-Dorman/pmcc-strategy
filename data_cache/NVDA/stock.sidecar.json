@@ -1,0 +1,59 @@
+{
+  "counts": {
+    "answered": 1,
+    "requested": 1,
+    "unanswered": 0
+  },
+  "entries": [
+    {
+      "fetched_at": "2026-09-29T01:54:25.772746+00:00",
+      "first_bar": "2026-02-13T00:00:00+00:00",
+      "form": null,
+      "instrument": "NVDA.O",
+      "last_bar": "2026-09-25T23:00:00+00:00",
+      "ric": "NVDA.O",
+      "rows": 2484,
+      "sha256": "b42aafdaef1023d5c1b5795e43e1bdbfa2e488a9826f3649898bb87d305e42db",
+      "status": "answered",
+      "unit": "stock"
+    }
+  ],
+  "errors": [],
+  "expiry": null,
+  "fields_returned": [
+    "ACVOL_UNS",
+    "ASK",
+    "BID",
+    "HIGH_1",
+    "LOW_1",
+    "NUM_MOVES",
+    "OPEN_PRC",
+    "TRDPRC_1"
+  ],
+  "file": "stock.parquet",
+  "file_sha256": "df12be57dc7ca8356f4d672b4943b5fc08ead1410e281d727b9dbff6523a9d75",
+  "format": 1,
+  "pulled_at": "2026-09-29T01:54:25.772746+00:00",
+  "request": {
+    "bands": [],
+    "end_exclusive": "2026-09-26",
+    "fields": [
+      "BID",
+      "ASK",
+      "TRDPRC_1",
+      "OPEN_PRC",
+      "HIGH_1",
+      "LOW_1",
+      "ACVOL_UNS",
+      "NUM_MOVES"
+    ],
+    "interval": "hourly",
+    "start": "2026-02-13",
+    "tz": "bar_start_utc is LSEG's stamp: the bar's start, in UTC (LDG §4.8). bar_end = bar_start + 1h, in America/New_York, is added at load (DEC-06)."
+  },
+  "ric_form_used": {},
+  "right": null,
+  "symbol": "NVDA",
+  "unanswered": {},
+  "unit": "stock"
+}

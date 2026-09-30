@@ -8,13 +8,20 @@ repos:
     rev: v6.0.0
     hooks:
       - id: check-yaml
+      # The raw cache is never rewritten, by a hook or anything else (DEC-05).
       - id: end-of-file-fixer
+        exclude: ^data_cache/
       - id: check-added-large-files
-        exclude: ^results/
+        exclude: ^(results|data_cache)/
       # A full run's result holds a ledger row per bar, about 0.5 MB for 26 weeks (DEC-92).
       - id: check-added-large-files
         name: check for added large files (results, 2 MB)
         files: ^results/
+        args: [--maxkb=2048]
+      # NVDA's largest cache files are a 1.1 MB chain and a 0.8 MB manifest (DEC-05).
+      - id: check-added-large-files
+        name: check for added large files (data cache, 2 MB)
+        files: ^data_cache/
         args: [--maxkb=2048]
       - id: detect-private-key
 

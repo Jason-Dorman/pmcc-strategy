@@ -28,9 +28,9 @@ Sep 25, 2026 · schedule from Spec › Build order · **due Fri Oct 9, 11:59 pm*
 | --- | --- | --- | --- |
 | P0 Foundations | Sat Sep 26 | `just check` green in Git Bash and in CI; credentials ignored; LSEG session opens from Git Bash | Done locally 2026-09-25; CI run for P0-07/08 pending the PO's push |
 | P1 Data layer and open items | Sat Sep 26 – Sun Sep 27 | NVDA's full chain cached; INV-11, INV-12 pass; window, r and identifiers recorded; universe fetch started | Done 2026-09-28 (P1 exit): P1-01 to P1-09 (window Mar 30 – Sep 25 2026, r = 0.0371, universe QQQ, NVDA, TSLA; cache and loader per DEC-46; `pmcc fetch` per DEC-88; NVDA's chain cached, near-money weekly mids 97.7%) |
-| P1-10 Universe fetch (background) | Sun Sep 27 – Sat Oct 3 | QQQ and TSLA cached with coverage summaries (NVDA at P1-09) | Estimates shown 2026-09-28 (QQQ 183–547 min, TSLA 98–293 min); the PO scheduled the pull overnight. Seen 2026-09-30: TSLA's pull stopped at 01:14 on Sep 29 with its 53 weekly units cached and none of its 9 monthlies (Oct 2026 – Jun 2027); QQQ not started. Re-running TSLA's fetch resumes at the first missing unit |
+| P1-10 Universe fetch (background) | Sun Sep 27 – Sat Oct 3 | QQQ and TSLA cached with coverage summaries (NVDA at P1-09) | Estimates shown 2026-09-28 (QQQ 183–547 min, TSLA 98–293 min); the PO scheduled the pull overnight. Seen 2026-09-30: TSLA's pull stopped at 01:14 on Sep 29 with its 53 weekly units cached and none of its 9 monthlies (Oct 2026 – Jun 2027); QQQ not started. Re-running TSLA's fetch resumes at the first missing unit. **Paused 2026-09-30** (PO, DEC-15): QQQ and TSLA set aside, NVDA perhaps the only symbol; more at the end if time allows |
 | P2 Pricing | Mon Sep 28 | IV solver matches the reference; EM, ATM IV, RV20 tested | Done 2026-09-28, as one commit (PO, DEC-59): Black-Scholes, T and DTE, the IV solver, measures and the chain pricer (DEC-24 to DEC-27 settled; DEC-89). NVDA prices in 1.4 s; IV failures 8.3%, mostly very deep ITM; DEC-26's missing-close rule is with the PO |
-| P3 Engine, accounting, baseline | Mon Sep 28 – Wed Sep 30 | **M1:** baseline blotter, ledger, NAV, Reg T for NVDA; INV-01–10 and 13 pass | In progress: P3-01 done 2026-09-29 (DEC-35, DEC-90); P3-02 to P3-07 done 2026-09-30 as one commit (DEC-91); P3-08 (`pmcc run`, DEC-50, DEC-92) done 2026-09-30; P3-09 (starting cash $10,000, provisional, from NVDA; DEC-30, DEC-93) done 2026-09-30; next P3-10 (baseline on NVDA, DEC-05) |
+| P3 Engine, accounting, baseline | Mon Sep 28 – Wed Sep 30 | **M1:** baseline blotter, ledger, NAV, Reg T for NVDA; INV-01–10 and 13 pass | Done 2026-09-30 (**M1**): P3-01 done 2026-09-29 (DEC-35, DEC-90); P3-02 to P3-07 as one commit (DEC-91); P3-08 (`pmcc run`, DEC-50, DEC-92); P3-09 (starting cash $10,000, provisional, from NVDA; DEC-30, DEC-93); P3-10 (NVDA's baseline, $10,000 to $13,672.50, 35 trades; hand-audited; NVDA's raw cache committed per DEC-05; DEC-94). Next P4-01 |
 | P4 Quant layer and site skeleton | Thu Oct 1 – Fri Oct 2 | **M2:** quant + A1–A5 on NVDA; Pages serves the skeleton from sample JSON; INV-14, 15 in CI | Not started |
 | P5 Universe batch and sensitivity | Sat Oct 3 – Sun Oct 4 | **M3:** all results JSON written and verified | Not started |
 | P6 Analytics | Mon Oct 5 – Tue Oct 6 | **M4:** every table and series in results JSON | Not started |
@@ -223,7 +223,7 @@ P8 release                                                                      
     - INV-11 and INV-12 pass
   - **P1 exit.**
   - Needs: P1-05, P1-08
-- [ ] **P1-10 · Universe fetch (background)** **[Workspace]**
+- [ ] **P1-10 · Universe fetch (background)** **[Workspace]** — paused 2026-09-30 (PO, DEC-15): taken up at the end if time allows; TSLA's partial cache stays local, uncommitted
   - Show the PO the estimate, fetch QQQ and TSLA, and re-run any failures.
   - Done when: all 3 (DEC-15) are cached with coverage summaries by **Sat Oct 3**, with any gaps recorded in DEC-08.
   - Needs: P1-09
@@ -307,7 +307,7 @@ P8 release                                                                      
   - Run `pmcc calibrate` on the symbols cached so far, and label the value provisional in `universe.yaml`.
   - Done when: calibration is reproducible and records its basis.
   - Needs: P3-08
-- [ ] **P3-10 · Baseline on NVDA** **[PO]**
+- [x] **P3-10 · Baseline on NVDA** **[PO]** — done 2026-09-30 (**M1**). The PO settled DEC-05: every derived output is public, the fill-assumption scatter's raw points included, and the raw cache is committed, NVDA's alone for now, with QQQ and TSLA set aside (P1-10 paused, DEC-15). `.gitignore` keeps `data_cache/NVDA/` (7.1 MB, 127 files) and ignores the rest; no hook rewrites the cache, which gets a 2 MB large-file limit. `results/NVDA/baseline_pmcc.json` was run from a clean tree at `de368fd` (`git_dirty: false`): $10,000 to $13,672.50 over 26 weeks, 35 trades (3 long buys, 2 X-L2 rolls, 15 shorts closed by X-S1 9 times and X-S2 6 times), G-2 skipping 11 weeks, lowest available funds $4,978.50. The runtime INV-01–10 held, and INV-13 held on real data (a second run, another hash seed, byte-identical but for the volatile fields). An independent script hand-audited 4 weeks (Mar 30, Apr 6, Apr 20, Jun 22) from the raw parquet: 122 checks, 0 discrepancies (DEC-94). The PO restated that every fill is at the mid and kept P5's friction runs as sensitivity. 13 new tests, 1,604 in the suite
   - Ask first: DEC-05, before real results go to the public repo.
   - Run on real data.
   - Hand-audit 3 weeks: blotter → ledger → raw quotes (TEST-STRATEGY §8).
@@ -381,7 +381,7 @@ P8 release                                                                      
   - Done when: a batch over 2 synthetic symbols writes all 48 run files plus the universe files, and exits non-zero when one run fails.
   - Needs: P5-02
 - [ ] **P5-04 · Full batch**
-  - Run the whole universe from a clean tree, then `pmcc verify`, then commit the results within the limits of DEC-05.
+  - Run the whole universe from a clean tree, then `pmcc verify`, then commit the results with each symbol's raw cache (DEC-05).
   - Done when: results JSON exists for every symbol and run.
   - **M3 (Sun Oct 4).**
   - Needs: P5-01, P5-03
@@ -401,7 +401,7 @@ P8 release                                                                      
 - [ ] **P6-04 · Greek attribution** (DEC-63, DEC-76) · *cut #3* — Needs: P6-03
 - [ ] **P6-05 · Bootstrap CIs** — per symbol and strategy, plus the pooled week-block bootstrap, seeded (DEC-61) — Needs: P6-01
 - [ ] **P6-06 · Robustness tables** — ablations; friction; timing dispersion (*cut #2*); the full parameter grid (*cut #1*) — Needs: P6-01
-- [ ] **P6-07 · Fill-assumption check** — DEC-64, published in the form DEC-05 allows — Needs: P5-03
+- [ ] **P6-07 · Fill-assumption check** — DEC-64, publishing the raw scatter points (DEC-05) — Needs: P5-03
 - [ ] **P6-08 · Suitability screen** — the spec's five point-in-time measures — Needs: P5-03
 - [ ] **P6-09 · Re-run, verify, export**
   - Re-run the batch with analytics, run `pmcc verify`, and commit.
@@ -476,7 +476,7 @@ The spec sets the order. Cut the next item only when its trigger fires, and mark
 | R-08 | A wrong bar convention hides look-ahead | Low | High | DEC-06 checks; MarketView keyed on `bar_end`. **P1-04:** start stamps and end-of-bar quotes confirmed on all 12 | P1-04 |
 | R-09 | Float nondeterminism breaks INV-13 | Med | Med | Integer money, explicit sorts, seeded RNG, canonical JSON | P3-08 |
 | R-10 | The schedule compresses | High | High | Cut list with triggers; parallel web track; M1 gate | status board |
-| R-11 | LSEG terms forbid publishing raw-derived series | Med | Med | DEC-05 asked at P3-10; binned scatter as the fallback | P3-10, P6-07 |
+| R-11 | LSEG terms forbid publishing raw-derived series | Med | Med | DEC-05 asked at P3-10; binned scatter as the fallback. **Retired at P3-10:** the PO accepted LSEG's terms for the raw cache and every derived series, raw scatter points included (DEC-05) | P3-10, P6-07 |
 | R-12 | pyright strict clashes with untyped libraries (lseg-data, scipy) | Med | Low | Local stubs; typed adapters; narrow ignores, each with a reason | P0-03 |
 | R-13 | Results JSON is too heavy for the site | Low | Med | Detail levels (DEC-54); virtualized tables; per-run lazy loading | P4-05 |
 | R-14 | Quant E-L3 favours wide-spread contracts, so E-T1 keeps failing | Med | Med | Report retry counts; no tuning after the first run (spec) | P4-04 |

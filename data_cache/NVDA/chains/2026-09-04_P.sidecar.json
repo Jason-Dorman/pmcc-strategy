@@ -1,0 +1,171 @@
+{
+  "counts": {
+    "answered": 8,
+    "requested": 8,
+    "unanswered": 0
+  },
+  "entries": [
+    {
+      "fetched_at": "2026-09-29T02:14:40.919167+00:00",
+      "first_bar": "2026-08-31T13:00:00+00:00",
+      "form": "expired",
+      "instrument": "NVDA  260904P00210000",
+      "last_bar": "2026-08-31T20:00:00+00:00",
+      "ric": "NVDAU042621000.U^I26",
+      "rows": 8,
+      "sha256": "6895bed9dcdac34b13ec9921903397f54a3592527c059e7f3b22893279d31624",
+      "status": "answered",
+      "unit": "chains/2026-09-04_P"
+    },
+    {
+      "fetched_at": "2026-09-29T02:14:40.919167+00:00",
+      "first_bar": "2026-08-31T13:00:00+00:00",
+      "form": "expired",
+      "instrument": "NVDA  260904P00212500",
+      "last_bar": "2026-08-31T20:00:00+00:00",
+      "ric": "NVDAU042621250.U^I26",
+      "rows": 8,
+      "sha256": "62c39aa41e87daaa6afb7b30f94577a1980accdf7d2cf3d9662ad0cef7b4fb93",
+      "status": "answered",
+      "unit": "chains/2026-09-04_P"
+    },
+    {
+      "fetched_at": "2026-09-29T02:14:40.919167+00:00",
+      "first_bar": "2026-08-31T13:00:00+00:00",
+      "form": "expired",
+      "instrument": "NVDA  260904P00215000",
+      "last_bar": "2026-08-31T20:00:00+00:00",
+      "ric": "NVDAU042621500.U^I26",
+      "rows": 8,
+      "sha256": "b8d71fc84581596a5ead933439f4760d02c069ec5fad49924c16276fe472d629",
+      "status": "answered",
+      "unit": "chains/2026-09-04_P"
+    },
+    {
+      "fetched_at": "2026-09-29T02:14:40.919167+00:00",
+      "first_bar": "2026-08-31T13:00:00+00:00",
+      "form": "expired",
+      "instrument": "NVDA  260904P00217500",
+      "last_bar": "2026-08-31T20:00:00+00:00",
+      "ric": "NVDAU042621750.U^I26",
+      "rows": 8,
+      "sha256": "18a089443ec466f36e53e28f252d3734a6b142b15e1fc32317008e588b278e29",
+      "status": "answered",
+      "unit": "chains/2026-09-04_P"
+    },
+    {
+      "fetched_at": "2026-09-29T02:14:40.919167+00:00",
+      "first_bar": "2026-08-31T13:00:00+00:00",
+      "form": "expired",
+      "instrument": "NVDA  260904P00220000",
+      "last_bar": "2026-08-31T20:00:00+00:00",
+      "ric": "NVDAU042622000.U^I26",
+      "rows": 8,
+      "sha256": "28711fc70bf9b631cdc307d2ccd09557fb2aa345cfafb49102ae1f50f022d735",
+      "status": "answered",
+      "unit": "chains/2026-09-04_P"
+    },
+    {
+      "fetched_at": "2026-09-29T02:14:40.919167+00:00",
+      "first_bar": "2026-08-31T13:00:00+00:00",
+      "form": "expired",
+      "instrument": "NVDA  260904P00222500",
+      "last_bar": "2026-08-31T20:00:00+00:00",
+      "ric": "NVDAU042622250.U^I26",
+      "rows": 8,
+      "sha256": "de5a8bde8ca5239069f4f83d33c0b57a0037b353377e03c2e2adf5da66604a3b",
+      "status": "answered",
+      "unit": "chains/2026-09-04_P"
+    },
+    {
+      "fetched_at": "2026-09-29T02:14:40.919167+00:00",
+      "first_bar": "2026-08-31T13:00:00+00:00",
+      "form": "expired",
+      "instrument": "NVDA  260904P00225000",
+      "last_bar": "2026-08-31T20:00:00+00:00",
+      "ric": "NVDAU042622500.U^I26",
+      "rows": 8,
+      "sha256": "206b48fc4794eb8f40808cc67bda93906cccf3647ea3be1ec4d39e82ec12aea1",
+      "status": "answered",
+      "unit": "chains/2026-09-04_P"
+    },
+    {
+      "fetched_at": "2026-09-29T02:14:40.919167+00:00",
+      "first_bar": "2026-08-31T13:00:00+00:00",
+      "form": "expired",
+      "instrument": "NVDA  260904P00227500",
+      "last_bar": "2026-08-31T20:00:00+00:00",
+      "ric": "NVDAU042622750.U^I26",
+      "rows": 8,
+      "sha256": "6baed52fd45e4f41f0bf2097da1ab07933664b5b221d7688ce683a924f820a9a",
+      "status": "answered",
+      "unit": "chains/2026-09-04_P"
+    }
+  ],
+  "errors": [],
+  "expiry": "2026-09-04",
+  "fields_returned": [
+    "ACVOL_UNS",
+    "ASK",
+    "BID",
+    "HIGH_1",
+    "LOW_1",
+    "NUM_MOVES",
+    "OPEN_PRC",
+    "TRDPRC_1"
+  ],
+  "file": "chains/2026-09-04_P.parquet",
+  "file_sha256": "ff370878472afd1d4b7654e10158a559ef1facf1048625b21ec7cc7aa293f108",
+  "format": 1,
+  "pulled_at": "2026-09-29T02:14:40.919167+00:00",
+  "request": {
+    "bands": [
+      {
+        "high": "221.3000",
+        "increment": {
+          "anchors_cents": [
+            22000
+          ],
+          "answered_cents": [
+            22000,
+            22250,
+            22500
+          ],
+          "session": "2026-08-31",
+          "source": "measured"
+        },
+        "low": "215.8241",
+        "region": "near_money",
+        "step_cents": 250
+      }
+    ],
+    "end_exclusive": "2026-09-01",
+    "fields": [
+      "BID",
+      "ASK",
+      "TRDPRC_1",
+      "OPEN_PRC",
+      "HIGH_1",
+      "LOW_1",
+      "ACVOL_UNS",
+      "NUM_MOVES"
+    ],
+    "interval": "hourly",
+    "start": "2026-08-31",
+    "tz": "bar_start_utc is LSEG's stamp: the bar's start, in UTC (LDG §4.8). bar_end = bar_start + 1h, in America/New_York, is added at load (DEC-06)."
+  },
+  "ric_form_used": {
+    "NVDAU042621000.U^I26": "expired",
+    "NVDAU042621250.U^I26": "expired",
+    "NVDAU042621500.U^I26": "expired",
+    "NVDAU042621750.U^I26": "expired",
+    "NVDAU042622000.U^I26": "expired",
+    "NVDAU042622250.U^I26": "expired",
+    "NVDAU042622500.U^I26": "expired",
+    "NVDAU042622750.U^I26": "expired"
+  },
+  "right": "P",
+  "symbol": "NVDA",
+  "unanswered": {},
+  "unit": "chains/2026-09-04_P"
+}

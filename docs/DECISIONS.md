@@ -28,10 +28,10 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-02 | Fetch environment | SETTLED (PO) | — |
 | DEC-03 | Light theme | ASK | P4-06 |
 | DEC-04 | Chart colour roles | ASK | P7-01 |
-| DEC-05 | LSEG terms: raw cache and derived series | ASK | P3-10 |
+| DEC-05 | LSEG terms: raw cache and derived series | SETTLED (PO) | — |
 | DEC-06 | Bar timestamps, decision time, session bars | SETTLED (PO) | — |
 | DEC-07 | Backtest window | SETTLED (PO) | — |
-| DEC-08 | Long-dated coverage | VERIFY: NVDA measured (P1-09); QQQ, TSLA at P1-10 | P1-10 |
+| DEC-08 | Long-dated coverage | VERIFY: NVDA measured (P1-09); QQQ, TSLA at P1-10 | P1-10 (paused, DEC-15) |
 | DEC-09 | Live-contract RIC form | SETTLED (spec, probed) | — |
 | DEC-10 | Reg T and FINRA 4210 citations | SETTLED (PO): hedged short stock after X-S5 · citations found | quotes by P7-04 |
 | DEC-11 | Risk-free rate | SETTLED (PO) | — |
@@ -72,7 +72,7 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-53 | Composition over flags | ENG | — |
 | DEC-54 | Result detail levels and report sections | ASK | P4-05 |
 | DEC-55 | Dividends | SETTLED (spec) | — |
-| DEC-56 | Raw cache not committed | SETTLED (spec) | revisit with DEC-05 |
+| DEC-56 | Raw cache: NVDA's committed, the rest local | SETTLED (PO, DEC-05) | — |
 | DEC-57 | Reference files stay in place | ENG | — |
 | DEC-58 | Windows and Ubuntu parity | ENG | — |
 | DEC-59 | Git and GitHub belong to the PO | SETTLED (PO) | — |
@@ -105,6 +105,7 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-91 | MarketView, synthetic market, accounting, fills, rules, engine loop | ENG · 3 edge cases put to the PO | handover 2026-09-30 |
 | DEC-92 | Results: models, canonical JSON, the manifest and `pmcc run` | ENG | — |
 | DEC-93 | `pmcc calibrate`: the starting-cash block and its two passes | ENG | — |
+| DEC-94 | The baseline on NVDA: the run, the hand audit and the committed cache | ENG | — |
 
 ---
 
@@ -168,12 +169,21 @@ Whichever is chosen becomes named tokens (`--long-leg`, `--short-leg`, `--strate
 **Outcome:** —
 
 ### DEC-05 — LSEG terms and what gets published
-**Status:** ASK · **Ask at:** P3-10, before real results are pushed to the public repo · **Affects:** P3-10, P5-04, P6-07, `.gitignore`
+**Status:** SETTLED · **Basis:** PO, 2026-09-30, at P3-10 · **Affects:** P3-10, P5-04, P6-07, `.gitignore`, `.pre-commit-config.yaml`; DEC-15, DEC-56, DEC-64, DEC-94
 
 - **Spec open item:** may the raw cache be committed to a public repo? The default is no: commit derived results only (DEC-56).
 - **Extension:** some derived outputs embed raw values. Ledger marks and blotter limits are mids of held contracts, and the fill-assumption scatter publishes every TRDPRC_1/mid pair. Confirm these may be public.
 - **Recommendation if they may not:** the scatter publishes binned points plus the fit statistics, while marks and limits stay, because they are the backtest's own valuation.
-- **Outcome:** —
+- **Outcome:** 2026-09-30 — PO:
+  - **Derived outputs: all public.** Ledger marks, blotter limits and the audit's bid and ask are published as they are, and P6-07's fill-assumption scatter publishes every TRDPRC_1/mid pair, not bins.
+  - **The raw cache: committed.** The PO isn't concerned about LSEG's terms; other projects keep such data in git. Asked what keeping it private risks, the PO was told:
+    - **Loss.** LSEG's hourly history is a rolling window (DEC-07), and NVDA's probe on Sep 27 reached back only to Dec 22 2025, so Mar 30 2026 could fall out of reach around late December 2026. The laptop's `data_cache/` was the only copy.
+    - **Reproducibility.** Without the cache, no one else (a grader, CI, another machine) can run `just reproduce` or re-check INV-13 on real data.
+    - **The cost of committing:** NVDA's cache is 7.1 MB in 127 files, the largest 1.1 MB, so no Git LFS.
+  - **NVDA only, for now.** Asked how to treat the other symbols' files, since an untracked cache file makes a run's tree dirty (DEC-50), the PO chose NVDA's cache alone and set the rest aside: NVDA may be the only symbol, and more are added at the end if time allows (DEC-15). `.gitignore` ignores `data_cache/*` except `data_cache/NVDA/`, so TSLA's partial cache and the probe reports stay on disk, untouched and uncommitted. Adding a symbol later adds its directory to that exception.
+  - **The window stays.** The PO added that a shorter backtest, about 3 months, would do if reaching back were a problem. With the cache committed it isn't, so DEC-07's 26 weeks stand.
+  - **Guards:** `end-of-file-fixer` skips `data_cache/`, so no hook rewrites the cache, and `data_cache/` gets its own 2 MB large-file limit, like `results/` (DEC-92). `tests/unit/test_repo_policy.py` pins both, and which paths git ignores (DEC-94).
+  - Spec › Cache, its layout line and the open item now cite this entry.
 
 ## B. Facts to verify in P1
 
@@ -418,7 +428,7 @@ The results are reported to the PO at P1-05. A result that contradicts the spec 
 
 - **Question (raised by the PO after P1-05):** is the 12-symbol universe too big, for GitHub Pages or for the timeline?
 - **The assessment given:**
-  - **Pages:** not a limit. The site holds results JSON only, about 1 MB per symbol by estimate (~875 hourly ledger rows per full run); Pages allows 1 GB. The raw cache never leaves the machine (DEC-56).
+  - **Pages:** not a limit. The site holds results JSON only, about 1 MB per symbol by estimate (~875 hourly ledger rows per full run); Pages allows 1 GB. The raw cache never leaves the machine (DEC-56; since DEC-05, NVDA's is committed to the repo, not the site).
   - **Timeline:** the code is the same for 1 symbol or 12, so each symbol costs fetch time (roughly 40 min, with Workspace signed in), a coverage review, and its own data quirks. The probes put 7 of the 12 long legs over E-T1's 3% spread (DEC-08), so several could come back with few or no trades. The build is also about a day behind.
   - Options offered: all 12; 3 (QQQ, NVDA, TSLA, recommended: the tightest long-leg spreads, and realized volatility of about 20%, 40% and 55%); 5 (adding META, AAPL); 1–2 (NVDA, perhaps QQQ).
 - **Outcome:** 2026-09-28 — PO: "ok lets do qqq, nvda, tsla".
@@ -426,6 +436,7 @@ The results are reported to the PO at P1-05. A result that contradicts the spec 
   - **What goes:** the diversifying drivers (financials, Treasuries, energy). SPY, IWM and XLE's unprobed `.P` RICs (DEC-13), XLE's halved strikes (DEC-12) and QQQ's dividend-reduced strikes remain facts about the probes; only QQQ's still reaches the fetch.
   - **What stays:** pooled statistics across three symbols (DEC-61), the Universe page and the suitability screen, now over three. The cut list's universe cut (#4) is taken early.
   - **Fetch:** roughly 2–2.5 h for the three over the 26-week window (ARCHITECTURE §6.3), before DEC-48's wider long bands.
+- **Update:** 2026-09-30 — PO, at P3-10 (DEC-05): QQQ and TSLA are set aside for now, and the PO leans towards NVDA as the only symbol. More symbols are added at the end if the build is done and time allows. P1-10 is paused: TSLA's partial cache stays on disk, uncommitted, and QQQ isn't fetched. `configs/universe.yaml` still lists the three; whether it shrinks is settled at P5-01, before the batch needs every symbol's cache.
 
 ### DEC-16 — Fetch coverage summary
 **Status:** SETTLED · **Basis:** PO, 2026-09-28 (asked at P1-08, and after its review; IV failures built at P2-04) · **Affects:** P1-08, P1-09, P1-10, P2-04, ARCHITECTURE §6.1
@@ -859,9 +870,10 @@ INV-14 and INV-15 run in the web job.
 - The Methodology page states q = 0, notes that early exercise ahead of ex-dividend dates isn't modelled, and names which universe symbols pay dividends (public information, no data pull).
 
 ### DEC-56 — Raw cache not committed
-**Status:** SETTLED · **Basis:** Spec › Cache (the default), until DEC-05 is answered
+**Status:** SETTLED · **Basis:** Spec › Cache (the default) until 2026-09-30; since then the PO's answer to DEC-05
 
-- This is the spec's default, and it supersedes LDG §5 ("commit the data").
+- This was the spec's default, and it superseded LDG §5 ("commit the data").
+- **Since DEC-05 (PO, 2026-09-30):** NVDA's raw cache is committed. Other symbols' caches, the probe reports and the fetch logs stay local.
 - LDG's other cache rules still apply unchanged: never overwrite, keep a sidecar, write only after success, and check the counts.
 
 ### DEC-57 — Reference files stay in place
@@ -1580,6 +1592,28 @@ Development runs in Git Bash on Windows (DEC-02) and CI runs on Ubuntu. Both mus
     - A partial cache fails with a misleading engine error. The PO deferred this to P5-01.
   - Found while fixing: calibrate refused a variant config only after running everything. It now refuses one up front.
   - 21 planted mutants, one per finding and per new behaviour, are all killed.
+
+### DEC-94 — The baseline on NVDA: the run, the hand audit and the committed cache
+**Status:** ENG · **Affects:** P3-10, P4-04, P5-01, P5-04; DEC-05, DEC-15, DEC-50, DEC-92, DEC-93
+
+- **The run:** `just run NVDA configs/baseline_pmcc.yaml` from a clean tree at `de368fd`, before any P3-10 edit, so the result records `git_dirty: false`; about 9 s. `results/NVDA/baseline_pmcc.json` is 430,751 bytes, and its `data_manifest_hash` (`5ada2fde…`) is the committed cache's.
+  - 35 trades over 875 bars and 26 weeks. NAV goes from $10,000 (provisional, DEC-30) to $13,672.50, ranging $9,890.00 (Mar 30, 16:00) to $15,489.00 (May 14, 15:00). Lowest available funds: $4,978.50 on Jun 8 at 14:00; no bar below zero, no stale mark, no ledger flag.
+  - **Longs:** 3 E-L1 buys and 2 X-L2 rolls: the Sep 18 2026 $135 call (Mar 30), the Dec 18 2026 $174 call (Jun 22) and the Mar 19 2027 $185 call (Sep 21).
+  - **Shorts:** 15 sold (E-S1). 9 closed by X-S1 and 6 by X-S2; none reached the Friday check, expired or was assigned. Net, the short leg lost $490.00, so the gain is the long's.
+  - **G-2 skipped 11 of 26 weeks,** including every week a long was bought (Mar 30, Jun 22, Sep 21), where the new long's debit exceeds the strike gap: all 7 from Jun 22 to Aug 3, and Mar 30, Aug 24, Sep 14 and Sep 21. DEC-91 predicted many G-2 weeks on real data. G-1 never fired.
+- **The hand audit (TEST-STRATEGY §8):** a script outside the repo re-derived four weeks from the raw parquet with polars and its own Black-Scholes (ACT/365 to the 16:00 close, q = 0, r = 0.0371, spot = the bar's TRDPRC_1 per DEC-23), sharing no code with `pmcc`. 122 checks, 0 discrepancies:
+  - **Mar 30:** E-L1 at 10:00. E-T1's 2.5% spread passes on the session's first bar. E-L2 picks Sep 18 (172 DTE; Oct 16 is 200). E-L3 picks $135 at δ 0.796 (next, $130 at 0.822). The fill $41.425 = (40.90 + 41.95) / 2. Then G-2: the $170 short (δ 0.307, the nearest 0.30) gives a strike gap of $35.00 against a debit of $41.425 − $1.325 = $40.10, so it fires.
+  - **Apr 6:** E-S1 sells the Apr 10 $180 at $1.41 (a 5.7% spread; E-S5's gap $45.00 > $40.015). Every bar to Wed 10:00 has δ ≤ 0.60 and mid > 25% of the credit; at Wed 10:00 δ = 0.689, and X-S2 buys it back at $3.875.
+  - **Apr 20:** E-S1 sells the Apr 24 $205 at $1.26. Nothing fires until Thu 14:00, when the mid is $0.165 ≤ $0.315; X-S1 buys it back.
+  - **Jun 22:** X-L2 at 88 DTE (95 on Jun 15). It sells the $135 at $80.05, and E-L1 buys the Dec 18 (179 DTE) $174 at δ 0.801 for $51.25, with funds after of $8,195. G-2 fires on the $217.50 short: a gap of $43.50 against a debit of $49.32.
+  - **Each fill:** the RIC is the cache's, the audit's bid and ask are the raw quote in $0.0001 units, and cash moves by fill × 100.
+  - **Each ledger row checked:** cash, NAV = cash + long MV − short MV, IM = the long's MV, and available funds = NAV − IM (Spec › Reg T). All 137 marks traced in those weeks equal the raw mid.
+  - The script's first pass took spot as the stock's mid and flagged 3 spots; DEC-23 defines spot as TRDPRC_1, which the engine uses. That was the script's error.
+- **INV-01–10 and 13:** the runtime invariants run on every bar, and both runs finished. INV-13 on real data: a second run with `PYTHONHASHSEED=12345` is byte-identical once `drop_volatile` drops `run_timestamp` and `git_sha`.
+- **The PO restated that every fill is at the mid:** the headline runs are at `spread_capture` 0, and the audit checks each fill against the raw mid. Asked whether P5's friction runs (0.25, 0.50) stay, the PO kept them as sensitivity only. Spec › Fill model is unchanged.
+- **What git ignores (DEC-05):** `data_cache/*` except `data_cache/NVDA/`, then `logs/`. So TSLA's partial cache and the probe reports stay on disk and out of git. As ignored files, they don't make a run dirty (DEC-50). Adding a symbol later is one more `!data_cache/{SYM}/` line, and until it's committed, its fetch makes the tree dirty, as it should.
+- **Hooks:** `end-of-file-fixer` skips `data_cache/`, since no tool may rewrite the cache. `data_cache/` has its own `check-added-large-files` entry at 2 MB, like `results/`, and the default 500 KB entry skips both. NVDA's largest files are the Dec 18 chain (1.1 MB) and the manifest (0.8 MB). The cache's JSON has no CR bytes, and `*.parquet` is binary, so a Windows checkout reproduces the hashed bytes.
+- **Tests (13 new):** `tests/unit/test_repo_policy.py` asks `git check-ignore --no-index`, which reads the patterns only, whether NVDA's cache is kept and whether other symbols, probe reports, a look-alike sibling (`data_cache/NVDA.moved/`), logs and credentials are ignored. Units moved aside under `data_cache/NVDA/superseded/` (DEC-46) are committed, as the record. It also checks that results are kept and parses `.pre-commit-config.yaml` for the two hook rules.
 
 ## E. Analytics definitions
 

@@ -40,7 +40,7 @@ pmcc/
   export/      results JSON + JSON Schema from pydantic result models, run manifest
   cli.py       typer entry point
 configs/       baseline_pmcc.yaml, quant_pmcc.yaml, ablations/, universe.yaml
-data_cache/    parquet + manifest (not committed if LSEG terms forbid)
+data_cache/    parquet + manifest (NVDA's committed; DEC-05)
 results/       per-symbol, per-strategy JSON (committed)
 tests/         pytest + hypothesis invariant tests
 web/           Vite + React + TypeScript frontend
@@ -111,7 +111,7 @@ All LSEG access happens locally through `pmcc fetch`; backtests read only the pa
 **Cache**
 
 - Parquet per fetch unit (the stock tape, and each expiry's calls or puts), each with a sidecar, plus a manifest with RIC, fetch time, row count, and hash. The data-manifest hash ignores fetch times and which RIC form answered, and a unit is re-pulled only after its files are moved aside (DEC-46).
-- Re-running a backtest never re-fetches. Commit derived results; commit raw data only if LSEG terms allow.
+- Re-running a backtest never re-fetches. Commit derived results, and commit the raw cache of each symbol in the published results, so anyone can re-run them (DEC-05; NVDA's for now).
 
 ## Conventions
 
@@ -406,4 +406,4 @@ Resolve these by Sep 27; each one affects every fill or the backtest window.
 - [x] **Live-contract RICs.** Confirm that long legs still listed at fetch time resolve without the caret suffix. *Resolved in DEC-09: confirmed on all 12 symbols.*
 - [ ] **Reg T text.** Confirm the long-option loan value (≤ 9 months: none) and the covered-diagonal treatment against the Reg T and FINRA 4210 text, and cite it on the Methodology page. *DEC-10: both confirmed and cited. The PO settled the short stock after X-S5 on Sep 29 (the hedged requirement, now in the NAV and Reg T table); the quotes go on Methodology at P7-04 (Wed Oct 7).*
 - [x] **Risk-free rate.** Choose the source and value of r, and state it on the site. *Resolved in DEC-11: FRED DGS3MO, 3.73% on Mar 27 2026, so r = 0.0371.*
-- [ ] **LSEG terms.** Confirm whether raw cached data may be committed to a public repo; default to committing derived results only. *DEC-05: asked at P3-10 (Wed Sep 30), before real results go to the public repo.*
+- [x] **LSEG terms.** Confirm whether raw cached data may be committed to a public repo; default to committing derived results only. *Resolved in DEC-05 (PO, Sep 30): the raw cache is committed (NVDA's for now), and every derived output is public, the fill-assumption scatter's raw points included.*

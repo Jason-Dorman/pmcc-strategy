@@ -1,8 +1,10 @@
 # Credentials: never commit, print, or copy (LSEG-DATA-GUIDE §1)
 lseg-data.config.json
 
-# Raw LSEG cache and fetch logs: not committed unless LSEG terms allow (Spec › Cache; DEC-05, DEC-56)
-data_cache/
+# Raw LSEG cache: NVDA's is committed (PO, DEC-05). Other symbols, probe reports and fetch logs
+# stay local until the PO adds a symbol
+data_cache/*
+!data_cache/NVDA/
 logs/
 
 # Python

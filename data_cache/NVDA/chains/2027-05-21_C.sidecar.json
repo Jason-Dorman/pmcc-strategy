@@ -1,0 +1,1394 @@
+{
+  "counts": {
+    "answered": 0,
+    "requested": 39,
+    "unanswered": 39
+  },
+  "entries": [
+    {
+      "fetched_at": "2026-09-29T02:33:56.292995+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  270521C00055000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2027-05-21_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:33:56.292995+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  270521C00060000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2027-05-21_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:33:56.292995+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  270521C00065000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2027-05-21_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:33:56.292995+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  270521C00070000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2027-05-21_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:33:56.292995+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  270521C00075000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2027-05-21_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:33:56.292995+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  270521C00080000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2027-05-21_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:33:56.292995+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  270521C00085000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2027-05-21_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:33:56.292995+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  270521C00090000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2027-05-21_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:33:56.292995+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  270521C00095000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2027-05-21_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:33:56.292995+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  270521C00100000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2027-05-21_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:33:56.292995+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  270521C00105000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2027-05-21_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:33:56.292995+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  270521C00110000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2027-05-21_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:33:56.292995+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  270521C00115000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2027-05-21_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:33:56.292995+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  270521C00120000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2027-05-21_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:33:56.292995+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  270521C00125000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2027-05-21_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:33:56.292995+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  270521C00130000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2027-05-21_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:33:56.292995+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  270521C00135000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2027-05-21_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:33:56.292995+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  270521C00140000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2027-05-21_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:33:56.292995+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  270521C00145000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2027-05-21_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:33:56.292995+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  270521C00150000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2027-05-21_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:33:56.292995+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  270521C00155000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2027-05-21_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:33:56.292995+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  270521C00160000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2027-05-21_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:33:56.292995+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  270521C00165000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2027-05-21_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:33:56.292995+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  270521C00170000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2027-05-21_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:33:56.292995+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  270521C00175000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2027-05-21_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:33:56.292995+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  270521C00180000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2027-05-21_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:33:56.292995+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  270521C00185000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2027-05-21_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:33:56.292995+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  270521C00190000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2027-05-21_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:33:56.292995+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  270521C00195000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2027-05-21_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:33:56.292995+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  270521C00200000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2027-05-21_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:33:56.292995+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  270521C00205000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2027-05-21_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:33:56.292995+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  270521C00210000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2027-05-21_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:33:56.292995+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  270521C00215000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2027-05-21_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:33:56.292995+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  270521C00220000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2027-05-21_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:33:56.292995+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  270521C00225000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2027-05-21_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:33:56.292995+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  270521C00230000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2027-05-21_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:33:56.292995+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  270521C00235000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2027-05-21_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:33:56.292995+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  270521C00240000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2027-05-21_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:33:56.292995+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  270521C00245000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2027-05-21_C"
+    }
+  ],
+  "errors": [
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212705500)",
+      "rics": [
+        "NVDAE212705500.U",
+        "NVDAE212706000.U",
+        "NVDAE212706500.U",
+        "NVDAE212707000.U",
+        "NVDAE212707500.U",
+        "NVDAE212708000.U",
+        "NVDAE212708500.U",
+        "NVDAE212709000.U",
+        "NVDAE212709500.U",
+        "NVDAE212710000.U",
+        "NVDAE212710500.U",
+        "NVDAE212711000.U",
+        "NVDAE212711500.U",
+        "NVDAE212712000.U",
+        "NVDAE212712500.U",
+        "NVDAE212713000.U",
+        "NVDAE212713500.U",
+        "NVDAE212714000.U",
+        "NVDAE212714500.U",
+        "NVDAE212715000.U",
+        "NVDAE212715500.U",
+        "NVDAE212716000.U",
+        "NVDAE212716500.U",
+        "NVDAE212717000.U",
+        "NVDAE212717500.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212705500)",
+      "rics": [
+        "NVDAE212705500.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212706000)",
+      "rics": [
+        "NVDAE212706000.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212706500)",
+      "rics": [
+        "NVDAE212706500.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212707000)",
+      "rics": [
+        "NVDAE212707000.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212707500)",
+      "rics": [
+        "NVDAE212707500.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212708000)",
+      "rics": [
+        "NVDAE212708000.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212708500)",
+      "rics": [
+        "NVDAE212708500.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212709000)",
+      "rics": [
+        "NVDAE212709000.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212709500)",
+      "rics": [
+        "NVDAE212709500.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212710000)",
+      "rics": [
+        "NVDAE212710000.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212710500)",
+      "rics": [
+        "NVDAE212710500.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212711000)",
+      "rics": [
+        "NVDAE212711000.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212711500)",
+      "rics": [
+        "NVDAE212711500.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212712000)",
+      "rics": [
+        "NVDAE212712000.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212712500)",
+      "rics": [
+        "NVDAE212712500.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212713000)",
+      "rics": [
+        "NVDAE212713000.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212713500)",
+      "rics": [
+        "NVDAE212713500.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212714000)",
+      "rics": [
+        "NVDAE212714000.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212714500)",
+      "rics": [
+        "NVDAE212714500.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212715000)",
+      "rics": [
+        "NVDAE212715000.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212715500)",
+      "rics": [
+        "NVDAE212715500.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212716000)",
+      "rics": [
+        "NVDAE212716000.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212716500)",
+      "rics": [
+        "NVDAE212716500.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212717000)",
+      "rics": [
+        "NVDAE212717000.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212717500)",
+      "rics": [
+        "NVDAE212717500.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212718000)",
+      "rics": [
+        "NVDAE212718000.U",
+        "NVDAE212718500.U",
+        "NVDAE212719000.U",
+        "NVDAE212719500.U",
+        "NVDAE212720000.U",
+        "NVDAE212720500.U",
+        "NVDAE212721000.U",
+        "NVDAE212721500.U",
+        "NVDAE212722000.U",
+        "NVDAE212722500.U",
+        "NVDAE212723000.U",
+        "NVDAE212723500.U",
+        "NVDAE212724000.U",
+        "NVDAE212724500.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212718000)",
+      "rics": [
+        "NVDAE212718000.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212718500)",
+      "rics": [
+        "NVDAE212718500.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212719000)",
+      "rics": [
+        "NVDAE212719000.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212719500)",
+      "rics": [
+        "NVDAE212719500.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212720000)",
+      "rics": [
+        "NVDAE212720000.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212720500)",
+      "rics": [
+        "NVDAE212720500.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212721000)",
+      "rics": [
+        "NVDAE212721000.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212721500)",
+      "rics": [
+        "NVDAE212721500.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212722000)",
+      "rics": [
+        "NVDAE212722000.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212722500)",
+      "rics": [
+        "NVDAE212722500.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212723000)",
+      "rics": [
+        "NVDAE212723000.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212723500)",
+      "rics": [
+        "NVDAE212723500.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212724000)",
+      "rics": [
+        "NVDAE212724000.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212724500)",
+      "rics": [
+        "NVDAE212724500.U"
+      ]
+    }
+  ],
+  "expiry": "2027-05-21",
+  "fields_returned": [],
+  "file": "chains/2027-05-21_C.parquet",
+  "file_sha256": "e052a81f316648200831333f016bb0459ba1f44269e3d985dd0178294268929c",
+  "format": 1,
+  "pulled_at": "2026-09-29T02:33:56.292995+00:00",
+  "request": {
+    "bands": [
+      {
+        "high": "103.5732",
+        "increment": {
+          "anchors_cents": [
+            9000,
+            8000,
+            10000
+          ],
+          "answered_cents": [],
+          "session": "2026-09-25",
+          "source": "probe_report"
+        },
+        "low": "68.7953",
+        "region": "deep_itm",
+        "step_cents": 500
+      },
+      {
+        "high": "155.9321",
+        "increment": {
+          "anchors_cents": [
+            13000,
+            12000,
+            14000
+          ],
+          "answered_cents": [],
+          "session": "2026-09-25",
+          "source": "probe_report"
+        },
+        "low": "103.5732",
+        "region": "deep_itm",
+        "step_cents": 500
+      },
+      {
+        "high": "234.7600",
+        "increment": {
+          "anchors_cents": [
+            20000,
+            19000,
+            21000
+          ],
+          "answered_cents": [],
+          "session": "2026-09-25",
+          "source": "probe_report"
+        },
+        "low": "155.9321",
+        "region": "deep_itm",
+        "step_cents": 500
+      }
+    ],
+    "end_exclusive": "2026-09-26",
+    "fields": [
+      "BID",
+      "ASK",
+      "TRDPRC_1",
+      "OPEN_PRC",
+      "HIGH_1",
+      "LOW_1",
+      "ACVOL_UNS",
+      "NUM_MOVES"
+    ],
+    "interval": "hourly",
+    "start": "2026-08-24",
+    "tz": "bar_start_utc is LSEG's stamp: the bar's start, in UTC (LDG §4.8). bar_end = bar_start + 1h, in America/New_York, is added at load (DEC-06)."
+  },
+  "ric_form_used": {},
+  "right": "C",
+  "symbol": "NVDA",
+  "unanswered": {
+    "NVDA  270521C00055000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212705500)",
+        "reason": "no_data",
+        "ric": "NVDAE212705500.U"
+      }
+    ],
+    "NVDA  270521C00060000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212706000)",
+        "reason": "no_data",
+        "ric": "NVDAE212706000.U"
+      }
+    ],
+    "NVDA  270521C00065000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212706500)",
+        "reason": "no_data",
+        "ric": "NVDAE212706500.U"
+      }
+    ],
+    "NVDA  270521C00070000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212707000)",
+        "reason": "no_data",
+        "ric": "NVDAE212707000.U"
+      }
+    ],
+    "NVDA  270521C00075000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212707500)",
+        "reason": "no_data",
+        "ric": "NVDAE212707500.U"
+      }
+    ],
+    "NVDA  270521C00080000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212708000)",
+        "reason": "no_data",
+        "ric": "NVDAE212708000.U"
+      }
+    ],
+    "NVDA  270521C00085000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212708500)",
+        "reason": "no_data",
+        "ric": "NVDAE212708500.U"
+      }
+    ],
+    "NVDA  270521C00090000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212709000)",
+        "reason": "no_data",
+        "ric": "NVDAE212709000.U"
+      }
+    ],
+    "NVDA  270521C00095000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212709500)",
+        "reason": "no_data",
+        "ric": "NVDAE212709500.U"
+      }
+    ],
+    "NVDA  270521C00100000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212710000)",
+        "reason": "no_data",
+        "ric": "NVDAE212710000.U"
+      }
+    ],
+    "NVDA  270521C00105000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212710500)",
+        "reason": "no_data",
+        "ric": "NVDAE212710500.U"
+      }
+    ],
+    "NVDA  270521C00110000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212711000)",
+        "reason": "no_data",
+        "ric": "NVDAE212711000.U"
+      }
+    ],
+    "NVDA  270521C00115000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212711500)",
+        "reason": "no_data",
+        "ric": "NVDAE212711500.U"
+      }
+    ],
+    "NVDA  270521C00120000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212712000)",
+        "reason": "no_data",
+        "ric": "NVDAE212712000.U"
+      }
+    ],
+    "NVDA  270521C00125000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212712500)",
+        "reason": "no_data",
+        "ric": "NVDAE212712500.U"
+      }
+    ],
+    "NVDA  270521C00130000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212713000)",
+        "reason": "no_data",
+        "ric": "NVDAE212713000.U"
+      }
+    ],
+    "NVDA  270521C00135000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212713500)",
+        "reason": "no_data",
+        "ric": "NVDAE212713500.U"
+      }
+    ],
+    "NVDA  270521C00140000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212714000)",
+        "reason": "no_data",
+        "ric": "NVDAE212714000.U"
+      }
+    ],
+    "NVDA  270521C00145000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212714500)",
+        "reason": "no_data",
+        "ric": "NVDAE212714500.U"
+      }
+    ],
+    "NVDA  270521C00150000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212715000)",
+        "reason": "no_data",
+        "ric": "NVDAE212715000.U"
+      }
+    ],
+    "NVDA  270521C00155000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212715500)",
+        "reason": "no_data",
+        "ric": "NVDAE212715500.U"
+      }
+    ],
+    "NVDA  270521C00160000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212716000)",
+        "reason": "no_data",
+        "ric": "NVDAE212716000.U"
+      }
+    ],
+    "NVDA  270521C00165000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212716500)",
+        "reason": "no_data",
+        "ric": "NVDAE212716500.U"
+      }
+    ],
+    "NVDA  270521C00170000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212717000)",
+        "reason": "no_data",
+        "ric": "NVDAE212717000.U"
+      }
+    ],
+    "NVDA  270521C00175000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212717500)",
+        "reason": "no_data",
+        "ric": "NVDAE212717500.U"
+      }
+    ],
+    "NVDA  270521C00180000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212718000)",
+        "reason": "no_data",
+        "ric": "NVDAE212718000.U"
+      }
+    ],
+    "NVDA  270521C00185000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212718500)",
+        "reason": "no_data",
+        "ric": "NVDAE212718500.U"
+      }
+    ],
+    "NVDA  270521C00190000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212719000)",
+        "reason": "no_data",
+        "ric": "NVDAE212719000.U"
+      }
+    ],
+    "NVDA  270521C00195000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212719500)",
+        "reason": "no_data",
+        "ric": "NVDAE212719500.U"
+      }
+    ],
+    "NVDA  270521C00200000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212720000)",
+        "reason": "no_data",
+        "ric": "NVDAE212720000.U"
+      }
+    ],
+    "NVDA  270521C00205000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212720500)",
+        "reason": "no_data",
+        "ric": "NVDAE212720500.U"
+      }
+    ],
+    "NVDA  270521C00210000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212721000)",
+        "reason": "no_data",
+        "ric": "NVDAE212721000.U"
+      }
+    ],
+    "NVDA  270521C00215000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212721500)",
+        "reason": "no_data",
+        "ric": "NVDAE212721500.U"
+      }
+    ],
+    "NVDA  270521C00220000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212722000)",
+        "reason": "no_data",
+        "ric": "NVDAE212722000.U"
+      }
+    ],
+    "NVDA  270521C00225000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212722500)",
+        "reason": "no_data",
+        "ric": "NVDAE212722500.U"
+      }
+    ],
+    "NVDA  270521C00230000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212723000)",
+        "reason": "no_data",
+        "ric": "NVDAE212723000.U"
+      }
+    ],
+    "NVDA  270521C00235000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212723500)",
+        "reason": "no_data",
+        "ric": "NVDAE212723500.U"
+      }
+    ],
+    "NVDA  270521C00240000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212724000)",
+        "reason": "no_data",
+        "ric": "NVDAE212724000.U"
+      }
+    ],
+    "NVDA  270521C00245000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAE212724500)",
+        "reason": "no_data",
+        "ric": "NVDAE212724500.U"
+      }
+    ]
+  },
+  "unit": "chains/2027-05-21_C"
+}

@@ -1,0 +1,3329 @@
+{
+  "counts": {
+    "answered": 146,
+    "requested": 182,
+    "unanswered": 36
+  },
+  "entries": [
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00058000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182605800.U",
+      "rows": 993,
+      "sha256": "6cfbfe4191292a8c7ef81950aabc2cacef1326b0f40cfa1729017bfb4f9a2d16",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00059000",
+      "last_bar": "2026-09-25T19:00:00+00:00",
+      "ric": "NVDAL182605900.U",
+      "rows": 996,
+      "sha256": "68f8ab416c138f1da6528233f69c75e34dae867f6189c0d36f476dca9e96d67d",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00060000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182606000.U",
+      "rows": 997,
+      "sha256": "8c25ed561ad3574fd03842a761fffc6f37ec60ca7c77484f44f6a77d5abbe8bb",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00061000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182606100.U",
+      "rows": 995,
+      "sha256": "d0397bde5d52d5c85c49d22d6da50bffb8d22cef4225060828fa65c25fd6ded5",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00062000",
+      "last_bar": "2026-09-25T19:00:00+00:00",
+      "ric": "NVDAL182606200.U",
+      "rows": 991,
+      "sha256": "cbadfd2c55c8afdd9ba65c90da6cc8709e001da3be70b9eb341672609cd3c64e",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00063000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182606300.U",
+      "rows": 994,
+      "sha256": "2583e6f89b2b0e625dc14b46dd8665d669b75417e7ddc6dd0eef8e99207894e9",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00064000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182606400.U",
+      "rows": 993,
+      "sha256": "8d2ba453a93afc59e46c9f1368ef12c683eb8ed18197546c837c6c2968dc7345",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00065000",
+      "last_bar": "2026-09-25T19:00:00+00:00",
+      "ric": "NVDAL182606500.U",
+      "rows": 996,
+      "sha256": "3348757dd7f6bd5512860bc53a942ecf3fa7f444ec83e511646f637d846e5516",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00066000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182606600.U",
+      "rows": 993,
+      "sha256": "586fc7d49e3a76ea28e2c670cddd034f24b6e64a38f669658b9f1178c59882d0",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00067000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182606700.U",
+      "rows": 998,
+      "sha256": "71f9637469ffaf60e3d6bd283019dfb311e416f0e4da1e14c2366e42527a20db",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00068000",
+      "last_bar": "2026-09-25T19:00:00+00:00",
+      "ric": "NVDAL182606800.U",
+      "rows": 995,
+      "sha256": "3412becf8913b9833141f0f2bba52410dbad0d22061990437654345191f2e7e6",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00069000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182606900.U",
+      "rows": 997,
+      "sha256": "89233ecb73e0abae2772c5756fc2bf912cbf98d2c785057cb9ca0174c8632434",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00070000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182607000.U",
+      "rows": 997,
+      "sha256": "41650b88817a8d91be7fe7ac4cd355e91df54691afc18dc0337dcdfb20488e2b",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00071000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182607100.U",
+      "rows": 996,
+      "sha256": "41f7b19eb3a207ffe86847f011bcda208183e6b6fe0e958f1edeba289beff2d1",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00072000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182607200.U",
+      "rows": 995,
+      "sha256": "ae9645405380f372427765fb48b8754f29cef3a2aa68d963655d64e99e64efdd",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00073000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182607300.U",
+      "rows": 996,
+      "sha256": "4150a3c7d4884942af988e1d3ed38ebfca96e0689efd5bf7283cf29926da1acf",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00074000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182607400.U",
+      "rows": 994,
+      "sha256": "059254c136f7fa65d00c13ebd80cc80cff6075a14c4c49ba68894f6251152ed6",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00075000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182607500.U",
+      "rows": 998,
+      "sha256": "fa0a1ce67541fc0d7f1f069eac0c88d5494bf35be7c6ffa926ec31f70713635f",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00076000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182607600.U",
+      "rows": 997,
+      "sha256": "a06b510a2193ab2a2dc44e074d9db205d844ecda85e3c9c88bdecf42c553df31",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00077000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182607700.U",
+      "rows": 996,
+      "sha256": "b0b9444f74c76c48d57fabbb45c7b8e5383f3f10c4642b6555ad83b249bd616a",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00078000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182607800.U",
+      "rows": 993,
+      "sha256": "726038336b78861f2567d5a173c169fb7c0e3edf40181933938432c831c48144",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00079000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182607900.U",
+      "rows": 992,
+      "sha256": "d6cc323dc3fc1ed81619fa6ebf9261a82b5c48d7fc9330c73548245a667350b4",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00080000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182608000.U",
+      "rows": 995,
+      "sha256": "c70e8dd94127d5d559832dcb86f8a207c5c814bcd010fe16fab72fb930622864",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00081000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182608100.U",
+      "rows": 994,
+      "sha256": "581ee9cd75344d631ea6994d1d76078da6377cdc681aa62b99ed397e309fe50b",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00082000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182608200.U",
+      "rows": 994,
+      "sha256": "0af2a174a3256dca7470d8edb9305b37d42427e41de1aa63d4cd44f30b307e9f",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00083000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182608300.U",
+      "rows": 997,
+      "sha256": "6bf9e70a4e63b5d7cad00f05a2942e11d265dda02f2d668965ec2aae1ebbfdfa",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00084000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182608400.U",
+      "rows": 993,
+      "sha256": "a88477dcc2ab7a7e30f19a9f3dc77f07103e4aef320d9c417f9d0c461704c043",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00085000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182608500.U",
+      "rows": 995,
+      "sha256": "7fc32eb535afcf835d1c0644400e721d7286ac088013e300e37d55d074e29815",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00086000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182608600.U",
+      "rows": 997,
+      "sha256": "2e64c3a106a86999abe26403a6473b3bcca909d04752522fdbbfc8818018d864",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00087000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182608700.U",
+      "rows": 996,
+      "sha256": "76996077debfc53797a05d49fa0b185856248bad2f7f739f320e81032069c893",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00088000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182608800.U",
+      "rows": 997,
+      "sha256": "b2fad5b15208ee646e71060b1b2a1d98f1f5d2124a9c9803f4d4196d1fdf73a5",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00089000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182608900.U",
+      "rows": 996,
+      "sha256": "2de4c43e056d38532a5293666dc0ee1db6e54c357e5d1cc95e8cb4fe5f6f0738",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00090000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182609000.U",
+      "rows": 997,
+      "sha256": "319436f6beb03d8657fc36650cf6a6577d5b0f9b937406dc29f66299abcd49c2",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00091000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182609100.U",
+      "rows": 997,
+      "sha256": "cfd494b5ff8a978de0c9dab5f767d088d6392128fffe5224c4097a7d6cda304e",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00092000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182609200.U",
+      "rows": 997,
+      "sha256": "087ff55b6af0acfda9d0b77224dc0aaf49d81abdd1ec8a646c10c437ff61868d",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00093000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182609300.U",
+      "rows": 999,
+      "sha256": "7663431c58749739909d585ea6fed1cfcf2e2d9da0e3618a75c96e2af4fa08b2",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00094000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182609400.U",
+      "rows": 995,
+      "sha256": "614af4c20ed8b0741093e1d620c4e5ded5831bb524d113aa27a71e5dc3145907",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00095000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182609500.U",
+      "rows": 998,
+      "sha256": "dc6d0eb221ce215629ef95c8f5aef3d2d451eba943c7d3680b44a2117c3c8791",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00096000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182609600.U",
+      "rows": 995,
+      "sha256": "3ce79978c7ea7b0b58bf3b2010b1ccc8c230edc67cc3188dde0b295349f14fac",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00097000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182609700.U",
+      "rows": 998,
+      "sha256": "4f30183c1a56b464f0a6dfc31d55febf92cc879c5246f402b78c67e303bf29b4",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00098000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182609800.U",
+      "rows": 996,
+      "sha256": "32b413c41b17e7ada4b516218e68e4d487071baecb9bb95d39c09f0fa8468004",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00099000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182609900.U",
+      "rows": 999,
+      "sha256": "8fa91dea2bcda9e65a18b10fb0bf6ae2f1a76aefc03a25e4351f1efa17ad8202",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00100000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182610000.U",
+      "rows": 997,
+      "sha256": "bf912138008de04d74883178c5574dca7c161ed7a44b4e6fa9e78026e10d840d",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00101000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182610100.U",
+      "rows": 998,
+      "sha256": "52830239cca397818b49325767e0808a75257fdcb4f55152f7dee40c2b81881a",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00102000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182610200.U",
+      "rows": 998,
+      "sha256": "6a3d44fff157f746371bbf57f1403f74f16d9b305774e7f09e463f9b54637ae6",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00103000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182610300.U",
+      "rows": 999,
+      "sha256": "56ea69afb475d74416b723361084e4809582130c17c057f2dd372b76ec32c47c",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00104000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182610400.U",
+      "rows": 997,
+      "sha256": "c40ebd3409d48dc968c78900b0cd3ef61e39e123c8504e5ed429ce35fb294e43",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00105000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182610500.U",
+      "rows": 999,
+      "sha256": "30c115d2d6e903aa6b4ed02f7eed203be36c994191dbc5002bac1b352e1bc7a9",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00106000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182610600.U",
+      "rows": 997,
+      "sha256": "f423eb28923d4ef641d03e1855a46f90a50fe3f14118fe3b60a35b86fec0b07d",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00107000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182610700.U",
+      "rows": 996,
+      "sha256": "a40804c29037326c962f29b4d05dd8d551083009da3eaf1460c0d629c8d00c22",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00108000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182610800.U",
+      "rows": 1000,
+      "sha256": "93701e4e7cb21dfd7ec36bee7dd14873dce49e013fc49e458cbb04c34de6080a",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00109000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182610900.U",
+      "rows": 998,
+      "sha256": "823f7764559bea7039ac6d7cc7e42dfe83e2839554b1cfc63af335fcbd93e975",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00110000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182611000.U",
+      "rows": 998,
+      "sha256": "4211b0645a2044213894317e2b51f5f01fad5b9180cbd3fe05fcd390d0cc8ca5",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00111000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182611100.U",
+      "rows": 994,
+      "sha256": "e9731853f794dd50e52f9ab86ed8b8f014420e21436f358bb37713b96a4d2f3c",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00112000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182611200.U",
+      "rows": 999,
+      "sha256": "b64789b314be607493e2657f068a0b4bdd66d5c99cf956da9928da08c30321d9",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00113000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182611300.U",
+      "rows": 997,
+      "sha256": "d657f96d76621bbd5fb61d5b7df7ca96c04500bd9de3b8427dbf87792f50c512",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00114000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182611400.U",
+      "rows": 998,
+      "sha256": "c55db240901c117af602eb3b0030534c0177fc61cad17cee855f34625477380f",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00115000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182611500.U",
+      "rows": 999,
+      "sha256": "f73600db822f83082a2a05e668eefc678ad75c655bbb316b87738331bece6321",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00116000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182611600.U",
+      "rows": 998,
+      "sha256": "5893664d25635e5bbb2f93c86651ebb049f721b580794c289e3e50e1150ad02f",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00117000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182611700.U",
+      "rows": 999,
+      "sha256": "d2e02d68730ff0f0d19a1da6c85f18c69400866fb9acf908a2a246da12b9b74c",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00118000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182611800.U",
+      "rows": 998,
+      "sha256": "bf272cdfa6d3277e811cc845c8c5cdeb7945935892d5fa38e87cbcab694ddac4",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00119000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182611900.U",
+      "rows": 994,
+      "sha256": "1f5e90df949e88643c0e93b6f110cc43876fd3f925564766d2df78163d0cf174",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00120000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182612000.U",
+      "rows": 1000,
+      "sha256": "c2ac8631a8f1ae52f6040b6d1b30b6262f9ad859e1f1109b3b784830ce6d960c",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00121000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182612100.U",
+      "rows": 998,
+      "sha256": "41d100c0bd1b9bb7fd28a44bf560140a7623e1f5638e4b95f3f9fe2287ff5bf0",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00122000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182612200.U",
+      "rows": 999,
+      "sha256": "acfa2c9c05d21a1c8586a70c42a917ccdd1992c06ebb0ca1bf4a571ed01cf950",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00123000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182612300.U",
+      "rows": 1000,
+      "sha256": "9f5541ee7e876f5edacb99cad82e040ffc0654ca5688796c7219913edc5ba444",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00124000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182612400.U",
+      "rows": 999,
+      "sha256": "9a95e208bd9b407f802abe13f781556134b42a13f15070f120f132a45f898619",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00125000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182612500.U",
+      "rows": 998,
+      "sha256": "6b22462cb86dd3bb09bc2a2ab615be0a88365804cafb54db38cf7883e2aa196f",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00126000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182612600.U",
+      "rows": 1000,
+      "sha256": "fa4586ddf600146e3e999bff31252952bbd2bd89f1190c91d0f3e6579d3a6f5f",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00127000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182612700.U",
+      "rows": 998,
+      "sha256": "eda9041c2cb28c69140acbc45c337dd43e5564afd461b4191a3ff92545e47945",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00128000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182612800.U",
+      "rows": 997,
+      "sha256": "3fb8ddc72dcb843988214f8698a5b339713a7401625586105a89892fd1b275d3",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00129000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182612900.U",
+      "rows": 998,
+      "sha256": "f401b128a336a5117c3bbaf9081df9f31ea819078cb721f6599ed82f891c3e0a",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00130000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182613000.U",
+      "rows": 1000,
+      "sha256": "4be3f7296fd8ceaa640b928ce94be2da8a8bbd034f1457e421d7aaafe6b031f6",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  261218C00131000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00132000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182613200.U",
+      "rows": 998,
+      "sha256": "ca4ad511e4eca9b670c4e4105eca109581a03e9861d34cddecdc921fc2564dee",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  261218C00133000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00134000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182613400.U",
+      "rows": 1000,
+      "sha256": "9f81dab66744e67cd80c3d9cbeb5bb0669f7c69a4f12c4f8f9b057fa6c3d9c76",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00135000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182613500.U",
+      "rows": 996,
+      "sha256": "55e776185e7be3f6a58e276d965d7ab2ecf5ce0563eae9f6f523e82d50c4e3b2",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00136000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182613600.U",
+      "rows": 997,
+      "sha256": "45ad4ca0de5680c8e9f5feb4702194f55bfc637f3ca759a042a81cfd13f7d753",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  261218C00137000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00138000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182613800.U",
+      "rows": 997,
+      "sha256": "9e752fb10c229ed31b938eb09ab6424f83f1abc8fe53d0da3524841e13afdcad",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  261218C00139000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00140000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182614000.U",
+      "rows": 1000,
+      "sha256": "56ac4b71ff329a2f91d06de6ded74a170d89b68f70f21dedaf246a79670faea1",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  261218C00141000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00142000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182614200.U",
+      "rows": 999,
+      "sha256": "11bba8e0cefbfb858843ad9f1ad641eb90e8f90a8cdf1532fb5457f18d42d28c",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  261218C00143000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00144000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182614400.U",
+      "rows": 1000,
+      "sha256": "f6ec90b23e5ff717bf3f14af2e7fa980ba44a802b6687d114cfe366d8f8897ee",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00145000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182614500.U",
+      "rows": 1000,
+      "sha256": "c85a553e47a7ce3089b1a646cb36a260e379cabcf7f8fd68f3baae3e9ef20353",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00146000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182614600.U",
+      "rows": 999,
+      "sha256": "20203012b1b0efbe078d0d7807cfb23765b91a535113d551d3f29c92477d7b4b",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  261218C00147000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00148000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182614800.U",
+      "rows": 999,
+      "sha256": "e452c1ea646fe524ada3622fb4898eb984084fd991f587dfddab0ad4f86e654a",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  261218C00149000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00150000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182615000.U",
+      "rows": 1000,
+      "sha256": "63309ee66d3128d48ff885f1d47a4754665ac40180ffc920dcd73f3ac55a95f1",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  261218C00151000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00152000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182615200.U",
+      "rows": 999,
+      "sha256": "064c80927692364b27098c01f9ad48783c84eb2a5f30dbbb57b8a2d2f9cf5336",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  261218C00153000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00154000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182615400.U",
+      "rows": 1000,
+      "sha256": "a92f1c3dd0e6207a44b63945a66ee5ec5017ea00675b8da7189b368c831f999a",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00155000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182615500.U",
+      "rows": 998,
+      "sha256": "23223200745ed499082ee0fb956afb4cae946821826be8ede954208dce0b4790",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00156000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182615600.U",
+      "rows": 999,
+      "sha256": "0cf92e00309494ae4c5ae3cbeca09b8f043abc332494ec23b4cc2a763ef99ed5",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  261218C00157000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00158000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182615800.U",
+      "rows": 999,
+      "sha256": "b51ef5720d0d05482c48ab26ad3c8e8f6ffa7b1d26c8e771d0afc1d0d34ff6c1",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  261218C00159000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00160000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182616000.U",
+      "rows": 999,
+      "sha256": "360344d602775373256b416a086df1524b5b0866ad90e22bfeff92dd3d02d08b",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  261218C00161000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00162000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182616200.U",
+      "rows": 1000,
+      "sha256": "9c7731cf9ec1da3893786be531e9218b714877f07a459a6379885df8c1a674f4",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  261218C00163000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00164000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182616400.U",
+      "rows": 999,
+      "sha256": "b5e56d143d62ed72ad29b2e663dd20222f2be6f4dd2d83eb85135bcebe6a8f71",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00165000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182616500.U",
+      "rows": 1000,
+      "sha256": "6f96cb5651e9a1d2f270c5d92a61e1faee773a0f05aea1ba705f9e9fcba3a1eb",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00166000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182616600.U",
+      "rows": 1000,
+      "sha256": "586fd02d3a6f36a25ba1a30df370f1574dc37e2728d338c27a7e5a92bd442ef9",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00167000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182616700.U",
+      "rows": 999,
+      "sha256": "1a1780ead3fa20c2d8cbed560446a2d14e7c4a780c8f0162bcd7acff281ac038",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00168000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182616800.U",
+      "rows": 1000,
+      "sha256": "627de426bcba827308d78c5013c43feaa08bb51e0503f7b8153e449ca6be2f16",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00169000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182616900.U",
+      "rows": 1000,
+      "sha256": "d174553a69ca36ed06326db9df19802d74e47747d69f43d2e74ad400f2b1af5f",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00170000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182617000.U",
+      "rows": 999,
+      "sha256": "716e4ea204069ef1c324ff31ed6a76695fabc84c9a4c0a75d960b1fcd8b7c30d",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00171000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182617100.U",
+      "rows": 999,
+      "sha256": "80c6c3c02e21529f77b1be3cf4c6c2d666cd786acdfc23ba5a12e077f1d5cc01",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00172000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182617200.U",
+      "rows": 999,
+      "sha256": "85f9e177cfb64b6cd7437a4591280b912220feacae36b80c95a63f40da8805a6",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00173000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182617300.U",
+      "rows": 999,
+      "sha256": "b2fb8bddff04908851aaf383ec9515ecc31e040b1a4db9ad2fa86c652772772e",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00174000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182617400.U",
+      "rows": 1000,
+      "sha256": "0a095241709cc1089d4965446d69ad17dab8b6cda7d92087f99a7ec2afbbb2a9",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00175000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182617500.U",
+      "rows": 999,
+      "sha256": "7dcffee0c67a26ff500aff65272dec951524f47e86f752f15dbafddee5079368",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00176000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182617600.U",
+      "rows": 998,
+      "sha256": "04af6bf98ca955b1ec4d28f1e001934d35d9d9d0ad967a7db13317d1dc320a65",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00177000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182617700.U",
+      "rows": 1000,
+      "sha256": "c6ff54b33b2ddc146857a52cb36e7437ddcb269eb6656b562e1b7682a24971f6",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00178000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182617800.U",
+      "rows": 1000,
+      "sha256": "78b8a1f83ca3317ac14552da23cf32da31cee5f343f6387bd999eb8e5580e801",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00179000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182617900.U",
+      "rows": 1000,
+      "sha256": "98b5a9dacc8e2eadb624e0db9cc69d978072a2a12fab1cf26adfa1e47252bf16",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00180000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182618000.U",
+      "rows": 999,
+      "sha256": "630c5d3a4f3173a3071c1ffc4b401401add841a170e3596eebf8fc33dd84d455",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00181000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182618100.U",
+      "rows": 1000,
+      "sha256": "679fb9f38423bc4fb4354f702383db2aa144fccad5aac993de65f1968994e0ef",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00182000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182618200.U",
+      "rows": 999,
+      "sha256": "919e2fd897f36d3ffa970e75648f359f27d93c6d67b24e61ebb512fdb7a74593",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00183000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182618300.U",
+      "rows": 999,
+      "sha256": "129330162851007b523c171158cc663ceb056958634c74a421fe5cf644061353",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00184000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182618400.U",
+      "rows": 999,
+      "sha256": "bea5519d944b5313ca97e7753221900c9d69270cff167c931acdb7add42cc67d",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00185000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182618500.U",
+      "rows": 999,
+      "sha256": "5e03cad564c31cdfee4102d49882ecb41f99a4f233e8d4b8f4852ef2331c3c57",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00186000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182618600.U",
+      "rows": 1000,
+      "sha256": "040a1c95681ab6409e15660ca519141f601f778137614845017d35a3aacc3225",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00187000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182618700.U",
+      "rows": 999,
+      "sha256": "355803cfb476f45b71c3a67516879162f0a4577e00a9a82bd8e06159faeb9f8e",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00188000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182618800.U",
+      "rows": 999,
+      "sha256": "77051f73bdb2868856729aad36fa9f9b9f3510d4204c591ad5e20f0358df3d3d",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00189000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182618900.U",
+      "rows": 1000,
+      "sha256": "bb135b2352858adab291eb63fcc61f050672290f43c3e388a313513abcde1b5f",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00190000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182619000.U",
+      "rows": 1000,
+      "sha256": "3ae04ec809cae786b53952b1e724bda7a58ceafbbccfd46cd90d04db77bcef5b",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00191000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182619100.U",
+      "rows": 999,
+      "sha256": "216d3a708a40e27f29476c80fd8f85cd44f86c5ec8b2decf152208b0dc863258",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00192000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182619200.U",
+      "rows": 999,
+      "sha256": "faa41cd906be90210f129319c6200c1fae26274cf43680268f3459be05ac9548",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00193000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182619300.U",
+      "rows": 999,
+      "sha256": "c93b205e9fa225ec636d1f19c154a85601996314a430d4fbe234f0833a6d0791",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00194000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182619400.U",
+      "rows": 1000,
+      "sha256": "fa7ceaa29383b99ad1ac6cc342a7d735fea0541a9b59153dfb6679fead7cf0f7",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00195000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182619500.U",
+      "rows": 1000,
+      "sha256": "91f2e0933a4be1bd8abf1bd323cee717cc54d5f0d0eeb75ffa68cf4d0de26f85",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  261218C00196000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  261218C00197000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  261218C00198000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  261218C00199000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00200000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182620000.U",
+      "rows": 1000,
+      "sha256": "0523c26bb6d5fbdf9504d3f25e65e08006ac7f9106960cd24f508d17a7d324a5",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  261218C00201000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  261218C00202000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  261218C00203000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  261218C00204000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00205000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182620500.U",
+      "rows": 1000,
+      "sha256": "4815e7e5f82ef1a59e99fbb92bdcfebd5f7c6ff7e8bb7afeab885f78ecf0e573",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  261218C00206000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  261218C00207000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  261218C00208000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  261218C00209000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00210000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182621000.U",
+      "rows": 999,
+      "sha256": "31cfbb82cc799bbcfb699c9ee2cd91d7fcd43ea54862121b39b80ee4d3478e8f",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  261218C00211000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00212000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182621200.U",
+      "rows": 999,
+      "sha256": "8e995e5d5ac300a86e6f6263d0a0f16a37031922ad8e4ca0d0e622e9d633fc8f",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00213000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182621300.U",
+      "rows": 1000,
+      "sha256": "0f8fc19ea48370136d2f34d4b88229b8011f72be5696f07c2d7702757114a7a6",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00214000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182621400.U",
+      "rows": 1000,
+      "sha256": "64d7673c73e58b198d503c7ee381e0d4838c2917948b188fdf0c380d15853fb6",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00215000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182621500.U",
+      "rows": 1000,
+      "sha256": "744f1796580ddb8acf29202a12e13649933d3b9dacd0c42ee53307d88b59d2b3",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00216000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182621600.U",
+      "rows": 1000,
+      "sha256": "5202936f7cd5635f90a27398adcab85c37af5526846a55d98a3678deb53b58c9",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00217000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182621700.U",
+      "rows": 1000,
+      "sha256": "3123eaf171da07de9f67c4527e6448a35b37842eae74034d6591b59ef3e420dd",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00218000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182621800.U",
+      "rows": 1000,
+      "sha256": "1f64fa14da5a380c20d34f4fe0387ce09c06dce7b7e8479a0c2e08533eaa6890",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00219000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182621900.U",
+      "rows": 998,
+      "sha256": "7a4c1180ef7ccd45330394c0cef8b10afcdf11fa5b086fe39814b07bde20e307",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00220000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182622000.U",
+      "rows": 1000,
+      "sha256": "5366a52bc34035db563cb789860e14c78e1d402c3a897f8e8b653cc508abfba2",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00221000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182622100.U",
+      "rows": 999,
+      "sha256": "e07789933e6f7579184566627edd530cd35cab2d008781b41f6d3bfd74009fb1",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00222000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182622200.U",
+      "rows": 1000,
+      "sha256": "21e8d704365ba712e0e6e329b9744113e6c598bd4316d0aac229a9db981c72be",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00223000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182622300.U",
+      "rows": 1000,
+      "sha256": "f9f0465caf9ad7f2a9dcdf7ff3cd0eecf764ba65c5d55ed1f58c8e06d7398a97",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00224000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182622400.U",
+      "rows": 1000,
+      "sha256": "200c9c5a91a41a5dd9478622770fed01be03d480615cf8e7e207cfa84e297434",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00225000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182622500.U",
+      "rows": 1000,
+      "sha256": "c1c72fc3f545f4d71837a2e813c7e0b9d10488a2ab57c7cbf9481b1e63e8ff2a",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00226000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182622600.U",
+      "rows": 999,
+      "sha256": "93f0f518585135b46fcbd194d0db59328f62d02cab9a952817159633def63b8d",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00227000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182622700.U",
+      "rows": 1000,
+      "sha256": "d7511a6076ab72b326ff77bd87fc3245867821f6e60662375f6f29371b7315dd",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00228000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182622800.U",
+      "rows": 999,
+      "sha256": "3d76f913de754d3aa26a90f2bebf15da00f0ee09011ac18cc63bf4f085ddef63",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  261218C00229000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00230000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182623000.U",
+      "rows": 1000,
+      "sha256": "8d1e6bc4481fe868a992a7b352b296f8f24a4fb731c8743f5925979e0d85d0be",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  261218C00231000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  261218C00232000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  261218C00233000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  261218C00234000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": "2026-03-30T13:00:00+00:00",
+      "form": "live",
+      "instrument": "NVDA  261218C00235000",
+      "last_bar": "2026-09-25T20:00:00+00:00",
+      "ric": "NVDAL182623500.U",
+      "rows": 1000,
+      "sha256": "882daa9f7d8949b84bcc2d2c28d291153f7004fe5705e1ee41524878d52c301a",
+      "status": "answered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  261218C00236000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  261218C00237000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  261218C00238000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2026-12-18_C"
+    },
+    {
+      "fetched_at": "2026-09-29T02:30:27.138609+00:00",
+      "first_bar": null,
+      "form": null,
+      "instrument": "NVDA  261218C00239000",
+      "last_bar": null,
+      "ric": null,
+      "rows": 0,
+      "sha256": null,
+      "status": "unanswered",
+      "unit": "chains/2026-12-18_C"
+    }
+  ],
+  "errors": [
+    {
+      "codes": [],
+      "error_class": "TypeError",
+      "message": "'UniverseContainer' object is not subscriptable",
+      "rics": [
+        "NVDAL182610800.U",
+        "NVDAL182610900.U",
+        "NVDAL182611000.U",
+        "NVDAL182611100.U",
+        "NVDAL182611200.U",
+        "NVDAL182611300.U",
+        "NVDAL182611400.U",
+        "NVDAL182611500.U",
+        "NVDAL182611600.U",
+        "NVDAL182611700.U",
+        "NVDAL182611800.U",
+        "NVDAL182611900.U",
+        "NVDAL182612000.U",
+        "NVDAL182612100.U",
+        "NVDAL182612200.U",
+        "NVDAL182612300.U",
+        "NVDAL182612400.U",
+        "NVDAL182612500.U",
+        "NVDAL182612600.U",
+        "NVDAL182612700.U",
+        "NVDAL182612800.U",
+        "NVDAL182612900.U",
+        "NVDAL182613000.U",
+        "NVDAL182613100.U",
+        "NVDAL182613200.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182613100)",
+      "rics": [
+        "NVDAL182613100.U"
+      ]
+    },
+    {
+      "codes": [],
+      "error_class": "TypeError",
+      "message": "'UniverseContainer' object is not subscriptable",
+      "rics": [
+        "NVDAL182613300.U",
+        "NVDAL182613400.U",
+        "NVDAL182613500.U",
+        "NVDAL182613600.U",
+        "NVDAL182613700.U",
+        "NVDAL182613800.U",
+        "NVDAL182613900.U",
+        "NVDAL182614000.U",
+        "NVDAL182614100.U",
+        "NVDAL182614200.U",
+        "NVDAL182614300.U",
+        "NVDAL182614400.U",
+        "NVDAL182614500.U",
+        "NVDAL182614600.U",
+        "NVDAL182614700.U",
+        "NVDAL182614800.U",
+        "NVDAL182614900.U",
+        "NVDAL182615000.U",
+        "NVDAL182615100.U",
+        "NVDAL182615200.U",
+        "NVDAL182615300.U",
+        "NVDAL182615400.U",
+        "NVDAL182615500.U",
+        "NVDAL182615600.U",
+        "NVDAL182615700.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182613300)",
+      "rics": [
+        "NVDAL182613300.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182613700)",
+      "rics": [
+        "NVDAL182613700.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182613900)",
+      "rics": [
+        "NVDAL182613900.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182614100)",
+      "rics": [
+        "NVDAL182614100.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182614300)",
+      "rics": [
+        "NVDAL182614300.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182614700)",
+      "rics": [
+        "NVDAL182614700.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182614900)",
+      "rics": [
+        "NVDAL182614900.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182615100)",
+      "rics": [
+        "NVDAL182615100.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182615300)",
+      "rics": [
+        "NVDAL182615300.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182615700)",
+      "rics": [
+        "NVDAL182615700.U"
+      ]
+    },
+    {
+      "codes": [],
+      "error_class": "TypeError",
+      "message": "'UniverseContainer' object is not subscriptable",
+      "rics": [
+        "NVDAL182615800.U",
+        "NVDAL182615900.U",
+        "NVDAL182616000.U",
+        "NVDAL182616100.U",
+        "NVDAL182616200.U",
+        "NVDAL182616300.U",
+        "NVDAL182616400.U",
+        "NVDAL182616500.U",
+        "NVDAL182616600.U",
+        "NVDAL182616700.U",
+        "NVDAL182616800.U",
+        "NVDAL182616900.U",
+        "NVDAL182617000.U",
+        "NVDAL182617100.U",
+        "NVDAL182617200.U",
+        "NVDAL182617300.U",
+        "NVDAL182617400.U",
+        "NVDAL182617500.U",
+        "NVDAL182617600.U",
+        "NVDAL182617700.U",
+        "NVDAL182617800.U",
+        "NVDAL182617900.U",
+        "NVDAL182618000.U",
+        "NVDAL182618100.U",
+        "NVDAL182618200.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182615900)",
+      "rics": [
+        "NVDAL182615900.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182616100)",
+      "rics": [
+        "NVDAL182616100.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182616300)",
+      "rics": [
+        "NVDAL182616300.U"
+      ]
+    },
+    {
+      "codes": [],
+      "error_class": "TypeError",
+      "message": "'UniverseContainer' object is not subscriptable",
+      "rics": [
+        "NVDAL182618300.U",
+        "NVDAL182618400.U",
+        "NVDAL182618500.U",
+        "NVDAL182618600.U",
+        "NVDAL182618700.U",
+        "NVDAL182618800.U",
+        "NVDAL182618900.U",
+        "NVDAL182619000.U",
+        "NVDAL182619100.U",
+        "NVDAL182619200.U",
+        "NVDAL182619300.U",
+        "NVDAL182619400.U",
+        "NVDAL182619500.U",
+        "NVDAL182619600.U",
+        "NVDAL182619700.U",
+        "NVDAL182619800.U",
+        "NVDAL182619900.U",
+        "NVDAL182620000.U",
+        "NVDAL182620100.U",
+        "NVDAL182620200.U",
+        "NVDAL182620300.U",
+        "NVDAL182620400.U",
+        "NVDAL182620500.U",
+        "NVDAL182620600.U",
+        "NVDAL182620700.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182619600)",
+      "rics": [
+        "NVDAL182619600.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182619700)",
+      "rics": [
+        "NVDAL182619700.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182619800)",
+      "rics": [
+        "NVDAL182619800.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182619900)",
+      "rics": [
+        "NVDAL182619900.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182620100)",
+      "rics": [
+        "NVDAL182620100.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182620200)",
+      "rics": [
+        "NVDAL182620200.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182620300)",
+      "rics": [
+        "NVDAL182620300.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182620400)",
+      "rics": [
+        "NVDAL182620400.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182620600)",
+      "rics": [
+        "NVDAL182620600.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182620700)",
+      "rics": [
+        "NVDAL182620700.U"
+      ]
+    },
+    {
+      "codes": [],
+      "error_class": "TypeError",
+      "message": "'UniverseContainer' object is not subscriptable",
+      "rics": [
+        "NVDAL182620800.U",
+        "NVDAL182620900.U",
+        "NVDAL182621000.U",
+        "NVDAL182621100.U",
+        "NVDAL182621200.U",
+        "NVDAL182621300.U",
+        "NVDAL182621400.U",
+        "NVDAL182621500.U",
+        "NVDAL182621600.U",
+        "NVDAL182621700.U",
+        "NVDAL182621800.U",
+        "NVDAL182621900.U",
+        "NVDAL182622000.U",
+        "NVDAL182622100.U",
+        "NVDAL182622200.U",
+        "NVDAL182622300.U",
+        "NVDAL182622400.U",
+        "NVDAL182622500.U",
+        "NVDAL182622600.U",
+        "NVDAL182622700.U",
+        "NVDAL182622800.U",
+        "NVDAL182622900.U",
+        "NVDAL182623000.U",
+        "NVDAL182623100.U",
+        "NVDAL182623200.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182620800)",
+      "rics": [
+        "NVDAL182620800.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182620900)",
+      "rics": [
+        "NVDAL182620900.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182621100)",
+      "rics": [
+        "NVDAL182621100.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182622900)",
+      "rics": [
+        "NVDAL182622900.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182623100)",
+      "rics": [
+        "NVDAL182623100.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182623200)",
+      "rics": [
+        "NVDAL182623200.U"
+      ]
+    },
+    {
+      "codes": [],
+      "error_class": "TypeError",
+      "message": "'UniverseContainer' object is not subscriptable",
+      "rics": [
+        "NVDAL182623300.U",
+        "NVDAL182623400.U",
+        "NVDAL182623500.U",
+        "NVDAL182623600.U",
+        "NVDAL182623700.U",
+        "NVDAL182623800.U",
+        "NVDAL182623900.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182623300)",
+      "rics": [
+        "NVDAL182623300.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182623400)",
+      "rics": [
+        "NVDAL182623400.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182623600)",
+      "rics": [
+        "NVDAL182623600.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182623700)",
+      "rics": [
+        "NVDAL182623700.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182623800)",
+      "rics": [
+        "NVDAL182623800.U"
+      ]
+    },
+    {
+      "codes": [
+        "TS.Intraday.UserRequestError.90001"
+      ],
+      "error_class": "NoData",
+      "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182623900)",
+      "rics": [
+        "NVDAL182623900.U"
+      ]
+    }
+  ],
+  "expiry": "2026-12-18",
+  "fields_returned": [
+    "ACVOL_UNS",
+    "ASK",
+    "BID",
+    "HIGH_1",
+    "LOW_1",
+    "NUM_MOVES",
+    "OPEN_PRC",
+    "TRDPRC_1"
+  ],
+  "file": "chains/2026-12-18_C.parquet",
+  "file_sha256": "0ccbb6e14ccb9f54e7669ce454c41bf43310a51e6ab63e41f9f6ff4cc9173c83",
+  "format": 1,
+  "pulled_at": "2026-09-29T02:30:27.138609+00:00",
+  "request": {
+    "bands": [
+      {
+        "high": "95.0691",
+        "increment": {
+          "anchors_cents": [
+            8000
+          ],
+          "answered_cents": [
+            8000,
+            8100,
+            8500
+          ],
+          "session": "2026-09-25",
+          "source": "measured"
+        },
+        "low": "60.2695",
+        "region": "deep_itm",
+        "step_cents": 100
+      },
+      {
+        "high": "149.9620",
+        "increment": {
+          "anchors_cents": [
+            12000
+          ],
+          "answered_cents": [
+            12000,
+            12100,
+            12500
+          ],
+          "session": "2026-09-25",
+          "source": "measured"
+        },
+        "low": "95.0691",
+        "region": "deep_itm",
+        "step_cents": 100
+      },
+      {
+        "high": "236.5500",
+        "increment": {
+          "anchors_cents": [
+            19000
+          ],
+          "answered_cents": [
+            19000,
+            19100,
+            19500
+          ],
+          "session": "2026-09-25",
+          "source": "measured"
+        },
+        "low": "149.9620",
+        "region": "deep_itm",
+        "step_cents": 100
+      }
+    ],
+    "end_exclusive": "2026-09-26",
+    "fields": [
+      "BID",
+      "ASK",
+      "TRDPRC_1",
+      "OPEN_PRC",
+      "HIGH_1",
+      "LOW_1",
+      "ACVOL_UNS",
+      "NUM_MOVES"
+    ],
+    "interval": "hourly",
+    "start": "2026-03-30",
+    "tz": "bar_start_utc is LSEG's stamp: the bar's start, in UTC (LDG §4.8). bar_end = bar_start + 1h, in America/New_York, is added at load (DEC-06)."
+  },
+  "ric_form_used": {
+    "NVDAL182605800.U": "live",
+    "NVDAL182605900.U": "live",
+    "NVDAL182606000.U": "live",
+    "NVDAL182606100.U": "live",
+    "NVDAL182606200.U": "live",
+    "NVDAL182606300.U": "live",
+    "NVDAL182606400.U": "live",
+    "NVDAL182606500.U": "live",
+    "NVDAL182606600.U": "live",
+    "NVDAL182606700.U": "live",
+    "NVDAL182606800.U": "live",
+    "NVDAL182606900.U": "live",
+    "NVDAL182607000.U": "live",
+    "NVDAL182607100.U": "live",
+    "NVDAL182607200.U": "live",
+    "NVDAL182607300.U": "live",
+    "NVDAL182607400.U": "live",
+    "NVDAL182607500.U": "live",
+    "NVDAL182607600.U": "live",
+    "NVDAL182607700.U": "live",
+    "NVDAL182607800.U": "live",
+    "NVDAL182607900.U": "live",
+    "NVDAL182608000.U": "live",
+    "NVDAL182608100.U": "live",
+    "NVDAL182608200.U": "live",
+    "NVDAL182608300.U": "live",
+    "NVDAL182608400.U": "live",
+    "NVDAL182608500.U": "live",
+    "NVDAL182608600.U": "live",
+    "NVDAL182608700.U": "live",
+    "NVDAL182608800.U": "live",
+    "NVDAL182608900.U": "live",
+    "NVDAL182609000.U": "live",
+    "NVDAL182609100.U": "live",
+    "NVDAL182609200.U": "live",
+    "NVDAL182609300.U": "live",
+    "NVDAL182609400.U": "live",
+    "NVDAL182609500.U": "live",
+    "NVDAL182609600.U": "live",
+    "NVDAL182609700.U": "live",
+    "NVDAL182609800.U": "live",
+    "NVDAL182609900.U": "live",
+    "NVDAL182610000.U": "live",
+    "NVDAL182610100.U": "live",
+    "NVDAL182610200.U": "live",
+    "NVDAL182610300.U": "live",
+    "NVDAL182610400.U": "live",
+    "NVDAL182610500.U": "live",
+    "NVDAL182610600.U": "live",
+    "NVDAL182610700.U": "live",
+    "NVDAL182610800.U": "live",
+    "NVDAL182610900.U": "live",
+    "NVDAL182611000.U": "live",
+    "NVDAL182611100.U": "live",
+    "NVDAL182611200.U": "live",
+    "NVDAL182611300.U": "live",
+    "NVDAL182611400.U": "live",
+    "NVDAL182611500.U": "live",
+    "NVDAL182611600.U": "live",
+    "NVDAL182611700.U": "live",
+    "NVDAL182611800.U": "live",
+    "NVDAL182611900.U": "live",
+    "NVDAL182612000.U": "live",
+    "NVDAL182612100.U": "live",
+    "NVDAL182612200.U": "live",
+    "NVDAL182612300.U": "live",
+    "NVDAL182612400.U": "live",
+    "NVDAL182612500.U": "live",
+    "NVDAL182612600.U": "live",
+    "NVDAL182612700.U": "live",
+    "NVDAL182612800.U": "live",
+    "NVDAL182612900.U": "live",
+    "NVDAL182613000.U": "live",
+    "NVDAL182613200.U": "live",
+    "NVDAL182613400.U": "live",
+    "NVDAL182613500.U": "live",
+    "NVDAL182613600.U": "live",
+    "NVDAL182613800.U": "live",
+    "NVDAL182614000.U": "live",
+    "NVDAL182614200.U": "live",
+    "NVDAL182614400.U": "live",
+    "NVDAL182614500.U": "live",
+    "NVDAL182614600.U": "live",
+    "NVDAL182614800.U": "live",
+    "NVDAL182615000.U": "live",
+    "NVDAL182615200.U": "live",
+    "NVDAL182615400.U": "live",
+    "NVDAL182615500.U": "live",
+    "NVDAL182615600.U": "live",
+    "NVDAL182615800.U": "live",
+    "NVDAL182616000.U": "live",
+    "NVDAL182616200.U": "live",
+    "NVDAL182616400.U": "live",
+    "NVDAL182616500.U": "live",
+    "NVDAL182616600.U": "live",
+    "NVDAL182616700.U": "live",
+    "NVDAL182616800.U": "live",
+    "NVDAL182616900.U": "live",
+    "NVDAL182617000.U": "live",
+    "NVDAL182617100.U": "live",
+    "NVDAL182617200.U": "live",
+    "NVDAL182617300.U": "live",
+    "NVDAL182617400.U": "live",
+    "NVDAL182617500.U": "live",
+    "NVDAL182617600.U": "live",
+    "NVDAL182617700.U": "live",
+    "NVDAL182617800.U": "live",
+    "NVDAL182617900.U": "live",
+    "NVDAL182618000.U": "live",
+    "NVDAL182618100.U": "live",
+    "NVDAL182618200.U": "live",
+    "NVDAL182618300.U": "live",
+    "NVDAL182618400.U": "live",
+    "NVDAL182618500.U": "live",
+    "NVDAL182618600.U": "live",
+    "NVDAL182618700.U": "live",
+    "NVDAL182618800.U": "live",
+    "NVDAL182618900.U": "live",
+    "NVDAL182619000.U": "live",
+    "NVDAL182619100.U": "live",
+    "NVDAL182619200.U": "live",
+    "NVDAL182619300.U": "live",
+    "NVDAL182619400.U": "live",
+    "NVDAL182619500.U": "live",
+    "NVDAL182620000.U": "live",
+    "NVDAL182620500.U": "live",
+    "NVDAL182621000.U": "live",
+    "NVDAL182621200.U": "live",
+    "NVDAL182621300.U": "live",
+    "NVDAL182621400.U": "live",
+    "NVDAL182621500.U": "live",
+    "NVDAL182621600.U": "live",
+    "NVDAL182621700.U": "live",
+    "NVDAL182621800.U": "live",
+    "NVDAL182621900.U": "live",
+    "NVDAL182622000.U": "live",
+    "NVDAL182622100.U": "live",
+    "NVDAL182622200.U": "live",
+    "NVDAL182622300.U": "live",
+    "NVDAL182622400.U": "live",
+    "NVDAL182622500.U": "live",
+    "NVDAL182622600.U": "live",
+    "NVDAL182622700.U": "live",
+    "NVDAL182622800.U": "live",
+    "NVDAL182623000.U": "live",
+    "NVDAL182623500.U": "live"
+  },
+  "right": "C",
+  "symbol": "NVDA",
+  "unanswered": {
+    "NVDA  261218C00131000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182613100)",
+        "reason": "no_data",
+        "ric": "NVDAL182613100.U"
+      }
+    ],
+    "NVDA  261218C00133000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182613300)",
+        "reason": "no_data",
+        "ric": "NVDAL182613300.U"
+      }
+    ],
+    "NVDA  261218C00137000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182613700)",
+        "reason": "no_data",
+        "ric": "NVDAL182613700.U"
+      }
+    ],
+    "NVDA  261218C00139000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182613900)",
+        "reason": "no_data",
+        "ric": "NVDAL182613900.U"
+      }
+    ],
+    "NVDA  261218C00141000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182614100)",
+        "reason": "no_data",
+        "ric": "NVDAL182614100.U"
+      }
+    ],
+    "NVDA  261218C00143000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182614300)",
+        "reason": "no_data",
+        "ric": "NVDAL182614300.U"
+      }
+    ],
+    "NVDA  261218C00147000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182614700)",
+        "reason": "no_data",
+        "ric": "NVDAL182614700.U"
+      }
+    ],
+    "NVDA  261218C00149000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182614900)",
+        "reason": "no_data",
+        "ric": "NVDAL182614900.U"
+      }
+    ],
+    "NVDA  261218C00151000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182615100)",
+        "reason": "no_data",
+        "ric": "NVDAL182615100.U"
+      }
+    ],
+    "NVDA  261218C00153000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182615300)",
+        "reason": "no_data",
+        "ric": "NVDAL182615300.U"
+      }
+    ],
+    "NVDA  261218C00157000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182615700)",
+        "reason": "no_data",
+        "ric": "NVDAL182615700.U"
+      }
+    ],
+    "NVDA  261218C00159000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182615900)",
+        "reason": "no_data",
+        "ric": "NVDAL182615900.U"
+      }
+    ],
+    "NVDA  261218C00161000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182616100)",
+        "reason": "no_data",
+        "ric": "NVDAL182616100.U"
+      }
+    ],
+    "NVDA  261218C00163000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182616300)",
+        "reason": "no_data",
+        "ric": "NVDAL182616300.U"
+      }
+    ],
+    "NVDA  261218C00196000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182619600)",
+        "reason": "no_data",
+        "ric": "NVDAL182619600.U"
+      }
+    ],
+    "NVDA  261218C00197000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182619700)",
+        "reason": "no_data",
+        "ric": "NVDAL182619700.U"
+      }
+    ],
+    "NVDA  261218C00198000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182619800)",
+        "reason": "no_data",
+        "ric": "NVDAL182619800.U"
+      }
+    ],
+    "NVDA  261218C00199000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182619900)",
+        "reason": "no_data",
+        "ric": "NVDAL182619900.U"
+      }
+    ],
+    "NVDA  261218C00201000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182620100)",
+        "reason": "no_data",
+        "ric": "NVDAL182620100.U"
+      }
+    ],
+    "NVDA  261218C00202000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182620200)",
+        "reason": "no_data",
+        "ric": "NVDAL182620200.U"
+      }
+    ],
+    "NVDA  261218C00203000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182620300)",
+        "reason": "no_data",
+        "ric": "NVDAL182620300.U"
+      }
+    ],
+    "NVDA  261218C00204000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182620400)",
+        "reason": "no_data",
+        "ric": "NVDAL182620400.U"
+      }
+    ],
+    "NVDA  261218C00206000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182620600)",
+        "reason": "no_data",
+        "ric": "NVDAL182620600.U"
+      }
+    ],
+    "NVDA  261218C00207000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182620700)",
+        "reason": "no_data",
+        "ric": "NVDAL182620700.U"
+      }
+    ],
+    "NVDA  261218C00208000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182620800)",
+        "reason": "no_data",
+        "ric": "NVDAL182620800.U"
+      }
+    ],
+    "NVDA  261218C00209000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182620900)",
+        "reason": "no_data",
+        "ric": "NVDAL182620900.U"
+      }
+    ],
+    "NVDA  261218C00211000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182621100)",
+        "reason": "no_data",
+        "ric": "NVDAL182621100.U"
+      }
+    ],
+    "NVDA  261218C00229000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182622900)",
+        "reason": "no_data",
+        "ric": "NVDAL182622900.U"
+      }
+    ],
+    "NVDA  261218C00231000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182623100)",
+        "reason": "no_data",
+        "ric": "NVDAL182623100.U"
+      }
+    ],
+    "NVDA  261218C00232000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182623200)",
+        "reason": "no_data",
+        "ric": "NVDAL182623200.U"
+      }
+    ],
+    "NVDA  261218C00233000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182623300)",
+        "reason": "no_data",
+        "ric": "NVDAL182623300.U"
+      }
+    ],
+    "NVDA  261218C00234000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182623400)",
+        "reason": "no_data",
+        "ric": "NVDAL182623400.U"
+      }
+    ],
+    "NVDA  261218C00236000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182623600)",
+        "reason": "no_data",
+        "ric": "NVDAL182623600.U"
+      }
+    ],
+    "NVDA  261218C00237000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182623700)",
+        "reason": "no_data",
+        "ric": "NVDAL182623700.U"
+      }
+    ],
+    "NVDA  261218C00238000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182623800)",
+        "reason": "no_data",
+        "ric": "NVDAL182623800.U"
+      }
+    ],
+    "NVDA  261218C00239000": [
+      {
+        "codes": [
+          "TS.Intraday.UserRequestError.90001"
+        ],
+        "message": "No data to return, please check errors: ERROR: No successful response.\n(TS.Intraday.UserRequestError.90001, NVDAL182623900)",
+        "reason": "no_data",
+        "ric": "NVDAL182623900.U"
+      }
+    ]
+  },
+  "unit": "chains/2026-12-18_C"
+}

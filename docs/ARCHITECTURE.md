@@ -388,7 +388,7 @@ The stock RIC and daily bars come first, since every later check needs them, the
 ### 6.4 Cache layout (DEC-46)
 
 ```
-data_cache/                                   gitignored (DEC-05, DEC-56)
+data_cache/                                   NVDA/ committed, the rest gitignored (DEC-05)
   probes/{SYM}_{YYYYMMDD}.json                one report per symbol and day, never overwritten (DEC-85)
   {SYM}/
     manifest.json                             index rebuilt from the sidecars: every entry, the
@@ -643,7 +643,7 @@ results/                            committed
   universe/suitability.json         symbol suitability screen
   {SYM}/{run_id}.json               RunResult, full or summary
   {SYM}/robustness.json             ablation, friction, timing and grid tables
-  {SYM}/fill_check.json             scatter points (or bins, DEC-05) + fit
+  {SYM}/fill_check.json             scatter points (raw pairs, DEC-05) + fit
   {SYM}/coverage.json               derived data-coverage counts
 ```
 
@@ -743,7 +743,7 @@ CI (`.github/workflows/ci.yml`, on push and PR; DEC-79):
 | `deploy` | `main` only; needs `python` and `web`; `actions/deploy-pages` |
 
 - **Dist guard:** fails if `web/dist` references `localhost:9000`, an `lseg`/`refinitiv` URL, or `fonts.googleapis.com`. The smoke test also fails on any cross-origin request.
-- **Pre-commit:** ruff, ruff-format, pyright, check-yaml, end-of-file-fixer, check-added-large-files (500 KB; 2 MB under `results/`, DEC-92), detect-private-key, and a local hook that rejects a staged `lseg-data.config.json`.
+- **Pre-commit:** ruff, ruff-format, pyright, check-yaml, end-of-file-fixer (never on `data_cache/`, DEC-05), check-added-large-files (500 KB; 2 MB under `results/` and `data_cache/`, DEC-92, DEC-05), detect-private-key, and a local hook that rejects a staged `lseg-data.config.json`.
   - ruff and pyright run through `uv run --frozen`, at the `uv.lock` versions. The reference files are excluded from every hook (DEC-57, DEC-77).
   - The CI pytest step sets `HYPOTHESIS_PROFILE=ci`.
 
