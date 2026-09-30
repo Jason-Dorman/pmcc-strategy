@@ -99,20 +99,25 @@ def run_loaded(loaded: SymbolData, root: str, config: RunConfig, starting_cash: 
 
 def run_market(market: Market, config: RunConfig, starting_cash: Money,
                stamp: Stamp) -> RunResult:  # fmt: skip
-    """Run `config` on a prepared market. Raises `ValueError` if the market was priced at another
-    r, and `CacheError` if its stock tape doesn't cover the window."""
+    """Run `config` on a prepared market into its result; raises as `run_output` does."""
+    result = to_result(run_output(market, config, starting_cash), market, config, stamp)
+    log.info("run.done", symbol=market.loaded.symbol, run_id=config.strategy.id,
+             trades=len(result.blotter), bars=len(result.ledger), weeks=len(result.gate_log),
+             git_dirty=stamp.provenance.git.dirty)  # fmt: skip
+    return result
+
+
+def run_output(market: Market, config: RunConfig, starting_cash: Money) -> RunOutput:
+    """The engine's output for `config` on a prepared market (`pmcc calibrate` reads it whole).
+    Raises `ValueError` if the market was priced at another r, and `CacheError` if its stock tape
+    doesn't cover the window."""
     if config.risk_free_rate.value != market.data.rate:
         raise ValueError(
             f"{config.strategy.id} runs at r = {config.risk_free_rate.value}, but the market was "
             f"priced at {market.data.rate}"
         )
     check_covers(market.loaded, config)
-    output = run_backtest(market.data, config, build_strategy(config.strategy), starting_cash)
-    result = to_result(output, market, config, stamp)
-    log.info("run.done", symbol=market.loaded.symbol, run_id=config.strategy.id,
-             trades=len(result.blotter), bars=len(result.ledger), weeks=len(result.gate_log),
-             git_dirty=stamp.provenance.git.dirty)  # fmt: skip
-    return result
+    return run_backtest(market.data, config, build_strategy(config.strategy), starting_cash)
 
 
 def check_covers(loaded: SymbolData, config: RunConfig) -> None:

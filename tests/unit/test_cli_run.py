@@ -38,7 +38,25 @@ def _provenance(dirty: bool = False) -> Provenance:
     return Provenance(GitState("a" * 40, dirty), "b" * 64, "0.0.0")
 
 
-def _universe(cash: str = "starting_cash: 10000\n", window: str = "") -> str:
+RULE = "cash_multiple: 2, cash_round_to: 5000, calibration_cash: 1000000"  # E-L4's, and $1M
+
+
+def cash_block(cost: int = 5_000, *, final: bool = False) -> str:
+    """A calibrated starting cash for SYN: 2 × `cost` rounded up to $5,000 (DEC-30). Provisional
+    on the baseline alone; final with the quant strategy too."""
+    value = -(-2 * cost // 5_000) * 5_000
+    strategies = ("baseline_pmcc", "quant_pmcc") if final else ("baseline_pmcc",)
+    when = NOW.isoformat()
+    entries = ", ".join(
+        f"{{symbol: SYN, strategy: {s}, time: '{when}', contract: X, cost: {cost}}}"
+        for s in strategies
+    )
+    head = f"value: {value}, provisional: {str(not final).lower()}, {RULE}"
+    return f"starting_cash: {{{head}, entries: [{entries}]}}\n"
+
+
+def _universe(cash: str | None = None, window: str = "") -> str:
+    cash = cash_block() if cash is None else cash
     spec = random_walk()
     shipped = UNIVERSE_PATH.read_text(encoding="utf-8")
     rate = shipped[shipped.index("risk_free_rate:") : shipped.index("# The universe")]
@@ -98,7 +116,7 @@ def test_cli_run_writes_the_result_under_symbol_and_run_id(workdir: Path, market
 
 
 def test_cli_run_takes_starting_cash_from_the_universe(workdir: Path, market: Path) -> None:
-    Path("universe.yaml").write_text(_universe("starting_cash: 25000\n"), encoding="utf-8")
+    Path("universe.yaml").write_text(_universe(cash_block(12_000)), encoding="utf-8")
 
     code, output = _run(market)
 
@@ -128,7 +146,7 @@ def test_dec_50_cli_run_on_a_dirty_tree_records_it_and_says_to_commit(
     assert "pmcc verify rejects dirty results" in output
 
 
-def test_dec_30_cli_run_without_starting_cash_stops_naming_p3_09(
+def test_dec_30_cli_run_without_starting_cash_stops_naming_calibrate(
     workdir: Path, market: Path
 ) -> None:
     Path("universe.yaml").write_text(_universe(cash=""), encoding="utf-8")
@@ -136,21 +154,26 @@ def test_dec_30_cli_run_without_starting_cash_stops_naming_p3_09(
     code, output = _run(market)
 
     assert code == 1
-    assert "no starting_cash" in output
-    assert "P3-09" in output
+    assert "configs/universe.yaml has no starting_cash yet: run pmcc calibrate" in output
     assert not Path("results").exists()
 
 
-def test_dec_30_cli_run_on_the_shipped_universe_stops_naming_p3_09(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+def test_dec_30_cli_run_says_when_the_starting_cash_is_provisional(
+    workdir: Path, market: Path
 ) -> None:
-    monkeypatch.chdir(tmp_path)  # the shipped universe is found from the package, not the cwd
+    code, output = _run(market)
 
-    result = runner.invoke(app, ["run", "--symbol", "NVDA", "--config", BASELINE])
+    assert code == 0, output
+    assert "Starting cash 10000.0000 is provisional (DEC-30)" in output
 
-    assert result.exit_code == 1
-    assert "configs/universe.yaml has no starting_cash yet: P3-09" in result.output
-    assert not Path("results").exists()
+
+def test_dec_30_cli_run_is_silent_about_a_final_starting_cash(workdir: Path, market: Path) -> None:
+    Path("universe.yaml").write_text(_universe(cash_block(final=True)), encoding="utf-8")
+
+    code, output = _run(market)
+
+    assert code == 0, output
+    assert "provisional" not in output
 
 
 @pytest.mark.usefixtures("workdir")

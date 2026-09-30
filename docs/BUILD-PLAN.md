@@ -28,9 +28,9 @@ Sep 25, 2026 · schedule from Spec › Build order · **due Fri Oct 9, 11:59 pm*
 | --- | --- | --- | --- |
 | P0 Foundations | Sat Sep 26 | `just check` green in Git Bash and in CI; credentials ignored; LSEG session opens from Git Bash | Done locally 2026-09-25; CI run for P0-07/08 pending the PO's push |
 | P1 Data layer and open items | Sat Sep 26 – Sun Sep 27 | NVDA's full chain cached; INV-11, INV-12 pass; window, r and identifiers recorded; universe fetch started | Done 2026-09-28 (P1 exit): P1-01 to P1-09 (window Mar 30 – Sep 25 2026, r = 0.0371, universe QQQ, NVDA, TSLA; cache and loader per DEC-46; `pmcc fetch` per DEC-88; NVDA's chain cached, near-money weekly mids 97.7%) |
-| P1-10 Universe fetch (background) | Sun Sep 27 – Sat Oct 3 | QQQ and TSLA cached with coverage summaries (NVDA at P1-09) | Estimates shown 2026-09-28 (QQQ 183–547 min, TSLA 98–293 min); the PO scheduled the pull overnight |
+| P1-10 Universe fetch (background) | Sun Sep 27 – Sat Oct 3 | QQQ and TSLA cached with coverage summaries (NVDA at P1-09) | Estimates shown 2026-09-28 (QQQ 183–547 min, TSLA 98–293 min); the PO scheduled the pull overnight. Seen 2026-09-30: TSLA's pull stopped at 01:14 on Sep 29 with its 53 weekly units cached and none of its 9 monthlies (Oct 2026 – Jun 2027); QQQ not started. Re-running TSLA's fetch resumes at the first missing unit |
 | P2 Pricing | Mon Sep 28 | IV solver matches the reference; EM, ATM IV, RV20 tested | Done 2026-09-28, as one commit (PO, DEC-59): Black-Scholes, T and DTE, the IV solver, measures and the chain pricer (DEC-24 to DEC-27 settled; DEC-89). NVDA prices in 1.4 s; IV failures 8.3%, mostly very deep ITM; DEC-26's missing-close rule is with the PO |
-| P3 Engine, accounting, baseline | Mon Sep 28 – Wed Sep 30 | **M1:** baseline blotter, ledger, NAV, Reg T for NVDA; INV-01–10 and 13 pass | In progress: P3-01 done 2026-09-29 (DEC-35, DEC-90); P3-02 to P3-07 done 2026-09-30 as one commit (DEC-91); P3-08 (`pmcc run`, DEC-50, DEC-92) done 2026-09-30; next P3-09 (starting capital, DEC-30) |
+| P3 Engine, accounting, baseline | Mon Sep 28 – Wed Sep 30 | **M1:** baseline blotter, ledger, NAV, Reg T for NVDA; INV-01–10 and 13 pass | In progress: P3-01 done 2026-09-29 (DEC-35, DEC-90); P3-02 to P3-07 done 2026-09-30 as one commit (DEC-91); P3-08 (`pmcc run`, DEC-50, DEC-92) done 2026-09-30; P3-09 (starting cash $10,000, provisional, from NVDA; DEC-30, DEC-93) done 2026-09-30; next P3-10 (baseline on NVDA, DEC-05) |
 | P4 Quant layer and site skeleton | Thu Oct 1 – Fri Oct 2 | **M2:** quant + A1–A5 on NVDA; Pages serves the skeleton from sample JSON; INV-14, 15 in CI | Not started |
 | P5 Universe batch and sensitivity | Sat Oct 3 – Sun Oct 4 | **M3:** all results JSON written and verified | Not started |
 | P6 Analytics | Mon Oct 5 – Tue Oct 6 | **M4:** every table and series in results JSON | Not started |
@@ -302,7 +302,7 @@ P8 release                                                                      
     - INV-13 passes on synthetic data (two runs, byte-identical once `run_timestamp` and `git_sha` are dropped; DEC-50)
     - a dirty tree records `git_dirty: true`
   - Needs: P3-07
-- [ ] **P3-09 · Provisional capital**
+- [x] **P3-09 · Provisional capital** — done 2026-09-30. The PO settled DEC-30 as recommended and narrowed it to NVDA for now: 2 × the most expensive first long-leg cost, rounded up to $5,000. The PO noted that the starting cash must cover the entries and a $1,000,000 balance would skew NAV, so $1,000,000 is only the measuring runs' cash; each run is then repeated at the value, and calibration fails if E-L4 blocks any entry. `pmcc calibrate` (`pmcc/calibration.py`, `pmcc/config/capital.py`, DEC-93) wrote **$10,000, provisional**, into `configs/universe.yaml`: NVDA's first entry is the Sep 18 2026 $135 call on Mar 30 at $4,142.50; its later entries ($5,125.00, $5,032.50) are covered. `--check` recomputes the block byte for byte; `pmcc run` notes a provisional value. An adversarial review (4 reviewers, 2 skeptics per finding) confirmed 6 findings and rated 6 plausible, all fixed with the 3 unverified lows; 21 planted mutants killed. The PO settled the three it raised: the 2× and $5,000 are now E-L4's YAML params, stated in E-L4's text; negative available funds are reported, not refused (NVDA: lowest $4,978.50, none below zero); a partial-cache check waits for P5-01 (DEC-30, DEC-93). 76 more tests, 1,591 in the suite
   - Ask first: DEC-30.
   - Run `pmcc calibrate` on the symbols cached so far, and label the value provisional in `universe.yaml`.
   - Done when: calibration is reproducible and records its basis.
@@ -367,7 +367,8 @@ P8 release                                                                      
 ### P5 — Universe batch and sensitivity · Sat Oct 3 – Sun Oct 4
 
 - [ ] **P5-01 · Final capital**
-  - Once the universe is cached (P1-10), run `pmcc calibrate` across the 3 symbols × 2 strategies and commit `starting_cash` with its basis (DEC-30).
+  - Once the universe is cached (P1-10), run `pmcc calibrate` across the 3 symbols × 2 strategies and commit `starting_cash` with its basis (DEC-30). It replaces the provisional block.
+  - First, decide with the PO how calibrate (and `pmcc run`) treat a cache missing option units its fetch plan asks for: today calibrate fails with an engine error, or could pass on a run that never re-entered (DEC-93, deferred by the PO at P3-09).
   - Done when: `universe.yaml` has a non-provisional value.
   - Needs: P1-10, P4-03
 - [ ] **P5-02 · Sensitivity variants**

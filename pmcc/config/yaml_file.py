@@ -26,4 +26,9 @@ class _StrictLoader(yaml.SafeLoader):
 
 def read_yaml(path: Path) -> object:
     """The file's content, as safe YAML with no key given twice in any mapping."""
-    return yaml.load(path.read_text(encoding="utf-8"), Loader=_StrictLoader)
+    return parse_yaml(path.read_text(encoding="utf-8"))
+
+
+def parse_yaml(text: str) -> object:
+    """`text` as safe YAML with no key given twice in any mapping."""
+    return yaml.load(text, Loader=_StrictLoader)

@@ -29,7 +29,7 @@ from pmcc.config.fields import DollarMoney, RuleIdField
 from pmcc.config.kinds import KINDS, OPTIONAL_RULE_IDS, SPEC_RULE_IDS, Params
 from pmcc.config.rule_text import placeholders, render
 from pmcc.config.universe import RiskFreeRate, Universe, Window
-from pmcc.domain import Price, RuleId
+from pmcc.domain import Money, Price, RuleId
 
 CONFIGS_DIR = Path(__file__).resolve().parents[2] / "configs"
 
@@ -105,7 +105,8 @@ class Rule(BaseModel):
         self.text()  # every placeholder resolves and formats
 
     def text(self) -> RuleText:
-        """The write-up rendered from this rule's params: a `Price` as `Decimal` dollars."""
+        """The write-up rendered from this rule's params: a `Price` or `Money` as `Decimal`
+        dollars."""
         values = {
             name: _display(getattr(self.params, name)) for name in type(self.params).model_fields
         }
@@ -126,7 +127,7 @@ def _describe(error: ValidationError) -> str:
 
 
 def _display(value: object) -> object:
-    return value.to_dollars() if isinstance(value, Price) else value
+    return value.to_dollars() if isinstance(value, Price | Money) else value
 
 
 class FillModel(BaseModel):

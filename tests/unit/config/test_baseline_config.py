@@ -89,6 +89,8 @@ def test_config_every_rule_has_its_write_up(rule: Rule) -> None:
         ("E-L2", "target_dte", 180),
         ("E-L3", "target_delta", 0.80),
         ("E-L4", "contracts", 1),
+        ("E-L4", "cash_multiple", 2),  # Spec › E-L4's starting cash (PO, DEC-30)
+        ("E-L4", "cash_round_to", Money.from_dollars(5_000)),
         ("E-S3", "target_delta", 0.30),
         ("X-S1", "max_credit_fraction", 0.25),
         ("X-S2", "max_delta", 0.60),
@@ -100,6 +102,15 @@ def test_config_every_rule_has_its_write_up(rule: Rule) -> None:
 )
 def test_config_baseline_holds_the_spec_threshold(rule_id: str, name: str, value: object) -> None:
     assert _param(rule_id, name) == value
+
+
+def test_dec_30_config_e_l4_text_states_the_starting_cash_rule() -> None:
+    """The published E-L4 says how the starting cash is set, from the params calibrate reads."""
+    e_l4 = next(r for r in BASELINE.rules if r.id == "E-L4")
+    assert e_l4.text().action.endswith(
+        "Every account starts with 2× the most expensive first long-leg cost in the universe, "
+        "rounded up to the nearest $5,000"
+    )
 
 
 def test_config_baseline_fill_model_is_the_spec_default() -> None:

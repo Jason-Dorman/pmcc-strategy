@@ -67,8 +67,10 @@ pmcc/
                  StrategyConfig, RunConfig, the config hash), fields.py (dollars, clock times,
                  rule IDs as pydantic fields) (DEC-90);
                  calendar.py (configs/calendar.yaml → SessionCalendar, DEC-84);
-                 universe.py (configs/universe.yaml → Universe: window, r, symbols; DEC-86);
-                 yaml_file.py (read_yaml: safe YAML refusing a key given twice; DEC-86)
+                 universe.py (configs/universe.yaml → Universe: window, r, symbols, starting
+                 cash; DEC-86); capital.py (StartingCash: E-L4's cash rule, the calibrated block and
+                 its writer; DEC-93); yaml_file.py (read_yaml, parse_yaml: safe YAML refusing a
+                 key given twice; DEC-86)
   data/
     provider.py  HistoryProvider port, RawHistory (long rows), Interval, the DEC-49 failure
                  classes (DEC-83)
@@ -111,6 +113,7 @@ pmcc/
                  manifest.py (git SHA and dirtiness, lockfile hash, version), results.py (write_result)
                  (P3-08, DEC-92); schema.py, site.py, verify.py (P4-05)
   runner.py      run_symbol: load a cache, run the engine, build the RunResult (DEC-92)
+  calibration.py calibrate: measure each run's first long entry, verify the value (DEC-93)
   log.py         structlog JSON setup: stderr + logs/{command}_{timestamp}.jsonl (DEC-80)
   cli.py         typer: fetch, probe, run, batch, calibrate, export, verify, serve
 configs/         _shared.yaml, baseline_pmcc.yaml, quant_pmcc.yaml, ablations/a1…a5.yaml,
@@ -139,7 +142,8 @@ The reference files at the repo root (`LSEG-DATA-GUIDE.md`, `DESIGN-GUIDE.md`, `
 | `accounting` | Record and value positions | `Book.apply()`, `carry()`, `value()`, `regt()`, `funds_after()`, `ledger_row()` | domain |
 | `analytics` | Summarize runs | `compute_metrics()`, `bootstrap_ci()`, … | domain, accounting read models |
 | `export` | Result models, manifest, canonical JSON, site data, verify | `write_result()`, `export_site()`, `verify()` | domain, config, accounting, analytics; `data.files` for whole-file writes (DEC-92) |
-| `runner` | Run configs on one symbol's cache into results | `run_symbol()`, `run_loaded()`; `Market.prepare()` once per symbol, then `run_market()` per config → `RunResult` | domain, config, accounting, data, engine, strategy, export, polars (DEC-92) |
+| `runner` | Run configs on one symbol's cache into results | `run_symbol()`, `run_loaded()`; `Market.prepare()` once per symbol, then `run_market()` per config → `RunResult`, or `run_output()` → the engine's `RunOutput` | domain, config, accounting, data, engine, strategy, export, polars (DEC-92) |
+| `calibration` | Calibrate the starting cash (E-L4) | `calibrate(markets, configs, universe)` → `Calibration` (the `StartingCash` and each run's `RunFunds`); `cash_rule()`, `measure()`, `first_long_entry()`, `verify()`, `run_funds()`, `blocked_entries()` | domain, config, accounting (the `Event` type), engine, runner (DEC-93) |
 | `log` | Configure structured logging for one command | `configure_logging()` | structlog |
 | `cli` | Wire commands | `pmcc` | everything |
 
@@ -549,12 +553,12 @@ A failure logs `invariant.failed` and raises `InvariantViolation` (an `EngineErr
 
 | File | Holds |
 | --- | --- |
-| `configs/_shared.yaml` | Rules identical in both strategies (E-T1, E-L1, E-L4, E-S1, E-S2, E-S4, E-S5, G-1, G-2, all exits) and the fill model (`spread_capture`, `fee_per_contract`). Only ever extended: it has no `id` |
+| `configs/_shared.yaml` | Rules identical in both strategies (E-T1, E-L1, E-L4, E-S1, E-S2, E-S4, E-S5, G-1, G-2, all exits) and the fill model (`spread_capture`, `fee_per_contract`). E-L4's params include the starting cash's rule, `cash_multiple` and `cash_round_to`, which `pmcc calibrate` reads (DEC-30, DEC-93). Only ever extended: it has no `id` |
 | `configs/baseline_pmcc.yaml` | `extends: _shared.yaml`; baseline E-L2, E-L3, E-S3. Report sections join at P4-05 (DEC-54) |
 | `configs/quant_pmcc.yaml` | `extends: _shared.yaml`; quant E-L2, E-L3, E-S3; G-3, G-4, G-5 (P4-03). Report sections join at P4-05 (DEC-54) |
 | `configs/ablations/a1…a5.yaml` | `extends: ../quant_pmcc.yaml` + `overrides` keyed by rule ID |
 | `configs/sensitivity.yaml` | friction, timing and grid variants (§11) |
-| `configs/universe.yaml` | the window (DEC-07); r with the quote, series, date and source it came from (DEC-11); symbols with stock RIC and option root (DEC-12). Starting cash with its basis joins at P3-09, the bootstrap seed at P6-05. Loaded by `pmcc/config/universe.py`, which checks the window's sessions against the calendar (DEC-86) |
+| `configs/universe.yaml` | the window (DEC-07); r with the quote, series, date and source it came from (DEC-11); symbols with stock RIC and option root (DEC-12); last, the `starting_cash` block `pmcc calibrate` writes: the value, whether it's provisional, the calibration cash and each run's first long entry (DEC-30, DEC-93). The bootstrap seed joins at P6-05, above that block. Loaded by `pmcc/config/universe.py`, which checks the window's sessions against the calendar (DEC-86) |
 | `configs/calendar.yaml` | NYSE holidays and early closes 2025–2027, with sources (DEC-33) |
 
 A rule entry (DEC-52):
@@ -725,7 +729,7 @@ Recipes run under bash (`set shell := ["bash", "-cu"]`): Git Bash locally, bash 
 | `check` | pre-commit on all files, pytest, web lint/typecheck/vitest |
 | `test *ARGS` | pytest (dev profile unless `HYPOTHESIS_PROFILE` is set), extra args passed through |
 | `probe SYM` · `fetch SYM START END *ARGS` | LSEG probes / pull (local only); `fetch` passes extra args, e.g. `--plan-only` |
-| `run SYM CONFIG` · `batch` · `calibrate` | backtests |
+| `run SYM CONFIG` · `batch` · `calibrate *ARGS` | backtests; `calibrate` passes extra args, e.g. `--symbol NVDA --config configs/baseline_pmcc.yaml` or `--check` (DEC-93) |
 | `export` · `verify` | site data / results validation |
 | `web-dev` · `web-build` · `e2e` · `serve` | frontend |
 | `reproduce` | cached data → batch → verify → export → web build (Spec › CLI) |
@@ -749,7 +753,7 @@ CI (`.github/workflows/ci.yml`, on push and PR; DEC-79):
   - A command calls `pmcc.log.configure_logging(command)` once at startup; every other module calls `structlog.get_logger()`.
   - Each event carries `event`, `level`, `timestamp` (ISO 8601, UTC) and `command`; exceptions are rendered as text in `exception`. Level INFO and up.
   - Every soft fetch failure is one `fetch.ric.unanswered` event, logged once per RIC the service left unanswered, with `symbol`, `unit`, `ric`, `form` (for an option RIC), `reason` (`no_data` or `empty`), `codes` and `message` (Spec › Stack, DEC-83). `fetch.batch.rejected` and `fetch.retry` carry `size` and the error.
-  - Event names: `fetch.plan`, `fetch.unit.start|done`, `fetch.increment.unmeasured`, `fetch.ric.unanswered`, `fetch.batch.rejected`, `fetch.retry`, `fetch.abort.outage`, `fetch.coverage`, `fetch.coverage.unit`, `engine.entry.retry`, `engine.gate.fired`, `engine.exit.pending`, `engine.exit.unevaluated` (a rule on a fresh quote missing an input, with `rule`, `option` and `iv_code`; DEC-27), `invariant.failed`, `run.done` (with `trades`, `bars`, `weeks` and `git_dirty`), `run.abort` (DEC-92).
+  - Event names: `fetch.plan`, `fetch.unit.start|done`, `fetch.increment.unmeasured`, `fetch.ric.unanswered`, `fetch.batch.rejected`, `fetch.retry`, `fetch.abort.outage`, `fetch.coverage`, `fetch.coverage.unit`, `engine.entry.retry`, `engine.gate.fired`, `engine.exit.pending`, `engine.exit.unevaluated` (a rule on a fresh quote missing an input, with `rule`, `option` and `iv_code`; DEC-27), `invariant.failed`, `run.done` (with `trades`, `bars`, `weeks` and `git_dirty`), `run.abort` (DEC-92), `calibrate.measured` (with `symbol`, `run_id`, `time`, `contract` and `cost`), `calibrate.verified` (with `symbol`, `run_id`, `lowest`, `lowest_at` and `negative_bars`), `calibrate.done` (with `value`, `provisional` and `runs`), `calibrate.abort` (DEC-93).
 - **Errors:** the failure taxonomy is DEC-49.
 - **Secrets:**
   - `lseg-data.config.json` is gitignored, blocked by a pre-commit hook, and checked in CI (`git ls-files` must not list it).

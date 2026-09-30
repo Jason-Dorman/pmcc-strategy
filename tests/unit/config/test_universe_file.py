@@ -3,13 +3,14 @@ against the calendar they run on (P1-05)."""
 
 import json
 import math
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
 
 from pmcc.config.calendar import load_calendar
+from pmcc.config.capital import render_block
 from pmcc.config.universe import (
     MIN_WEEKS,
     UNIVERSE_PATH,
@@ -20,6 +21,7 @@ from pmcc.config.universe import (
 from pmcc.data.discovery import SessionRange, plan_symbol, stock_unit
 from pmcc.data.ric import RicForm, build_ric
 from pmcc.domain import Money, OptionId, Price, Right
+from pmcc.domain.clock import ET
 
 CAL = load_calendar()
 UNIVERSE = load_universe(CAL)
@@ -125,31 +127,77 @@ def test_universe_file_reads_a_minimal_file(tmp_path: Path) -> None:
     assert [u.symbol for u in universe.symbols] == ["SPY"]
 
 
-def test_universe_file_starting_cash_is_unset_until_p3_09() -> None:
-    assert UNIVERSE.starting_cash is None
+def test_dec_30_universe_file_starting_cash_is_nvda_baseline_provisional() -> None:
+    """P3-09: calibrated on NVDA's baseline only, so provisional until P5-01 (PO, DEC-30)."""
+    cash = UNIVERSE.starting_cash
+    assert cash is not None
+    assert cash.value == Money.from_dollars(10_000)
+    assert cash.provisional
+    assert cash.calibration_cash == Money.from_dollars(1_000_000)
+    assert (cash.cash_multiple, cash.cash_round_to) == (2, Money.from_dollars(5_000))  # E-L4's
+    (entry,) = cash.entries
+    assert (entry.symbol, entry.strategy) == ("NVDA", "baseline_pmcc")
+    assert entry.contract == "NVDAI182613500.U^I26"  # Sep 18 2026 $135 call, as the cache named it
+    assert entry.time == datetime(2026, 3, 30, 10, tzinfo=ET)
+    assert "time: '2026-03-30T10:00:00-04:00'" in UNIVERSE_PATH.read_text(encoding="utf-8")
+    assert entry.cost == Money.from_dollars("4142.50")
+
+
+def test_dec_30_universe_file_starting_cash_is_the_block_calibrate_wrote() -> None:
+    """Not edited by hand: the file ends with exactly what `pmcc calibrate` renders."""
+    cash = UNIVERSE.starting_cash
+    assert cash is not None
+    assert UNIVERSE_PATH.read_text(encoding="utf-8").endswith("\n\n" + render_block(cash))
 
 
 def test_universe_file_starting_cash_is_optional(tmp_path: Path) -> None:
     assert read_universe_file(_write(tmp_path, _body())).starting_cash is None
 
 
-@pytest.mark.parametrize(("text", "units"), [("25000", 250_000_000), ("12345.6789", 123_456_789)])
-def test_universe_file_reads_starting_cash_as_exact_money(
-    tmp_path: Path, text: str, units: int
-) -> None:
-    universe = read_universe_file(_write(tmp_path, _body(extra=f"starting_cash: {text}\n")))
+RULE = "cash_multiple: 2, cash_round_to: 5000, calibration_cash: 1000000"  # E-L4's, and $1M
 
-    assert universe.starting_cash == Money(units)
+
+def _cash_block(symbol: str = "SPY", provisional: str = "true", *, quant: bool = False) -> str:
+    """A calibrated block: $900 entries, so $5,000 (DEC-30)."""
+    entry = (
+        "{{symbol: {s}, strategy: {t}, time: '2026-03-30T10:00:00-04:00', contract: X, cost: 900}}"
+    )
+    strategies = ["baseline_pmcc", "quant_pmcc"] if quant else ["baseline_pmcc"]
+    entries = ", ".join(entry.format(s=symbol, t=t) for t in strategies)
+    head = f"value: 5000, provisional: {provisional}, {RULE}"
+    return f"starting_cash: {{{head}, entries: [{entries}]}}\n"
+
+
+def test_dec_30_universe_file_reads_a_calibrated_starting_cash(tmp_path: Path) -> None:
+    universe = read_universe_file(_write(tmp_path, _body(extra=_cash_block())))
+    assert universe.starting_cash is not None
+    assert universe.starting_cash.value == Money(50_000_000)
+
+
+def test_dec_30_universe_file_final_once_both_strategies_cover_every_symbol(
+    tmp_path: Path,
+) -> None:
+    body = _body(extra=_cash_block(provisional="false", quant=True))
+    cash = read_universe_file(_write(tmp_path, body)).starting_cash
+    assert cash is not None
+    assert not cash.provisional
 
 
 MALFORMED = {
     # Unknown keys, at every level.
     "unknown-key": _body(extra="starting_capital: 10000\n"),
-    # Starting cash (DEC-30): dollars, exact to $0.0001, not negative.
-    "cash-negative": _body(extra="starting_cash: -1\n"),
-    "cash-sub-unit": _body(extra="starting_cash: 10000.00005\n"),
-    "cash-text": _body(extra="starting_cash: ten thousand\n"),
-    "cash-bool": _body(extra="starting_cash: true\n"),
+    # Starting cash (DEC-30, DEC-93): the calibrated block, never a bare figure; calibrated on the
+    # universe's symbols; provisional exactly while a symbol or strategy is missing.
+    "cash-bare-figure": _body(extra="starting_cash: 10000\n"),
+    "cash-bare-text": _body(extra="starting_cash: '10000.0000'\n"),
+    "cash-stranger-symbol": _body(extra=_cash_block(symbol="QQQ")),
+    "cash-final-but-missing-quant": _body(extra=_cash_block(provisional="false")),
+    "cash-provisional-but-complete": _body(extra=_cash_block(quant=True)),
+    "cash-final-but-missing-a-symbol": _body(
+        symbols="[{symbol: SPY, stock_ric: SPY.P, option_root: SPY},"
+        " {symbol: QQQ, stock_ric: QQQ.O, option_root: QQQ}]",
+        extra=_cash_block(provisional="false", quant=True),
+    ),
     "unknown-window-key": _body().replace("end: 2026-09-25}", "end: 2026-09-25, warmup: 45}"),
     "unknown-rate-key": _body(rate=_rate(source=", source: x, basis: discount")),
     "unknown-symbol-key": _one("symbol: SPY, stock_ric: SPY.P, option_root: SPY, optoin_root: X"),

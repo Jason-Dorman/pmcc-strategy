@@ -12,7 +12,7 @@ from typing import Annotated, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from pmcc.config.fields import ClockTime, DollarPrice
+from pmcc.config.fields import ClockTime, DollarMoney, DollarPrice
 from pmcc.domain import RuleId
 
 SPEC_RULE_IDS: tuple[RuleId, ...] = tuple(
@@ -80,7 +80,18 @@ class DeltaBand(Params):  # E-L3 quant
 
 
 class FixedContracts(Params):  # E-L4
+    """The long's size, and the starting cash every account gets: `cash_multiple` × the most
+    expensive first long-leg cost in the universe, rounded up to `cash_round_to` (PO, DEC-30)."""
+
     contracts: int = Field(ge=1)
+    cash_multiple: int = Field(ge=1)
+    cash_round_to: DollarMoney
+
+    @model_validator(mode="after")
+    def _positive_step(self) -> Self:
+        if self.cash_round_to.units <= 0:
+            raise ValueError("cash_round_to must be more than $0")
+        return self
 
 
 class ExpectedMoveStrike(Params):  # E-S3 quant

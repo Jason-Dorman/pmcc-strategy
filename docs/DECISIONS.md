@@ -50,7 +50,7 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-27 | Greeks for held contracts; fresh quotes only | SETTLED (PO) | — |
 | DEC-28 | Exits without a valid quote; when the long is checked | SETTLED (PO) | — |
 | DEC-29 | Tie-breaks | SETTLED (PO) | — |
-| DEC-30 | Starting capital (E-L4) | ASK · cash source answered (PO, P3-08) | P3-09 |
+| DEC-30 | Starting capital (E-L4) | SETTLED (PO) · provisional until P5-01 | P5-01 (final value) |
 | DEC-31 | Entry-timing sensitivity | ASK | P5-02 |
 | DEC-32 | Point-in-time listing | SETTLED (PO) | — |
 | DEC-33 | Expiry calendar | SETTLED (PO) | — |
@@ -104,6 +104,7 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-90 | Strategy config: kinds, the loader and the config hash | ENG | — |
 | DEC-91 | MarketView, synthetic market, accounting, fills, rules, engine loop | ENG · 3 edge cases put to the PO | handover 2026-09-30 |
 | DEC-92 | Results: models, canonical JSON, the manifest and `pmcc run` | ENG | — |
+| DEC-93 | `pmcc calibrate`: the starting-cash block and its two passes | ENG | — |
 
 ---
 
@@ -576,7 +577,7 @@ Distances are compared in integer price units, so float noise can't create or br
 **Outcome:** 2026-09-29 — PO: as recommended, the quant row included (built at P4-01). Built in `pmcc/strategy/selectors.py` (P3-06, DEC-91): DTE is whole days and strikes are integer units, so those ties are exact; spread % is compared as an exact fraction of the integer BID and ASK. A delta is a float from the IV solve, so its distance to the target is rounded to 9 decimal places before comparing: without that, 0.85 and 0.75 aren't equally far from 0.80 in binary floating point, and float noise would break the tie the PO settled (a unit test caught it). The spec is unchanged: this settles what it leaves open.
 
 ### DEC-30 — Starting capital (E-L4)
-**Status:** ASK (the calibration); the cash source SETTLED by the PO on 2026-09-30 · **Ask at:** P3-09 · **Affects:** P3-08, P5-01
+**Status:** SETTLED (PO, 2026-09-30; the cash source at P3-08, the calibration at P3-09) · **Affects:** P3-08, P3-09, P3-10, P5-01; DEC-93
 
 - **Recommendation:**
   - `pmcc calibrate` runs every universe symbol under `baseline_pmcc` and `quant_pmcc` at `spread_capture` 0, with provisional cash.
@@ -585,6 +586,20 @@ Distances are compared in integer price units, so float noise can't create or br
   - The value is written to `configs/universe.yaml` with its basis (symbol, strategy, cost) and committed before the first published run. Every strategy, ablation and sensitivity run uses it unchanged.
   - P3 uses a provisional value from the symbols cached so far, labelled provisional.
 - **Outcome:** 2026-09-30 — partly answered, at P3-08 (the calibration itself is still asked at P3-09). PO: `pmcc run` reads the starting cash only from `configs/universe.yaml`, with no CLI override, so no published run can use another figure. Until P3-09 writes the value, `pmcc run` stops with a message naming P3-09. `Universe.starting_cash` is optional until then (DEC-92).
+- **Outcome:** 2026-09-30 — settled by the PO at P3-09, taking every recommendation, with the scope narrowed:
+  - **Scope for now: NVDA only.** TSLA's cache has no long-leg monthlies yet and QQQ isn't fetched (P1-10); `quant_pmcc` isn't built (P4-01 to P4-03). So the provisional value comes from NVDA under `baseline_pmcc`. P5-01 calibrates all 3 symbols × 2 strategies for the final value.
+  - **The rule, per the spec:** 2 × the most expensive *first* long-leg entry cost (E-L1: fill × 100 × qty + fees, at `spread_capture` 0), rounded up to the nearest $5,000. The PO declined the alternative of the most expensive entry of any kind, which would have amended E-L4.
+  - **Measure, then verify.** The PO noted that the starting cash must cover the entries, and that a $1,000,000 balance would skew NAV. So $1,000,000 is only the measuring runs' cash (`calibration_cash`), large enough that E-L4 never blocks; nothing from those runs is kept but each one's first entry. Each run is then repeated at the chosen value, and calibration fails if E-L4 blocks any entry, long or short, re-entries included. The published starting cash is the calibrated value, never the calibration cash.
+  - **Recorded in the universe file:** `pmcc calibrate` writes a `starting_cash` block into `configs/universe.yaml`: `value`, `provisional`, `calibration_cash` and each run's first entry (symbol, strategy, time, contract RIC, cost). It replaces a provisional block but never a final one, which is only removed by hand. `pmcc calibrate --check` recomputes the block and fails on any difference, so the value is reproducible.
+  - **Provisional, labelled:** `provisional` is true exactly while a universe symbol lacks either strategy. `pmcc run` accepts a provisional value and prints a note saying so; the result format doesn't change, since P5-01 re-runs everything with the final value.
+  - **The provisional value: $10,000.** NVDA's first long entry is the Sep 18 2026 $135 call (`NVDAI182613500.U^I26`) on Mon Mar 30 2026 at 10:00, filled at $41.425: $4,142.50 with no fee. 2 × $4,142.50 = $8,285, rounded up to $10,000. The verify pass ran NVDA's baseline at $10,000 with no E-L4 block; its later long entries, $5,125.00 on Jun 22 and $5,032.50 on Sep 21, are covered. Implementation: DEC-93.
+- **Outcome:** 2026-09-30 — three questions from P3-09's adversarial review, settled by the PO:
+  - **The rule lives in YAML under E-L4** (recommended). The 2× and the $5,000 are E-L4's params `cash_multiple` and `cash_round_to` in `configs/_shared.yaml`, not code constants (CLAUDE.md: every threshold in YAML under a rule ID).
+    - E-L4's action text now states the rule, so the Trade rules page publishes it: "Every account starts with 2× the most expensive first long-leg cost in the universe, rounded up to the nearest $5,000". This extends DEC-35's E-L4 text.
+    - Calibrate reads the rule from the configs and refuses configs that disagree.
+    - The baseline's `config_hash` changes; no results were committed yet. The spec's E-L4 wording is unchanged: the YAML now carries what it says.
+  - **Negative available funds are reported, not refused** (recommended). E-L4 guards entries, and the site already reports Reg T breaches. For each run at the value, calibrate prints the lowest available funds and the number of bars below zero. NVDA's baseline at $10,000: lowest $4,978.50 on Jun 8, none below zero.
+  - **A partial cache: NVDA only for now.** No completeness check is added at P3-09. P5-01 takes it up once QQQ and TSLA are cached (DEC-93).
 
 ### DEC-31 — Entry-timing sensitivity
 **Status:** ASK · **Ask at:** P5-02
@@ -1459,7 +1474,7 @@ Development runs in Git Bash on Windows (DEC-02) and CI runs on Ubuntu. Both mus
   - `run_timestamp` is the start of the run, in ET.
   - A re-run replaces its file whole (`replace_file`). A cache, calendar, provenance or engine error (a failed invariant included), a window the cache doesn't cover, a quant kind not built yet (`NotBuiltError`) or a runner `ValueError` exits 1 with nothing written (DEC-49), and a bad universe or config file (missing, bad YAML, a value refused) exits 1 naming the file.
   - It prints the trade, bar and week counts, the final NAV and the path, and says to commit first when the tree is dirty. Log events: `run.done` and `run.abort`.
-- **`Universe.starting_cash`:** optional (`DollarMoney | None`) until P3-09 writes it with its basis (DEC-30). It isn't in `config_hash`, which covers the strategy, the window and r (DEC-90); the result records it as `starting_cash`.
+- **`Universe.starting_cash`:** optional until P3-09 writes it with its basis (DEC-30); since P3-09 it is the calibrated block, and `pmcc run` takes its `value` (DEC-93). It isn't in `config_hash`, which covers the strategy, the window and r (DEC-90); the result records it as `starting_cash`.
 - **The large-file hook:** a 26-week full result is about 0.5 MB (575 bytes per ledger bar on the synthetic market; NVDA's window has 875 bars), at pre-commit's default 500 KB `check-added-large-files` limit, which would stop the PO's P3-10 commit. `results/` now has its own 2 MB limit; every other path keeps 500 KB. Checked in a throwaway repository: a 1 MB result passes, a 3 MB result and a 600 KB file elsewhere fail.
 - **Tests (78 new, 1,481 in the suite):**
   - `tests/unit/export/`: canonical JSON, including a hypothesis round trip, and provenance on a throwaway git repository (`tests/fakes/git_repo.py`). It lives in pytest's temporary directory, with the global and system git config shut out; the project's repository is only read.
@@ -1482,6 +1497,89 @@ Development runs in Git Bash on Windows (DEC-02) and CI runs on Ubuntu. Both mus
   - **Refuted:** that the serialization JSON Schema types money as strings (P4-05 generates the schema from these models and owns that).
   - **Unverified, low, fixed:** the provenance, calendar and refused-rule error paths untested; no test for `status.showUntrackedFiles=no`; 4-dp padding never exercised; ARCHITECTURE §3.2's runner dependencies; DEC-30's status line and `universe.py` citing DEC-50; value maps silently turning `Decimal` and numpy values into floats.
   - **Unverified, low, not changed:** `pmcc run` always records `data_source: lseg`, so P4's synthetic sample site needs its own entry point that passes `synthetic` to the runner; that is P4-06's to build.
+
+### DEC-93 — `pmcc calibrate`: the starting-cash block and its two passes
+**Status:** ENG · **Affects:** P3-09, P3-10, P4-03, P5-01, P6-05, P7-03; DEC-30, DEC-35, DEC-90, DEC-92
+
+- **Where (ARCHITECTURE §3.1):**
+  - `configs/_shared.yaml`: E-L4's params hold the rule, `cash_multiple: 2` and `cash_round_to: 5000`, beside `contracts: 1`. E-L4's action text states it (PO, DEC-30), so the Trade rules page shows it. The `fixed_contracts` kind (`pmcc/config/kinds.py`) requires both: an int of at least 1, and dollars above $0.
+  - `pmcc/config/capital.py`: `starting_cash_for(costs, multiple, round_to)` (integer ceiling division on $0.0001 units), the models (`StartingCash`, `CalibrationEntry`), `CALIBRATED_STRATEGIES` (`baseline_pmcc`, `quant_pmcc`), `missing_pairs`, and the block writer (`render_block`, `with_block`).
+  - `pmcc/calibration.py` (beside `runner.py`, which it runs):
+    - `calibrate` returns a `Calibration`: the `StartingCash`, and each run's `RunFunds`.
+    - The helpers are `cash_rule`, `measure`, `first_long_entry`, `verify`, `run_funds`, `blocked_entries` and `CALIBRATION_CASH` ($1,000,000).
+  - `pmcc/runner.py` gains `run_output(market, config, cash)`, the engine's whole `RunOutput` after the r and window-cover checks; `run_market` now builds its result from it.
+- **The rule comes from the configs:** every config calibrated must give E-L4 the same `cash_multiple` and `cash_round_to`, or calibration stops. The block records both, as part of its basis.
+- **The block is validated whenever the universe loads:**
+  - `value` must equal the recorded rule applied to the entries, so a hand edit to any of them fails the load.
+  - Each symbol and strategy pair appears once, and the strategies are the two in `CALIBRATED_STRATEGIES` (never a variant). Every cost, the multiple and the step are above zero.
+  - Every entry's symbol is in the universe, and `provisional` is true exactly while a universe symbol lacks either strategy. A bare `starting_cash: 10000` is refused: the value always carries its basis.
+- **Writing it:**
+  - The block is the file's last key, after a marker comment. `with_block` keeps every byte before the marker and replaces the rest, or appends the block if there is none.
+  - It refuses a `starting_cash` with no marker (set by hand) and any key after the block, since replacing either would lose something. So keys added later, like P6-05's bootstrap seed, go above the block.
+  - The new file is loaded and its window checked against the calendar (`validate_universe`) before it replaces the old one whole (`replace_file`). A failed replace, like a locked file, exits 1 with a message. `pmcc calibrate` never replaces a final block.
+  - Dollars are written as exact 4-dp strings and the entry time as New York time with its offset, so the block reads back exactly.
+  - Entries follow the universe's symbol order, then the strategy ID, whatever order `--symbol` and `--config` came in, so equal calibrations write the same bytes.
+- **The first entry** is the earliest E-L1 buy (`first_long_entry`), never a later re-entry after X-L1 or X-L2, however much more it costs (PO, DEC-30).
+- **Blocked entries:** a long blocked by E-L4 sets its bar's `entry_blocked` flag; a short blocked by E-L4 is its week's gate-log row with rule `E-L4` (DEC-91). `blocked_entries` collects both. The measuring pass fails on any block even at the calibration cash; the verify pass fails on any block in any run at the value, naming the first.
+- **Funds, reported (PO, DEC-30):** for each run at the value, `verify` returns its lowest available funds, the bar it came on (the first, on a tie), and how many bars went below zero. Calibrate prints them and logs `calibrate.verified`, but never fails on them. NVDA's baseline at $10,000: lowest $4,978.50 on Jun 8 at 14:00, no bar below zero.
+- **Refused before any run:** a config that isn't one of the two strategies (a variant or ablation), and configs that disagree on E-L4's rule. **Refused runs:** a run with no E-L1 entry in the window, and a config with `spread_capture` other than 0.
+- **`pmcc calibrate [--symbol S]… [--config C]… [--check] [--cache data_cache]`:**
+  - It defaults to every universe symbol and both strategy configs. Until QQQ and TSLA are cached and P4-03 writes `configs/quant_pmcc.yaml`, only a narrowed call runs: `just calibrate --symbol NVDA --config configs/baseline_pmcc.yaml`.
+  - Each symbol is loaded and priced once, then every config runs on it (ARCHITECTURE §11). It writes nothing to `results/`.
+  - A cache, calendar, engine or calibration error exits 1, with `configs/universe.yaml` unchanged. Log events: `calibrate.measured`, `calibrate.verified`, `calibrate.done`, `calibrate.abort`.
+  - `--check` recomputes the block and compares byte for byte what calibrate would write with the file, header comment included. It exits 1 on any difference, including the same value or instant written another way, or on a missing or hand-set block. It writes nothing.
+  - The just recipe is `calibrate *ARGS`; its old `--universe` argument is gone, since the universe is always `configs/universe.yaml` (DEC-30).
+- **A partial cache (PO, 2026-09-30: NVDA only for now):** `load_symbol` loads whatever option units are cached, and `check_covers` checks only the stock tape. So calibrating TSLA today, which has no long-leg monthlies, fails with an X-L2 engine error, not a message naming the missing units. P5-01 takes this up once QQQ and TSLA are cached.
+- **`pmcc run`:** takes `starting_cash.value`, and prints a note when it's provisional. Without a block it stops, saying to run `pmcc calibrate`.
+- **Tests (1,591 in the suite; 76 more than P3-08's 1,515):**
+  - `tests/unit/config/test_capital.py`:
+    - the rule's rounding at and past each $5,000 step, and under other params;
+    - the block's refusals (a value off its recorded rule, a zero step or multiple);
+    - missing pairs, and the block's YAML round trip;
+    - appending, replacing, idempotence, and refusing a hand-set value or keys after the block.
+  - `tests/unit/config/test_kinds.py` and `test_baseline_config.py`: E-L4's new params, their refusals, and E-L4's rendered text stating the rule.
+  - `tests/scenario/test_calibration.py`, on synthetic markets:
+    - the first entry's cost and RIC, the value by the rule, and provisional until both strategies are in, including on part of a larger universe;
+    - the first entry, not the later re-entry (`long_delta_drop`), and `first_long_entry` against a dearer later buy;
+    - the fee in the cost;
+    - the rule from E-L4's params, configs that disagree, and a variant refused before any run;
+    - order-independent entries, and reproducibility;
+    - `blocked_entries` on a blocked first long, a short skipped as E-L4, and a re-entry blocked after X-L1;
+    - verify failing on a later run, not only the first;
+    - the funds report, including a calibration that goes below zero and still succeeds (`late_friday_surge` at $1,300, to its Friday);
+    - each refused run.
+  - `tests/unit/test_cli_calibrate.py`, end to end on the synthetic cache:
+    - the block written after the untouched file, times in New York time, the funds printed, and identical bytes on a second run;
+    - `--check` passing, and failing on five edits that still load (a cost, the calibration cash, the same instant in UTC, the value as a number, the header comment), or on no block;
+    - the real calendar validation refusing before any write, and a locked file failing cleanly;
+    - a final block, or one set by hand, left alone;
+    - the default configs failing until P4-03;
+    - a symbol outside the universe, no cache, and a value that blocks entries each writing nothing.
+  - `tests/unit/config/test_universe_file.py`:
+    - the shipped block: NVDA's baseline, $10,000, provisional, E-L4's rule, its time as written, and byte for byte what `render_block` gives;
+    - refusals of a bare figure, a stranger symbol, and `provisional` wrong either way, including a final value missing a symbol.
+  - `tests/unit/test_cli_run.py`: the provisional note, silence for a final value, and the stop without a block.
+- **Outcome:** 2026-09-30 — `just calibrate --symbol NVDA --config configs/baseline_pmcc.yaml` wrote $10,000, provisional, in about 7 s (DEC-30); `--check` confirms it.
+- **Outcome:** 2026-09-30 — an adversarial review of P3-09 (4 reviewers, 2 skeptics per finding): 21 findings, 15 unique. The 12 most severe were verified: 6 confirmed, 6 plausible, 0 refuted; 3 low ones went unverified. All are fixed with regression tests, and the three that changed behaviour or the published rules went to the PO (DEC-30):
+  - **Confirmed, medium:**
+    - No test told the first E-L1 entry from the last or the most expensive; on NVDA either mutant gives $15,000.
+    - The universe loader's checks on the block (strangers, `provisional` either way) were untested. The table of refusals I meant to add hadn't been written, and the old cash cases passed only because a figure isn't a block.
+    - `--check` compared parsed models, not bytes, against the docs' "byte for byte".
+    - No test verified more than one run with a later run blocked.
+  - **Confirmed, low:** the bare-value refusal was untested; the README's narrowed call lacked `--symbol NVDA`.
+  - **Plausible:**
+    - The real calendar validation was never exercised (a stand-in replaced it).
+    - The rule's 2× and $5,000 were code constants, not YAML under E-L4. The PO moved them into E-L4's params.
+    - No test covered the fee in the cost.
+    - A locked universe file ended in a traceback.
+    - The block depended on `--symbol` order.
+    - Nothing tested a drifted calibration cash.
+  - **Unverified, low:**
+    - ARCHITECTURE §15 lacked the calibrate events. Fixed.
+    - Verify ignored bars with negative funds. The PO chose to report them, not refuse them.
+    - A partial cache fails with a misleading engine error. The PO deferred this to P5-01.
+  - Found while fixing: calibrate refused a variant config only after running everything. It now refuses one up front.
+  - 21 planted mutants, one per finding and per new behaviour, are all killed.
 
 ## E. Analytics definitions
 

@@ -43,9 +43,9 @@ run SYM CONFIG:
 batch:
     {{uv}} pmcc batch --universe configs/universe.yaml
 
-# Calibrate starting capital across the universe
-calibrate:
-    {{uv}} pmcc calibrate --universe configs/universe.yaml
+# Calibrate the starting cash into configs/universe.yaml. Add --symbol/--config to narrow it, --check to compare
+calibrate *ARGS:
+    {{uv}} pmcc calibrate {{ARGS}}
 
 # Write site data and JSON Schema from committed results
 export:

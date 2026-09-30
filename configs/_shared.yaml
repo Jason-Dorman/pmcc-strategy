@@ -45,11 +45,13 @@ rules:
   - id: E-L4
     name: Sizing
     kind: fixed_contracts
-    params: {contracts: 1}
+    # The starting cash's rule sits here with the spec's E-L4 (PO, DEC-30); pmcc calibrate reads it.
+    params: {contracts: 1, cash_multiple: 2, cash_round_to: 5000}
     condition: Every long entry
     action: >-
       Buy a fixed quantity of {contracts}. No entry, logged, if it would make available funds
-      negative
+      negative. Every account starts with {cash_multiple}× the most expensive first long-leg cost
+      in the universe, rounded up to the nearest ${cash_round_to:,.0f}
     rationale: >-
       One long call and one short call. Every symbol's account starts with the same cash balance,
       used for NAV and Reg T tracking, and no entry is made that would make available funds

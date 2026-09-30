@@ -2,9 +2,9 @@
 
 One window for every symbol (DEC-07), one constant r stated with its source (DEC-11), and each
 symbol's stock RIC and option root (DEC-12). The file is found from this module, not the working
-directory, like the calendar. `starting_cash` is optional until P3-09 sets it with its basis
-(DEC-30), and `pmcc run` refuses to run without it (PO, DEC-30); the bootstrap seed joins with
-P6-05 (DEC-61).
+directory, like the calendar. `starting_cash` is the block `pmcc calibrate` writes, the value with
+its basis (`pmcc.config.capital`, DEC-30); `pmcc run` refuses to run without it (PO, DEC-30). The
+bootstrap seed joins with P6-05 (DEC-61).
 """
 
 import math
@@ -15,7 +15,7 @@ from typing import Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from pmcc.config.fields import DollarMoney
+from pmcc.config.capital import StartingCash
 from pmcc.config.yaml_file import read_yaml
 from pmcc.domain.calendar import SessionCalendar
 
@@ -110,7 +110,7 @@ class Universe(BaseModel):
     window: Window
     risk_free_rate: RiskFreeRate
     symbols: tuple[Underlying, ...] = Field(min_length=1)
-    starting_cash: DollarMoney | None = None  # every run's cash, once P3-09 sets it (DEC-30)
+    starting_cash: StartingCash | None = None  # every run's cash, from pmcc calibrate (DEC-30)
 
     @model_validator(mode="after")
     def _consistent(self) -> Self:
@@ -122,7 +122,25 @@ class Universe(BaseModel):
                 f"r is quoted on {self.risk_free_rate.as_of}, not before the window starts "
                 f"{self.window.start}, so the first decision couldn't have known it"
             )
+        if self.starting_cash is not None:
+            self._check_calibrated(self.starting_cash)
         return self
+
+    def _check_calibrated(self, cash: StartingCash) -> None:
+        """Calibrated on this universe's symbols, and provisional exactly while it lacks one of
+        them under either strategy (DEC-30)."""
+        symbols = [u.symbol for u in self.symbols]
+        strangers = sorted({e.symbol for e in cash.entries} - set(symbols))
+        if strangers:
+            raise ValueError(
+                f"starting_cash is calibrated on symbols outside the universe: {strangers}"
+            )
+        missing = cash.missing(symbols)
+        if cash.provisional != bool(missing):
+            state = "provisional" if cash.provisional else "final"
+            raise ValueError(
+                f"starting_cash is marked {state}, but it lacks {missing or 'nothing'}"
+            )
 
 
 def read_universe_file(path: Path = UNIVERSE_PATH) -> Universe:
