@@ -19,7 +19,7 @@ from pmcc.config.universe import (
 )
 from pmcc.data.discovery import SessionRange, plan_symbol, stock_unit
 from pmcc.data.ric import RicForm, build_ric
-from pmcc.domain import OptionId, Price, Right
+from pmcc.domain import Money, OptionId, Price, Right
 
 CAL = load_calendar()
 UNIVERSE = load_universe(CAL)
@@ -125,9 +125,31 @@ def test_universe_file_reads_a_minimal_file(tmp_path: Path) -> None:
     assert [u.symbol for u in universe.symbols] == ["SPY"]
 
 
+def test_universe_file_starting_cash_is_unset_until_p3_09() -> None:
+    assert UNIVERSE.starting_cash is None
+
+
+def test_universe_file_starting_cash_is_optional(tmp_path: Path) -> None:
+    assert read_universe_file(_write(tmp_path, _body())).starting_cash is None
+
+
+@pytest.mark.parametrize(("text", "units"), [("25000", 250_000_000), ("12345.6789", 123_456_789)])
+def test_universe_file_reads_starting_cash_as_exact_money(
+    tmp_path: Path, text: str, units: int
+) -> None:
+    universe = read_universe_file(_write(tmp_path, _body(extra=f"starting_cash: {text}\n")))
+
+    assert universe.starting_cash == Money(units)
+
+
 MALFORMED = {
-    # Unknown keys, at every level (starting_cash arrives with P3-09).
-    "unknown-key": _body(extra="starting_cash: 10000\n"),
+    # Unknown keys, at every level.
+    "unknown-key": _body(extra="starting_capital: 10000\n"),
+    # Starting cash (DEC-30): dollars, exact to $0.0001, not negative.
+    "cash-negative": _body(extra="starting_cash: -1\n"),
+    "cash-sub-unit": _body(extra="starting_cash: 10000.00005\n"),
+    "cash-text": _body(extra="starting_cash: ten thousand\n"),
+    "cash-bool": _body(extra="starting_cash: true\n"),
     "unknown-window-key": _body().replace("end: 2026-09-25}", "end: 2026-09-25, warmup: 45}"),
     "unknown-rate-key": _body(rate=_rate(source=", source: x, basis: discount")),
     "unknown-symbol-key": _one("symbol: SPY, stock_ric: SPY.P, option_root: SPY, optoin_root: X"),

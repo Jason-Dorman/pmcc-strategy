@@ -2,7 +2,8 @@
 
 One window for every symbol (DEC-07), one constant r stated with its source (DEC-11), and each
 symbol's stock RIC and option root (DEC-12). The file is found from this module, not the working
-directory, like the calendar. `starting_cash` joins with P3-09 (DEC-30) and the bootstrap seed with
+directory, like the calendar. `starting_cash` is optional until P3-09 sets it with its basis
+(DEC-30), and `pmcc run` refuses to run without it (PO, DEC-50); the bootstrap seed joins with
 P6-05 (DEC-61).
 """
 
@@ -14,6 +15,7 @@ from typing import Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from pmcc.config.fields import DollarMoney
 from pmcc.config.yaml_file import read_yaml
 from pmcc.domain.calendar import SessionCalendar
 
@@ -108,6 +110,7 @@ class Universe(BaseModel):
     window: Window
     risk_free_rate: RiskFreeRate
     symbols: tuple[Underlying, ...] = Field(min_length=1)
+    starting_cash: DollarMoney | None = None  # every run's cash, once P3-09 sets it (DEC-30)
 
     @model_validator(mode="after")
     def _consistent(self) -> Self:

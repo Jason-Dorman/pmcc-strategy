@@ -6,10 +6,12 @@ from typing import Annotated, NoReturn
 
 import structlog
 import typer
+import yaml
 
 from pmcc.config.calendar import load_calendar
+from pmcc.config.strategy import RunConfig, load_run_config
+from pmcc.config.universe import Underlying, load_universe
 from pmcc.config.universe import Universe as UniverseConfig
-from pmcc.config.universe import load_universe
 from pmcc.data import coverage, estimate
 from pmcc.data.cache import CacheError, SymbolCache
 from pmcc.data.calendar import CalendarMismatchError
@@ -17,8 +19,15 @@ from pmcc.data.lseg import lseg_session
 from pmcc.data.probe import ProbeStoppedError, probe_path, run_probe, write_report
 from pmcc.data.provider import ProviderOutageError
 from pmcc.data.pull import PlanError, Target, prepare, pull_units
+from pmcc.domain.calendar import SessionCalendar
 from pmcc.domain.clock import ET
+from pmcc.domain.errors import EngineError
+from pmcc.domain.money import Money
+from pmcc.export.manifest import ProvenanceError, provenance
+from pmcc.export.models import DataSource, RunResult
+from pmcc.export.results import write_result
 from pmcc.log import configure_logging
+from pmcc.runner import Stamp, run_symbol
 
 app = typer.Typer(help="PMCC backtester: fetch LSEG data, run backtests, export the site.")
 log = structlog.get_logger()
@@ -89,9 +98,14 @@ def fetch(
 
 def _target(symbol: str, universe: UniverseConfig) -> Target:
     """The symbol's identifiers from `configs/universe.yaml`."""
+    underlying = _underlying(symbol, universe)
+    return Target(symbol, underlying.stock_ric, underlying.option_root)
+
+
+def _underlying(symbol: str, universe: UniverseConfig) -> Underlying:
     for underlying in universe.symbols:
         if underlying.symbol == symbol:
-            return Target(symbol, underlying.stock_ric, underlying.option_root)
+            return underlying
     _fail(f"{symbol} isn't in configs/universe.yaml (DEC-15)")
 
 
@@ -126,9 +140,56 @@ def _fail(message: str) -> NoReturn:
 def run(
     symbol: Symbol,
     config: Annotated[Path, typer.Option(help="Strategy config YAML.")],
+    universe: Universe = Path("configs/universe.yaml"),
+    cache: Cache = Path("data_cache"),
+    out: Annotated[Path, typer.Option(help="Results directory.")] = Path("results"),
 ) -> None:
     """Backtest one strategy config on one symbol, from the cache only."""
-    _not_built("P3-08")
+    log_path = configure_logging("run")
+    sym, calendar = symbol.upper(), load_calendar()
+    settings = load_universe(calendar, universe)
+    underlying = _underlying(sym, settings)
+    cash = settings.starting_cash
+    if cash is None:
+        _fail(f"{universe.as_posix()} has no starting_cash yet: P3-09 sets it (DEC-30)")
+    result = _backtest(cache, underlying, calendar, _run_config(config, settings), cash)
+    path = write_result(result, out)
+    _say(_describe_run(result, path))
+    _say(f"Log: {log_path.as_posix()}")
+
+
+def _run_config(path: Path, settings: UniverseConfig) -> RunConfig:
+    try:
+        return load_run_config(path, settings)
+    except (OSError, ValueError, yaml.YAMLError) as exc:  # no file; bad YAML; a rule refused
+        _fail(f"{path.as_posix()}: {exc}")
+
+
+def _backtest(cache: Path, underlying: Underlying, calendar: SessionCalendar,
+              config: RunConfig, cash: Money) -> RunResult:  # fmt: skip
+    """The run's result, or exit 1 with nothing written (DEC-49)."""
+    try:
+        stamp = Stamp(provenance(), DataSource.LSEG, _now())
+        return run_symbol(cache, underlying, calendar, config, cash, stamp)
+    except (CacheError, CalendarMismatchError, ProvenanceError, EngineError) as exc:
+        log.exception("run.abort", symbol=underlying.symbol, run_id=config.strategy.id)
+        _fail(f"{underlying.symbol}: {exc}; nothing was written")
+
+
+def _describe_run(result: RunResult, path: Path) -> str:
+    manifest = result.manifest
+    lines = [
+        f"{manifest.symbol} {manifest.run_id}: {len(result.blotter)} trades over "
+        f"{len(result.ledger)} bars and {len(result.gate_log)} weeks; final NAV "
+        f"{result.ledger[-1].nav} from {result.starting_cash}.",
+        f"Written to {path.as_posix()}",
+    ]
+    if manifest.git_dirty:
+        lines.append(
+            "git_dirty: true (uncommitted changes outside results/). Commit the code before a "
+            "publishable run: pmcc verify rejects dirty results (DEC-50)."
+        )
+    return "\n".join(lines)
 
 
 @app.command()

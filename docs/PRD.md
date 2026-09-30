@@ -127,7 +127,7 @@ Every row points to its source. "Verified by" names the invariant test (INV-nn),
 | FR-B2 | Ablations A1–A5: quant with one layer removed | Spec › Ablations | config-diff test (P4-03) |
 | FR-B3 | Sensitivity: friction at 0 / 0.25 / 0.50 for both strategies; entry timing (baseline, one run per week-open bar); parameter grid (quant, one parameter at a time). Every result is published. | Spec › Sensitivity checks; DEC-31 | P5-02, P6-06 |
 | FR-B4 | A universe batch over `configs/universe.yaml` (QQQ, NVDA, TSLA; DEC-15) on one common window, Mon Mar 30 – Fri Sep 25 2026 (26 weeks; at least 10 required); any symbol can run alone | Spec › Universe; DEC-07, DEC-15 | `tests/unit/config/test_universe_file.py`; P5-04 |
-| FR-B5 | One starting cash balance for every symbol and run, fixed before the first run | Spec › E-L4; DEC-30 | P5-01 |
+| FR-B5 | One starting cash balance for every symbol and run, fixed before the first run. `pmcc run` reads it only from `configs/universe.yaml` and refuses to run without it | Spec › E-L4; DEC-30 | `tests/unit/test_cli_run.py` (P3-08); P5-01 |
 | FR-B6 | `just reproduce`: cached data → all runs → export → built site | Spec › CLI | INV-13; P8-01 |
 
 ### 6.7 Analytics
@@ -147,10 +147,10 @@ Every row points to its source. "Verified by" names the invariant test (INV-nn),
 
 | ID | Requirement | Source | Verified by |
 | --- | --- | --- | --- |
-| FR-X1 | One results JSON per symbol per run (committed), plus JSON Schema generated from the pydantic result models | Spec › Architecture | P4-05 |
-| FR-X2 | Every result carries a run manifest: git SHA, config hash, data-manifest hash, lockfile hash, run timestamp | Spec › Run manifest; DEC-50 | `pmcc verify` |
+| FR-X1 | One results JSON per symbol per run (committed), plus JSON Schema generated from the pydantic result models | Spec › Architecture | `tests/scenario/test_run_result.py` (P3-08); schema at P4-05 |
+| FR-X2 | Every result carries a run manifest: git SHA and whether the tree was dirty, config hash, data-manifest hash, lockfile hash, run timestamp. Published results come from a clean tree | Spec › Run manifest; DEC-50 | `test_manifest.py`, `test_run_result.py`; `pmcc verify` (P4-05) |
 | FR-X3 | `pmcc export --out web/public/data/` writes the per-run files, the index, the rules and the schema | Spec › Frontend constraints | P4-05 |
-| FR-X4 | Re-running a config on cached data gives byte-identical results (excluding the run timestamp) | Spec › Invariant tests; DEC-50 | INV-13 |
+| FR-X4 | Re-running a config on cached data gives byte-identical results (excluding the run timestamp) | Spec › Invariant tests; DEC-50 | INV-13 (`test_run_result.py`) |
 
 ### 6.9 Site
 

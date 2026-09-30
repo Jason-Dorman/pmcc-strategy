@@ -10,6 +10,12 @@ repos:
       - id: check-yaml
       - id: end-of-file-fixer
       - id: check-added-large-files
+        exclude: ^results/
+      # A full run's result holds a ledger row per bar, about 0.5 MB for 26 weeks (DEC-92).
+      - id: check-added-large-files
+        name: check for added large files (results, 2 MB)
+        files: ^results/
+        args: [--maxkb=2048]
       - id: detect-private-key
 
   - repo: local

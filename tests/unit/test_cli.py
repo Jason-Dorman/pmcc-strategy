@@ -43,7 +43,6 @@ def test_cli_help_lists_every_command() -> None:
 @pytest.mark.parametrize(
     ("args", "item"),
     [
-        (["run", "--symbol", "NVDA", "--config", "configs/quant_pmcc.yaml"], "P3-08"),
         (["batch", "--universe", "configs/universe.yaml"], "P5-03"),
         (["calibrate"], "P3-09"),
         (["export", "--out", "web/public/data/"], "P4-05"),

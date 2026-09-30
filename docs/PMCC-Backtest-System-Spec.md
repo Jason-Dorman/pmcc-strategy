@@ -83,7 +83,7 @@ pmcc export --out web/public/data/
 just reproduce   # cached data -> all runs -> export -> built site
 ```
 
-**Run manifest.** Every result file carries the git commit SHA, config hash, data-manifest hash, package lockfile hash, and run timestamp. The site shows the manifest in the footer of every page, so any number on the site traces to the exact code, config, environment, and data that produced it.
+**Run manifest.** Every result file carries the git commit SHA and whether the working tree was dirty, config hash, data-manifest hash, package lockfile hash, and run timestamp. Results are written as canonical JSON. A run on a dirty tree still runs but records it, and published results must come from a clean tree, so the code is committed before a publishable run (DEC-50). The site shows the manifest in the footer of every page, so any number on the site traces to the exact code, config, environment, and data that produced it.
 
 ## Data layer (LSEG)
 
@@ -373,7 +373,7 @@ These tests prove logical consistency and must pass on every run, for every symb
 10. Short and long quantities stay equal whenever a short is open.
 11. RIC parser reads known examples as the right contracts (including `UUUUH212601450.U^H26` and the unpadded `AAPLF52619000.U^F26`); the builder emits the zero-padded day, round-trips its own spelling, and emits no caret for live contracts (DEC-01).
 12. Missing RICs return empty series, never exceptions.
-13. Re-running a config on cached data produces byte-identical results.
+13. Re-running a config on cached data produces byte-identical results, once the run timestamp, the one value that changes from run to run, is dropped (DEC-50).
 14. The frontend type-checks against TypeScript types generated from the current result schema.
 15. The Playwright smoke test loads every page for one symbol with no console errors.
 

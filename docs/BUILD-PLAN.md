@@ -30,7 +30,7 @@ Sep 25, 2026 · schedule from Spec › Build order · **due Fri Oct 9, 11:59 pm*
 | P1 Data layer and open items | Sat Sep 26 – Sun Sep 27 | NVDA's full chain cached; INV-11, INV-12 pass; window, r and identifiers recorded; universe fetch started | Done 2026-09-28 (P1 exit): P1-01 to P1-09 (window Mar 30 – Sep 25 2026, r = 0.0371, universe QQQ, NVDA, TSLA; cache and loader per DEC-46; `pmcc fetch` per DEC-88; NVDA's chain cached, near-money weekly mids 97.7%) |
 | P1-10 Universe fetch (background) | Sun Sep 27 – Sat Oct 3 | QQQ and TSLA cached with coverage summaries (NVDA at P1-09) | Estimates shown 2026-09-28 (QQQ 183–547 min, TSLA 98–293 min); the PO scheduled the pull overnight |
 | P2 Pricing | Mon Sep 28 | IV solver matches the reference; EM, ATM IV, RV20 tested | Done 2026-09-28, as one commit (PO, DEC-59): Black-Scholes, T and DTE, the IV solver, measures and the chain pricer (DEC-24 to DEC-27 settled; DEC-89). NVDA prices in 1.4 s; IV failures 8.3%, mostly very deep ITM; DEC-26's missing-close rule is with the PO |
-| P3 Engine, accounting, baseline | Mon Sep 28 – Wed Sep 30 | **M1:** baseline blotter, ledger, NAV, Reg T for NVDA; INV-01–10 and 13 pass | In progress: P3-01 done 2026-09-29 (DEC-35, DEC-90); P3-02 to P3-07 done 2026-09-30 as one commit (DEC-91); next P3-08 (`pmcc run`), after the PO's code review |
+| P3 Engine, accounting, baseline | Mon Sep 28 – Wed Sep 30 | **M1:** baseline blotter, ledger, NAV, Reg T for NVDA; INV-01–10 and 13 pass | In progress: P3-01 done 2026-09-29 (DEC-35, DEC-90); P3-02 to P3-07 done 2026-09-30 as one commit (DEC-91); P3-08 (`pmcc run`, DEC-50, DEC-92) done 2026-09-30; next P3-09 (starting capital, DEC-30) |
 | P4 Quant layer and site skeleton | Thu Oct 1 – Fri Oct 2 | **M2:** quant + A1–A5 on NVDA; Pages serves the skeleton from sample JSON; INV-14, 15 in CI | Not started |
 | P5 Universe batch and sensitivity | Sat Oct 3 – Sun Oct 4 | **M3:** all results JSON written and verified | Not started |
 | P6 Analytics | Mon Oct 5 – Tue Oct 6 | **M4:** every table and series in results JSON | Not started |
@@ -295,7 +295,7 @@ P8 release                                                                      
   - The bar loop and its order, the leg state machines, the gate log, rule stamping, and runtime invariants (ARCHITECTURE §8).
   - Done when: every TEST-STRATEGY §5 scenario passes, and runtime INV-01–10 hold on all of them.
   - Needs: P3-03, P3-05, P3-06
-- [ ] **P3-08 · Result models and `pmcc run`**
+- [x] **P3-08 · Result models and `pmcc run`** — done 2026-09-30. The PO settled DEC-50 as recommended: canonical JSON, INV-13 without `run_timestamp`, and a dirty tree (tracked or untracked changes outside `results/`) runs but records `git_dirty: true`; `pmcc verify` rejects it at P4-05. The spec's Run manifest and invariant 13 now say so. The PO also answered part of DEC-30: `pmcc run` takes the starting cash only from `configs/universe.yaml` and stops, naming P3-09, until it's set. `pmcc/export/` (`canonical`, `models`, `manifest`, `results`) and `pmcc/runner.py`. The blotter names each contract by the RIC its cache answered with. INV-13 runs `random_walk` in two fresh processes with different hash seeds. A full result is about 0.5 MB, so `results/` gets a 2 MB large-file limit (DEC-92). 78 new tests, 1,481 in the suite
   - Ask first: DEC-50.
   - Provisional result models, canonical JSON, and the run manifest.
   - Done when:
