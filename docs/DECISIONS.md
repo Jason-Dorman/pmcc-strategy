@@ -106,7 +106,7 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-92 | Results: models, canonical JSON, the manifest and `pmcc run` | ENG | — |
 | DEC-93 | `pmcc calibrate`: the starting-cash block and its two passes | ENG | — |
 | DEC-94 | The baseline on NVDA: the run, the hand audit and the committed cache | ENG | — |
-| DEC-95 | The quant layer: selectors, gates G-3 to G-5, the quant and ablation configs | ENG · G-5 finding, 5 rationales and the starting cash put to the PO | handover 2026-09-30 |
+| DEC-95 | The quant layer: selectors, gates G-3 to G-5, the quant and ablation configs | ENG · the three items put to the PO settled (PO, 2026-09-30) | — |
 
 ---
 
@@ -616,6 +616,7 @@ Distances are compared in integer price units, so float noise can't create or br
     - The baseline's `config_hash` changes; no results were committed yet. The spec's E-L4 wording is unchanged: the YAML now carries what it says.
   - **Negative available funds are reported, not refused** (recommended). E-L4 guards entries, and the site already reports Reg T breaches. For each run at the value, calibrate prints the lowest available funds and the number of bars below zero. NVDA's baseline at $10,000: lowest $4,978.50 on Jun 8, none below zero.
   - **A partial cache: NVDA only for now.** No completeness check is added at P3-09. P5-01 takes it up once QQQ and TSLA are cached (DEC-93).
+- **Outcome:** 2026-09-30 — PO, at P4-04, as recommended: **recalibrate to $15,000 with quant built** (put to the PO at P4-03's handover, DEC-95). `pmcc calibrate --symbol NVDA` ran both strategies: quant's first long, the Aug 21 2026 $115 call (`NVDAH212611500.U^H26`) on Mar 30 at 10:00, costs $5,630.00 against the baseline's $4,142.50, so 2 × $5,630 = $11,260, rounded up to $15,000. The value stays provisional until QQQ and TSLA are calibrated (P5-01). At $15,000 no entry is blocked; the lowest available funds are $9,978.50 for the baseline (Jun 8, 14:00) and $8,330.00 for quant (May 14, 10:00), none below zero. The baseline's trades are the same as at $10,000 (E-L4 blocked none there), so only its cash and NAV move up by $5,000. `results/NVDA/baseline_pmcc.json` is re-run at the new value with the quant runs (P4-04), from a tree where this block is committed. The $10,000 figures above are P3-09's and P3-10's record.
 
 ### DEC-31 — Entry-timing sensitivity
 **Status:** ASK · **Ask at:** P5-02
@@ -1541,7 +1542,7 @@ Development runs in Git Bash on Windows (DEC-02) and CI runs on Ubuntu. Both mus
 - **Funds, reported (PO, DEC-30):** for each run at the value, `verify` returns its lowest available funds, the bar it came on (the first, on a tie), and how many bars went below zero. Calibrate prints them and logs `calibrate.verified`, but never fails on them. NVDA's baseline at $10,000: lowest $4,978.50 on Jun 8 at 14:00, no bar below zero.
 - **Refused before any run:** a config that isn't one of the two strategies (a variant or ablation), and configs that disagree on E-L4's rule. **Refused runs:** a run with no E-L1 entry in the window, and a config with `spread_capture` other than 0.
 - **`pmcc calibrate [--symbol S]… [--config C]… [--check] [--cache data_cache]`:**
-  - It defaults to every universe symbol and both strategy configs. Until QQQ and TSLA are cached and P4-03 writes `configs/quant_pmcc.yaml`, only a narrowed call runs: `just calibrate --symbol NVDA --config configs/baseline_pmcc.yaml`. (P4-03 wrote it on 2026-09-30, DEC-95. With both strategies NVDA gives $15,000, so the committed $10,000 is reproduced only with `--config configs/baseline_pmcc.yaml`; the value is with the PO, DEC-95.)
+  - It defaults to every universe symbol and both strategy configs. Until QQQ and TSLA are cached and P4-03 writes `configs/quant_pmcc.yaml`, only a narrowed call runs: `just calibrate --symbol NVDA --config configs/baseline_pmcc.yaml`. (P4-03 wrote it on 2026-09-30, DEC-95. With both strategies NVDA gives $15,000, so the committed $10,000 is reproduced only with `--config configs/baseline_pmcc.yaml`; the value is with the PO, DEC-95. The PO chose $15,000 at P4-04 (DEC-30): `just calibrate --symbol NVDA` wrote it, and reproduces it with `--check`.)
   - Each symbol is loaded and priced once, then every config runs on it (ARCHITECTURE §11). It writes nothing to `results/`.
   - A cache, calendar, engine or calibration error exits 1, with `configs/universe.yaml` unchanged. Log events: `calibrate.measured`, `calibrate.verified`, `calibrate.done`, `calibrate.abort`.
   - `--check` recomputes the block and compares byte for byte what calibrate would write with the file, header comment included. It exits 1 on any difference, including the same value or instant written another way, or on a missing or hand-set block. It writes nothing.
@@ -1621,7 +1622,7 @@ Development runs in Git Bash on Windows (DEC-02) and CI runs on Ubuntu. Both mus
 - **Tests (13 new):** `tests/unit/test_repo_policy.py` asks `git check-ignore --no-index`, which reads the patterns only, whether NVDA's cache is kept and whether other symbols, probe reports, a look-alike sibling (`data_cache/NVDA.moved/`), logs and credentials are ignored. Units moved aside under `data_cache/NVDA/superseded/` (DEC-46) are committed, as the record. It also checks that results are kept and parses `.pre-commit-config.yaml` for the two hook rules.
 
 ### DEC-95 — The quant layer: selectors, gates G-3 to G-5, the quant and ablation configs
-**Status:** ENG, with three items put to the PO (below) · **Affects:** P4-01 to P4-04, P5-01, P5-02, P7-03; DEC-30, DEC-21, DEC-22, DEC-25, DEC-26, DEC-29, DEC-32, DEC-34, DEC-35, DEC-53, DEC-90, DEC-91
+**Status:** ENG; the three items put to the PO were settled at P4-04 (PO, 2026-09-30; last outcome below) · **Affects:** P4-01 to P4-04, P5-01, P5-02, P7-03; DEC-30, DEC-21, DEC-22, DEC-25, DEC-26, DEC-29, DEC-32, DEC-34, DEC-35, DEC-53, DEC-90, DEC-91
 
 - **Where:**
   - `pmcc/strategy/selectors.py`: `DteRangeExpiry` (E-L2 quant), `CheapestReplacement` (E-L3 quant) and `ExpectedMoveStrike` (E-S3 quant), beside the baseline's.
@@ -1685,6 +1686,10 @@ Development runs in Git Bash on Windows (DEC-02) and CI runs on Ubuntu. Both mus
   - **Refuted:** that the E-S3 reading (passing over an unquoted strike) should have been put to the PO. It applies DEC-21 and is recorded here as ENG.
   - **Unverified, low, fixed:** a G-3 or G-4 ratio was compared at 9 places but a result prints it at 6, so a firing 1.2000005 would be published as 1.2. Ratios are now compared at 6 (above), with a test either side.
   - **Mutants:** the 10 reviewers' survivors (both tie orders, the unrounded score and ratio, 9-place ratios, `round` for the ceiling, `candidates`, G-4's strike, an ATM from quoted calls or from the puts) now fail.
+- **Outcome:** 2026-09-30 — the three items put to the PO, settled at P4-04 as recommended:
+  - **Starting cash:** recalibrated to $15,000, provisional (DEC-30).
+  - **G-5 fires only on a locked quote:** kept as the spec defines it, and disclosed on the Trade rules page. The NVDA runs bear it out: G-5 never fired in quant or A1–A5, and the lowest short mid on a decision bar was $0.315 (Apr 6). The disclosure is G-5's rationale in `configs/quant_pmcc.yaml`, which the Trade rules page renders (DEC-52): "Quotes are in whole cents, so below $0.10 a short's spread is wider than E-T1's 10% of mid unless its bid equals its ask. This gate therefore fires only on such a locked quote; otherwise G-1 skips the week first." The text names E-T1's threshold, so a test holds the claim to both params: G-5's `min_mid` × E-T1's `short_max_spread` must be exactly one cent, and the rationale must print E-T1's percentage (`test_config_g_5_rationale_locked_quote_claim_holds_at_e_t1s_threshold`). Quant's `config_hash` changes; its results are first written at P4-04, after this.
+  - **The five rationales the spec doesn't give** (E-L2, E-L3, E-S3, G-4, G-5): approved as written, G-5's with the sentence above added.
 
 ## E. Analytics definitions
 

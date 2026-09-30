@@ -127,20 +127,25 @@ def test_universe_file_reads_a_minimal_file(tmp_path: Path) -> None:
     assert [u.symbol for u in universe.symbols] == ["SPY"]
 
 
-def test_dec_30_universe_file_starting_cash_is_nvda_baseline_provisional() -> None:
-    """P3-09: calibrated on NVDA's baseline only, so provisional until P5-01 (PO, DEC-30)."""
+def test_dec_30_universe_file_starting_cash_is_nvda_both_strategies_provisional() -> None:
+    """P4-04: calibrated on NVDA under both strategies, so provisional until QQQ and TSLA are
+    (P5-01). Quant's first long sets it: 2 × $5,630 rounds up to $15,000 (PO, DEC-30, DEC-95)."""
     cash = UNIVERSE.starting_cash
     assert cash is not None
-    assert cash.value == Money.from_dollars(10_000)
+    assert cash.value == Money.from_dollars(15_000)
     assert cash.provisional
     assert cash.calibration_cash == Money.from_dollars(1_000_000)
     assert (cash.cash_multiple, cash.cash_round_to) == (2, Money.from_dollars(5_000))  # E-L4's
-    (entry,) = cash.entries
-    assert (entry.symbol, entry.strategy) == ("NVDA", "baseline_pmcc")
-    assert entry.contract == "NVDAI182613500.U^I26"  # Sep 18 2026 $135 call, as the cache named it
-    assert entry.time == datetime(2026, 3, 30, 10, tzinfo=ET)
+    baseline, quant = cash.entries
+    assert (baseline.symbol, baseline.strategy) == ("NVDA", "baseline_pmcc")
+    assert baseline.contract == "NVDAI182613500.U^I26"  # Sep 18 2026 $135 call, as cached
+    assert baseline.cost == Money.from_dollars("4142.50")
+    assert (quant.symbol, quant.strategy) == ("NVDA", "quant_pmcc")
+    assert quant.contract == "NVDAH212611500.U^H26"  # Aug 21 2026 $115 call, as cached
+    assert quant.cost == Money.from_dollars("5630.00")
+    for entry in cash.entries:
+        assert entry.time == datetime(2026, 3, 30, 10, tzinfo=ET)
     assert "time: '2026-03-30T10:00:00-04:00'" in UNIVERSE_PATH.read_text(encoding="utf-8")
-    assert entry.cost == Money.from_dollars("4142.50")
 
 
 def test_dec_30_universe_file_starting_cash_is_the_block_calibrate_wrote() -> None:

@@ -78,4 +78,6 @@ rules:
     action: Skip the week; keep the long
     rationale: >-
       A short that would collect less than ${min_mid:.2f} a share isn't sold, and no other strike
-      is tried in its place.
+      is tried in its place. Quotes are in whole cents, so below ${min_mid:.2f} a short's spread
+      is wider than E-T1's 10% of mid unless its bid equals its ask. This gate therefore fires only
+      on such a locked quote; otherwise G-1 skips the week first.

@@ -3,11 +3,12 @@ rules at the spec's thresholds, with the spec's names and gate conditions, and e
 differing from the quant PMCC only in its named layer (Spec › Ablations; DEC-53)."""
 
 import re
+from decimal import Decimal
 from pathlib import Path
 
 import pytest
 
-from pmcc.config.kinds import SPEC_RULE_IDS
+from pmcc.config.kinds import SPEC_RULE_IDS, MinPremium, SpreadTrigger
 from pmcc.config.rule_text import placeholders
 from pmcc.config.strategy import CONFIGS_DIR, Rule, StrategyConfig, load_strategy
 from pmcc.domain import Price, RuleId
@@ -113,6 +114,19 @@ def test_config_g_3_rationale_is_the_spec_paragraph() -> None:
     spec = re.search(r"^(G-3 detects events .+)$", SPEC, flags=re.MULTILINE)
     assert spec
     assert rule(QUANT, "G-3").text().rationale == spec[1]
+
+
+def test_config_g_5_rationale_locked_quote_claim_holds_at_e_t1s_threshold() -> None:
+    """The rationale names E-T1's 10% (PO, DEC-95): a one-cent spread is exactly E-T1's short
+    limit at G-5's threshold, so below it only a locked quote passes E-T1. Changing either
+    threshold breaks the claim, and this test."""
+    e_t1, g_5 = rule(QUANT, "E-T1"), rule(QUANT, "G-5")
+    assert isinstance(e_t1.params, SpreadTrigger)
+    assert isinstance(g_5.params, MinPremium)
+    short_max = e_t1.params.short_max_spread
+    assert g_5.params.min_mid.to_dollars() * Decimal(str(short_max)) == Decimal("0.01")
+    assert f"E-T1's {short_max:.0%} of mid" in g_5.text().rationale
+    assert "locked quote" in g_5.text().rationale
 
 
 @pytest.mark.parametrize("rule_id", QUANT_LAYER)
