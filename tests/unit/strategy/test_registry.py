@@ -6,14 +6,23 @@ import pytest
 
 from pmcc.config.kinds import KINDS
 from pmcc.config.strategy import CONFIGS_DIR, load_strategy
+from pmcc.domain.money import Price
 from pmcc.domain.rules import RuleId
 from pmcc.strategy.exits import DefensiveDelta, FridayCheck, LongDeltaReset, LongDteRoll, TakeProfit
-from pmcc.strategy.gates import StructuralGate
-from pmcc.strategy.registry import FACTORIES, NotBuiltError, build_strategy
-from pmcc.strategy.selectors import NearestDeltaLong, NearestDeltaShort, NearestDteExpiry
+from pmcc.strategy.gates import EventRatioGate, MinPremiumGate, StructuralGate, VrpGate
+from pmcc.strategy.registry import FACTORIES, Strategy, build_strategy
+from pmcc.strategy.selectors import (
+    CheapestReplacement,
+    DteRangeExpiry,
+    ExpectedMoveStrike,
+    NearestDeltaLong,
+    NearestDeltaShort,
+    NearestDteExpiry,
+)
 from pmcc.strategy.trigger import SpreadTrigger
 
 BASELINE = CONFIGS_DIR / "baseline_pmcc.yaml"
+QUANT = CONFIGS_DIR / "quant_pmcc.yaml"
 
 
 def _write(tmp_path: Path, name: str, text: str) -> Path:
@@ -88,26 +97,57 @@ overrides:
     assert RuleId("X-S1") not in strategy.rule_ids
 
 
+def test_the_quant_strategy_builds_from_its_rules() -> None:
+    strategy = build_strategy(load_strategy(QUANT))
+    expiry, strike = strategy.long_selector.expiry, strategy.long_selector.strike
+    assert isinstance(expiry, DteRangeExpiry)
+    assert (expiry.min_dte, expiry.max_dte) == (120, 270)
+    assert isinstance(strike, CheapestReplacement)
+    assert (strike.min_delta, strike.max_delta) == (0.70, 0.90)
+    short = strategy.short_selector.strike
+    assert isinstance(short, ExpectedMoveStrike)
+    assert short.k == 1.0
+    assert [type(g) for g in strategy.gates] == [StructuralGate, EventRatioGate, VrpGate,
+                                                 MinPremiumGate]  # fmt: skip
+    _, g3, g4, g5 = strategy.gates
+    assert isinstance(g3, EventRatioGate)
+    assert g3.max_ratio == 1.20
+    assert isinstance(g4, VrpGate)
+    assert g4.min_ratio == 1.00
+    assert isinstance(g5, MinPremiumGate)
+    assert g5.min_mid == Price.from_dollars("0.10")
+
+
+def test_the_quant_strategy_shares_the_baselines_exits() -> None:
+    quant, baseline = build_strategy(load_strategy(QUANT)), build_strategy(load_strategy(BASELINE))
+    assert quant.long_exits == baseline.long_exits
+    assert quant.short_exits == baseline.short_exits
+    assert quant.trigger == baseline.trigger
+
+
+def _shape(strategy: Strategy) -> dict[str, object]:
+    """Which rule class fills each slot a quant layer occupies."""
+    return {
+        "E-L2": type(strategy.long_selector.expiry),
+        "E-L3": type(strategy.long_selector.strike),
+        "E-S3": type(strategy.short_selector.strike),
+        "gates": [type(g) for g in strategy.gates],
+        "short_exits": [type(x) for x in strategy.short_exits],
+    }
+
+
 @pytest.mark.parametrize(
-    ("rule", "kind", "params"),
+    ("ablation", "layer"),
     [
-        ("E-L2", "dte_range_expiry", "{min_dte: 120, max_dte: 270}"),
-        ("E-L3", "cheapest_replacement", "{min_delta: 0.70, max_delta: 0.90}"),
-        ("E-S3", "expected_move_strike", "{k: 1.0}"),
+        ("a1", {"E-L2": NearestDteExpiry, "E-L3": NearestDeltaLong}),
+        ("a2", {"E-S3": NearestDeltaShort}),
+        ("a3", {"gates": [StructuralGate, VrpGate, MinPremiumGate]}),
+        ("a4", {"gates": [StructuralGate, EventRatioGate, MinPremiumGate]}),
+        ("a5", {"short_exits": [DefensiveDelta, FridayCheck]}),
     ],
 )
-def test_quant_kinds_are_not_built_yet(tmp_path: Path, rule: str, kind: str, params: str) -> None:
-    config = load_strategy(BASELINE)
-    swapped = [
-        r.model_copy(update={"kind": kind, "params": KINDS[kind].params.model_validate(
-            _yaml(params))}) if str(r.id) == rule else r
-        for r in config.rules
-    ]  # fmt: skip
-    with pytest.raises(NotBuiltError, match="P4-01"):
-        build_strategy(config.model_copy(update={"rules": tuple(swapped)}))
-
-
-def _yaml(text: str) -> object:
-    import yaml
-
-    return yaml.safe_load(text)
+def test_each_ablation_builds_as_quant_but_for_its_layer(
+    ablation: str, layer: dict[str, object]
+) -> None:
+    built = build_strategy(load_strategy(CONFIGS_DIR / "ablations" / f"{ablation}.yaml"))
+    assert _shape(built) == {**_shape(build_strategy(load_strategy(QUANT))), **layer}

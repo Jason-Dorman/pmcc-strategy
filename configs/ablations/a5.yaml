@@ -1,0 +1,9 @@
+# A5 (Spec › Ablations): the quant PMCC with the X-S1 take profit off, so the short is held to the
+# Friday check. "Off" is absence (DEC-53).
+
+id: quant_pmcc--a5
+name: "A5: quant without take profit"
+extends: ../quant_pmcc.yaml
+
+overrides:
+  X-S1: {remove: true}

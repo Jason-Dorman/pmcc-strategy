@@ -34,7 +34,6 @@ from pmcc.export.models import DataSource, RunResult
 from pmcc.export.results import write_result
 from pmcc.log import configure_logging
 from pmcc.runner import Market, Stamp, run_symbol
-from pmcc.strategy.registry import NotBuiltError
 
 app = typer.Typer(help="PMCC backtester: fetch LSEG data, run backtests, export the site.")
 log = structlog.get_logger()
@@ -188,8 +187,7 @@ def _backtest(cache: Path, underlying: Underlying, calendar: SessionCalendar,
     try:
         stamp = Stamp(provenance(), DataSource.LSEG, _now())
         return run_symbol(cache, underlying, calendar, config, cash, stamp)
-    except (CacheError, CalendarMismatchError, ProvenanceError, EngineError, NotBuiltError,
-            ValueError) as exc:  # fmt: skip
+    except (CacheError, CalendarMismatchError, ProvenanceError, EngineError, ValueError) as exc:
         log.exception("run.abort", symbol=underlying.symbol, run_id=config.strategy.id)
         _fail(f"{underlying.symbol}: {exc}; nothing was written")
 
@@ -276,7 +274,7 @@ def _calibrated(markets: dict[str, Market], configs: list[RunConfig],
                 settings: UniverseConfig) -> Calibration:  # fmt: skip
     try:
         return calibrate_cash(markets, configs, [u.symbol for u in settings.symbols])
-    except (CalibrationError, CacheError, EngineError, NotBuiltError, ValueError) as exc:
+    except (CalibrationError, CacheError, EngineError, ValueError) as exc:
         log.exception("calibrate.abort")
         _fail(f"calibration failed: {exc}; configs/universe.yaml is unchanged")
 

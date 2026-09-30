@@ -186,9 +186,24 @@ def test_rv_above_iv_walks_at_60_vol_under_20_iv(tmp_path: Path) -> None:
     assert len(set(written.spots.tolist())) > 100
 
 
-def test_tiny_premium_prices_the_0_30_delta_short_under_10c(synthetic: SyntheticMarkets) -> None:
+def test_tiny_premium_locks_week_1s_calls_above_103_under_10c(synthetic: SyntheticMarkets) -> None:
     data = _data(synthetic, "tiny_premium")
     chain = data.view(_at(scenarios.MON, 10)).chain(scenarios.WEEK1_EXPIRY, Right.CALL).quotes
-    otm = chain.eligible & (chain.strike > 100 * 10_000)
-    nearest = np.flatnonzero(otm)[np.argmin(np.abs(chain.delta[otm] - 0.30))]
-    assert chain.mid[nearest] < 0.10
+    locked = chain.strike > 103 * 10_000
+    assert locked.any()
+    assert (chain.bid[locked] == chain.ask[locked]).all()
+    assert (chain.mid[locked] == 0.08).all()
+    assert chain.eligible[locked].all()  # a locked quote still solves an IV
+    assert (chain.bid[~locked] < chain.ask[~locked]).all()
+    tuesday = data.view(_at(scenarios.TUE, 10)).chain(scenarios.WEEK1_EXPIRY, Right.CALL).quotes
+    valid = tuesday.valid
+    assert valid.any()
+    assert (tuesday.bid[valid] < tuesday.ask[valid]).all()
+
+
+def test_next_week_unquoted_lists_week_2s_calls_only_from_tuesday(
+    synthetic: SyntheticMarkets,
+) -> None:
+    data = _data(synthetic, "next_week_unquoted")
+    assert data.view(_at(scenarios.MON, 16)).chain(scenarios.WEEK2_END, Right.CALL).size == 0
+    assert data.view(_at(scenarios.TUE, 10)).chain(scenarios.WEEK2_END, Right.CALL).size > 0

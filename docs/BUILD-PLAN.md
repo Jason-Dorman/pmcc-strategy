@@ -31,7 +31,7 @@ Sep 25, 2026 · schedule from Spec › Build order · **due Fri Oct 9, 11:59 pm*
 | P1-10 Universe fetch (background) | Sun Sep 27 – Sat Oct 3 | QQQ and TSLA cached with coverage summaries (NVDA at P1-09) | Estimates shown 2026-09-28 (QQQ 183–547 min, TSLA 98–293 min); the PO scheduled the pull overnight. Seen 2026-09-30: TSLA's pull stopped at 01:14 on Sep 29 with its 53 weekly units cached and none of its 9 monthlies (Oct 2026 – Jun 2027); QQQ not started. Re-running TSLA's fetch resumes at the first missing unit. **Paused 2026-09-30** (PO, DEC-15): QQQ and TSLA set aside, NVDA perhaps the only symbol; more at the end if time allows |
 | P2 Pricing | Mon Sep 28 | IV solver matches the reference; EM, ATM IV, RV20 tested | Done 2026-09-28, as one commit (PO, DEC-59): Black-Scholes, T and DTE, the IV solver, measures and the chain pricer (DEC-24 to DEC-27 settled; DEC-89). NVDA prices in 1.4 s; IV failures 8.3%, mostly very deep ITM; DEC-26's missing-close rule is with the PO |
 | P3 Engine, accounting, baseline | Mon Sep 28 – Wed Sep 30 | **M1:** baseline blotter, ledger, NAV, Reg T for NVDA; INV-01–10 and 13 pass | Done 2026-09-30 (**M1**): P3-01 done 2026-09-29 (DEC-35, DEC-90); P3-02 to P3-07 as one commit (DEC-91); P3-08 (`pmcc run`, DEC-50, DEC-92); P3-09 (starting cash $10,000, provisional, from NVDA; DEC-30, DEC-93); P3-10 (NVDA's baseline, $10,000 to $13,672.50, 35 trades; hand-audited; NVDA's raw cache committed per DEC-05; DEC-94). Next P4-01 |
-| P4 Quant layer and site skeleton | Thu Oct 1 – Fri Oct 2 | **M2:** quant + A1–A5 on NVDA; Pages serves the skeleton from sample JSON; INV-14, 15 in CI | Not started |
+| P4 Quant layer and site skeleton | Thu Oct 1 – Fri Oct 2 | **M2:** quant + A1–A5 on NVDA; Pages serves the skeleton from sample JSON; INV-14, 15 in CI | In progress: P4-01 to P4-03 done 2026-09-30 (quant selectors, gates G-3 to G-5, quant and ablation configs; DEC-95), with the G-5 finding, five rationales and the provisional starting cash ($15,000 with quant built) put to the PO; an adversarial review's 10 confirmed and 1 plausible findings fixed. Next P4-04 [PO] and P4-05 (asks DEC-54) |
 | P5 Universe batch and sensitivity | Sat Oct 3 – Sun Oct 4 | **M3:** all results JSON written and verified | Not started |
 | P6 Analytics | Mon Oct 5 – Tue Oct 6 | **M4:** every table and series in results JSON | Not started |
 | P7 Site pages and write-up | Wed Oct 7 – Thu Oct 8 | **M5:** CI builds and deploys after `pmcc export`; the site passes a full read-through | Not started |
@@ -60,6 +60,7 @@ Nothing needs answering up front. This is when each open question in [DECISIONS]
 | P3-08 Results · Wed Sep 30 | Test 13 vs the run timestamp; dirty-tree rule | DEC-50 |
 | P3-09 Capital · Wed Sep 30 | Starting-capital calibration | DEC-30 |
 | P3-10 Baseline on NVDA · Wed Sep 30 | LSEG terms, before real results go to the public repo | DEC-05 |
+| P4-01 to P4-03 handover · Wed Sep 30 | G-5 fires only on a locked quote (E-T1's 10% needs a mid ≥ $0.10); the five quant rationales the spec doesn't give; the provisional starting cash, $15,000 with quant built against the committed $10,000 (found by the review) | DEC-95, DEC-30 |
 | P4-05 Export · Thu Oct 1 | Detail levels and report sections | DEC-54 |
 | P4-06 Web scaffold · Thu Oct 1 | Light theme | DEC-03 |
 | P5-02 Sensitivity · Sat Oct 3 | Entry-timing variant | DEC-31 |
@@ -318,15 +319,15 @@ P8 release                                                                      
 
 ### P4 — Quant layer and site skeleton · Thu Oct 1 – Fri Oct 2
 
-- [ ] **P4-01 · Quant selectors**
+- [x] **P4-01 · Quant selectors** — done 2026-09-30. `DteRangeExpiry`, `CheapestReplacement` and `ExpectedMoveStrike` in `pmcc/strategy/selectors.py`, with DEC-29's quant ties; extrinsic ÷ delta, and each delta compared with the band's edges, rounded to 9 places; E-S3's threshold exact in units. E-S3 takes the lowest *eligible* strike at or above spot + k × EM (DEC-21). EM, ATM IV and RV20 are read through the MarketView in the new `pmcc/strategy/measures.py`, which the engine's X-S3 EM now shares. NVDA's baseline result is unchanged byte for byte (DEC-95)
   - E-L2 (120–270 DTE), E-L3 (lowest extrinsic ÷ δ, tie-breaks per DEC-29), and E-S3 (lowest listed strike ≥ spot + k·EM).
   - Done when: boundary and tie-break tests pass.
   - Needs: P3-06
-- [ ] **P4-02 · Gates G-3, G-4, G-5**
+- [x] **P4-02 · Gates G-3, G-4, G-5** — done 2026-09-30. `EventRatioGate`, `VrpGate` and `MinPremiumGate`, each `n/a` with its reason when an input is missing. Each fires in a quant run on its market and skips week 1 (`tests/scenario/test_scenario_quant.py`); `next_week_unquoted` (new) shows G-3 `n/a` in a full run. `tiny_premium` was rebuilt around a locked quote: with penny quotes, E-T1's 10% needs a mid of at least $0.10, so G-5 can fire only when BID = ASK, and otherwise G-1 skips the week first. Put to the PO (DEC-95)
   - With gate-log values and `n/a` handling (DEC-22).
   - Done when: boundary tests pass, including missing next-week IV and missing RV20, and each gate fires in a full engine run on its synthetic market (`event_week`, `rv_above_iv`, `tiny_premium`, built at P3-03; TEST-STRATEGY §4, §5), with the gate log recording it (deferred from P3-07, DEC-91).
   - Needs: P4-01
-- [ ] **P4-03 · Quant and ablation configs**
+- [x] **P4-03 · Quant and ablation configs** — done 2026-09-30. `configs/quant_pmcc.yaml` and `configs/ablations/a1.yaml` to `a5.yaml`. The config-diff test holds each ablation to its layer, and A1's and A2's rules to the baseline's word for word (`tests/unit/config/test_quant_config.py`). Names, gate conditions and G-3's rationale are the spec's; five rationales the spec doesn't give (E-L2, E-L3, E-S3, G-4, G-5) are with the PO. `NotBuiltError` is gone, and `pmcc calibrate` defaults to both strategies. An adversarial review (4 reviewers, 2 skeptics per finding) confirmed 10 findings and rated 1 plausible, all fixed: the tie order, the score and ratio rounding, EM's neighbour and E-S3's ceiling now pinned by tests; ratios compared at the 6 places results print; two rationales cut back to the spec; the harness runs an ablation with overrides; the starting cash went to the PO. 1,732 tests in the suite (11 from the review) (DEC-95)
   - `configs/quant_pmcc.yaml` and `configs/ablations/a1…a5.yaml`.
   - Done when: a config-diff test shows each ablation differs from quant only in its named layer.
   - Needs: P4-02

@@ -47,7 +47,8 @@ def _config(tmp: Path, overrides: str = "", fill_model: str = "",
 
 
 def _as(cfg: RunConfig, run_id: str) -> RunConfig:
-    """`cfg` under another run ID: a stand-in for the quant strategy, not built until P4-03."""
+    """`cfg` under another run ID: a second strategy whose entries the test controls,
+    standing in for the quant strategy."""
     return cfg.model_copy(update={"strategy": cfg.strategy.model_copy(update={"id": run_id})})
 
 

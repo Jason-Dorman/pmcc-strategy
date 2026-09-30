@@ -23,7 +23,6 @@ from pmcc.domain.calendar import SessionCalendar
 from pmcc.domain.clock import ET
 from pmcc.domain.errors import EngineError
 from pmcc.export.manifest import GitState, Provenance, ProvenanceError
-from pmcc.strategy.registry import NotBuiltError
 from tests.fixtures.synthetic.market import generate
 from tests.fixtures.synthetic.scenarios import random_walk
 
@@ -252,8 +251,8 @@ def test_cli_run_a_bad_config_fails_loudly(market: Path, config: str, said: str)
 @pytest.mark.parametrize(
     "error",
     [EngineError("NAV doesn't reconcile"), CalendarMismatchError("a tape day isn't a session"),
-     NotBuiltError("expected_move_strike lands with P4-01"), ValueError("two RICs")],
-    ids=["engine", "calendar", "not-built", "value"],
+     ValueError("two RICs")],
+    ids=["engine", "calendar", "value"],
 )  # fmt: skip
 def test_cli_run_a_run_error_writes_nothing(
     workdir: Path, market: Path, monkeypatch: pytest.MonkeyPatch, error: Exception

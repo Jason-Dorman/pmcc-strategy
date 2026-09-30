@@ -1,0 +1,8 @@
+# A3 (Spec › Ablations): the quant PMCC with the G-3 event gate off. "Off" is absence (DEC-53).
+
+id: quant_pmcc--a3
+name: "A3: quant without the event gate"
+extends: ../quant_pmcc.yaml
+
+overrides:
+  G-3: {remove: true}

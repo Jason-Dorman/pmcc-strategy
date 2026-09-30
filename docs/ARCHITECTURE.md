@@ -102,9 +102,10 @@ pmcc/
                  IvCode), measures.py (close, ATM strike and IV, EM, RV20; DEC-23, DEC-25, DEC-26),
                  chain.py (price_quotes for one bar; price_symbol → PricedSymbol, memoized) (DEC-89)
   strategy/      ports.py (MarketView, LookAheadError, the values rules return), selectors.py
-                 (E-L2/E-L3, E-S2/E-S3), trigger.py (E-T1), gates.py (E-S5, G-1, G-2), exits.py
-                 (X-S1…X-S3, X-L1, X-L2, the X-S4/X-S5 resolver), registry.py (kinds → code,
-                 build_strategy) (DEC-91)
+                 (E-L2/E-L3, E-S2/E-S3, baseline and quant), trigger.py (E-T1), gates.py (E-S5,
+                 G-1…G-5), exits.py (X-S1…X-S3, X-L1, X-L2, the X-S4/X-S5 resolver), measures.py
+                 (ATM strike and IV, EM, RV20 through the MarketView), registry.py (kinds → code,
+                 build_strategy) (DEC-91, DEC-95)
   engine/        market_view.py (MarketData, HistoricalView: the as-of gate), loop.py (run_backtest),
                  legs.py (Trader: the leg state machines and the gate log), fills.py, invariants.py
   accounting/    events.py, book.py, marks.py, valuation.py (market values, NAV), regt.py, ledger.py
@@ -284,7 +285,7 @@ class Strategy:                                     # built by strategy.registry
 
 - A `Selection` carries the contract plus the values that justified it (delta, DTE, spread %, spot). Those values become blotter notes and gate-log values.
 - An `ExitOutcome` is fire, pass or unevaluated: a rule on a bar with a fresh quote but a missing input doesn't fire, and is logged (PO, DEC-27).
-- Every kind in `config.kinds.KINDS` has a factory in `registry.FACTORIES`, and a test holds the two key sets equal. The quant kinds raise `NotBuiltError` until P4-01/P4-02 (DEC-91).
+- Every kind in `config.kinds.KINDS` has a factory in `registry.FACTORIES`, and a test holds the two key sets equal. The quant kinds were built at P4-01 and P4-02 (DEC-95).
 
 ### 5.4 Accounting
 
@@ -555,8 +556,8 @@ A failure logs `invariant.failed` and raises `InvariantViolation` (an `EngineErr
 | --- | --- |
 | `configs/_shared.yaml` | Rules identical in both strategies (E-T1, E-L1, E-L4, E-S1, E-S2, E-S4, E-S5, G-1, G-2, all exits) and the fill model (`spread_capture`, `fee_per_contract`). E-L4's params include the starting cash's rule, `cash_multiple` and `cash_round_to`, which `pmcc calibrate` reads (DEC-30, DEC-93). Only ever extended: it has no `id` |
 | `configs/baseline_pmcc.yaml` | `extends: _shared.yaml`; baseline E-L2, E-L3, E-S3. Report sections join at P4-05 (DEC-54) |
-| `configs/quant_pmcc.yaml` | `extends: _shared.yaml`; quant E-L2, E-L3, E-S3; G-3, G-4, G-5 (P4-03). Report sections join at P4-05 (DEC-54) |
-| `configs/ablations/a1…a5.yaml` | `extends: ../quant_pmcc.yaml` + `overrides` keyed by rule ID |
+| `configs/quant_pmcc.yaml` | `extends: _shared.yaml`; quant E-L2, E-L3, E-S3; G-3, G-4, G-5 (P4-03, DEC-95). Report sections join at P4-05 (DEC-54) |
+| `configs/ablations/a1…a5.yaml` | `extends: ../quant_pmcc.yaml` + `overrides` keyed by rule ID: A1 and A2 `replace` the quant selectors with the baseline's rules, word for word; A3, A4 and A5 `remove` G-3, G-4 and X-S1 (P4-03, DEC-95) |
 | `configs/sensitivity.yaml` | friction, timing and grid variants (§11) |
 | `configs/universe.yaml` | the window (DEC-07); r with the quote, series, date and source it came from (DEC-11); symbols with stock RIC and option root (DEC-12); last, the `starting_cash` block `pmcc calibrate` writes: the value, whether it's provisional, the calibration cash and each run's first long entry (DEC-30, DEC-93). The bootstrap seed joins at P6-05, above that block. Loaded by `pmcc/config/universe.py`, which checks the window's sessions against the calendar (DEC-86) |
 | `configs/calendar.yaml` | NYSE holidays and early closes 2025–2027, with sources (DEC-33) |
@@ -568,9 +569,13 @@ A rule entry (DEC-52):
   name: Event week
   kind: event_ratio_gate
   params: {max_ratio: 1.20}
-  condition: "Front-week ATM IV ÷ next-week ATM IV > {max_ratio:.2f}"
-  action: "Skip the week; keep the long"
-  rationale: "An event priced into the front week lifts its IV above the next week's; a ratio scales across volatility regimes."
+  condition: Front-week ATM IV ÷ next-week ATM IV > {max_ratio:.2f}
+  action: Skip the week; keep the long
+  rationale: >-
+    G-3 detects events (usually earnings) from the chain itself, with no external calendar: an
+    event priced into the front week lifts its IV above the following week's. A ratio is used
+    instead of a vol-point difference so the threshold scales across low- and high-volatility
+    symbols.
 ```
 
 An ablation (DEC-53):

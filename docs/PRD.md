@@ -104,7 +104,7 @@ Every row points to its source. "Verified by" names the invariant test (INV-nn),
 | ID | Requirement | Source | Verified by |
 | --- | --- | --- | --- |
 | FR-R1 | Entry rules E-T1, E-L1–E-L4, E-S1–E-S5 as specified for each strategy | Spec › Trade rules: entry; DEC-21, DEC-29 | rule unit tests; INV-05, 06, 08, 10 |
-| FR-R2 | Skip-week gates G-1–G-5. At the decision bar every gate the strategy has is evaluated and recorded (pass, fire or n/a, with its values), and the first to fire in spec order is the outcome; if G-1 fires, the rest are `not_evaluated`. One gate-log row per strategy per week-open session, whose outcome can also be E-S1, X-L1/X-L2 or E-L4. | Spec › Skip-week gates; DEC-22, DEC-91 | rule and scenario tests |
+| FR-R2 | Skip-week gates G-1–G-5. At the decision bar every gate the strategy has is evaluated and recorded (pass, fire or n/a, with its values), and the first to fire in spec order is the outcome; if G-1 fires, the rest are `not_evaluated`. One gate-log row per strategy per week-open session, whose outcome can also be E-S1, X-L1/X-L2 or E-L4. | Spec › Skip-week gates; DEC-22, DEC-91 | rule and scenario tests (`tests/unit/strategy/test_quant_gates.py`, `tests/scenario/test_scenario_quant.py`; DEC-95) |
 | FR-R3 | Exits X-S1–X-S5, X-L1, X-L2, X-E1, identical across strategies; the short is never exercised; no rolls | Spec › Trade rules: exits; DEC-28 | scenario tests; INV-07 |
 | FR-R4 | When the selected short fails E-T1 or E-S5, the gates decide; the engine never substitutes a different strike | Spec › Trade rules: entry; DEC-21 | scenario test |
 | FR-R5 | Every threshold is in YAML, validated by pydantic, with a stable rule ID and `id`, `name`, `condition`, `action`, `rationale` fields | Spec › Config-driven rules; DEC-35, DEC-52, DEC-90 | `tests/unit/config/test_baseline_config.py`, `test_strategy_loader.py` (P3-01) |
@@ -123,8 +123,8 @@ Every row points to its source. "Verified by" names the invariant test (INV-nn),
 
 | ID | Requirement | Source | Verified by |
 | --- | --- | --- | --- |
-| FR-B1 | Strategies `baseline_pmcc` and `quant_pmcc`, defined as configs | Spec › Strategies; DEC-53 | `tests/unit/config/test_baseline_config.py` (P3-01); quant at P4-03 |
-| FR-B2 | Ablations A1–A5: quant with one layer removed | Spec › Ablations | config-diff test (P4-03) |
+| FR-B1 | Strategies `baseline_pmcc` and `quant_pmcc`, defined as configs | Spec › Strategies; DEC-53 | `tests/unit/config/test_baseline_config.py` (P3-01); `test_quant_config.py` (P4-03, DEC-95) |
+| FR-B2 | Ablations A1–A5: quant with one layer removed | Spec › Ablations; DEC-53, DEC-95 | config-diff test, `tests/unit/config/test_quant_config.py` (P4-03) |
 | FR-B3 | Sensitivity: friction at 0 / 0.25 / 0.50 for both strategies; entry timing (baseline, one run per week-open bar); parameter grid (quant, one parameter at a time). Every result is published. | Spec › Sensitivity checks; DEC-31 | P5-02, P6-06 |
 | FR-B4 | A universe batch over `configs/universe.yaml` (QQQ, NVDA, TSLA; DEC-15) on one common window, Mon Mar 30 – Fri Sep 25 2026 (26 weeks; at least 10 required); any symbol can run alone | Spec › Universe; DEC-07, DEC-15 | `tests/unit/config/test_universe_file.py`; P5-04 |
 | FR-B5 | One starting cash balance for every symbol and run, fixed before the first run: `pmcc calibrate` sets it to 2 × the most expensive first long-leg cost, rounded up to $5,000 (E-L4's `cash_multiple` and `cash_round_to`), checks that it covers every entry, reports each run's lowest available funds, and writes it with its basis into `configs/universe.yaml`, provisional until every symbol is in under both strategies. `pmcc run` reads it only from there, refuses to run without it, and says when it's provisional | Spec › E-L4; DEC-30, DEC-93 | `tests/unit/test_cli_run.py` (P3-08); `tests/unit/config/test_capital.py`, `tests/scenario/test_calibration.py`, `tests/unit/test_cli_calibrate.py` (P3-09); P5-01 |

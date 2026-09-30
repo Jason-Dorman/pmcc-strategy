@@ -237,12 +237,17 @@ def test_dec_30_calibrate_refuses_a_provisional_value_written_by_hand(
 
 
 def test_dec_30_calibrate_defaults_to_both_strategies(universe: Path, market: Path) -> None:
-    """Until P4-03 writes configs/quant_pmcc.yaml, the default calibration can't run."""
+    """With no --config, both shipped strategies are calibrated (P4-03 wrote the quant one), and
+    with every universe symbol under both, the value is final."""
     result = runner.invoke(app, ["calibrate", "--symbol", "SYN", "--cache", str(market)])
 
-    assert result.exit_code == 1
-    assert "quant_pmcc.yaml" in result.output
-    assert universe.read_text(encoding="utf-8") == _universe()
+    assert result.exit_code == 0, result.output
+    cash = read_universe_file(universe).starting_cash
+    assert cash is not None
+    assert [(e.symbol, e.strategy) for e in cash.entries] == [
+        ("SYN", "baseline_pmcc"), ("SYN", "quant_pmcc")
+    ]  # fmt: skip
+    assert not cash.provisional
 
 
 def test_dec_30_calibrate_refuses_a_symbol_outside_the_universe(

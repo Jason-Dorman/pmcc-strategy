@@ -106,6 +106,7 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-92 | Results: models, canonical JSON, the manifest and `pmcc run` | ENG | — |
 | DEC-93 | `pmcc calibrate`: the starting-cash block and its two passes | ENG | — |
 | DEC-94 | The baseline on NVDA: the run, the hand audit and the committed cache | ENG | — |
+| DEC-95 | The quant layer: selectors, gates G-3 to G-5, the quant and ablation configs | ENG · G-5 finding, 5 rationales and the starting cash put to the PO | handover 2026-09-30 |
 
 ---
 
@@ -495,6 +496,7 @@ Each of these decides trading behaviour the spec leaves open, so each goes to th
   - A week with no long held logs outcome `E-S1`.
   - A week blocked by an unfinished long reset logs `X-L1` or `X-L2`.
 - **Outcome:** 2026-09-29 — PO: as recommended. Built in `pmcc/engine/legs.py` and `pmcc/strategy/gates.py` (P3-06, P3-07, DEC-91). A week whose long couldn't be checked logs `E-S1` too (DEC-28's outcome). The spec is unchanged: this settles what it leaves open.
+- **Outcome:** 2026-09-30 — G-3, G-4 and G-5 built at P4-02, each `n/a` with its reason when an input is missing; each fires in a full run on its synthetic market (DEC-95).
 
 ### DEC-23 — Spot, close, ITM at expiry
 **Status:** SETTLED · **Basis:** PO, 2026-09-28 (asked at P2-03) · **Affects:** P2-03, P3-02, P3-06, X-S4, X-S5
@@ -530,6 +532,7 @@ Each of these decides trading behaviour the spec leaves open, so each goes to th
   - Distances to spot are compared in $0.0001 units, so a tie is exact.
   - Each mid is `Quote.mid`, rounded half-even to $0.0001 as a fill at mid would be (DEC-44), so EM is a `Price`.
   - ATM IV is unavailable when the ATM call has no row on the bar or its IV fails. Which strikes are listed is MarketView's (DEC-32, P3-02). The spec is unchanged: this settles what it leaves open.
+- **Outcome:** 2026-09-30 — read through the MarketView by `pmcc/strategy/measures.py` for quant E-S3 (EM at the selection bar), G-3 and G-4 (ATM IV at the decision bar) and X-S3 (EM at short entry) (P4-01, P4-02; DEC-95).
 
 ### DEC-26 — RV20
 **Status:** SETTLED, except a missing close (ASK, 2026-09-29) · **Basis:** PO, 2026-09-28 (asked at P2-03) · **Affects:** P2-03, G-4
@@ -586,6 +589,8 @@ Each of these decides trading behaviour the spec leaves open, so each goes to th
 Distances are compared in integer price units, so float noise can't create or break a tie.
 
 **Outcome:** 2026-09-29 — PO: as recommended, the quant row included (built at P4-01). Built in `pmcc/strategy/selectors.py` (P3-06, DEC-91): DTE is whole days and strikes are integer units, so those ties are exact; spread % is compared as an exact fraction of the integer BID and ASK. A delta is a float from the IV solve, so its distance to the target is rounded to 9 decimal places before comparing: without that, 0.85 and 0.75 aren't equally far from 0.80 in binary floating point, and float noise would break the tie the PO settled (a unit test caught it). The spec is unchanged: this settles what it leaves open.
+
+**Outcome:** 2026-09-30 — the quant row built at P4-01, in `CheapestReplacement` (DEC-95). Extrinsic ÷ delta is rounded to 9 places, like a delta distance, so 1.70 ÷ 0.85 and 1.40 ÷ 0.70 tie at 2 and go to the lower spread.
 
 ### DEC-30 — Starting capital (E-L4)
 **Status:** SETTLED (PO, 2026-09-30; the cash source at P3-08, the calibration at P3-09) · **Affects:** P3-08, P3-09, P3-10, P5-01; DEC-93
@@ -1484,7 +1489,7 @@ Development runs in Git Bash on Windows (DEC-02) and CI runs on Ubuntu. Both mus
   - The window, r and starting cash come only from `configs/universe.yaml`, found from the package, not the working directory (PO, DEC-30). There is no `--universe` option.
   - `data_source` is `lseg`: the runner's caller says where the data came from, since a synthetic cache looks the same on disk. Tests and P4's sample site pass `synthetic`.
   - `run_timestamp` is the start of the run, in ET.
-  - A re-run replaces its file whole (`replace_file`). A cache, calendar, provenance or engine error (a failed invariant included), a window the cache doesn't cover, a quant kind not built yet (`NotBuiltError`) or a runner `ValueError` exits 1 with nothing written (DEC-49), and a bad universe or config file (missing, bad YAML, a value refused) exits 1 naming the file.
+  - A re-run replaces its file whole (`replace_file`). A cache, calendar, provenance or engine error (a failed invariant included), a window the cache doesn't cover, a quant kind not built yet (`NotBuiltError`, gone since P4-03 built them all, DEC-95) or a runner `ValueError` exits 1 with nothing written (DEC-49), and a bad universe or config file (missing, bad YAML, a value refused) exits 1 naming the file.
   - It prints the trade, bar and week counts, the final NAV and the path, and says to commit first when the tree is dirty. Log events: `run.done` and `run.abort`.
 - **`Universe.starting_cash`:** optional until P3-09 writes it with its basis (DEC-30); since P3-09 it is the calibrated block, and `pmcc run` takes its `value` (DEC-93). It isn't in `config_hash`, which covers the strategy, the window and r (DEC-90); the result records it as `starting_cash`.
 - **The large-file hook:** a 26-week full result is about 0.5 MB (575 bytes per ledger bar on the synthetic market; NVDA's window has 875 bars), at pre-commit's default 500 KB `check-added-large-files` limit, which would stop the PO's P3-10 commit. `results/` now has its own 2 MB limit; every other path keeps 500 KB. Checked in a throwaway repository: a 1 MB result passes, a 3 MB result and a 600 KB file elsewhere fail.
@@ -1536,7 +1541,7 @@ Development runs in Git Bash on Windows (DEC-02) and CI runs on Ubuntu. Both mus
 - **Funds, reported (PO, DEC-30):** for each run at the value, `verify` returns its lowest available funds, the bar it came on (the first, on a tie), and how many bars went below zero. Calibrate prints them and logs `calibrate.verified`, but never fails on them. NVDA's baseline at $10,000: lowest $4,978.50 on Jun 8 at 14:00, no bar below zero.
 - **Refused before any run:** a config that isn't one of the two strategies (a variant or ablation), and configs that disagree on E-L4's rule. **Refused runs:** a run with no E-L1 entry in the window, and a config with `spread_capture` other than 0.
 - **`pmcc calibrate [--symbol S]… [--config C]… [--check] [--cache data_cache]`:**
-  - It defaults to every universe symbol and both strategy configs. Until QQQ and TSLA are cached and P4-03 writes `configs/quant_pmcc.yaml`, only a narrowed call runs: `just calibrate --symbol NVDA --config configs/baseline_pmcc.yaml`.
+  - It defaults to every universe symbol and both strategy configs. Until QQQ and TSLA are cached and P4-03 writes `configs/quant_pmcc.yaml`, only a narrowed call runs: `just calibrate --symbol NVDA --config configs/baseline_pmcc.yaml`. (P4-03 wrote it on 2026-09-30, DEC-95. With both strategies NVDA gives $15,000, so the committed $10,000 is reproduced only with `--config configs/baseline_pmcc.yaml`; the value is with the PO, DEC-95.)
   - Each symbol is loaded and priced once, then every config runs on it (ARCHITECTURE §11). It writes nothing to `results/`.
   - A cache, calendar, engine or calibration error exits 1, with `configs/universe.yaml` unchanged. Log events: `calibrate.measured`, `calibrate.verified`, `calibrate.done`, `calibrate.abort`.
   - `--check` recomputes the block and compares byte for byte what calibrate would write with the file, header comment included. It exits 1 on any difference, including the same value or instant written another way, or on a missing or hand-set block. It writes nothing.
@@ -1565,7 +1570,7 @@ Development runs in Git Bash on Windows (DEC-02) and CI runs on Ubuntu. Both mus
     - `--check` passing, and failing on five edits that still load (a cost, the calibration cash, the same instant in UTC, the value as a number, the header comment), or on no block;
     - the real calendar validation refusing before any write, and a locked file failing cleanly;
     - a final block, or one set by hand, left alone;
-    - the default configs failing until P4-03;
+    - the default configs failing until P4-03 (since P4-03, the test expects both strategies calibrated, DEC-95);
     - a symbol outside the universe, no cache, and a value that blocks entries each writing nothing.
   - `tests/unit/config/test_universe_file.py`:
     - the shipped block: NVDA's baseline, $10,000, provisional, E-L4's rule, its time as written, and byte for byte what `render_block` gives;
@@ -1614,6 +1619,72 @@ Development runs in Git Bash on Windows (DEC-02) and CI runs on Ubuntu. Both mus
 - **What git ignores (DEC-05):** `data_cache/*` except `data_cache/NVDA/`, then `logs/`. So TSLA's partial cache and the probe reports stay on disk and out of git. As ignored files, they don't make a run dirty (DEC-50). Adding a symbol later is one more `!data_cache/{SYM}/` line, and until it's committed, its fetch makes the tree dirty, as it should.
 - **Hooks:** `end-of-file-fixer` skips `data_cache/`, since no tool may rewrite the cache. `data_cache/` has its own `check-added-large-files` entry at 2 MB, like `results/`, and the default 500 KB entry skips both. NVDA's largest files are the Dec 18 chain (1.1 MB) and the manifest (0.8 MB). The cache's JSON has no CR bytes, and `*.parquet` is binary, so a Windows checkout reproduces the hashed bytes.
 - **Tests (13 new):** `tests/unit/test_repo_policy.py` asks `git check-ignore --no-index`, which reads the patterns only, whether NVDA's cache is kept and whether other symbols, probe reports, a look-alike sibling (`data_cache/NVDA.moved/`), logs and credentials are ignored. Units moved aside under `data_cache/NVDA/superseded/` (DEC-46) are committed, as the record. It also checks that results are kept and parses `.pre-commit-config.yaml` for the two hook rules.
+
+### DEC-95 — The quant layer: selectors, gates G-3 to G-5, the quant and ablation configs
+**Status:** ENG, with three items put to the PO (below) · **Affects:** P4-01 to P4-04, P5-01, P5-02, P7-03; DEC-30, DEC-21, DEC-22, DEC-25, DEC-26, DEC-29, DEC-32, DEC-34, DEC-35, DEC-53, DEC-90, DEC-91
+
+- **Where:**
+  - `pmcc/strategy/selectors.py`: `DteRangeExpiry` (E-L2 quant), `CheapestReplacement` (E-L3 quant) and `ExpectedMoveStrike` (E-S3 quant), beside the baseline's.
+  - `pmcc/strategy/gates.py`: `EventRatioGate` (G-3), `VrpGate` (G-4) and `MinPremiumGate` (G-5).
+  - `pmcc/strategy/measures.py` (new): the ATM strike and IV, EM and RV20, read through the `MarketView` on its bar. E-S3, G-3, G-4 and the engine's EM at short entry (X-S3) share it, so the engine's own copy of the EM read is gone.
+  - `registry.py` maps every kind, so `NotBuiltError` is gone from the registry, `pmcc run` and `pmcc calibrate`.
+  - `configs/quant_pmcc.yaml` and `configs/ablations/a1.yaml` to `a5.yaml`.
+- **How each rule reads, within the settled answers:**
+  - **E-L2 quant:** every listed monthly with 120 ≤ DTE ≤ 270, both ends included (Spec: "120–270 DTE").
+  - **E-L3 quant:** eligible calls with 0.70 ≤ δ ≤ 0.90 across those expiries. Extrinsic = the quote's exact mid − max(0, spot − strike) in $0.0001 units, with spot the bar's TRDPRC_1 (DEC-23). The lowest extrinsic ÷ δ wins; ties follow DEC-29's quant row. Each call's delta is rounded to 9 places before it's compared with the band's edges (0.70 and 0.90, as written), and so is the score, as delta distances are (DEC-29). Without a spot, nothing is selected.
+  - **E-S3 quant:** EM is the E-S2 expiry's ATM straddle mid (DEC-25) on the bar the selector runs, which is the freeze bar (DEC-21).
+    - The threshold spot + k × EM is exact, with k read as its decimal (like E-T1's limits), and rounded up to $0.0001.
+    - The pick is the lowest **eligible** strike at or above it, since selectors consider only contracts eligible on the bar (DEC-21). So a listed strike with no quote on the bar is passed over for the next one up.
+    - Without a spot or an EM, nothing is selected on that bar, and the freeze waits for a bar that has both.
+  - **G-3:** the front week is the short's expiry. The next week is the following calendar week's final session (Thursday when Friday is closed). Each week uses its own ATM strike (the listed call strike nearest spot, DEC-25). `n/a` when either ATM IV is unavailable, which includes a next week not listed yet (DEC-32).
+  - **G-4:** front-week ATM IV ÷ RV20 (DEC-26). `n/a` without either. When a close is missing, RV20 is unavailable, so G-4 is `n/a`: that is DEC-26's pending question, and an answer there changes RV20, not the gate. An RV20 of exactly 0 (flat closes) makes the ratio unbounded, so the gate passes; only synthetic flat markets produce it.
+  - **G-5:** the decision bar's exact mid < $0.10, in $0.0001 units.
+  - **IV ratios** are rounded to 6 places before they're compared: the places a result file prints a float to (DEC-50). So a ratio on its threshold but for float noise compares equal to it (0.342 ÷ 0.285 is 1.2000000000000002 in floats, and a G-3 ratio of 1.20 doesn't fire), and the ratio a gate row publishes is the one its status was decided on, which P4-05's `pmcc verify` can re-derive. It was 9 places until the review below.
+- **What the gate log and blotter record:**
+  - **G-3:** both expiries, ATM strikes and IVs, the ratio and `max_ratio`.
+  - **G-4:** the ATM strike and IV, RV20, the ratio and `min_ratio`.
+  - **G-5:** the mid and `min_mid`.
+  - **`n/a` reasons** (in the gate row's `reason`): "no front-week ATM IV", "no next-week ATM IV" and "no RV20".
+  - **Entry notes (DEC-34):** the quant long carries `extrinsic`, `extrinsic_per_delta` and `candidates` (how many calls were in the band); the quant short carries `spot`, `em`, `k` and `min_strike`.
+  - **The baseline's notes are unchanged:** NVDA's baseline, re-run in memory, matches `results/NVDA/baseline_pmcc.json` byte for byte outside the manifest, and its config hash is the same.
+- **The configs (P4-03):**
+  - `quant_pmcc.yaml` extends `_shared.yaml` and adds the six quant rules. Every other rule and the fill model are the shared file's, the same as the baseline's (a test).
+  - **Rule text:**
+    - Names and the three gate conditions are the spec's words, and the tests read them from its tables.
+    - G-3's rationale is the spec's paragraph, word for word.
+    - E-L2's, E-L3's and E-S3's actions restate the spec's quant column; E-S3's `{k}` renders "1.0", as the spec writes it.
+    - The spec gives no reasons for E-L2, E-L3, E-S3, G-4 or G-5, so their rationales were written to DEC-35's rule (say only what the spec does). The review below found E-L3's and G-4's went further (why dividing by delta is right; what the short is sold for), so they, and E-S3's "the move the options market prices", now restate the rule. They go on the Trade rules page (P7-03), so they were put to the PO at handover.
+  - **Ablations:**
+    - A1 replaces E-L2 and E-L3 with the baseline's rules, and A2 replaces E-S3 with the baseline's, word for word (a test holds them equal).
+    - A3, A4 and A5 remove G-3, G-4 and X-S1.
+    - Run IDs are `quant_pmcc--a1` to `--a5` (ARCHITECTURE §11).
+  - **`pmcc calibrate`** with no `--config` now runs both strategies, still only on NVDA until QQQ and TSLA are cached (DEC-15). The committed provisional block (NVDA's baseline, DEC-30) is unchanged and is reproduced only by `pmcc calibrate --symbol NVDA --config configs/baseline_pmcc.yaml --check`; with both strategies the rule gives another value (below).
+- **Put to the PO: the provisional starting cash with quant built.** DEC-30 took the provisional value from NVDA's baseline alone because `quant_pmcc` wasn't built. It is now, and quant's first long on NVDA, the Aug 21 2026 $115 call (`NVDAH212611500.U^H26`) on Mar 30 at 10:00, costs $5,630.00 against the baseline's $4,142.50. E-L4's rule then gives 2 × $5,630 = $11,260, rounded up to $15,000. `pmcc calibrate --symbol NVDA --check` (both strategies) says so and fails against the committed $10,000. Nothing was recalibrated: a new value changes NVDA's committed baseline result, so it is the PO's call. At $10,000, E-L4 blocks no entry in quant or A1–A5 on NVDA (the review's in-memory runs).
+- **Put to the PO: G-5 can fire only on a locked quote.**
+  - E-T1 passes a short only if its spread is at most 10% of mid. Quotes are in whole cents, so a spread is at least $0.01, and 10% of mid ≥ $0.01 means mid ≥ $0.10, which is G-5's threshold.
+  - A short with a mid under $0.10 therefore passes E-T1 only when BID = ASK. Otherwise G-1 skips the week before G-5 is evaluated, so G-5's weeks show up as G-1.
+  - Built as specified. The synthetic `tiny_premium` market uses a locked quote to make G-5 fire.
+- **Found in the synthetic market:** Fri Sep 18 2026 is a third Friday, which the synthetic market prices at the monthly IV (20%) against the weeklies' 40%. So G-3 fires in week 2 of every quant scenario on the default surface. It's a fixture effect, noted in TEST-STRATEGY §5, and the gate scenarios assert on week 1.
+- **Quant on NVDA:** an in-memory run (nothing written) completes the window with every runtime invariant held. Running and reviewing all six configs is P4-04.
+- **Tests:** `tests/unit/strategy/test_quant_selectors.py` and `test_quant_gates.py` (every boundary, tie and missing input, on the stub view, which now serves close trades for RV20), `tests/unit/config/test_quant_config.py` (the spec's thresholds, names, gate conditions and G-3 paragraph; the config-diff test), `tests/unit/strategy/test_registry.py` (the quant strategy and each ablation build, each ablation as quant but for its layer), and `tests/scenario/test_scenario_quant.py`: G-3, G-4 and G-5 each skip week 1 of their market, `n/a` in a full run (`next_week_unquoted`, new), G-1 leaving the quant gates `not_evaluated`, the quant entries' notes, A3 selling the event week, and quant plus A1–A5 running clean on `random_walk`. `tiny_premium` was rebuilt around a locked quote (above).
+- **Outcome:** 2026-09-30 — P4-01 to P4-03's done-when lines hold.
+- **Outcome:** 2026-09-30 — an adversarial review of P4-01 to P4-03 (4 reviewers, 2 skeptics per finding): 17 findings, 13 unique. The 12 most severe were verified: 10 confirmed, 1 plausible, 1 refuted; 1 low one went unverified. Every confirmed and plausible finding, and the unverified one, is fixed:
+  - **Confirmed, medium:**
+    - The provisional starting cash with quant built (above): DEC-95 and DEC-93 said the block stays and that the symbols alone narrow calibrate, and nothing went to the PO. Now put to the PO, and both entries corrected.
+    - DEC-29's quant tie order wasn't pinned: the spread test used one expiry and the expiry test identical rows, so putting the expiry before the spread, or the strike before the expiry, passed. Two tests now cross expiries.
+    - The 9-place rounding of the score and the ratios was untested: every boundary input was exact in floats. Tests now use 0.50 ÷ 0.90 against 0.45 ÷ 0.81 (5/9 both, one bit apart in floats), 0.342 ÷ 0.285 and a G-4 ratio of 1 − 10⁻¹².
+    - The EM test couldn't tell a neighbour: its put chain had only the ATM strike, so an ATM taken from quoted calls, or from the puts, passed. Two tests now add a quoted $99 straddle and a nearer $100.50 put.
+    - E-L3's and G-4's rationales went beyond the spec (above).
+  - **Confirmed, low:**
+    - E-S3's rounding up wasn't pinned: the only fractional threshold ended in .75, which `round` also takes up. A threshold of 100.750025 now needs the ceiling.
+    - `candidates` and G-4's `front_atm_strike` weren't asserted: an out-of-band eligible call and G-4's full values now are.
+    - The scenario harness crashed on an ablation with overrides (it copied only two files, so `extends: ../quant_pmcc.yaml` couldn't resolve), and its docstring said it ran only the baseline or quant. It now copies the configs tree, and A3 with X-S1 removed runs as a scenario.
+    - P4-01's tick and DEC-95 said the band's edges were rounded; each call's delta is.
+    - `tests/scenario/test_calibration.py` still said quant was 'not built until P4-03'.
+  - **Plausible, low:** DEC-92 and DEC-93 still described `NotBuiltError` and a failing default calibration in the present tense. Both are annotated.
+  - **Refuted:** that the E-S3 reading (passing over an unquoted strike) should have been put to the PO. It applies DEC-21 and is recorded here as ENG.
+  - **Unverified, low, fixed:** a G-3 or G-4 ratio was compared at 9 places but a result prints it at 6, so a firing 1.2000005 would be published as 1.2. Ratios are now compared at 6 (above), with a test either side.
+  - **Mutants:** the 10 reviewers' survivors (both tie orders, the unrounded score and ratio, 9-place ratios, `round` for the ceiling, `candidates`, G-4's strike, an ATM from quoted calls or from the puts) now fail.
 
 ## E. Analytics definitions
 

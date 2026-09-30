@@ -1,0 +1,19 @@
+# A2 (Spec › Ablations): the quant PMCC with the expected-move short strike switched off, replaced
+# by the baseline's 0.30-delta short. E-S3 is the baseline's rule, word for word (a test holds it
+# equal); everything else is the quant PMCC's.
+
+id: quant_pmcc--a2
+name: "A2: quant with the 0.30-delta short"
+extends: ../quant_pmcc.yaml
+
+overrides:
+  E-S3:
+    replace:
+      name: Short leg strike
+      kind: nearest_delta_short
+      params: {target_delta: 0.30}
+      condition: Eligible out-of-the-money calls on the E-S2 expiry
+      action: Choose the strike with delta nearest {target_delta:.2f}
+      rationale: >-
+        The textbook PMCC short: a weekly call out of the money at a fixed delta. If the selected
+        strike fails E-T1 or E-S5, the skip-week gates decide; no other strike is substituted.

@@ -76,6 +76,7 @@ class StubView:
     listed: Mapping[ExpiryKind, tuple[date, ...]] = field(
         default_factory=dict[ExpiryKind, tuple[date, ...]]
     )
+    closes: Mapping[datetime, Price] = field(default_factory=dict[datetime, Price])
     root: str = ROOT
 
     def _gate(self, at: datetime | None) -> datetime:
@@ -105,8 +106,8 @@ class StubView:
         return self.listed.get(kind, ())
 
     def close_trades(self, at: datetime | None = None) -> Mapping[datetime, Price]:
-        self._gate(at)
-        return {}
+        t = self._gate(at)
+        return {end: price for end, price in self.closes.items() if end <= t}
 
     def calendar(self) -> SessionCalendar:
         return CALENDAR

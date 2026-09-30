@@ -23,6 +23,7 @@ from datetime import date, datetime, time
 
 from pmcc.domain.clock import ET
 from pmcc.domain.instruments import OptionId
+from pmcc.domain.money import Price
 from tests.fixtures.synthetic.market import (
     Cell,
     IvSurface,
@@ -41,6 +42,8 @@ WEEK2_OPEN = date(2026, 9, 8)  # Tuesday: Labor Day closes Monday
 WEEK2_END = date(2026, 9, 11)
 WEEK1_EXPIRY = FRI
 SPOT = 100.0
+LOCKED_ABOVE = Price.from_dollars(103)  # tiny_premium: week 1's weeklies above it trade locked
+TINY_MID = 0.08
 
 
 _BASE = SyntheticSpec(MON, WEEK2_END, spot=SPOT, iv=IvSurface(weekly=0.40, monthly=0.20))
@@ -233,9 +236,30 @@ def rv_above_iv() -> SyntheticSpec:
 
 
 def tiny_premium() -> SyntheticSpec:
-    """Weeklies at 5% IV on a $0.50 grid: the OTM call nearest 0.30 delta is worth under $0.10
-    (G-5)."""
-    return _spec(path=_flat(), iv=IvSurface(weekly=0.05), weekly_step=0.5)
+    """Flat at $100; on Monday, week 1's weekly calls above $103 trade locked at $0.08 (BID = ASK).
+    The quant short, the $104 (the lowest strike at or above spot + 1 × EM, $103.44), passes E-T1
+    on a zero spread with a mid under $0.10 (G-5). A one-cent spread is 10% of a $0.10 mid, so only
+    a locked quote under $0.10 can pass E-T1's short threshold: on a one-cent spread, G-1 skips the
+    week before G-5 is evaluated."""
+
+    def hook(option: OptionId, t: datetime, bid: Cell, ask: Cell) -> tuple[Cell, Cell] | None:
+        if option.expiry == WEEK1_EXPIRY and t.date() == MON and option.strike > LOCKED_ABOVE:
+            return TINY_MID, TINY_MID
+        return bid, ask
+
+    return _spec(path=_flat(), quote_hook=hook)
+
+
+def next_week_unquoted() -> SyntheticSpec:
+    """Week 2's weekly calls have no quote on Monday, so they aren't listed yet (DEC-32): G-3 has
+    no next-week ATM IV and records `n/a` (DEC-22)."""
+
+    def hook(option: OptionId, t: datetime, bid: Cell, ask: Cell) -> tuple[Cell, Cell] | None:
+        if option.expiry == WEEK2_END and t.date() == MON:
+            return None, None
+        return bid, ask
+
+    return _spec(path=_flat(), quote_hook=hook)
 
 
 BUILDERS: dict[str, Callable[[], SyntheticSpec]] = {
@@ -266,5 +290,6 @@ BUILDERS: dict[str, Callable[[], SyntheticSpec]] = {
     "event_week": event_week,
     "rv_above_iv": rv_above_iv,
     "tiny_premium": tiny_premium,
+    "next_week_unquoted": next_week_unquoted,
 }
 """Every builder, with example arguments where it takes some."""

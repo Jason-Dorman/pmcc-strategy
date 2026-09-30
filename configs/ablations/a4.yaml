@@ -1,0 +1,8 @@
+# A4 (Spec › Ablations): the quant PMCC with the G-4 VRP gate off. "Off" is absence (DEC-53).
+
+id: quant_pmcc--a4
+name: "A4: quant without the VRP gate"
+extends: ../quant_pmcc.yaml
+
+overrides:
+  G-4: {remove: true}

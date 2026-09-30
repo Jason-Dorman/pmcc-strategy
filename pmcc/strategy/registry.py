@@ -4,10 +4,6 @@ Every kind `pmcc.config.kinds.KINDS` registers has a factory here, and a test ho
 sets equal. A factory builds the rule object from its params; `build_strategy` places each by its
 rule ID. "Off" is absence: an optional rule the config leaves out isn't built (DEC-53).
 
-The quant kinds (`dte_range_expiry`, `cheapest_replacement`, `expected_move_strike` and gates G-3
-to G-5) are P4-01 and P4-02. Until then their factories raise `NotBuiltError`, so a config naming
-one fails at build, before any bar runs.
-
 E-L1, E-S1, E-S4, X-S4, X-S5 and X-E1 are timing and bookkeeping rules the engine loop enforces
 (DEC-20, DEC-34); their factories return markers, so the rule is present, its ID is valid, and
 the loop has one place to read it from.
@@ -31,8 +27,19 @@ from pmcc.strategy.exits import (
     LongDteRoll,
     TakeProfit,
 )
-from pmcc.strategy.gates import Gate, NoQuoteGate, StructuralConstraint, StructuralGate
+from pmcc.strategy.gates import (
+    EventRatioGate,
+    Gate,
+    MinPremiumGate,
+    NoQuoteGate,
+    StructuralConstraint,
+    StructuralGate,
+    VrpGate,
+)
 from pmcc.strategy.selectors import (
+    CheapestReplacement,
+    DteRangeExpiry,
+    ExpectedMoveStrike,
     LongExpiryRule,
     LongSelector,
     LongStrikeRule,
@@ -45,10 +52,6 @@ from pmcc.strategy.selectors import (
     WeekFinalExpiry,
 )
 from pmcc.strategy.trigger import EntryTrigger, SpreadTrigger
-
-
-class NotBuiltError(NotImplementedError):
-    """A kind whose code lands in a later backlog item."""
 
 
 @final
@@ -85,13 +88,6 @@ class Strategy:
 type Factory = Callable[[Params, StrategyConfig], object]
 
 
-def _not_built(item: str) -> Factory:
-    def factory(params: Params, config: StrategyConfig) -> object:
-        raise NotBuiltError(f"{type(params).__name__} is built in {item} (docs/BUILD-PLAN.md)")
-
-    return factory
-
-
 def _marker(rule_id: str) -> Factory:
     return lambda _params, _config: Marker(RuleId(rule_id))
 
@@ -120,21 +116,25 @@ FACTORIES: Mapping[str, Factory] = MappingProxyType(
         ),
         "first_session_retry": _marker("E-L1"),
         "nearest_dte_expiry": lambda p, _: NearestDteExpiry(_p(p, k.NearestDteExpiry).target_dte),
-        "dte_range_expiry": _not_built("P4-01"),
+        "dte_range_expiry": lambda p, _: DteRangeExpiry(
+            _p(p, k.DteRangeExpiry).min_dte, _p(p, k.DteRangeExpiry).max_dte
+        ),
         "nearest_delta_long": lambda p, _: NearestDeltaLong(_p(p, k.NearestDelta).target_delta),
-        "cheapest_replacement": _not_built("P4-01"),
+        "cheapest_replacement": lambda p, _: CheapestReplacement(
+            _p(p, k.DeltaBand).min_delta, _p(p, k.DeltaBand).max_delta
+        ),
         "fixed_contracts": lambda p, _: _p(p, k.FixedContracts).contracts,
         "week_open_short": _marker("E-S1"),
         "week_final_expiry": lambda _p_, _: WeekFinalExpiry(),
         "nearest_delta_short": lambda p, _: NearestDeltaShort(_p(p, k.NearestDelta).target_delta),
-        "expected_move_strike": _not_built("P4-01"),
+        "expected_move_strike": lambda p, _: ExpectedMoveStrike(_p(p, k.ExpectedMoveStrike).k),
         "match_long_qty": _marker("E-S4"),
         "strike_covers_debit": lambda _p_, _: StructuralConstraint(),
         "no_quote_gate": lambda _p_, _: NoQuoteGate(),
         "structural_gate": lambda _p_, _: StructuralGate(StructuralConstraint()),
-        "event_ratio_gate": _not_built("P4-02"),
-        "vrp_gate": _not_built("P4-02"),
-        "min_premium_gate": _not_built("P4-02"),
+        "event_ratio_gate": lambda p, _: EventRatioGate(_p(p, k.MaxRatio).max_ratio),
+        "vrp_gate": lambda p, _: VrpGate(_p(p, k.MinRatio).min_ratio),
+        "min_premium_gate": lambda p, _: MinPremiumGate(_p(p, k.MinPremium).min_mid),
         "take_profit": _take_profit,
         "defensive_delta": lambda p, _: DefensiveDelta(_p(p, k.MaxDelta).max_delta),
         "friday_check": _friday_check,
@@ -149,7 +149,7 @@ FACTORIES: Mapping[str, Factory] = MappingProxyType(
 
 
 def build_strategy(config: StrategyConfig) -> Strategy:
-    """The strategy `config` describes. Raises `NotBuiltError` for a kind not built yet."""
+    """The strategy `config` describes."""
     built = {r.id: FACTORIES[r.kind](r.params, config) for r in config.rules}
 
     def get[T](rule_id: str, kind: type[T]) -> T:

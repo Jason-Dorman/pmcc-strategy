@@ -39,13 +39,13 @@ from pmcc.accounting.marks import Mark
 from pmcc.accounting.regt import funds_after
 from pmcc.config.strategy import FillModel
 from pmcc.domain.errors import EngineError
-from pmcc.domain.instruments import OPTION_MULTIPLIER, OptionId, Right, Side
+from pmcc.domain.instruments import OPTION_MULTIPLIER, OptionId, Side
 from pmcc.domain.money import Money, Price
 from pmcc.domain.rules import RuleId
 from pmcc.domain.sessions import Session
 from pmcc.engine.fills import fill
-from pmcc.pricing.measures import atm_strike, expected_move
 from pmcc.strategy.exits import ExitRule
+from pmcc.strategy.measures import expected_move_at
 from pmcc.strategy.ports import (
     ExitOutcome,
     ExitStatus,
@@ -301,7 +301,7 @@ class Trader:
         selection = decision.selection
         check = self.strategy.constraint.check(decision.long, selection.option.strike,
                                                decision.quote.mid)  # fmt: skip
-        em = _expected_move(view, selection.option.expiry)
+        em = expected_move_at(view, selection.option.expiry)  # for X-S3
         values = _entry_values(selection, week.frozen_at or view.now, week.decision_spread)
         values.update({k: check.values[k] for k in ("strike_gap", "net_debit")})
         notes = _notes(values)
@@ -440,16 +440,3 @@ def _entry_values(selection: Selection, selected_at: datetime,
 def _notes(values: Values, re_entry: RuleId | None = None) -> str:
     text = ", ".join(f"{k} {v}" for k, v in values.items() if v is not None)
     return f"re-entry after {re_entry}; {text}" if re_entry is not None else text
-
-
-def _expected_move(view: MarketView, expiry: date) -> Price | None:
-    """EM at this bar: the ATM straddle's mid on `expiry` (DEC-25), for X-S3."""
-    spot = view.spot()
-    if spot is None:
-        return None
-    atm = atm_strike(view.chain(expiry, Right.CALL).strikes(), spot)
-    if atm is None:
-        return None
-    call = view.quote(OptionId(view.root, expiry, Right.CALL, atm))
-    put = view.quote(OptionId(view.root, expiry, Right.PUT, atm))
-    return expected_move(call, put)

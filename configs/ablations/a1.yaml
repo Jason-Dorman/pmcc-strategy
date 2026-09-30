@@ -1,0 +1,29 @@
+# A1 (Spec › Ablations): the quant PMCC with the cheapest-replacement long leg switched off,
+# replaced by the baseline's long selection. E-L2 and E-L3 are the baseline's rules, word for word
+# (a test holds them equal); everything else is the quant PMCC's.
+
+id: quant_pmcc--a1
+name: "A1: quant with the baseline long leg"
+extends: ../quant_pmcc.yaml
+
+overrides:
+  E-L2:
+    replace:
+      name: Long leg expiry
+      kind: nearest_dte_expiry
+      params: {target_dte: 180}
+      condition: Monthly expiries listed at the decision bar
+      action: Choose the monthly expiry nearest {target_dte} days to expiry
+      rationale: >-
+        The textbook PMCC long: a monthly about {target_dte} days out. A listed option with 9
+        months or less to expiry has no loan value under Reg T, so the long is always fully paid.
+  E-L3:
+    replace:
+      name: Long leg strike
+      kind: nearest_delta_long
+      params: {target_delta: 0.80}
+      condition: Eligible calls on the E-L2 expiry
+      action: Choose the strike with delta nearest {target_delta:.2f}
+      rationale: >-
+        The long call is the stock substitute: a deep in-the-money, long-dated call, here at the
+        textbook PMCC's delta of {target_delta:.2f}.
