@@ -31,7 +31,7 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-05 | LSEG terms: raw cache and derived series | SETTLED (PO) | — |
 | DEC-06 | Bar timestamps, decision time, session bars | SETTLED (PO) | — |
 | DEC-07 | Backtest window | SETTLED (PO) | — |
-| DEC-08 | Long-dated coverage | VERIFY: NVDA measured (P1-09); QQQ, TSLA at P1-10 | P1-10 (paused, DEC-15) |
+| DEC-08 | Long-dated coverage | VERIFY: NVDA measured (P1-09) and its results reviewed (P5-05); QQQ, TSLA at P1-10 | P1-10 (paused, DEC-15) |
 | DEC-09 | Live-contract RIC form | SETTLED (spec, probed) | — |
 | DEC-10 | Reg T and FINRA 4210 citations | SETTLED (PO): hedged short stock after X-S5 · citations found | quotes by P7-04 |
 | DEC-11 | Risk-free rate | SETTLED (PO) | — |
@@ -64,7 +64,7 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-45 | RIC form policy | SETTLED (PO) | — |
 | DEC-46 | Cache layout | SETTLED (PO) | — |
 | DEC-47 | Fetch dates are inclusive | ENG · probed (LSEG's date edges) | — |
-| DEC-48 | Fetch plan and band-edge guard | ENG | — |
+| DEC-48 | Fetch plan and band-edge guard | ENG · the guard is a by-hand review (PO, 2026-10-01, at P5-05) | — |
 | DEC-49 | Failure taxonomy | ENG | — |
 | DEC-50 | Canonical results and INV-13 | SETTLED (PO) | — |
 | DEC-51 | Invariants in CI without data | ENG | — |
@@ -111,7 +111,7 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-97 | The web scaffold: packages, tokens and shell, types, loader, routes, tests | ENG · packages approved, React's types included (PO, 2026-09-30) | — |
 | DEC-98 | Pages deploy: the CI `web` and `deploy` jobs and the dist guard | ENG · live site checked | — |
 | DEC-99 | The Playwright smoke test (INV-15) | ENG | — |
-| DEC-100 | Sensitivity variants, the run matrix and `pmcc batch` | ENG · universe files at P6, coverage at P5-03 (PO, 2026-09-30) | — |
+| DEC-100 | Sensitivity variants, the run matrix and `pmcc batch` | ENG · universe files at P6, coverage at P5-03 (PO, 2026-09-30); full batch run at P5-04 (2026-10-01) | — |
 
 ---
 
@@ -285,6 +285,12 @@ The results are reported to the PO at P1-05. A result that contradicts the spec 
   - **Median spread:** 1.52% of mid; 89.6% of valid bars are within E-T1's 3%. By expiry, the median runs from 1.10% (Jan 2027) to 3.25% (Apr 2027, in its first two weeks of listing).
   - **Below S − K·e^(−rT):** 0 bars, so no IV failures from the no-arbitrage floor. The chain pricer counts the rest (P2-04, DEC-16).
   - Expect E-L3 to find candidates on every week-open session. E-T1 retries will be rare, and most likely on a newly listed expiry.
+- **Outcome:** 2026-10-01 — **NVDA's data completeness review (P5-05)**, over P5-04's 24 runs and `coverage.json`. It was done with one-off scripts that re-ran the runs in memory and wrote nothing, as at P1-09. **Nothing needs refetching, and no run is re-run.**
+  - **Band edges (DEC-48): none.** Every pick in the 24 runs was checked against the strikes requested for its expiry (the unit's sidecar, answered or not) and the strikes quoting on its bar: 7 long entries, 135 short entries and the 151 picks of weeks a gate skipped, 293 distinct picks in all. None is the top or bottom strike requested. Short picks sit at least 7 strikes above the bottom (the Apr 2 weekly on Mar 30) and 16 below the top, and at least 6 below the highest strike quoting on the bar. Long picks sit at least 10 strikes from either end. Every pick quoted on its own bar.
+  - **Stale marks:** `coverage.json`'s rate is 0: no held mark in the baseline or quant was ever carried. Of the summary runs, only A5 has any: 16 bars flagged `stale_short`, all on the expiry days of the 4 shorts it lets expire (X-S4), once a far out-of-the-money call stops quoting. Its summary's `flag_counts` discloses them.
+  - **IV failures:** 8.3% of priced contract-bars (31,966 below the floor, 437 no convergence; DEC-16). None removed a contract a selector could pick. On each of the 142 distinct entry picks' bars: the 7 long picks' expiries had no failed contract with a valid quote between the eligible δ 0.90 and δ 0.70 strikes. Every failure on a short pick's expiry was below the floor, so in the money (the floor S − K·e^(−rT) is positive only for K < S·e^(rT)), where no short selector picks.
+  - **Unanswered contracts:** weekly calls 881 of 993 answered (valid mid on 82.9% of calendar session bars), monthly calls 431 of 515 (91.4%), merged weekly + monthly units 115 of 138 (80.1%), puts 354 of 355 (100%), the stock 100%. No field went missing. As P1-09 found above, the gaps are strikes not yet listed, mostly ones NVDA's rise added partway through, and the May 21 2027 monthly. That one was never a pick: quant's long is the shortest eligible monthly (123–144 DTE). It was a candidate only from Aug 24, at 270 DTE. A refetch can't add bars from before it listed.
+  - **Skip reasons** (first gate to fire): the baseline skips 11 of 26 weeks on G-2 (t4–t7: 12). Quant skips on G-4 11 times, G-2 5 and G-3 2. The other variants differ as DEC-100's notes give. No run has a G-1, a G-5 or an E-S1 skip (no long held): every frozen short passed E-T1, and a long was always held. E-T1 retries: only quant's long and its variants retry, one bar on May 26 and on Jul 20 (DEC-95). No short retry occurs in any run.
 
 ### DEC-09 — Live-contract RICs
 **Status:** SETTLED · **Basis:** Spec › RIC builder, confirmed by the P1-04 probes and reported to the PO at P1-05 (2026-09-28) · **Affects:** P1-02, P1-03
@@ -445,7 +451,7 @@ The results are reported to the PO at P1-05. A result that contradicts the spec 
 - **Update:** 2026-09-30 — PO, at P3-10 (DEC-05): QQQ and TSLA are set aside for now, and the PO leans towards NVDA as the only symbol. More symbols are added at the end if the build is done and time allows. P1-10 is paused: TSLA's partial cache stays on disk, uncommitted, and QQQ isn't fetched. `configs/universe.yaml` still lists the three; whether it shrinks is settled at P5-01, before the batch needs every symbol's cache.
 - **Outcome:** 2026-09-30 — PO, at P5-01: **calibrate on NVDA only for now; keep QQQ and TSLA in the universe file, commented out, not removed.** The universe is NVDA alone until the PO brings either back.
   - `configs/universe.yaml` lists NVDA; the QQQ and TSLA lines stay in place as comments, with a note on what bringing one back takes. Spec › Universe is amended to cite this outcome.
-  - **Bringing one back means recalibrating** (the PO asked to be reminded), in this order: delete the final `starting_cash` block, its header comment included (the file refuses a final block that lacks a listed symbol, and `pmcc fetch` reads this file, so it would stop); uncomment the symbol; finish its fetch (P1-10: show the PO the estimate first); run `just calibrate`; then re-run every result (`just batch`), since the value may change. `pmcc calibrate` never replaces a final block (DEC-30). A symbol commented out is refused by `pmcc fetch` too, so the reminder applies to resuming P1-10 as well. DEC-93's partial-cache question comes back with it: a symbol cached in part runs some strategies and fails others.
+  - **Bringing one back means recalibrating** (the PO asked to be reminded), in this order: delete the final `starting_cash` block, its header comment included (the file refuses a final block that lacks a listed symbol, and `pmcc fetch` reads this file, so it would stop); uncomment the symbol; finish its fetch (P1-10: show the PO the estimate first); run `just calibrate`; then re-run every result (`just batch`), since the value may change; then repeat P5-05's band-edge check on the new symbol's runs before committing them (DEC-48). `pmcc calibrate` never replaces a final block (DEC-30). A symbol commented out is refused by `pmcc fetch` too, so the reminder applies to resuming P1-10 as well. DEC-93's partial-cache question comes back with it: a symbol cached in part runs some strategies and fails others.
   - Pooled statistics (DEC-61), the Universe page and the suitability screen run over one symbol until then.
 
 ### DEC-16 — Fetch coverage summary
@@ -799,7 +805,7 @@ Every rule in the YAML carries a `rationale` (Spec › Rule write-up source), bu
   - Nothing in the backtest reads daily bars. Anything that does (the probes, or a daily increment check in P1-08) shouldn't rely on a daily request's first or last day: ask a day wider on each side and filter by date.
 
 ### DEC-48 — Fetch plan and band-edge guard
-**Status:** ENG · **Affects:** P1-06, P5-05
+**Status:** ENG · the guard a review, not code (PO, 2026-10-01, at P5-05) · **Affects:** P1-06, P5-05; DEC-08, DEC-15
 
 - **Plan:** units and bands follow ARCHITECTURE §6.3.
   - The stock tape gets a 30-session warm-up.
@@ -816,6 +822,7 @@ Every rule in the YAML carries a `rationale` (Spec › Rule write-up source), bu
   - **The long band is split into 3 bands of equal price ratio,** each with its own increment probe (DEC-14). One increment at the band's centre took the deep grid ($5) and would miss finer strikes near the money.
   - **Every week with a session in the window gets its weekly calls and its week-open put,** even when the window ends mid-week; the next weekly follows the last one. Before, a window ending before its last week's final session got no put for that week-open and no next weekly.
   - The band-edge guard stays with P5-05.
+- **Outcome:** 2026-10-01 — **P5-05: the guard is a review, not code.** NVDA's 24 runs have no pick on the top or bottom strike requested (DEC-08 has the numbers), so nothing is refetched. The automatic flag this entry describes was never built. Asked whether to build it into `pmcc batch` (a band-edge list in each `coverage.json`) or record the review instead, the PO said to build it only if it is truly needed. It isn't: the spec doesn't ask for it, HR-8's disclosure doesn't include it, and P5-05's done-when holds without it. So no flag is written. The check is repeated by hand, over every run's picks and the sidecars' requested strikes, whenever a symbol is added or refetched (QQQ or TSLA coming back, DEC-15), before its results are committed.
 
 ### DEC-49 — Failure taxonomy
 **Status:** ENG
@@ -1824,7 +1831,7 @@ How P4-05 builds the results contract (ARCHITECTURE §12). None of it changes wh
 - **Outcome:** 2026-09-30 — green in CI: the PO's push of `2dc3aa2` deployed, and Pages deploys only after the `python` and `web` jobs pass, the `web` job running INV-14's typecheck and INV-15's smoke test before the upload; the live site carries that commit's footer (a `contentinfo` landmark outside `main`, checked in Chromium on 2026-09-30).
 
 ### DEC-100 — Sensitivity variants, the run matrix and `pmcc batch`
-**Status:** ENG · two scope answers SETTLED (PO, 2026-09-30) · **Affects:** P5-02, P5-03, P5-04, P5-05, P6-01, P6-05, P6-06, P6-08; DEC-16, DEC-31, DEC-53, DEC-54, DEC-58, DEC-80
+**Status:** ENG · two scope answers SETTLED (PO, 2026-09-30); the full batch run at P5-04 (2026-10-01, last outcome) · **Affects:** P5-02, P5-03, P5-04, P5-05, P6-01, P6-05, P6-06, P6-08; DEC-16, DEC-31, DEC-53, DEC-54, DEC-58, DEC-80
 
 - **PO answers at P5-03 (2026-09-30):**
   - **The universe files wait for P6.** Every field of `universe/pooled.json`, `headline.json` and `suitability.json` is a P6 analytic whose definition is still an ASK (DEC-60, DEC-61, P6-08). So the batch has its universe-level stage now, run last, but writes no universe file; P6-01, P6-05 and P6-08 add theirs. P5-03's done-when is amended: 48 run files, plus each symbol's `coverage.json`.
@@ -1861,6 +1868,10 @@ How P4-05 builds the results contract (ARCHITECTURE §12). None of it changes wh
   - `tests/conftest.py`: an autouse guard fails any test that changes a file under the repo's `results/` or `configs/` (a stale stub test once ran the real batch from the repo directory over the committed results; restored from `HEAD`, nothing lost).
   - A bad sensitivity variant's load error names the variant.
 - **Review:** 2026-10-01 — an adversarial review (4 reviewers, 2 skeptics per finding) of P5-01 to P5-03 found 23 unique findings and verified the 12 most severe: 12 confirmed, none refuted, all fixed. In code: a coverage write failure now fails the batch; a dying worker no longer breaks the other symbols; `pmcc fetch` reports a universe-file refusal as a message, not a traceback. In tests: a failed run, a worker crash and death, the coverage mapping, `--out`, the accepted `--universe` and DEC-31's "the selector runs at bar k" (the short's `selected_at`). In docs: the order for bringing QQQ or TSLA back, DEC-31's header, three-symbol passages in the spec and the build plan, and README's calibrate lines. Of the 11 not verified, the cheap ones are fixed too (the double load disclosed, DEC-31's G-1 wording, the variant error, the repo guard, `pmcc run`'s provisional message, the timing action text pinned whole, the P6 stage's contract, P5-01's waived need). Two are put to the PO: stale run files left in `results/` when the matrix changes, and a symbol cached in part (DEC-93).
+- **Outcome:** 2026-10-01 — **the full batch (P5-04).** `just batch` from a clean tree at `bcb6bbe` (nothing modified or untracked outside ignored paths), 30 s wall clock: 24 of 24 runs and `coverage.json` written, every run `git_dirty: false`; `just verify` passed all 25 files. The universe is NVDA alone (DEC-15), so this is every symbol and run.
+  - **The seven committed runs** came out identical but for `run_timestamp` and `git_sha` (compared with `drop_volatile`'s fields removed), and every run's `data_manifest_hash` is the committed cache's (`5ada2fde…`), so NVDA's raw cache, committed at P3-10 (DEC-05), is unchanged and goes with these results as it is.
+  - **Review notes**, end NAV from $15,000 (the 17 new runs are summary detail, so the figures come from an in-memory re-run that writes nothing; P6 puts the metrics in results): friction: baseline $18,571.79 at 0.25 and $18,471.00 at 0.50 ($18,672.50 at 0), quant $18,117.05 and $17,930.50 ($18,303.50), the same trades. Timing, the short decided only at bar k: t1 (10:00) $18,672.50, identical to the baseline, since all 26 of its weeks decide on the first bar; t2 $18,019.00, t3 $17,788.00, t4 $19,149.50, t5 $19,190.50, t6 $19,332.50, t7 $19,026.50, where t4–t7 sell 14 shorts, not 15, as G-2 fires one more week. Grid: k 0.75 $18,489.00, k 1.25 $18,330.00; G-4 ratio 0.90 $18,005.00 (13 shorts), 1.10 $19,163.50 (7); G-3 ratio 1.10 $19,103.00 (3 shorts, G-3 firing 9 weeks), 1.30 $18,303.50, identical to quant: raising G-3 from 1.20 to 1.30 changes no week's outcome.
+  - **Milestone M3** (all results JSON written and verified) reached 2026-10-01.
 
 ## E. Analytics definitions
 
