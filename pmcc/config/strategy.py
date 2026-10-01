@@ -28,7 +28,7 @@ from pydantic import (
     model_validator,
 )
 
-from pmcc.config.extends import resolve
+from pmcc.config.extends import Resolved, StrategyFile, resolve, resolve_inline
 from pmcc.config.fields import DollarMoney, RuleIdField
 from pmcc.config.kinds import KINDS, OPTIONAL_RULE_IDS, SPEC_RULE_IDS, Params
 from pmcc.config.rule_text import placeholders, render
@@ -241,7 +241,15 @@ class RunConfig(BaseModel):
 
 def load_strategy(path: Path) -> StrategyConfig:
     """The strategy `path` defines, with its `extends` chain and `overrides` applied."""
-    resolved = resolve(path)
+    return _validated(resolve(path))
+
+
+def load_inline(file: StrategyFile, directory: Path, name: str) -> StrategyConfig:
+    """The strategy `file` defines, written inside the file `name` in `directory` (P5-02)."""
+    return _validated(resolve_inline(file, directory, name))
+
+
+def _validated(resolved: Resolved) -> StrategyConfig:
     report = {} if resolved.report is None else {"report": resolved.report}
     return StrategyConfig.model_validate(
         {

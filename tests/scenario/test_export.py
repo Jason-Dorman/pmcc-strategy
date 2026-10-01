@@ -213,7 +213,12 @@ def test_export_includes_the_analytics_files_once_written(runs: Runs, tmp_path: 
     headline: Doc = {"schema_version": SCHEMA_VERSION, "rows": []}
     (results / "universe" / "headline.json").write_bytes(canonical.to_bytes(headline))
     coverage: Doc = {"schema_version": SCHEMA_VERSION, "symbol": "SYN", "rows": []}
-    coverage |= {"iv_failures": {}, "stale_mark_rate": None, "unavailable_fields": []}
+    coverage |= {
+        "iv_priced": 0,
+        "iv_failures": {},
+        "stale_mark_rate": None,
+        "unavailable_fields": [],
+    }
     (results / "SYN" / "coverage.json").write_bytes(canonical.to_bytes(coverage))
 
     export_site(results, tmp_path / "site")
@@ -433,7 +438,12 @@ def test_export_lists_symbols_in_order_and_one_with_only_analytics(
     results = _moved(runs, tmp_path, "AAA")
     (results / "QQQ").mkdir()
     coverage: Doc = {"schema_version": SCHEMA_VERSION, "symbol": "QQQ", "rows": []}
-    coverage |= {"iv_failures": {}, "stale_mark_rate": None, "unavailable_fields": []}
+    coverage |= {
+        "iv_priced": 0,
+        "iv_failures": {},
+        "stale_mark_rate": None,
+        "unavailable_fields": [],
+    }
     (results / "QQQ" / "coverage.json").write_bytes(canonical.to_bytes(coverage))
 
     export_site(results, tmp_path / "site")

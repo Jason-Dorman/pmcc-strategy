@@ -1,7 +1,8 @@
 """structlog JSON logging: one event per line, to stderr and to `logs/{command}_{timestamp}.jsonl`.
 
 A command calls `configure_logging` once at startup. Everything else logs through
-`structlog.get_logger()` and never imports this module (ARCHITECTURE §15, DEC-80).
+`structlog.get_logger()` and never imports this module (ARCHITECTURE §15, DEC-80). `pmcc batch`'s
+worker processes each call it too, with a `suffix`, so each writes its own file (P5-03).
 """
 
 import logging
@@ -28,10 +29,11 @@ class _TeeLogger:
     debug = info = warning = error = critical = exception = msg
 
 
-def configure_logging(command: str, log_dir: Path = Path("logs")) -> Path:
-    """Route structlog to stderr and a new JSONL file for this command; return the file's path."""
+def configure_logging(command: str, log_dir: Path = Path("logs"), *, suffix: str = "") -> Path:
+    """Route structlog to stderr and a new JSONL file for this command,
+    `{command}_{timestamp}{suffix}.jsonl`; return the file's path."""
     stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
-    path = log_dir / f"{command}_{stamp}.jsonl"
+    path = log_dir / f"{command}_{stamp}{suffix}.jsonl"
     structlog.contextvars.bind_contextvars(command=command)
     structlog.configure(
         processors=[

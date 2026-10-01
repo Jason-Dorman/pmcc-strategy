@@ -3,12 +3,17 @@ is at most a share of mid, the long leg's and the short leg's (Spec › Trade ru
 
 The spread test is exact: (ASK − BID) ≤ limit × (BID + ASK) / 2 in integer units against the
 limit as written in the YAML (0.03 is 3/100), so a spread right on the limit passes.
+
+The entry-timing runs swap E-T1 for `FixedBarTrigger` (PO, DEC-31): the short is decided on one
+fixed bar of the week-open session, where it must pass the same spread test or G-1 skips the week;
+the long still enters on the first bar that passes.
 """
 
 from dataclasses import dataclass
 from fractions import Fraction
 from typing import Protocol, final, runtime_checkable
 
+from pmcc.domain.clock import to_et
 from pmcc.domain.instruments import OptionId
 from pmcc.domain.quotes import Quote
 from pmcc.strategy.ports import Leg, MarketView, TriggerResult
@@ -55,3 +60,25 @@ class SpreadTrigger:
             return TriggerResult(passed=False, quote=None, spread_pct=None)
         share = spread_share(quote)
         return TriggerResult(passed=share <= self.limit(leg), quote=quote, spread_pct=float(share))
+
+
+@final
+@dataclass(frozen=True, slots=True)
+class FixedBarTrigger:
+    """E-T1 in the entry-timing runs (Spec › Sensitivity checks; PO, DEC-31). The short may be
+    decided only on session bar `bar` (1 = the bar ending 10:00) of the week-open session: the
+    loop selects and freezes the contract there, and if it fails `spread`'s test no later bar is
+    tried, so G-1 skips the week. The long enters as under E-T1, on the first bar that passes."""
+
+    bar: int
+    spread: SpreadTrigger
+
+    def can_decide(self, view: MarketView, leg: Leg) -> bool:
+        if leg is Leg.LONG:
+            return True
+        now = to_et(view.now)
+        ends = view.calendar().session(now.date()).bar_ends()
+        return self.bar <= len(ends) and now == ends[self.bar - 1]
+
+    def check(self, view: MarketView, option: OptionId, leg: Leg) -> TriggerResult:
+        return self.spread.check(view, option, leg)

@@ -38,7 +38,7 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-12 | Per-symbol identifiers, splits, max strike | SETTLED (PO) | — |
 | DEC-13 | Hourly field availability | SETTLED (spec, probed) | — |
 | DEC-14 | Strike increments | ENG method · values probed · unmeasured anchor SETTLED (PO) | — |
-| DEC-15 | Universe size | SETTLED (PO) | — |
+| DEC-15 | Universe size | SETTLED (PO): NVDA only for now; QQQ and TSLA commented out | — |
 | DEC-16 | Fetch coverage summary | SETTLED (PO) | — |
 | DEC-20 | Week-open session and order of operations | SETTLED (PO) | — |
 | DEC-21 | Selection freeze and E-T1 | SETTLED (PO) | — |
@@ -50,8 +50,8 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-27 | Greeks for held contracts; fresh quotes only | SETTLED (PO) | — |
 | DEC-28 | Exits without a valid quote; when the long is checked | SETTLED (PO) | — |
 | DEC-29 | Tie-breaks | SETTLED (PO) | — |
-| DEC-30 | Starting capital (E-L4) | SETTLED (PO) · provisional until P5-01 | P5-01 (final value) |
-| DEC-31 | Entry-timing sensitivity | ASK | P5-02 |
+| DEC-30 | Starting capital (E-L4) | SETTLED (PO): $15,000, final (P5-01) | recalibrate if QQQ or TSLA return |
+| DEC-31 | Entry-timing sensitivity | SETTLED (PO) | — |
 | DEC-32 | Point-in-time listing | SETTLED (PO) | — |
 | DEC-33 | Expiry calendar | SETTLED (PO) | — |
 | DEC-34 | Rule stamping for multi-rule events | SETTLED (PO) | — |
@@ -111,6 +111,7 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-97 | The web scaffold: packages, tokens and shell, types, loader, routes, tests | ENG · packages approved, React's types included (PO, 2026-09-30) | — |
 | DEC-98 | Pages deploy: the CI `web` and `deploy` jobs and the dist guard | ENG · live site checked | — |
 | DEC-99 | The Playwright smoke test (INV-15) | ENG | — |
+| DEC-100 | Sensitivity variants, the run matrix and `pmcc batch` | ENG · universe files at P6, coverage at P5-03 (PO, 2026-09-30) | — |
 
 ---
 
@@ -442,6 +443,10 @@ The results are reported to the PO at P1-05. A result that contradicts the spec 
   - **What stays:** pooled statistics across three symbols (DEC-61), the Universe page and the suitability screen, now over three. The cut list's universe cut (#4) is taken early.
   - **Fetch:** roughly 2–2.5 h for the three over the 26-week window (ARCHITECTURE §6.3), before DEC-48's wider long bands.
 - **Update:** 2026-09-30 — PO, at P3-10 (DEC-05): QQQ and TSLA are set aside for now, and the PO leans towards NVDA as the only symbol. More symbols are added at the end if the build is done and time allows. P1-10 is paused: TSLA's partial cache stays on disk, uncommitted, and QQQ isn't fetched. `configs/universe.yaml` still lists the three; whether it shrinks is settled at P5-01, before the batch needs every symbol's cache.
+- **Outcome:** 2026-09-30 — PO, at P5-01: **calibrate on NVDA only for now; keep QQQ and TSLA in the universe file, commented out, not removed.** The universe is NVDA alone until the PO brings either back.
+  - `configs/universe.yaml` lists NVDA; the QQQ and TSLA lines stay in place as comments, with a note on what bringing one back takes. Spec › Universe is amended to cite this outcome.
+  - **Bringing one back means recalibrating** (the PO asked to be reminded), in this order: delete the final `starting_cash` block, its header comment included (the file refuses a final block that lacks a listed symbol, and `pmcc fetch` reads this file, so it would stop); uncomment the symbol; finish its fetch (P1-10: show the PO the estimate first); run `just calibrate`; then re-run every result (`just batch`), since the value may change. `pmcc calibrate` never replaces a final block (DEC-30). A symbol commented out is refused by `pmcc fetch` too, so the reminder applies to resuming P1-10 as well. DEC-93's partial-cache question comes back with it: a symbol cached in part runs some strategies and fails others.
+  - Pooled statistics (DEC-61), the Universe page and the suitability screen run over one symbol until then.
 
 ### DEC-16 — Fetch coverage summary
 **Status:** SETTLED · **Basis:** PO, 2026-09-28 (asked at P1-08, and after its review; IV failures built at P2-04) · **Affects:** P1-08, P1-09, P1-10, P2-04, ARCHITECTURE §6.1
@@ -621,9 +626,12 @@ Distances are compared in integer price units, so float noise can't create or br
   - **Negative available funds are reported, not refused** (recommended). E-L4 guards entries, and the site already reports Reg T breaches. For each run at the value, calibrate prints the lowest available funds and the number of bars below zero. NVDA's baseline at $10,000: lowest $4,978.50 on Jun 8, none below zero.
   - **A partial cache: NVDA only for now.** No completeness check is added at P3-09. P5-01 takes it up once QQQ and TSLA are cached (DEC-93).
 - **Outcome:** 2026-09-30 — PO, at P4-04, as recommended: **recalibrate to $15,000 with quant built** (put to the PO at P4-03's handover, DEC-95). `pmcc calibrate --symbol NVDA` ran both strategies: quant's first long, the Aug 21 2026 $115 call (`NVDAH212611500.U^H26`) on Mar 30 at 10:00, costs $5,630.00 against the baseline's $4,142.50, so 2 × $5,630 = $11,260, rounded up to $15,000. The value stays provisional until QQQ and TSLA are calibrated (P5-01). At $15,000 no entry is blocked; the lowest available funds are $9,978.50 for the baseline (Jun 8, 14:00) and $8,330.00 for quant (May 14, 10:00), none below zero. The baseline's trades are the same as at $10,000 (E-L4 blocked none there), so only its cash and NAV move up by $5,000. `results/NVDA/baseline_pmcc.json` is re-run at the new value with the quant runs (P4-04), from a tree where this block is committed. The $10,000 figures above are P3-09's and P3-10's record.
+- **Outcome:** 2026-09-30 — **final, at P5-01** (PO, DEC-15: the universe is NVDA alone for now). With QQQ and TSLA commented out, nothing is missing, so `just calibrate` wrote the block with `provisional: false`: still $15,000, from the same two first entries (baseline $4,142.50, quant $5,630.00, both Mar 30 at 10:00), and the same lowest available funds ($9,978.50 baseline, $8,330.00 quant; none below zero). `just calibrate --check` reproduces it byte for byte. The committed results were run at $15,000 and their format doesn't record whether the value was provisional, so they stand; P5-04 re-runs everything anyway.
+  - **How:** the provisional block was deleted by hand first, its header comment with it. The universe file refuses a provisional block once nothing is missing, so calibrate couldn't load it, and `with_block` refuses a header with no block after it (DEC-93). The block calibrate then appended is the old one with `provisional` flipped.
+  - **If QQQ or TSLA come back,** the final block is deleted by hand and the whole universe recalibrated (DEC-15).
 
 ### DEC-31 — Entry-timing sensitivity
-**Status:** ASK · **Ask at:** P5-02
+**Status:** SETTLED · **Basis:** PO, 2026-09-30 (asked at P5-02) · **Affects:** P5-02, P6-06; DEC-100
 
 - **Recommendation for variant `t{k}`, k = 1…7 (the session bars of the week-open session):**
   - The short's decision bar is fixed at bar k.
@@ -631,7 +639,11 @@ Distances are compared in integer price units, so float noise can't create or br
   - Other bars are never scanned.
 - **Everything else is unchanged,** including long entry. The fixed-bar trigger replaces E-T1 under the same rule ID.
 - **Ready for it (P3-07, DEC-91):** E-T1 is a port, `EntryTrigger`, with `can_decide(view, leg)` and `check(view, option, leg)`. The loop selects and freezes a contract only on a bar the trigger `can_decide`, so a fixed-bar trigger selects at bar k, as recommended, with no change to the loop.
-- **Outcome:** —
+- **Outcome:** 2026-09-30 — PO, at P5-02: **as recommended.** Status SETTLED.
+  - **Built (DEC-100):** the kind `fixed_bar_trigger` (E-T1; params `bar` 1–7, `long_max_spread`, `short_max_spread`), `FixedBarTrigger` in `pmcc/strategy/trigger.py`, and `baseline_pmcc--t1` … `--t7` in `configs/sensitivity.yaml`, each replacing E-T1 under its own ID with E-T1's spread limits (a test holds them equal). The engine loop is unchanged.
+  - **Bar k** is the k-th session bar of the week-open session: bar 1 ends at 10:00, bar 7 at 16:00 (DEC-06). A session with fewer bars (a half day) never reaches a bar past its count, so G-1 skips that week; the PO's window has no half-day week-open session.
+  - **A week with a long held and checked whose short can't be decided on bar k is a G-1 skip:** the bar's quote fails the spread test ("never passed E-T1"), or the long was bought or checked only after bar k, so no short was selected (DEC-28 makes the short wait for the long's check; "no short selected"). A week with no long held, or a long never checked, is logged as in the baseline (E-S1, or the reset rule; DEC-22). The timing runs keep a summary (DEC-54), so the gate log isn't published.
+  - **On NVDA** (P5-03's trial batch, not published): t1 matches the baseline exactly, as every NVDA week decides on its first bar (DEC-95); t2 to t7 end between $17,788.00 and $19,332.50 against the baseline's $18,672.50; G-1 never fires.
 
 ### DEC-32 — Point-in-time listing
 **Status:** SETTLED · **Basis:** PO, 2026-09-29 (asked at P3-01 for P3-02) · **Affects:** E-S3 (quant), ATM strike, P3-02
@@ -1559,7 +1571,7 @@ Development runs in Git Bash on Windows (DEC-02) and CI runs on Ubuntu. Both mus
   - A cache, calendar, engine or calibration error exits 1, with `configs/universe.yaml` unchanged. Log events: `calibrate.measured`, `calibrate.verified`, `calibrate.done`, `calibrate.abort`.
   - `--check` recomputes the block and compares byte for byte what calibrate would write with the file, header comment included. It exits 1 on any difference, including the same value or instant written another way, or on a missing or hand-set block. It writes nothing.
   - The just recipe is `calibrate *ARGS`; its old `--universe` argument is gone, since the universe is always `configs/universe.yaml` (DEC-30).
-- **A partial cache (PO, 2026-09-30: NVDA only for now):** `load_symbol` loads whatever option units are cached, and `check_covers` checks only the stock tape. So calibrating TSLA today, which has no long-leg monthlies, fails with an X-L2 engine error, not a message naming the missing units. P5-01 takes this up once QQQ and TSLA are cached.
+- **A partial cache (PO, 2026-09-30: NVDA only for now):** `load_symbol` loads whatever option units are cached, and `check_covers` checks only the stock tape. So calibrating TSLA today, which has no long-leg monthlies, fails with an X-L2 engine error, not a message naming the missing units. P5-01 takes this up once QQQ and TSLA are cached. **P5-01 (2026-09-30):** set aside with them. The universe is NVDA alone (PO, DEC-15), so no symbol is partly cached; the question comes back with QQQ or TSLA.
 - **`pmcc run`:** takes `starting_cash.value`, and prints a note when it's provisional. Without a block it stops, saying to run `pmcc calibrate`.
 - **Tests (1,591 in the suite; 76 more than P3-08's 1,515):**
   - `tests/unit/config/test_capital.py`:
@@ -1809,6 +1821,46 @@ How P4-05 builds the results contract (ARCHITECTURE §12). None of it changes wh
 - **Found by it:** `PageFrame` put the footer inside `<main>`, where a `<footer>` isn't the page's `contentinfo` landmark (jsdom doesn't apply that rule, so the route tests passed). The footer now follows `main`.
 - **Proved:** a planted `console.error` and a request to another origin, in a scratch build, failed it; screenshots at 390 px show a true phone layout, which headless Edge couldn't give (DEC-97).
 - **Outcome:** 2026-09-30 — 11 tests pass locally in about 11 s.
+- **Outcome:** 2026-09-30 — green in CI: the PO's push of `2dc3aa2` deployed, and Pages deploys only after the `python` and `web` jobs pass, the `web` job running INV-14's typecheck and INV-15's smoke test before the upload; the live site carries that commit's footer (a `contentinfo` landmark outside `main`, checked in Chromium on 2026-09-30).
+
+### DEC-100 — Sensitivity variants, the run matrix and `pmcc batch`
+**Status:** ENG · two scope answers SETTLED (PO, 2026-09-30) · **Affects:** P5-02, P5-03, P5-04, P5-05, P6-01, P6-05, P6-06, P6-08; DEC-16, DEC-31, DEC-53, DEC-54, DEC-58, DEC-80
+
+- **PO answers at P5-03 (2026-09-30):**
+  - **The universe files wait for P6.** Every field of `universe/pooled.json`, `headline.json` and `suitability.json` is a P6 analytic whose definition is still an ASK (DEC-60, DEC-61, P6-08). So the batch has its universe-level stage now, run last, but writes no universe file; P6-01, P6-05 and P6-08 add theirs. P5-03's done-when is amended: 48 run files, plus each symbol's `coverage.json`.
+  - **The batch writes `{SYM}/coverage.json` now** (HR-8), so P5-05's completeness review reads it from results.
+- **`configs/sensitivity.yaml`** (P5-02): a `variants` list, each entry a strategy written as an ablation file is, but inline: `id`, `name`, `extends` (a strategy file, relative to `configs/`), `report: {detail: summary}` (DEC-54), and `fill_model` or `overrides` (DEC-53). A variant is composition, never a flag.
+  - **Friction:** `{baseline,quant}_pmcc--sc025` and `--sc050` patch `fill_model.spread_capture`.
+  - **Timing:** `baseline_pmcc--t1` … `--t7` replace E-T1 with `fixed_bar_trigger` (DEC-31). Their shared text is YAML aliases set in t1. YAML merge keys (`<<:`) aren't used, since the strict reader (DEC-86) doesn't construct them.
+  - **Grid:** `quant_pmcc--k075` and `--k125` (E-S3 `k`), `--g4r090` and `--g4r110` (G-4 `min_ratio`), `--g3r110` and `--g3r130` (G-3 `max_ratio`), each a `params` patch on one rule.
+- **Loading** (`pmcc/config/matrix.py`):
+  - `load_sensitivity` resolves each entry with `resolve_inline` (`pmcc/config/extends.py`), as a file in `configs/` would be, then validates it as `load_strategy` does (`load_inline`).
+  - A variant must extend a file, and its run ID must be its strategy's ID, `--`, a suffix, since the manifest's `strategy_id` is the run ID's part before `--`.
+  - `strategy_configs` is every run's strategy in ARCHITECTURE §11's order (strategies, ablations a1–a5, then the sensitivity file's order), refusing a run ID given twice; `run_matrix(universe)` adds the window and r. 24 runs per symbol.
+- **`pmcc batch`** (`pmcc/batch.py`, P5-03):
+  - **Jobs:** one `SymbolJob` per universe symbol carries everything its worker needs (cache, identifiers, calendar, r, the 24 configs, the starting cash, the stamp, the output directory). A worker reads no config or git state, so tests need no monkeypatch inside it.
+  - **Processes:** each symbol has its own single-worker `ProcessPoolExecutor`, at most one per CPU at once, so a worker that dies (an out-of-memory kill) breaks only its own symbol; a shared pool would fail every symbol with `BrokenProcessPool` (found by the review). Spawn on every OS, never fork: Windows and Linux then run alike (DEC-58), and no worker inherits the parent's polars threads, which forking can deadlock.
+  - **Per symbol:** load and price once for the runs (`Market.prepare`), then each config through `run_market` and `write_result`, exactly as `pmcc run` does; the coverage file then loads and prices the cache again, as the fetch summary does (a second ~1.4 s for NVDA). A test holds a batch run byte-identical to `pmcc run`'s; on NVDA the seven committed runs came out identical but for `run_timestamp`, `git_sha` and `git_dirty`.
+  - **Failure isolation:** a run that raises a cache, engine, value or OS error writes nothing and is reported (`run.abort`); the symbol's other runs go on. A symbol whose cache won't load is reported (`batch.symbol.abort`), and so is a worker that raises anything else or dies; its report says that runs finished before then may already be written. A coverage file that can't be written fails its symbol (`batch.coverage.abort`). The command prints each symbol's count and every failure, and exits 1 if anything failed.
+  - **Universe-level stage:** `UNIVERSE_WRITERS`, empty until P6, run in the parent after every symbol, and only if nothing failed: a pooled figure over part of the universe would be wrong. Its signature is a starting point, not a contract: P6-08's suitability screen needs each symbol's cache, and P6-06/P6-07's per-symbol files need a per-symbol stage in the worker, so P6 widens what the stage receives or adds that stage.
+  - **The stamp:** one per batch: `provenance()` once in the parent, and the batch's start time as every run's `run_timestamp` (excluded from INV-13, DEC-50).
+  - **`--universe`:** kept, since the spec's CLI names it, but optional, and anything other than `configs/universe.yaml` is refused, so every run's starting cash comes from there (DEC-30). Also `--cache` and `--out`, as `pmcc run` has.
+  - **Logging (DEC-80):** the parent logs to `logs/batch_{timestamp}.jsonl`. Each worker calls `configure_logging("batch", suffix="_worker{pid}")` from the CLI's pool initializer, so processes never append to one file. `run_batch` requires the initializer: without it structlog's default console renderer can't encode a traceback on a Windows code page, so a failed run's log line would kill its worker (found while testing the review's fixes). New events: `batch.symbol.done`, `batch.symbol.abort`, `batch.coverage.abort`, `batch.done`.
+  - **NVDA:** 24 runs and the coverage file in about 18 s.
+- **`{SYM}/coverage.json`** (the `Coverage` model, which gains `iv_priced`):
+  - `rows`: per unit kind, contracts requested, answered and unanswered, and the share of session bars with a valid mid, as the fetch summary counts them (DEC-16).
+  - `iv_priced` and `iv_failures`: session bars with a valid quote before the expiry close, and those whose IV failed, by reason (`below_floor`, `above_cap`, `no_convergence`, `no_spot`). NVDA: 31,966 + 437 of 390,652, matching DEC-16.
+  - `stale_mark_rate`: held positions' marks carried stale ÷ held positions' marks, over every bar of the full-detail runs' ledgers (the two strategies); null if nothing was held. NVDA: 0.
+  - `unavailable_fields`: fields a unit asked for that never came back (DEC-13).
+  - Written by the symbol's worker after its runs, whole (`replace_file`), as canonical JSON; `pmcc verify` checks it.
+- **Tests:**
+  - `tests/unit/config/test_sensitivity_config.py`: the 24 IDs in order; each friction, timing and grid variant against its strategy, rule by rule; the loader's refusals.
+  - `tests/unit/strategy/test_trigger.py`: the fixed bar hour by hour, the long on any bar, a half day, a UTC `now`, the spread test.
+  - `tests/scenario/test_scenario_timing.py`: the shipped t1, t2, t3 and t7 on scenario markets.
+  - `tests/unit/test_cli_batch.py`: two synthetic symbols through the real processes, as the justfile calls it (`--universe configs/universe.yaml`) and under `--out`, giving 48 runs and two coverage files that pass `pmcc verify` and match `pmcc run`; a missing symbol; the coverage file mapped field by field from the fetch summary, and a coverage write failing its symbol; the stale-mark rate; the universe stage; and in one batch a failed run, a worker that raises and a worker that dies, each isolated to its symbol.
+  - `tests/conftest.py`: an autouse guard fails any test that changes a file under the repo's `results/` or `configs/` (a stale stub test once ran the real batch from the repo directory over the committed results; restored from `HEAD`, nothing lost).
+  - A bad sensitivity variant's load error names the variant.
+- **Review:** 2026-10-01 — an adversarial review (4 reviewers, 2 skeptics per finding) of P5-01 to P5-03 found 23 unique findings and verified the 12 most severe: 12 confirmed, none refuted, all fixed. In code: a coverage write failure now fails the batch; a dying worker no longer breaks the other symbols; `pmcc fetch` reports a universe-file refusal as a message, not a traceback. In tests: a failed run, a worker crash and death, the coverage mapping, `--out`, the accepted `--universe` and DEC-31's "the selector runs at bar k" (the short's `selected_at`). In docs: the order for bringing QQQ or TSLA back, DEC-31's header, three-symbol passages in the spec and the build plan, and README's calibrate lines. Of the 11 not verified, the cheap ones are fixed too (the double load disclosed, DEC-31's G-1 wording, the variant error, the repo guard, `pmcc run`'s provisional message, the timing action text pinned whole, the P6 stage's contract, P5-01's waived need). Two are put to the PO: stale run files left in `results/` when the matrix changes, and a symbol cached in part (DEC-93).
 
 ## E. Analytics definitions
 

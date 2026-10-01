@@ -26,8 +26,10 @@ from pmcc.domain.clock import ET
 CAL = load_calendar()
 UNIVERSE = load_universe(CAL)
 
-# The PO's universe (DEC-15), in the spec's order, at each primary listing (DEC-12).
-PRIMARY_LISTINGS = {"QQQ": "QQQ.O", "NVDA": "NVDA.O", "TSLA": "TSLA.O"}
+# The PO's universe (DEC-15), at each primary listing (DEC-12): NVDA only for now, QQQ and TSLA
+# commented out, not removed (PO, 2026-09-30).
+PRIMARY_LISTINGS = {"NVDA": "NVDA.O"}
+SET_ASIDE = {"QQQ": "QQQ.O", "TSLA": "TSLA.O"}
 
 
 def test_universe_file_holds_the_po_window() -> None:
@@ -55,6 +57,13 @@ def test_universe_file_lists_the_po_universe_at_its_primary_listings() -> None:
     assert tuple(u.symbol for u in UNIVERSE.symbols) == tuple(PRIMARY_LISTINGS)
     assert {u.symbol: u.stock_ric for u in UNIVERSE.symbols} == PRIMARY_LISTINGS
     assert all(u.option_root == u.symbol for u in UNIVERSE.symbols)
+
+
+def test_dec_15_universe_file_keeps_qqq_and_tsla_commented_out() -> None:
+    """Set aside, not removed (PO, 2026-09-30): each line is there to uncomment."""
+    text = UNIVERSE_PATH.read_text(encoding="utf-8")
+    for symbol, ric in SET_ASIDE.items():
+        assert f"  # - {{symbol: {symbol}, stock_ric: {ric}, option_root: {symbol}}}\n" in text
 
 
 def test_universe_file_roots_build_option_rics() -> None:
@@ -127,13 +136,13 @@ def test_universe_file_reads_a_minimal_file(tmp_path: Path) -> None:
     assert [u.symbol for u in universe.symbols] == ["SPY"]
 
 
-def test_dec_30_universe_file_starting_cash_is_nvda_both_strategies_provisional() -> None:
-    """P4-04: calibrated on NVDA under both strategies, so provisional until QQQ and TSLA are
-    (P5-01). Quant's first long sets it: 2 × $5,630 rounds up to $15,000 (PO, DEC-30, DEC-95)."""
+def test_dec_30_universe_file_starting_cash_is_nvda_both_strategies_final() -> None:
+    """P5-01: calibrated on NVDA, the whole universe for now, under both strategies, so final
+    (PO, DEC-15, DEC-30). Quant's first long sets it: 2 × $5,630 rounds up to $15,000 (DEC-95)."""
     cash = UNIVERSE.starting_cash
     assert cash is not None
     assert cash.value == Money.from_dollars(15_000)
-    assert cash.provisional
+    assert not cash.provisional
     assert cash.calibration_cash == Money.from_dollars(1_000_000)
     assert (cash.cash_multiple, cash.cash_round_to) == (2, Money.from_dollars(5_000))  # E-L4's
     baseline, quant = cash.entries

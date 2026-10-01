@@ -1,7 +1,10 @@
-"""Suite-wide guards: no network, and deterministic hypothesis profiles (TEST-STRATEGY §1)."""
+"""Suite-wide guards: no network, the repo's results and configs untouched, and deterministic
+hypothesis profiles (TEST-STRATEGY §1)."""
 
 import os
 import socket
+from collections.abc import Iterator
+from pathlib import Path
 from typing import TYPE_CHECKING, NoReturn
 
 import pytest
@@ -32,6 +35,31 @@ def no_network(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(socket.socket, "connect_ex", _refuse)
     monkeypatch.setattr(socket, "create_connection", _refuse)
     monkeypatch.setattr(socket, "getaddrinfo", _refuse)
+
+
+REPO = Path(__file__).resolve().parents[1]
+GUARDED = (REPO / "results", REPO / "configs")  # what a stray `pmcc batch`/`calibrate` would write
+
+
+def _snapshot() -> dict[str, tuple[int, int]]:
+    return {
+        p.relative_to(REPO).as_posix(): (p.stat().st_size, p.stat().st_mtime_ns)
+        for root in GUARDED
+        for p in root.rglob("*")
+        if p.is_file()
+    }
+
+
+@pytest.fixture(autouse=True)
+def repo_untouched() -> Iterator[None]:
+    """Fail any test that writes into the repo's results/ or configs/: a CLI test run from the repo
+    directory once ran a real batch over the committed results (P5-03)."""
+    before = _snapshot()
+    yield
+    after = _snapshot()
+    if after != before:
+        changed = sorted(k for k in before.keys() | after.keys() if before.get(k) != after.get(k))
+        pytest.fail(f"this test wrote into the repo: {changed}")
 
 
 @pytest.fixture(scope="session")

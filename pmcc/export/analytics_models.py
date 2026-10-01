@@ -197,11 +197,16 @@ class CoverageRow(Model):
 
 
 class Coverage(Model):
-    """`{SYM}/coverage.json`: counts derived from the cache (P5-03, DEC-16)."""
+    """`{SYM}/coverage.json`, written by `pmcc batch` (P5-03): the fetch summary's counts, derived
+    from the cache (DEC-16), and the strategies' stale-mark rate (HR-8). `iv_failures` counts
+    session bars by reason, out of the `iv_priced` bars with a valid quote before the expiry close;
+    `stale_mark_rate` is the share of held positions' marks carried stale over both strategies'
+    ledgers."""
 
     schema_version: SchemaVersion = SCHEMA_VERSION
     symbol: str
     rows: tuple[CoverageRow, ...]
+    iv_priced: int
     iv_failures: Mapping[str, int]
     stale_mark_rate: float | None
     unavailable_fields: tuple[str, ...]

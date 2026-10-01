@@ -14,6 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from pmcc.config.fields import ClockTime, DollarMoney, DollarPrice
 from pmcc.domain import RuleId
+from pmcc.domain.sessions import FIRST_BAR_END, REGULAR_CLOSE
 
 SPEC_RULE_IDS: tuple[RuleId, ...] = tuple(
     RuleId(i)
@@ -32,6 +33,7 @@ other spec rule must be in a strategy."""
 Fraction = Annotated[float, Field(gt=0, lt=1)]  # a share of mid, a delta, a share of the credit
 Ratio = Annotated[float, Field(gt=0)]  # an IV ratio, an EM multiple
 Days = Annotated[int, Field(ge=1)]
+SESSION_BARS = REGULAR_CLOSE.hour - FIRST_BAR_END.hour + 1  # 10:00 to 16:00: 7 (DEC-06)
 
 
 class Params(BaseModel):
@@ -45,6 +47,15 @@ class NoParams(Params):
 
 
 class SpreadTrigger(Params):  # E-T1
+    long_max_spread: Fraction
+    short_max_spread: Fraction
+
+
+class FixedBarTrigger(Params):  # E-T1 in the entry-timing runs (PO, DEC-31)
+    """E-T1's spread limits, with the short decided only on session bar `bar` (1 = the bar
+    ending 10:00) of the week-open session."""
+
+    bar: int = Field(ge=1, le=SESSION_BARS)
     long_max_spread: Fraction
     short_max_spread: Fraction
 
@@ -146,6 +157,7 @@ def _kind(rule_id: str, params: type[Params] = NoParams) -> Kind:
 KINDS = MappingProxyType(
     {
         "spread_trigger": _kind("E-T1", SpreadTrigger),
+        "fixed_bar_trigger": _kind("E-T1", FixedBarTrigger),
         "first_session_retry": _kind("E-L1"),
         "nearest_dte_expiry": _kind("E-L2", NearestDteExpiry),
         "dte_range_expiry": _kind("E-L2", DteRangeExpiry),

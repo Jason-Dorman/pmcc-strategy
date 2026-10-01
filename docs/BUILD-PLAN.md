@@ -28,11 +28,11 @@ Sep 25, 2026 · schedule from Spec › Build order · **due Fri Oct 9, 11:59 pm*
 | --- | --- | --- | --- |
 | P0 Foundations | Sat Sep 26 | `just check` green in Git Bash and in CI; credentials ignored; LSEG session opens from Git Bash | Done locally 2026-09-25; CI run for P0-07/08 pending the PO's push |
 | P1 Data layer and open items | Sat Sep 26 – Sun Sep 27 | NVDA's full chain cached; INV-11, INV-12 pass; window, r and identifiers recorded; universe fetch started | Done 2026-09-28 (P1 exit): P1-01 to P1-09 (window Mar 30 – Sep 25 2026, r = 0.0371, universe QQQ, NVDA, TSLA; cache and loader per DEC-46; `pmcc fetch` per DEC-88; NVDA's chain cached, near-money weekly mids 97.7%) |
-| P1-10 Universe fetch (background) | Sun Sep 27 – Sat Oct 3 | QQQ and TSLA cached with coverage summaries (NVDA at P1-09) | Estimates shown 2026-09-28 (QQQ 183–547 min, TSLA 98–293 min); the PO scheduled the pull overnight. Seen 2026-09-30: TSLA's pull stopped at 01:14 on Sep 29 with its 53 weekly units cached and none of its 9 monthlies (Oct 2026 – Jun 2027); QQQ not started. Re-running TSLA's fetch resumes at the first missing unit. **Paused 2026-09-30** (PO, DEC-15): QQQ and TSLA set aside, NVDA perhaps the only symbol; more at the end if time allows |
+| P1-10 Universe fetch (background) | Sun Sep 27 – Sat Oct 3 | QQQ and TSLA cached with coverage summaries (NVDA at P1-09) | Estimates shown 2026-09-28 (QQQ 183–547 min, TSLA 98–293 min); the PO scheduled the pull overnight. Seen 2026-09-30: TSLA's pull stopped at 01:14 on Sep 29 with its 53 weekly units cached and none of its 9 monthlies (Oct 2026 – Jun 2027); QQQ not started. Re-running TSLA's fetch resumes at the first missing unit. **Paused 2026-09-30** (PO, DEC-15): QQQ and TSLA set aside, commented out of `configs/universe.yaml` at P5-01; more at the end if time allows. **Resuming means recalibrating first** (the PO asked to be reminded): delete the final starting-cash block, uncomment the symbol, fetch, `just calibrate`, re-run (DEC-15) |
 | P2 Pricing | Mon Sep 28 | IV solver matches the reference; EM, ATM IV, RV20 tested | Done 2026-09-28, as one commit (PO, DEC-59): Black-Scholes, T and DTE, the IV solver, measures and the chain pricer (DEC-24 to DEC-27 settled; DEC-89). NVDA prices in 1.4 s; IV failures 8.3%, mostly very deep ITM; DEC-26's missing-close rule is with the PO |
 | P3 Engine, accounting, baseline | Mon Sep 28 – Wed Sep 30 | **M1:** baseline blotter, ledger, NAV, Reg T for NVDA; INV-01–10 and 13 pass | Done 2026-09-30 (**M1**): P3-01 done 2026-09-29 (DEC-35, DEC-90); P3-02 to P3-07 as one commit (DEC-91); P3-08 (`pmcc run`, DEC-50, DEC-92); P3-09 (starting cash $10,000, provisional, from NVDA; DEC-30, DEC-93); P3-10 (NVDA's baseline, $10,000 to $13,672.50, 35 trades; hand-audited; NVDA's raw cache committed per DEC-05; DEC-94). Next P4-01 |
-| P4 Quant layer and site skeleton | Thu Oct 1 – Fri Oct 2 | **M2:** quant + A1–A5 on NVDA; Pages serves the skeleton from the committed results (DEC-74); INV-14, 15 in CI | In progress: P4-01 to P4-03 done 2026-09-30 (quant selectors, gates G-3 to G-5, quant and ablation configs; DEC-95), with the G-5 finding, five rationales and the provisional starting cash ($15,000 with quant built) put to the PO; an adversarial review's 10 confirmed and 1 plausible findings fixed. P4-04 done 2026-09-30: starting cash $15,000, provisional (DEC-30); quant and A1–A5 on NVDA run, reviewed with the PO and committed with the baseline re-run (DEC-95). P4-05 and P4-06 done 2026-09-30 (DEC-96, DEC-97; the PO answered DEC-03: no light theme, and DEC-54's summary: analytics null until P6); NVDA's seven results re-run at schema 2 from `69c01b2` and verified (DEC-59's two commits). P4-07 done 2026-09-30: the site is live at <https://jason-dorman.github.io/pmcc-strategy/>, checked in Chromium (DEC-98). P4-08 built 2026-09-30 (DEC-99: the Playwright smoke test, 11 tests, in CI's web job before the deploy); ticked when it passes in CI, which completes M2 |
-| P5 Universe batch and sensitivity | Sat Oct 3 – Sun Oct 4 | **M3:** all results JSON written and verified | Not started |
+| P4 Quant layer and site skeleton | Thu Oct 1 – Fri Oct 2 (done Wed Sep 30) | **M2:** quant + A1–A5 on NVDA; Pages serves the skeleton from the committed results (DEC-74); INV-14, 15 in CI | In progress: P4-01 to P4-03 done 2026-09-30 (quant selectors, gates G-3 to G-5, quant and ablation configs; DEC-95), with the G-5 finding, five rationales and the provisional starting cash ($15,000 with quant built) put to the PO; an adversarial review's 10 confirmed and 1 plausible findings fixed. P4-04 done 2026-09-30: starting cash $15,000, provisional (DEC-30); quant and A1–A5 on NVDA run, reviewed with the PO and committed with the baseline re-run (DEC-95). P4-05 and P4-06 done 2026-09-30 (DEC-96, DEC-97; the PO answered DEC-03: no light theme, and DEC-54's summary: analytics null until P6); NVDA's seven results re-run at schema 2 from `69c01b2` and verified (DEC-59's two commits). P4-07 done 2026-09-30: the site is live at <https://jason-dorman.github.io/pmcc-strategy/>, checked in Chromium (DEC-98). P4-08 done 2026-09-30: the Playwright smoke test (11 tests) passes in CI's web job before every deploy (DEC-99). **M2 reached 2026-09-30.** |
+| P5 Universe batch and sensitivity | Sat Oct 3 – Sun Oct 4 | **M3:** all results JSON written and verified | In progress: P5-01 to P5-03 done 2026-09-30, as one commit (PO). The universe is NVDA alone for now, QQQ and TSLA commented out (PO, DEC-15), so the starting cash is final at $15,000 (DEC-30). `configs/sensitivity.yaml` gives 24 runs per symbol (DEC-31 settled: the fixed-bar trigger). `pmcc batch` runs them one process per symbol and writes each symbol's `coverage.json`; the universe files wait for P6 (PO, DEC-100). NVDA's 24 runs take about 18 s. Next P5-04, from a clean tree |
 | P6 Analytics | Mon Oct 5 – Tue Oct 6 | **M4:** every table and series in results JSON | Not started |
 | P7 Site pages and write-up | Wed Oct 7 – Thu Oct 8 | **M5:** CI builds and deploys after `pmcc export`; the site passes a full read-through | Not started |
 | P8 Release | Fri Oct 9 | **M6:** URL submitted (target 18:00; deadline 23:59) | Not started |
@@ -63,7 +63,9 @@ Nothing needs answering up front. This is when each open question in [DECISIONS]
 | P4-01 to P4-03 handover · Wed Sep 30 | G-5 fires only on a locked quote (E-T1's 10% needs a mid ≥ $0.10); the five quant rationales the spec doesn't give; the provisional starting cash, $15,000 with quant built against the committed $10,000 (found by the review) | DEC-95, DEC-30 |
 | P4-05 Export · Wed Sep 30 | Detail levels and report sections (answered at P4-04's handover); the summary's analytics until P6 | DEC-54 |
 | P4-06 Web scaffold · Wed Sep 30 | Light theme (answered: none) | DEC-03 |
-| P5-02 Sensitivity · Sat Oct 3 | Entry-timing variant | DEC-31 |
+| P5-01 Final capital · Wed Sep 30 | The universe: NVDA alone, QQQ and TSLA commented out | DEC-15, DEC-30 |
+| P5-02 Sensitivity · Wed Sep 30 | Entry-timing variant | DEC-31 |
+| P5-03 Batch · Wed Sep 30 | The universe files before P6; `coverage.json` now (asked when found) | DEC-100 |
 | P6 start · Mon Oct 5 | Analytics definitions and the Greek display | DEC-60, DEC-61, DEC-62, DEC-63, DEC-64, DEC-76 |
 | P7-01 Strategy page · Wed Oct 7 | Chart colour roles | DEC-04 |
 | P7-06 Data page · Wed Oct 7 | What the local Data page shows | DEC-75 |
@@ -226,7 +228,7 @@ P8 release                                                                      
   - Needs: P1-05, P1-08
 - [ ] **P1-10 · Universe fetch (background)** **[Workspace]** — paused 2026-09-30 (PO, DEC-15): taken up at the end if time allows; TSLA's partial cache stays local, uncommitted
   - Show the PO the estimate, fetch QQQ and TSLA, and re-run any failures.
-  - Done when: all 3 (DEC-15) are cached with coverage summaries by **Sat Oct 3**, with any gaps recorded in DEC-08.
+  - Done when: all 3 (DEC-15) are cached with coverage summaries by **Sat Oct 3**, with any gaps recorded in DEC-08. (Paused: NVDA alone for now, QQQ and TSLA commented out at P5-01. Resuming starts with the recalibration steps in DEC-15.)
   - Needs: P1-09
 
 ### P2 — Pricing · Mon Sep 28
@@ -360,32 +362,31 @@ P8 release                                                                      
   - The CI `web` and `deploy` jobs, with the dist guard (ARCHITECTURE §14).
   - Done when: the Pages URL serves the skeleton from the committed results (real NVDA, so no synthetic banner; PO, DEC-74), and a deep link survives a refresh. Add the URL to the README.
   - Needs: P4-06, P0-06
-- [ ] **P4-08 · Smoke test**
+- [x] **P4-08 · Smoke test** — done 2026-09-30. `web/e2e/smoke.spec.ts`, 11 tests over the built site (DEC-99); it found the footer wasn't a landmark (fixed). In CI: the PO's push of `2dc3aa2` deployed, and Pages deploys only after the `python` and `web` jobs pass, the `web` job running INV-14's typecheck and INV-15's smoke test before the upload; the live site carries that commit's footer (a `contentinfo` landmark outside `main`, checked in Chromium on 2026-09-30). **M2 reached**
   - Playwright covers every route for one symbol:
     - no console errors
     - no cross-origin requests
     - the footer is present
     - screenshots at 390, 1100, 1366 and 1600 px, uploaded as CI artifacts
   - Done when: INV-14 and INV-15 run and pass in CI.
-  - Built 2026-09-30 (DEC-99): `web/e2e/smoke.spec.ts` over the built site, 11 tests passing locally; it found the footer wasn't a landmark (fixed). Ticked once the PO's push runs it green in CI.
   - **M2 (Fri Oct 2).**
   - Needs: P4-07
 
 ### P5 — Universe batch and sensitivity · Sat Oct 3 – Sun Oct 4
 
-- [ ] **P5-01 · Final capital**
+- [x] **P5-01 · Final capital** — done 2026-09-30. The PO kept the universe to NVDA for now: QQQ and TSLA stay in `configs/universe.yaml`, commented out, and bringing either back means recalibrating (DEC-15; Spec › Universe amended). With nothing missing, `just calibrate` wrote the block final: $15,000, from the same first entries (baseline $4,142.50, quant $5,630.00), no entry blocked, lowest available funds $9,978.50 and $8,330.00; `--check` reproduces it (DEC-30). The DEC-93 partial-cache question is set aside with QQQ and TSLA. 1 new test
   - Once the universe is cached (P1-10), run `pmcc calibrate` across the 3 symbols × 2 strategies and commit `starting_cash` with its basis (DEC-30). It replaces the provisional block.
   - First, decide with the PO how calibrate (and `pmcc run`) treat a cache missing option units its fetch plan asks for: today calibrate fails with an engine error, or could pass on a run that never re-entered (DEC-93, deferred by the PO at P3-09).
   - Done when: `universe.yaml` has a non-provisional value.
-  - Needs: P1-10, P4-03
-- [ ] **P5-02 · Sensitivity variants**
+  - Needs: P1-10, P4-03 (P1-10 waived by the PO's DEC-15 answer: NVDA alone, so no other symbol to cache)
+- [x] **P5-02 · Sensitivity variants** — done 2026-09-30. The PO took DEC-31 as recommended. `configs/sensitivity.yaml` holds 17 variants (friction 4, timing 7, grid 6), each extending a strategy and changing only what its check varies; `pmcc/config/matrix.py` adds them after the strategies and ablations, 24 run IDs in §11's order. The kind `fixed_bar_trigger` and `FixedBarTrigger` decide the short on one session bar only; the loop is unchanged (DEC-100). 56 new tests
   - Ask first: DEC-31.
   - `configs/sensitivity.yaml` → run IDs (ARCHITECTURE §11), plus the fixed-bar trigger.
   - Done when: the expanded matrix gives 24 run IDs per symbol, and the timing variants pass their unit tests.
   - Needs: P4-03
-- [ ] **P5-03 · `pmcc batch`**
+- [x] **P5-03 · `pmcc batch`** — done 2026-09-30. `pmcc/batch.py`: one spawned process per symbol, failure isolation per run and per symbol, a printed summary, each symbol's `coverage.json` (PO), and the universe-level stage, which writes nothing until P6 (PO, DEC-100). Two synthetic symbols write 48 runs and two coverage files that pass `pmcc verify`, a batch run matches `pmcc run` byte for byte, and a missing symbol exits 1 with the rest written. On NVDA, 24 runs in about 18 s; the seven committed runs came out identical but for the volatile fields. 11 new tests, and a suite-wide guard against tests writing into the repo (DEC-100). An adversarial review (4 reviewers, 2 skeptics per finding): 12 findings confirmed, all fixed, with the cheap unverified ones (DEC-100)
   - The run matrix in a process pool, with failure isolation, a summary, and the universe-level outputs.
-  - Done when: a batch over 2 synthetic symbols writes all 48 run files plus the universe files, and exits non-zero when one run fails.
+  - Done when: a batch over 2 synthetic symbols writes all 48 run files plus each symbol's `coverage.json`, and exits non-zero when one run fails. The universe files join at P6-01, P6-05 and P6-08 (PO, DEC-100).
   - Needs: P5-02
 - [ ] **P5-04 · Full batch**
   - Run the whole universe from a clean tree, then `pmcc verify`, then commit the results with each symbol's raw cache (DEC-05).
@@ -466,7 +467,7 @@ The spec sets the order. Cut the next item only when its trigger fires, and mark
 | 1 | Parameter grid | M3 not reached by Sun Oct 4, 20:00 | P5-02 grid variants, P6-06 grid table |
 | 2 | Entry-timing sensitivity | M4 not reached by Tue Oct 6, 12:00 | P5-02 timing variants, P6-06 timing table |
 | 3 | Greek attribution | M4 not reached by Tue Oct 6, 20:00 | P6-04, the quant page's Greek panel |
-| 4 | Universe size | — (taken early: the PO cut it from 12 symbols to QQQ, NVDA and TSLA on 2026-09-28, DEC-15) | P1-10, P5 |
+| 4 | Universe size | — (taken early: the PO cut it from 12 symbols to QQQ, NVDA and TSLA on 2026-09-28, then to NVDA alone for now on 2026-09-30, DEC-15) | P1-10, P5 |
 | — | Data page local mode (keep the github.io banner) | P7 behind at Wed Oct 7 end of day | P7-06 |
 
 ## 6. Risks

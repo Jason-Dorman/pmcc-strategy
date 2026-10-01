@@ -278,7 +278,7 @@ Two strategies, five ablations, and three sensitivity checks, run independently 
 
 **Universe** (`configs/universe.yaml`)
 
-QQQ, NVDA, TSLA (DEC-15). An equity index ETF and two single names across a wide volatility range (roughly 20%, 40% and 55% realized), chosen from the probed twelve for the tightest long-leg spreads. The first plan's twelve (SPY, QQQ, IWM, AAPL, NVDA, AMD, META, TSLA, COIN, JPM, TLT, XLE) added financials, long-duration Treasuries and energy; the PO cut it for time (DEC-15). The probes had also found most of the dropped symbols' long legs wider than E-T1's 3%. All symbols use the same window: Mon Mar 30 2026 to Fri Sep 25 2026, 26 weeks of hourly bars, set by the PO from the probed history (DEC-07). A window must lie within LSEG's hourly option history and be at least 10 weeks. Any symbol can also be run alone via `pmcc run --symbol`.
+NVDA, for now (PO, 2026-09-30, DEC-15): QQQ and TSLA are set aside, commented out in the file, and come back at the end if time allows, with the starting cash recalibrated (E-L4). The PO's universe was QQQ, NVDA, TSLA (DEC-15): an equity index ETF and two single names across a wide volatility range (roughly 20%, 40% and 55% realized), chosen from the probed twelve for the tightest long-leg spreads. The first plan's twelve (SPY, QQQ, IWM, AAPL, NVDA, AMD, META, TSLA, COIN, JPM, TLT, XLE) added financials, long-duration Treasuries and energy; the PO cut it for time (DEC-15). The probes had also found most of the dropped symbols' long legs wider than E-T1's 3%. All symbols use the same window: Mon Mar 30 2026 to Fri Sep 25 2026, 26 weeks of hourly bars, set by the PO from the probed history (DEC-07). A window must lie within LSEG's hourly option history and be at least 10 weeks. Any symbol can also be run alone via `pmcc run --symbol`.
 
 ## Analytics and metrics
 
@@ -386,7 +386,7 @@ A gradable baseline exists by Sep 30; everything after that adds depth, and Oct 
 | Dates | Work | Done when |
 | --- | --- | --- |
 | Sep 26–27 | Repo tooling (uv, ruff, pyright, pre-commit, justfile, CI skeleton); resolve open items; RIC builder, chain discovery, parquet cache; fetch one symbol | One symbol's full chain cached; tests 11–12 pass |
-| Sep 27 onward | Start universe fetches in the background as soon as the fetcher works | All 3 symbols cached by Oct 3 |
+| Sep 27 onward | Start universe fetches in the background as soon as the fetcher works | All 3 symbols cached by Oct 3 (NVDA alone for now, DEC-15) |
 | Sep 28–30 | Pricing (IV, Greeks, EM, RV20); engine and MarketView; fill simulator; accounting; baseline PMCC | Baseline blotter, ledger, NAV, Reg T for one symbol; tests 1–10 and 13 pass |
 | Oct 1–2 | Quant long and short selectors; gates G-3 to G-5; gate log; ablation configs; scaffold the Vite app and Pages deploy Action, deploying the committed results (DEC-74) | Quant PMCC and A1–A5 run on one symbol |
 | Oct 3–4 | Batch runs across the universe; friction, timing, and parameter sensitivity | All results JSON written |
@@ -394,7 +394,7 @@ A gradable baseline exists by Sep 30; everything after that adds depth, and Oct 
 | Oct 7–8 | React pages (comparison, strategy, rules from YAML, methodology, universe) and write-up | CI builds and deploys the site after `pmcc export`, and the site passes a full read-through |
 | Oct 9 | Buffer; publish to GitHub Pages; check no live LSEG on Pages | URL submitted by 11:59pm |
 
-If time runs short, cut in this order: parameter grid, entry-timing sensitivity, Greek attribution, universe size (already cut to three symbols, DEC-15). Never cut the blotter, NAV, Reg T, rules page, or tests.
+If time runs short, cut in this order: parameter grid, entry-timing sensitivity, Greek attribution, universe size (already cut to three symbols, and to NVDA alone for now, DEC-15). Never cut the blotter, NAV, Reg T, rules page, or tests.
 
 ## Open items to verify before building
 

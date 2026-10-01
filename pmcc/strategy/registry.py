@@ -51,7 +51,7 @@ from pmcc.strategy.selectors import (
     ShortStrikeRule,
     WeekFinalExpiry,
 )
-from pmcc.strategy.trigger import EntryTrigger, SpreadTrigger
+from pmcc.strategy.trigger import EntryTrigger, FixedBarTrigger, SpreadTrigger
 
 
 @final
@@ -98,6 +98,11 @@ def _p[P: Params](params: Params, kind: type[P]) -> P:
     return params
 
 
+def _fixed_bar_trigger(params: Params, _: StrategyConfig) -> FixedBarTrigger:
+    p = _p(params, k.FixedBarTrigger)
+    return FixedBarTrigger(p.bar, SpreadTrigger(p.long_max_spread, p.short_max_spread))
+
+
 def _friday_check(params: Params, _: StrategyConfig) -> FridayCheck:
     p = _p(params, k.FridayCheck)
     return FridayCheck(p.check_by, p.em_buffer)
@@ -114,6 +119,7 @@ FACTORIES: Mapping[str, Factory] = MappingProxyType(
         "spread_trigger": lambda p, _: SpreadTrigger(
             _p(p, k.SpreadTrigger).long_max_spread, _p(p, k.SpreadTrigger).short_max_spread
         ),
+        "fixed_bar_trigger": _fixed_bar_trigger,
         "first_session_retry": _marker("E-L1"),
         "nearest_dte_expiry": lambda p, _: NearestDteExpiry(_p(p, k.NearestDteExpiry).target_dte),
         "dte_range_expiry": lambda p, _: DteRangeExpiry(

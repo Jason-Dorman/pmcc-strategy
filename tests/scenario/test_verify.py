@@ -520,8 +520,8 @@ def test_verify_a_summary_must_not_record_an_invariant_twice(results: Path, tmp_
 
 
 def _coverage(symbol: str) -> Doc:
-    return {"schema_version": SCHEMA_VERSION, "symbol": symbol, "rows": [], "iv_failures": {},
-            "stale_mark_rate": None, "unavailable_fields": []}  # fmt: skip
+    return {"schema_version": SCHEMA_VERSION, "symbol": symbol, "rows": [], "iv_priced": 0,
+            "iv_failures": {}, "stale_mark_rate": None, "unavailable_fields": []}  # fmt: skip
 
 
 def test_verify_an_analytics_file_must_sit_under_its_own_symbol(

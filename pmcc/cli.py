@@ -1,5 +1,6 @@
 """The `pmcc` command line. A command not built yet is a stub naming its backlog item."""
 
+import os
 from datetime import datetime
 from pathlib import Path
 from typing import Annotated, NoReturn
@@ -8,10 +9,12 @@ import structlog
 import typer
 import yaml
 
+from pmcc.batch import BatchOutcome, SymbolJob, SymbolOutcome, run_batch
 from pmcc.calibration import Calibration, CalibrationError
 from pmcc.calibration import calibrate as calibrate_cash
 from pmcc.config.calendar import load_calendar
 from pmcc.config.capital import CALIBRATED_STRATEGIES, StartingCash, render_block, with_block
+from pmcc.config.matrix import run_matrix
 from pmcc.config.strategy import CONFIGS_DIR, RunConfig, load_run_config
 from pmcc.config.universe import UNIVERSE_PATH, Underlying, load_universe
 from pmcc.config.universe import Universe as UniverseConfig
@@ -76,7 +79,7 @@ def fetch(
     """Pull a symbol's stock and option history from LSEG into the local cache."""
     log_path = configure_logging("fetch")
     sym, calendar = symbol.upper(), load_calendar()
-    universe = load_universe(calendar)
+    universe = _universe(calendar)
     target = _target(sym, universe)
     try:
         steps = estimate.assumed_steps(estimate.latest_probe_report(probes, sym))
@@ -166,8 +169,8 @@ def run(
     path = write_result(result, out)
     _say(_describe_run(result, path))
     if cash.provisional:
-        _say(f"Starting cash {cash.value.to_dollars()} is provisional (DEC-30): P5-01 calibrates "
-             "the final value, and every run is repeated with it.")  # fmt: skip
+        _say(f"Starting cash {cash.value.to_dollars()} is provisional (DEC-30): calibrate every "
+             "universe symbol for the final value, then repeat every run with it.")  # fmt: skip
     _say(f"Log: {log_path.as_posix()}")
 
 
@@ -218,9 +221,84 @@ def _describe_rows(result: RunResult) -> str:
 
 
 @app.command()
-def batch(universe: Universe = Path("configs/universe.yaml")) -> None:
-    """Run every symbol, strategy and variant in the universe."""
-    _not_built("P5-03")
+def batch(
+    universe: Annotated[
+        Path | None, typer.Option(help="Universe YAML: only ever configs/universe.yaml (DEC-30).")
+    ] = None,
+    cache: Cache = Path("data_cache"),
+    out: Annotated[Path, typer.Option(help="Results directory.")] = Path("results"),
+) -> None:
+    """Run every symbol, strategy and variant in the universe: the 24-run matrix per symbol
+    (ARCHITECTURE §11), one process per symbol, then each symbol's coverage file. Exits 1 if any
+    run or symbol failed; the rest are still written."""
+    log_path = configure_logging("batch")
+    if universe is not None and universe.resolve() != UNIVERSE_PATH.resolve():
+        _fail(f"{universe.as_posix()}: the universe is always configs/universe.yaml, so every run "
+              "takes its starting cash from there (DEC-30)")  # fmt: skip
+    calendar = load_calendar()
+    settings = _universe(calendar)
+    cash = settings.starting_cash
+    if cash is None:
+        _fail("configs/universe.yaml has no starting_cash yet: run pmcc calibrate (DEC-30)")
+    configs = _matrix(settings)
+    stamp = _stamp()
+    jobs = [SymbolJob(cache, u, calendar, settings.risk_free_rate.value, configs, cash.value,
+                      stamp, out) for u in settings.symbols]  # fmt: skip
+    outcome = run_batch(jobs, out, initializer=worker_logging)
+    log.info("batch.done", symbols=len(outcome.symbols), runs=outcome.written,
+             ok=outcome.ok, universe=len(outcome.universe))  # fmt: skip
+    _say(_describe_batch(outcome, out, len(configs)))
+    if stamp.provenance.git.dirty:
+        _say("git_dirty: true (uncommitted changes outside results/). Commit the code before a "
+             "publishable batch: pmcc verify rejects dirty results (DEC-50).")  # fmt: skip
+    if cash.provisional:
+        _say(f"Starting cash {cash.value.to_dollars()} is provisional (DEC-30).")
+    _say(f"Log: {log_path.as_posix()} (each worker logs beside it)")
+    if not outcome.ok:
+        raise typer.Exit(code=1)
+
+
+def _matrix(settings: UniverseConfig) -> tuple[RunConfig, ...]:
+    try:
+        return run_matrix(settings)
+    except (OSError, ValueError, yaml.YAMLError) as exc:  # a config missing, unreadable or refused
+        _fail(f"the run matrix: {exc}")
+
+
+def _stamp() -> Stamp:
+    try:
+        return Stamp(provenance(), DataSource.LSEG, _now())
+    except ProvenanceError as exc:
+        _fail(f"{exc}; nothing was run")
+
+
+def worker_logging() -> None:
+    """Each batch worker logs to its own file beside the batch's (pmcc.log is the CLI's, DEC-80)."""
+    configure_logging("batch", suffix=f"_worker{os.getpid()}")
+
+
+def _describe_batch(outcome: BatchOutcome, out: Path, matrix: int) -> str:
+    lines = [_describe_symbol(s, out, matrix) for s in outcome.symbols]
+    universe = ", ".join(p.as_posix() for p in outcome.universe) or "none yet (P6)"
+    lines.append(f"Universe files: {universe}")
+    failed = sum(len(s.failed) for s in outcome.symbols)
+    broken = sum(s.error is not None for s in outcome.symbols)
+    uncovered = sum(s.error is None and s.coverage is None for s in outcome.symbols)
+    lines.append(f"{outcome.written} runs written for {len(outcome.symbols)} symbol(s); "
+                 f"{failed} run(s) and {broken} symbol(s) failed; {uncovered} coverage "
+                 "file(s) not written.")  # fmt: skip
+    return "\n".join(lines)
+
+
+def _describe_symbol(symbol: SymbolOutcome, out: Path, matrix: int) -> str:
+    if symbol.error is not None:
+        return f"{symbol.symbol}: FAILED: {symbol.error}"
+    written = len(symbol.runs) - len(symbol.failed)
+    coverage = "written" if symbol.coverage is not None else "NOT written: FAILED (see the log)"
+    lines = [f"{symbol.symbol}: {written} of {matrix} runs written to "
+             f"{(out / symbol.symbol).as_posix()}/; coverage.json {coverage}"]  # fmt: skip
+    lines += [f"  FAILED {r.run_id}: {r.error}" for r in symbol.failed]
+    return "\n".join(lines)
 
 
 Symbols = Annotated[

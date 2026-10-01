@@ -26,10 +26,16 @@ risk_free_rate:
 # The universe (DEC-15): an index ETF and two single names across a wide volatility range, cut by
 # the PO from the first plan's twelve. Each at its primary listing, Nasdaq .O (DEC-12); the option
 # roots are the tickers.
+#
+# NVDA only for now (PO, 2026-09-30, DEC-15): QQQ and TSLA are set aside, commented out rather than
+# removed, and come back at the end if time allows. Bringing one back means recalibrating, in this
+# order: delete the final starting_cash block below, its header comment included (this file refuses
+# a final block that lacks a listed symbol, and pmcc fetch reads it); uncomment the symbol; finish
+# its fetch (P1-10); run `just calibrate`; then re-run every result (`just batch`).
 symbols:
-  - {symbol: QQQ, stock_ric: QQQ.O, option_root: QQQ}
+  # - {symbol: QQQ, stock_ric: QQQ.O, option_root: QQQ}
   - {symbol: NVDA, stock_ric: NVDA.O, option_root: NVDA}
-  - {symbol: TSLA, stock_ric: TSLA.O, option_root: TSLA}
+  # - {symbol: TSLA, stock_ric: TSLA.O, option_root: TSLA}
 
 # ── Starting cash: written by `pmcc calibrate` (Spec › E-L4; DEC-30) ────────────────────────────
 # E-L4's cash_multiple × the most expensive first long-leg entry cost (E-L1: fill × 100 × qty +
@@ -41,7 +47,7 @@ symbols:
 # for byte, and a final one is only ever removed by hand.
 starting_cash:
   value: '15000.0000'
-  provisional: true
+  provisional: false
   cash_multiple: 2
   cash_round_to: '5000.0000'
   calibration_cash: '1000000.0000'

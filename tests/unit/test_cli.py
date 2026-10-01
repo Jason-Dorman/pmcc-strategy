@@ -40,13 +40,7 @@ def test_cli_help_lists_every_command() -> None:
         assert command in result.output
 
 
-@pytest.mark.parametrize(
-    ("args", "item"),
-    [
-        (["batch", "--universe", "configs/universe.yaml"], "P5-03"),
-        (["serve"], "P7-06"),
-    ],
-)
+@pytest.mark.parametrize(("args", "item"), [(["serve"], "P7-06")])
 def test_cli_stub_fails_loudly_naming_its_backlog_item(args: list[str], item: str) -> None:
     result = runner.invoke(app, args)
 

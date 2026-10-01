@@ -68,7 +68,8 @@ pmcc/
                  rule IDs as pydantic fields) (DEC-90);
                  calendar.py (configs/calendar.yaml → SessionCalendar, DEC-84);
                  universe.py (configs/universe.yaml → Universe: window, r, symbols, starting
-                 cash; DEC-86); capital.py (StartingCash: E-L4's cash rule, the calibrated block and
+                 cash; DEC-86); matrix.py (configs/sensitivity.yaml's variants and the 24-run
+                 matrix; DEC-100); capital.py (StartingCash: E-L4's cash rule, the calibrated block and
                  its writer; DEC-93); yaml_file.py (read_yaml, parse_yaml: safe YAML refusing a
                  key given twice; DEC-86)
   data/
@@ -118,6 +119,8 @@ pmcc/
                  (pmcc verify), site.py (pmcc export) (P4-05, DEC-96)
   runner.py      run_symbol: load a cache, run the engine, build the RunResult (DEC-92)
   calibration.py calibrate: measure each run's first long entry, verify the value (DEC-93)
+  batch.py       pmcc batch: the run matrix on each symbol in a spawned process, coverage.json,
+                 the universe-level stage (DEC-100)
   log.py         structlog JSON setup: stderr + logs/{command}_{timestamp}.jsonl (DEC-80)
   cli.py         typer: fetch, probe, run, batch, calibrate, export, verify, serve
 configs/         _shared.yaml, baseline_pmcc.yaml, quant_pmcc.yaml, ablations/a1…a5.yaml,
@@ -137,7 +140,7 @@ The reference files at the repo root (`LSEG-DATA-GUIDE.md`, `DESIGN-GUIDE.md`, `
 | Package | One job | Main API | Depends on |
 | --- | --- | --- | --- |
 | `domain` | Types and time rules everyone shares | `Price`, `Money`, `Quote`, `OptionId`, `RuleId`, `Session`, `SessionCalendar`, `bar_end()` | stdlib |
-| `config` | Turn YAML into validated, hashed, rendered config | `load_strategy()` → `StrategyConfig`; `load_run_config(path, universe)` → `RunConfig` (`config_hash()`, `Rule.text()`); `load_calendar()` → `SessionCalendar`; `load_universe()` → `Universe` | domain, pydantic, pyyaml |
+| `config` | Turn YAML into validated, hashed, rendered config | `load_strategy()` → `StrategyConfig`; `load_run_config(path, universe)` → `RunConfig` (`config_hash()`, `Rule.text()`); `run_matrix(universe)` → every run's `RunConfig` (DEC-100); `load_calendar()` → `SessionCalendar`; `load_universe()` → `Universe` | domain, pydantic, pyyaml |
 | `data.lseg` | Talk to LSEG | `lseg_session()` → `LsegProvider` | `data.provider`, lseg.data, pandas, polars |
 | `data` (rest) | Know RICs; check the tape against the calendar; probe, plan, fetch, cache, load | `HistoryProvider`, `build_ric()`, `parse_ric()`, `sessions_from_tape()`, `run_probe()`, `plan_symbol()`, `fetch_rics()`, `fetch_contracts()`, `prepare()`, `pull_units()`, `estimate()`, `coverage()`, `SymbolCache.write_unit()`, `load_symbol()` | domain, config, polars, numpy; `pricing` for the coverage summary's IV failures (DEC-89); only `fetch` may use `data.lseg` |
 | `pricing` | Turn quotes into IV, Greeks and measures | `implied_vol()`, `greeks()`, `price_quotes()`, `price_symbol()` → `PricedSymbol.snapshot()`, `atm_iv()`, `expected_move()`, `rv20()` | domain, numpy, scipy, polars (the loader's frames, never `pmcc.data`; DEC-89) |
@@ -148,6 +151,7 @@ The reference files at the repo root (`LSEG-DATA-GUIDE.md`, `DESIGN-GUIDE.md`, `
 | `export` | Result models, manifest, canonical JSON, JSON Schema, site data, verify | `write_result()`, `write_schemas()`, `export_site()`, `verify()`, `rederive()` | domain, config, accounting, analytics; `data.files` for whole-file writes (DEC-92); `engine.invariants` for the names of the runtime invariants a summary records (DEC-96) |
 | `runner` | Run configs on one symbol's cache into results | `run_symbol()`, `run_loaded()`; `Market.prepare()` once per symbol, then `run_market()` per config → `RunResult`, or `run_output()` → the engine's `RunOutput` | domain, config, accounting, data, engine, strategy, export, polars (DEC-92) |
 | `calibration` | Calibrate the starting cash (E-L4) | `calibrate(markets, configs, universe)` → `Calibration` (the `StartingCash` and each run's `RunFunds`); `cash_rule()`, `measure()`, `first_long_entry()`, `verify()`, `run_funds()`, `blocked_entries()` | domain, config, accounting (the `Event` type), engine, runner (DEC-93) |
+| `batch` | Run the matrix on every symbol | `run_batch(jobs, out)` → `BatchOutcome`; `run_job(SymbolJob)` → `SymbolOutcome` (one symbol, in a worker); `coverage_file()`, `stale_mark_rate()`; `UNIVERSE_WRITERS` (P6) | config, data, domain, export, runner (DEC-100) |
 | `log` | Configure structured logging for one command | `configure_logging()` | structlog |
 | `cli` | Wire commands | `pmcc` | everything |
 
@@ -561,7 +565,7 @@ A failure logs `invariant.failed` and raises `InvariantViolation` (an `EngineErr
 | `configs/baseline_pmcc.yaml` | `extends: _shared.yaml`; baseline E-L2, E-L3, E-S3; `report: {detail: full}` (DEC-54) |
 | `configs/quant_pmcc.yaml` | `extends: _shared.yaml`; quant E-L2, E-L3, E-S3; G-3, G-4, G-5 (P4-03, DEC-95); `report: {detail: full, sections: [gate_log, greek_attribution]}` (DEC-54) |
 | `configs/ablations/a1…a5.yaml` | `extends: ../quant_pmcc.yaml` + `overrides` keyed by rule ID: A1 and A2 `replace` the quant selectors with the baseline's rules, word for word; A3, A4 and A5 `remove` G-3, G-4 and X-S1 (P4-03, DEC-95); `report: {detail: summary}` (DEC-54) |
-| `configs/sensitivity.yaml` | friction, timing and grid variants (§11) |
+| `configs/sensitivity.yaml` | friction, timing and grid variants (§11): a `variants` list, each a strategy written inline as an ablation file is (`id`, `name`, `extends` a strategy file, `report: {detail: summary}`, then `fill_model` or `overrides`). A variant's run ID is its strategy's ID, `--`, a suffix. Loaded by `pmcc/config/matrix.py` (P5-02, DEC-100) |
 | `configs/universe.yaml` | the window (DEC-07); r with the quote, series, date and source it came from (DEC-11); symbols with stock RIC and option root (DEC-12); last, the `starting_cash` block `pmcc calibrate` writes: the value, whether it's provisional, the calibration cash and each run's first long entry (DEC-30, DEC-93). The bootstrap seed joins at P6-05, above that block. Loaded by `pmcc/config/universe.py`, which checks the window's sessions against the calendar (DEC-86) |
 | `configs/calendar.yaml` | NYSE holidays and early closes 2025–2027, with sources (DEC-33) |
 
@@ -618,15 +622,18 @@ The run matrix per symbol has 24 runs:
 | Strategies | `baseline_pmcc`, `quant_pmcc` | 2 | full |
 | Ablations | `quant_pmcc--a1` … `--a5` | 5 | summary |
 | Friction | `{baseline,quant}_pmcc--sc025`, `--sc050` | 4 | summary |
-| Entry timing | `baseline_pmcc--t1` … `--t7` (DEC-31) | 7 | summary |
+| Entry timing | `baseline_pmcc--t1` … `--t7`: E-T1 replaced by `fixed_bar_trigger`, the short decided on session bar k of the week-open session only (DEC-31) | 7 | summary |
 | Parameter grid | `quant_pmcc--k075`, `--k125`, `--g4r090`, `--g4r110`, `--g3r110`, `--g3r130` | 6 | summary |
 
-`pmcc batch --universe configs/universe.yaml` works as follows:
+`run_matrix(universe)` (`pmcc/config/matrix.py`) builds the 24 in this order: the two strategy files, `configs/ablations/*.yaml`, then `configs/sensitivity.yaml`'s variants (DEC-100).
 
-1. Per symbol: load once, price chains once, then run the matrix.
-2. Symbols run in a process pool.
-3. A failed symbol is reported without stopping the others, and the batch exits non-zero if any run failed.
-4. Universe-level outputs are computed last: pooled, headline, suitability.
+`pmcc batch [--universe configs/universe.yaml] [--cache data_cache] [--out results]` (`pmcc/batch.py`, P5-03, DEC-100) works as follows:
+
+1. Per symbol: load once, price chains once, then run the matrix, writing each result as `pmcc run` would, byte for byte. Then write `{SYM}/coverage.json`, which loads and prices the cache a second time, as the fetch summary does.
+2. Each symbol runs in its own spawned single-worker process pool, at most one per CPU at once (never forked, so Windows and Linux run alike, DEC-58), so a worker that dies breaks only its own symbol. A job carries everything its worker needs; each worker logs to its own file.
+3. A failed run writes nothing and is reported, and the symbol's other runs go on; a symbol whose cache won't load, whose coverage file can't be written, or whose worker raises or dies, is reported without stopping the others. The batch exits non-zero if any run or symbol failed.
+4. Universe-level outputs are computed last, in the parent, and only when nothing failed: pooled, headline, suitability. Their writers join at P6-01, P6-05 and P6-08 (PO, DEC-100); until then the stage writes nothing.
+5. `--universe` may only name `configs/universe.yaml`, so every run's starting cash comes from there (DEC-30).
 
 Determinism controls (INV-13):
 
@@ -651,7 +658,9 @@ results/                            committed; every file here is one the pipeli
   {SYM}/{run_id}.json               RunResult, full or summary
   {SYM}/robustness.json             ablation, friction, timing and grid tables
   {SYM}/fill_check.json             scatter points (raw pairs, DEC-05) + fit
-  {SYM}/coverage.json               derived data-coverage counts
+  {SYM}/coverage.json               derived data-coverage counts: per unit kind, contracts and
+                                    valid-mid share; IV failures of iv_priced bars; the strategies'
+                                    stale-mark rate; unavailable fields (pmcc batch, DEC-100)
 ```
 
 `pmcc export` derives two more files from the results into its output, never committed under `results/`, so they can't disagree with the runs (DEC-96): `index.json` (per symbol, its runs with their detail, sections, path, data source, config hash and commit, and the analytics files present; the window, r and starting cash every run shares; the exporter's version) and `rules.json` (per run ID, the rules as it ran them: params, rendered text, and a variant's changes against its strategy).
@@ -755,7 +764,7 @@ Recipes run under bash (`set shell := ["bash", "-cu"]`): Git Bash locally, bash 
 | `check` | pre-commit on all files, pytest, `pmcc export --schema-only`, web lint/typecheck/vitest |
 | `test *ARGS` | pytest (dev profile unless `HYPOTHESIS_PROFILE` is set), extra args passed through |
 | `probe SYM` · `fetch SYM START END *ARGS` | LSEG probes / pull (local only); `fetch` passes extra args, e.g. `--plan-only` |
-| `run SYM CONFIG` · `batch` · `calibrate *ARGS` | backtests; `calibrate` passes extra args, e.g. `--symbol NVDA --config configs/baseline_pmcc.yaml` or `--check` (DEC-93) |
+| `run SYM CONFIG` · `batch` · `calibrate *ARGS` | backtests; `batch` runs the 24-run matrix on every universe symbol (DEC-100); `calibrate` passes extra args, e.g. `--check`, or `--symbol NVDA` once a final block is removed (DEC-93) |
 | `export` · `verify` | site data / results validation |
 | `web-dev` · `web-build` · `e2e` · `serve` | frontend; `web-dev` and `web-build` run `export` first, and `web-build` the dist guard after; `e2e` builds, then runs the Playwright smoke test |
 | `reproduce` | cached data → batch → verify → export → web build (Spec › CLI) |
@@ -779,7 +788,8 @@ CI (`.github/workflows/ci.yml`, on push and PR; DEC-79):
   - A command calls `pmcc.log.configure_logging(command)` once at startup; every other module calls `structlog.get_logger()`.
   - Each event carries `event`, `level`, `timestamp` (ISO 8601, UTC) and `command`; exceptions are rendered as text in `exception`. Level INFO and up.
   - Every soft fetch failure is one `fetch.ric.unanswered` event, logged once per RIC the service left unanswered, with `symbol`, `unit`, `ric`, `form` (for an option RIC), `reason` (`no_data` or `empty`), `codes` and `message` (Spec › Stack, DEC-83). `fetch.batch.rejected` and `fetch.retry` carry `size` and the error.
-  - Event names: `fetch.plan`, `fetch.unit.start|done`, `fetch.increment.unmeasured`, `fetch.ric.unanswered`, `fetch.batch.rejected`, `fetch.retry`, `fetch.abort.outage`, `fetch.coverage`, `fetch.coverage.unit`, `engine.entry.retry`, `engine.gate.fired`, `engine.exit.pending`, `engine.exit.unevaluated` (a rule on a fresh quote missing an input, with `rule`, `option` and `iv_code`; DEC-27), `invariant.failed`, `run.done` (with `trades`, `bars`, `weeks`, `detail` and `git_dirty`), `run.abort` (DEC-92), `export.done` (with `runs`, `symbols`, `files` and `unpublishable`), `export.abort`, `verify.done` (with `runs` and `files`), `verify.failed` (with `files` and `problems`) (DEC-96), `calibrate.measured` (with `symbol`, `run_id`, `time`, `contract` and `cost`), `calibrate.verified` (with `symbol`, `run_id`, `lowest`, `lowest_at` and `negative_bars`), `calibrate.done` (with `value`, `provisional` and `runs`), `calibrate.abort` (DEC-93).
+  - Event names: `fetch.plan`, `fetch.unit.start|done`, `fetch.increment.unmeasured`, `fetch.ric.unanswered`, `fetch.batch.rejected`, `fetch.retry`, `fetch.abort.outage`, `fetch.coverage`, `fetch.coverage.unit`, `engine.entry.retry`, `engine.gate.fired`, `engine.exit.pending`, `engine.exit.unevaluated` (a rule on a fresh quote missing an input, with `rule`, `option` and `iv_code`; DEC-27), `invariant.failed`, `run.done` (with `trades`, `bars`, `weeks`, `detail` and `git_dirty`), `run.abort` (DEC-92), `export.done` (with `runs`, `symbols`, `files` and `unpublishable`), `export.abort`, `verify.done` (with `runs` and `files`), `verify.failed` (with `files` and `problems`) (DEC-96), `calibrate.measured` (with `symbol`, `run_id`, `time`, `contract` and `cost`), `calibrate.verified` (with `symbol`, `run_id`, `lowest`, `lowest_at` and `negative_bars`), `calibrate.done` (with `value`, `provisional` and `runs`), `calibrate.abort` (DEC-93), `batch.symbol.done` (with `symbol`, `runs` and `failed`), `batch.symbol.abort`, `batch.coverage.abort`, `batch.done` (with `symbols`, `runs`, `ok` and `universe`) (DEC-100).
+  - `pmcc batch`'s workers each configure logging with a suffix, `logs/batch_{timestamp}_worker{pid}.jsonl`, so no two processes append to one file (DEC-100).
 - **Errors:** the failure taxonomy is DEC-49.
 - **Secrets:**
   - `lseg-data.config.json` is gitignored, blocked by a pre-commit hook, and checked in CI (`git ls-files` must not list it).

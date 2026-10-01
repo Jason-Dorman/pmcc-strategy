@@ -11,6 +11,9 @@ define, patches `fill_model` field by field, and changes the parent's rules only
 `id`, `name` and `report` are never inherited: the file loaded names the strategy and says how
 much of its runs to keep, so a variant keeps a summary unless its own file says otherwise (PO,
 DEC-54). Rules stay raw mappings here; `pmcc.config.strategy` validates the result.
+
+A strategy can also be written inline, as an entry of `configs/sensitivity.yaml` (P5-02): it
+resolves like a file in that file's directory (`resolve_inline`).
 """
 
 from dataclasses import dataclass, field
@@ -95,21 +98,28 @@ def resolve(path: Path) -> Resolved:
     return _resolve(path.resolve(), ())
 
 
+def resolve_inline(file: StrategyFile, directory: Path, name: str) -> Resolved:
+    """`file`, written inside another file (named `name` in errors), as if it were a file in
+    `directory`: its `extends` is relative to `directory`."""
+    return _with_parent(file, directory.resolve(), (), name)
+
+
 def _resolve(path: Path, chain: tuple[Path, ...]) -> Resolved:
     if path in chain:
         raise ConfigError(f"extends cycle: {' → '.join(p.name for p in (*chain, path))}")
     if not path.is_file():  # a directory too, which Windows and Linux would report differently
         raise FileNotFoundError(f"no config file at {path}")
     file = StrategyFile.model_validate(read_yaml(path))
-    parent = (
-        _resolve((path.parent / file.extends).resolve(), (*chain, path))
-        if file.extends
-        else Resolved()
-    )
+    return _with_parent(file, path.parent, (*chain, path), path.name)
+
+
+def _with_parent(file: StrategyFile, directory: Path, chain: tuple[Path, ...],
+                 name: str) -> Resolved:  # fmt: skip
+    parent = _resolve((directory / file.extends).resolve(), chain) if file.extends else Resolved()
     try:
         return _fold(parent, file)
     except ConfigError as e:
-        raise ConfigError(f"{path.name}: {e}") from None
+        raise ConfigError(f"{name}: {e}") from None
 
 
 def _fold(parent: Resolved, file: StrategyFile) -> Resolved:

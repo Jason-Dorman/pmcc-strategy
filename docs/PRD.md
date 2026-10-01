@@ -125,9 +125,9 @@ Every row points to its source. "Verified by" names the invariant test (INV-nn),
 | --- | --- | --- | --- |
 | FR-B1 | Strategies `baseline_pmcc` and `quant_pmcc`, defined as configs | Spec › Strategies; DEC-53 | `tests/unit/config/test_baseline_config.py` (P3-01); `test_quant_config.py` (P4-03, DEC-95) |
 | FR-B2 | Ablations A1–A5: quant with one layer removed | Spec › Ablations; DEC-53, DEC-95 | config-diff test, `tests/unit/config/test_quant_config.py` (P4-03) |
-| FR-B3 | Sensitivity: friction at 0 / 0.25 / 0.50 for both strategies; entry timing (baseline, one run per week-open bar); parameter grid (quant, one parameter at a time). Every result is published. | Spec › Sensitivity checks; DEC-31 | P5-02, P6-06 |
-| FR-B4 | A universe batch over `configs/universe.yaml` (QQQ, NVDA, TSLA; DEC-15) on one common window, Mon Mar 30 – Fri Sep 25 2026 (26 weeks; at least 10 required); any symbol can run alone | Spec › Universe; DEC-07, DEC-15 | `tests/unit/config/test_universe_file.py`; P5-04 |
-| FR-B5 | One starting cash balance for every symbol and run, fixed before the first run: `pmcc calibrate` sets it to 2 × the most expensive first long-leg cost, rounded up to $5,000 (E-L4's `cash_multiple` and `cash_round_to`), checks that it covers every entry, reports each run's lowest available funds, and writes it with its basis into `configs/universe.yaml`, provisional until every symbol is in under both strategies. `pmcc run` reads it only from there, refuses to run without it, and says when it's provisional | Spec › E-L4; DEC-30, DEC-93 | `tests/unit/test_cli_run.py` (P3-08); `tests/unit/config/test_capital.py`, `tests/scenario/test_calibration.py`, `tests/unit/test_cli_calibrate.py` (P3-09); P5-01 |
+| FR-B3 | Sensitivity: friction at 0 / 0.25 / 0.50 for both strategies; entry timing (baseline, one run per week-open bar); parameter grid (quant, one parameter at a time). Every result is published. | Spec › Sensitivity checks; DEC-31 | `tests/unit/config/test_sensitivity_config.py`, `tests/scenario/test_scenario_timing.py` (P5-02); P6-06 |
+| FR-B4 | A universe batch over `configs/universe.yaml` (NVDA for now; QQQ and TSLA commented out, PO, DEC-15) on one common window, Mon Mar 30 – Fri Sep 25 2026 (26 weeks; at least 10 required); any symbol can run alone | Spec › Universe; DEC-07, DEC-15, DEC-100 | `tests/unit/config/test_universe_file.py`, `tests/unit/test_cli_batch.py` (P5-03); P5-04 |
+| FR-B5 | One starting cash balance for every symbol and run, fixed before the first run: `pmcc calibrate` sets it to 2 × the most expensive first long-leg cost, rounded up to $5,000 (E-L4's `cash_multiple` and `cash_round_to`), checks that it covers every entry, reports each run's lowest available funds, and writes it with its basis into `configs/universe.yaml`, provisional until every symbol is in under both strategies (final at P5-01: $15,000 from NVDA, DEC-30). `pmcc run` reads it only from there, refuses to run without it, and says when it's provisional | Spec › E-L4; DEC-30, DEC-93 | `tests/unit/test_cli_run.py` (P3-08); `tests/unit/config/test_capital.py`, `tests/scenario/test_calibration.py`, `tests/unit/test_cli_calibrate.py` (P3-09); P5-01 |
 | FR-B6 | `just reproduce`: cached data → all runs → export → built site | Spec › CLI | INV-13; P8-01 |
 
 ### 6.7 Analytics
@@ -188,7 +188,7 @@ Every row points to its source. "Verified by" names the invariant test (INV-nn),
 | HR-5 | Small-sample statistics are shown with bootstrap CIs, never as standalone headlines. Sharpe and Sortino are unannualized, or labelled. | P6-05 |
 | HR-6 | Every sensitivity result is published in full; no best-cell picks | P6-06 |
 | HR-7 | The fill-assumption fit is published even where it's weak (the long leg) | P6-07 |
-| HR-8 | Data coverage is disclosed: unanswered contracts, IV failures, stale-mark rates, unavailable fields | `coverage.json`; Methodology |
+| HR-8 | Data coverage is disclosed: unanswered contracts, IV failures, stale-mark rates, unavailable fields | `coverage.json`, written by `pmcc batch` (P5-03, DEC-100); Methodology |
 | HR-9 | Stated assumptions: r (value and source); q = 0; no early assignment; dividends out of scope; Black-Scholes on American calls; the bar's final quotes aren't proven to be the NBBO (LDG §4.14) | Methodology |
 | HR-10 | Synthetic data can never pass for real | banner (DEC-74) |
 

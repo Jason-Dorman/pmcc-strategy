@@ -1,0 +1,188 @@
+# The sensitivity runs (Spec › Sensitivity checks; ARCHITECTURE §11): robustness reporting, not
+# optimization, so every result is published and none is picked as the best (HR-6).
+#
+# Each entry is a strategy variant written as an ablation file is, inline: it `extends` a strategy
+# file (relative to this one) and changes only what its check varies, through `fill_model` or
+# `overrides` keyed by rule ID (DEC-53). Its run ID is the strategy's ID, `--`, a suffix. Every
+# variant keeps a summary (PO, DEC-54). Loaded by pmcc.config.matrix, which runs them after the two
+# strategies and the five ablations: 24 runs per symbol.
+
+variants:
+  # ── Friction: both strategies at spread_capture 0.25 and 0.50 (the strategies run at 0) ───────
+  - id: baseline_pmcc--sc025
+    name: "Friction: baseline at spread capture 0.25"
+    extends: baseline_pmcc.yaml
+    report: {detail: summary}
+    fill_model: {spread_capture: 0.25}
+
+  - id: baseline_pmcc--sc050
+    name: "Friction: baseline at spread capture 0.50"
+    extends: baseline_pmcc.yaml
+    report: {detail: summary}
+    fill_model: {spread_capture: 0.50}
+
+  - id: quant_pmcc--sc025
+    name: "Friction: quant at spread capture 0.25"
+    extends: quant_pmcc.yaml
+    report: {detail: summary}
+    fill_model: {spread_capture: 0.25}
+
+  - id: quant_pmcc--sc050
+    name: "Friction: quant at spread capture 0.50"
+    extends: quant_pmcc.yaml
+    report: {detail: summary}
+    fill_model: {spread_capture: 0.50}
+
+  # ── Entry timing (PO, DEC-31): the baseline with E-T1 replaced by a fixed bar of the week-open
+  # session, one run per session bar. Every bar's rule has the same text (the aliases set in t1)
+  # and E-T1's spread limits (a test holds them equal); only `bar` changes. ─────────────────────
+  - id: baseline_pmcc--t1
+    name: "Timing: baseline, short decided on bar 1 (10:00)"
+    extends: baseline_pmcc.yaml
+    report: {detail: summary}
+    overrides:
+      E-T1:
+        replace:
+          name: &timing_name Entry trigger, fixed bar
+          kind: fixed_bar_trigger
+          params: {bar: 1, long_max_spread: 0.03, short_max_spread: 0.10}
+          condition: &timing_condition >-
+            The selected contract has a valid bid and ask, and its spread is at most
+            {long_max_spread:.0%} of mid for the long leg or {short_max_spread:.0%} for the short
+            leg
+          action: &timing_action >-
+            Enter the long on the first bar of the session where the condition holds. Decide the
+            short only on session bar {bar} of the week-open session (bar 1 ends at 10:00): sell
+            it if the condition holds there, or else G-1 skips the week
+          rationale: &timing_rationale >-
+            The entry-timing check: the baseline with E-T1's liquidity trigger replaced by a fixed
+            bar of the week-open session, run once for each of its bars. Large dispersion in
+            results across the bars is reported as fragility.
+
+  - id: baseline_pmcc--t2
+    name: "Timing: baseline, short decided on bar 2 (11:00)"
+    extends: baseline_pmcc.yaml
+    report: {detail: summary}
+    overrides:
+      E-T1:
+        replace:
+          name: *timing_name
+          kind: fixed_bar_trigger
+          params: {bar: 2, long_max_spread: 0.03, short_max_spread: 0.10}
+          condition: *timing_condition
+          action: *timing_action
+          rationale: *timing_rationale
+
+  - id: baseline_pmcc--t3
+    name: "Timing: baseline, short decided on bar 3 (12:00)"
+    extends: baseline_pmcc.yaml
+    report: {detail: summary}
+    overrides:
+      E-T1:
+        replace:
+          name: *timing_name
+          kind: fixed_bar_trigger
+          params: {bar: 3, long_max_spread: 0.03, short_max_spread: 0.10}
+          condition: *timing_condition
+          action: *timing_action
+          rationale: *timing_rationale
+
+  - id: baseline_pmcc--t4
+    name: "Timing: baseline, short decided on bar 4 (13:00)"
+    extends: baseline_pmcc.yaml
+    report: {detail: summary}
+    overrides:
+      E-T1:
+        replace:
+          name: *timing_name
+          kind: fixed_bar_trigger
+          params: {bar: 4, long_max_spread: 0.03, short_max_spread: 0.10}
+          condition: *timing_condition
+          action: *timing_action
+          rationale: *timing_rationale
+
+  - id: baseline_pmcc--t5
+    name: "Timing: baseline, short decided on bar 5 (14:00)"
+    extends: baseline_pmcc.yaml
+    report: {detail: summary}
+    overrides:
+      E-T1:
+        replace:
+          name: *timing_name
+          kind: fixed_bar_trigger
+          params: {bar: 5, long_max_spread: 0.03, short_max_spread: 0.10}
+          condition: *timing_condition
+          action: *timing_action
+          rationale: *timing_rationale
+
+  - id: baseline_pmcc--t6
+    name: "Timing: baseline, short decided on bar 6 (15:00)"
+    extends: baseline_pmcc.yaml
+    report: {detail: summary}
+    overrides:
+      E-T1:
+        replace:
+          name: *timing_name
+          kind: fixed_bar_trigger
+          params: {bar: 6, long_max_spread: 0.03, short_max_spread: 0.10}
+          condition: *timing_condition
+          action: *timing_action
+          rationale: *timing_rationale
+
+  - id: baseline_pmcc--t7
+    name: "Timing: baseline, short decided on bar 7 (16:00)"
+    extends: baseline_pmcc.yaml
+    report: {detail: summary}
+    overrides:
+      E-T1:
+        replace:
+          name: *timing_name
+          kind: fixed_bar_trigger
+          params: {bar: 7, long_max_spread: 0.03, short_max_spread: 0.10}
+          condition: *timing_condition
+          action: *timing_action
+          rationale: *timing_rationale
+
+  # ── Parameter grid (quant): one parameter at a time from its default (k 1.00, G-4 1.00,
+  # G-3 1.20) ───────────────────────────────────────────────────────────────────────────────────
+  - id: quant_pmcc--k075
+    name: "Grid: quant with k = 0.75"
+    extends: quant_pmcc.yaml
+    report: {detail: summary}
+    overrides:
+      E-S3: {params: {k: 0.75}}
+
+  - id: quant_pmcc--k125
+    name: "Grid: quant with k = 1.25"
+    extends: quant_pmcc.yaml
+    report: {detail: summary}
+    overrides:
+      E-S3: {params: {k: 1.25}}
+
+  - id: quant_pmcc--g4r090
+    name: "Grid: quant with G-4 at 0.90"
+    extends: quant_pmcc.yaml
+    report: {detail: summary}
+    overrides:
+      G-4: {params: {min_ratio: 0.90}}
+
+  - id: quant_pmcc--g4r110
+    name: "Grid: quant with G-4 at 1.10"
+    extends: quant_pmcc.yaml
+    report: {detail: summary}
+    overrides:
+      G-4: {params: {min_ratio: 1.10}}
+
+  - id: quant_pmcc--g3r110
+    name: "Grid: quant with G-3 at 1.10"
+    extends: quant_pmcc.yaml
+    report: {detail: summary}
+    overrides:
+      G-3: {params: {max_ratio: 1.10}}
+
+  - id: quant_pmcc--g3r130
+    name: "Grid: quant with G-3 at 1.30"
+    extends: quant_pmcc.yaml
+    report: {detail: summary}
+    overrides:
+      G-3: {params: {max_ratio: 1.30}}
