@@ -444,6 +444,8 @@ def test_inv_13_two_runs_are_byte_identical_once_the_volatile_values_are_dropped
     two_flags = next((tmp_path / "a" / "friday_unquoted_at_check").rglob("*.json"))
     multi = cast(dict[str, Any], json.loads(two_flags.read_bytes()))
     assert any(len(bar["flags"]) >= 2 for bar in multi["ledger"])
+    quant = next((tmp_path / "a" / "random_walk_quant").rglob("*.json"))
+    assert cast(dict[str, Any], json.loads(quant.read_bytes()))["attribution"]["greek"]
 
 
 def test_inv_13_the_subprocess_entry_is_the_in_process_run(tmp_path: Path) -> None:

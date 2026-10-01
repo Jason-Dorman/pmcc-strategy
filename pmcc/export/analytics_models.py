@@ -4,9 +4,10 @@ and the universe files.
 These are the shapes the site reads, fixed at P4-05 so the frontend is typed against every output
 it will load (INV-14). Their fields follow Spec › Analytics and metrics and the panels of UI-SPEC
 §6, and `pmcc.analytics` computes them as the PO defined each number (DEC-60 to DEC-64, DEC-76):
-the performance metrics, cycles and bootstrap CIs at P6-01, P6-02 and P6-05, the robustness tables
-at P6-06; the rest stay null until their P6 item. A P6 item may reshape a model when it builds it,
-regenerating the schema, and `tsc` then shows the site what changed (ARCHITECTURE §16).
+the performance metrics, cycles and bootstrap CIs at P6-01, P6-02 and P6-05, the attribution at
+P6-03 and P6-04, the robustness tables at P6-06; the rest stay null until their P6 item. A P6 item
+may reshape a model when it builds it, regenerating the schema, and `tsc` then shows the site what
+changed (ARCHITECTURE §16).
 
 Every ratio is a fraction, whatever its name says (0.25 is 25%); the site formats it.
 """
@@ -106,46 +107,83 @@ class Cycle(Model):
 
 
 class LegPoint(Model):
+    """Both legs at a session's close: the long's P&L so far, realized and at its mark, and the
+    net short premium so far."""
+
     session: date
     long_pnl: Dollars
     net_short_premium: Dollars
 
 
 class LegAttribution(Model):
-    """Net short premium against long-leg P&L (P6-03, DEC-63)."""
+    """Net short premium against long-leg P&L (P6-03; PO, DEC-63). Cash is net of fees.
+
+    - **Short leg:** credits − buybacks, X-S4 and X-S5 buying back at $0. `short_open` is a short
+      still open at the window's end, at its last mark (0 when none).
+    - **X-S5's stock**, shown apart: its sale at the strike, its cover and any open mark.
+    - **Long leg:** realized and unrealized P&L. Its intrinsic part is each long's change in
+      max(0, S − K) × 100 × contracts from its entry bar to its exit bar (or the last bar), S the
+      bar's spot, or the last spot before it on a bar without a trade; the extrinsic part is the
+      rest, fees and friction included.
+
+    The parts add up to the run's P&L: long + net short premium − short_open + stock."""
 
     short_credits: Dollars
     short_buybacks: Dollars
     net_short_premium: Dollars
-    assignment_loss: Dollars  # X-S5's stock, shown apart
+    short_open: Dollars
+    assignment_stock_pnl: Dollars
     long_pnl: Dollars
     long_intrinsic: Dollars
     long_extrinsic: Dollars
-    series: tuple[LegPoint, ...]
+    series: tuple[LegPoint, ...]  # one per session
+
+
+class GreekLeg(Model):
+    """One leg's change over the run, and how many of its bars the Greeks priced (P6-04)."""
+
+    leg: str  # "long" or "short"
+    change: Dollars  # ΔV over every bar: the leg's P&L
+    bars_held: int  # bars that began with the leg held
+    bars_unattributed: int  # of those, wholly residual (see GreekAttribution)
 
 
 class GreekRow(Model):
+    """One leg × component: its dollars over the run and its share of the leg's change."""
+
     leg: str  # "long" or "short"
     component: str  # "delta", "gamma", "theta", "vega" or "residual"
     dollars: float
-    share_of_change: float | None
+    share_of_change: float | None  # null when the leg's change is 0
 
 
 class ResidualPoint(Model):
+    """The residual so far, both legs, at a bar's end."""
+
     time: datetime
     cumulative: float
 
 
 class GreekAttribution(Model):
-    """Bar-by-bar Greek attribution with its residual (P6-04, DEC-63, DEC-76)."""
+    """Bar-by-bar Greek attribution with its residual (P6-04; PO, DEC-63, DEC-76). On each bar a
+    leg held at the previous bar's end is predicted to move by δΔS + ½Γ(ΔS)² + θΔt + νΔσ, with
+    that bar's Greeks (DEC-24 units, Δt in elapsed years) and the position's sign and size; the
+    residual is its actual change less the prediction. The IV at the bar's end is the leg's own,
+    or the IV its closing fill was at. A bar with a stale mark or no spot at either end, an IV or
+    Greek unknown (a call under its floor has DEC-27's Greeks but no IV, so it counts), or a close
+    without a fill (X-S4, X-S5) is residual whole and counted in its leg's `bars_unattributed`. A
+    bar's actual change is the leg's P&L over it, so a trade's friction and fees fall in the
+    residual."""
 
-    rows: tuple[GreekRow, ...]
-    residual: tuple[ResidualPoint, ...]
-    bars_unattributed: int
+    legs: tuple[GreekLeg, ...]
+    rows: tuple[GreekRow, ...]  # leg × component
+    residual: tuple[ResidualPoint, ...]  # one per bar
 
 
 class Attribution(Model):
-    leg: LegAttribution | None
+    """A full run's attribution: by leg, and by Greek where its page shows it (DEC-54)."""
+
+    leg: LegAttribution
     greek: GreekAttribution | None
 
 

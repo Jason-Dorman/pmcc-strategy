@@ -5,11 +5,12 @@ ledger and gate log into the result's rows, stamped with the run's manifest. The
 runtime invariants on every bar and raises on a failure, so a result exists only for a run that
 held them all (DEC-49).
 
-The strategy's `report` block decides the detail (PO, DEC-54): a full run keeps its rows and its
-cycles, a summary run only its summary. Every result's summary records the runtime invariants the
-run held, how many ledger rows carried each flag, and the run's analytics (`pmcc.analytics.run`):
-its metrics, cycle statistics, exit mix, skips, session closes and weekly returns, whose bootstrap
-CI is seeded with the universe's `bootstrap.seed` (DEC-60 to DEC-62).
+The strategy's `report` block decides the detail (PO, DEC-54): a full run keeps its rows, its
+cycles and its attribution (by Greek only where its sections ask), a summary run only its summary.
+Every result's summary records the runtime invariants the run held, how many ledger rows carried
+each flag, and the run's analytics (`pmcc.analytics.run`): its metrics, cycle statistics, exit mix,
+skips, session closes and weekly returns, whose bootstrap CI is seeded with the universe's
+`bootstrap.seed` (DEC-60 to DEC-62).
 
 A symbol is priced once (`Market.prepare`) and each config runs on it (`run_market`), so
 `pmcc calibrate` and `pmcc batch` price a symbol once for all its runs (ARCHITECTURE §11). A run
@@ -113,7 +114,8 @@ def run_market(market: Market, config: RunConfig, starting_cash: Money,
     """Run `config` on a prepared market into its result, its bootstrap seeded with `seed`;
     raises as `run_output` does."""
     output = run_output(market, config, starting_cash)
-    result = to_result(output, market, config, stamp, analyze(output, seed))
+    analytics = analyze(output, seed, config.strategy.report)
+    result = to_result(output, market, config, stamp, analytics)
     log.info("run.done", symbol=market.loaded.symbol, run_id=config.strategy.id,
              trades=len(output.blotter), bars=len(output.ledger), weeks=len(output.gate_log),
              detail=config.strategy.report.detail.value,
@@ -165,6 +167,7 @@ def to_result(output: RunOutput, market: Market, config: RunConfig, stamp: Stamp
         ledger=tuple(_ledger_row(r, names) for r in output.ledger) if full else None,
         gate_log=tuple(_gate_row(g) for g in output.gate_log) if full else None,
         cycles=analytics.cycles if full else None,
+        attribution=analytics.attribution,
     )
 
 

@@ -114,6 +114,7 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-99 | The Playwright smoke test (INV-15) | ENG | — |
 | DEC-100 | Sensitivity variants, the run matrix and `pmcc batch` | ENG · universe files at P6, coverage at P5-03 (PO, 2026-09-30); full batch run at P5-04 (2026-10-01) | — |
 | DEC-101 | The analytics: performance, cycles, bootstrap CIs, robustness tables | ENG | — |
+| DEC-102 | Attribution: what the engine records for it, the leg and Greek modules | ENG | — |
 
 ---
 
@@ -1944,6 +1945,85 @@ How P4-05 builds the results contract (ARCHITECTURE §12). None of it changes wh
     - `RunRecords` lacking what P6-03 and P6-04 need (P6-03 and P6-04 aren't built yet);
     - the spec's undefined "fragility" (older than this change, and nothing here depends on it).
 
+### DEC-102 — Attribution: what the engine records for it, the leg and Greek modules
+**Status:** ENG · **Affects:** P6-03, P6-04, P6-09, P7-01; DEC-23, DEC-24, DEC-27, DEC-54, DEC-63, DEC-76, DEC-101
+
+- **The engine records what the Greek attribution needs, as it saw it** (ARCHITECTURE §8, §12):
+  - each ledger row holds the bar's `spot`, the stock's TRDPRC_1 (DEC-23), null without a trade;
+  - each held leg holds its `LegGreeks` (IV, δ, Γ, θ, ν), its chain row's on the bar, through
+    `pmcc/engine/greeks.py` (`leg_greeks`), which the delta already came from. None is known
+    without a valid quote, and a value pricing left NaN is null: a call under its floor keeps
+    DEC-27's Greeks with no IV;
+  - every option fill's audit holds `fill_iv`, the IV of the quote it filled at. The bar a leg
+    closes on needs it, since the ledger no longer holds the leg there.
+  - **Why the engine, not a lookup afterwards:** the analytics read only the run's records
+    (`RunRecords`, DEC-101), never the market, so the Greeks they price a bar with are the ones
+    the engine held.
+- **Results:** the published ledger is unchanged; its legs keep their delta alone. Publishing the
+  spot and the other Greeks would add a field to every ledger row, and `pmcc verify` re-writes
+  each committed file through the models (every field always written, DEC-96), so the committed
+  results would fail it, and CI with them, until P6-09 regenerates them. Option fills' audits gain
+  `fill_iv`; an audit is a free-form map, so the committed files are unchanged by it. The schema
+  stays at version 2, and `pmcc verify results/` passes on the committed results.
+- **`pmcc/analytics/`:**
+  - `attribution.py` (P6-03): `leg_attribution(run)`, in exact integer money.
+  - `greek_attribution.py` (P6-04): `greek_attribution(run)`. Each float term is summed as the
+    fraction it is (`Fraction`), so no total depends on bar order, and a leg's components add up
+    to its change exactly before they are published.
+  - `run.py`: `analyze(run, seed, report)` adds `attribute(run, report)`: by leg for a full run, by
+    Greek too where the strategy's `report.sections` lists `greek_attribution` (DEC-54), so the
+    baseline's file has no Greek table and quant's has one.
+  - `records.py` gains `cash`, `by_bar`, `leg_value`, `stock_value`, `trades_long` and
+    `trades_short`.
+  - **Δt** is `pricing.expiry.years_between`, the elapsed-time half of `years_to_expiry` split out,
+    so θΔt runs on DEC-24's UTC clock and a clock change counts its hour. The analytics now import
+    `pmcc.pricing` (that module only).
+- **Model reshapes** (`pmcc/export/analytics_models.py`):
+  - `LegAttribution` gains `short_open`; `assignment_loss` becomes `assignment_stock_pnl`, a
+    signed P&L.
+  - `GreekAttribution`'s single `bars_unattributed` becomes `legs`: per leg, its change, bars
+    held and bars unattributed.
+  - `Attribution.leg` is never null.
+- **Tests (34 new, 2,057 in the suite, 8 of them from the review):**
+  - `tests/unit/analytics/test_attribution.py` (11): a roll with fees worked by hand (each leg,
+    the intrinsic and extrinsic split, the series), X-S5's stock covered and still held, an open
+    short, the spot carried to a bar without a trade, two contracts, and the refusals.
+  - `tests/unit/analytics/test_greek_attribution.py` (16): each term over two bars, the closing
+    fill's IV, each leg's own fill IV when both close on one bar, the short's sign, shares adding
+    up to 1, a stale mark, a quote under its floor, a bar without a spot, an expiry, an assignment
+    whose stock stays out of both legs, two contracts, θ across the Nov 1 clock change (67 elapsed
+    hours, not 66), an entry's friction and fee, and a re-entry on the bar the long is sold.
+  - `tests/scenario/test_scenario_greeks.py` (6): on two synthetic markets (quant with an X-S4,
+    the baseline with an X-S5 and its stock), every ledger row's spot and every held leg's Greeks
+    are the chain's, every option fill's `fill_iv` is, and an expiry, an assignment and the stock
+    rows carry none.
+  - `tests/scenario/test_export.py`: a full run carries its attribution and only quant its Greek
+    table; and on the synthetic market the legs add up to the run's P&L, the series ends at the
+    totals, and each leg's Greek rows add up to its own P&L.
+  - `tests/scenario/inv13_run.py` gains quant on `random_walk`, so INV-13 compares the Greek
+    attribution across two processes with different hash seeds.
+  - `tests/fakes/legs.py` builds a ledger whose cash and NAV follow from its blotter;
+    `tests/fakes/records.py`'s `trade` takes a contract count.
+- **Review:** 2026-10-01 — an adversarial review (4 reviewers, 2 skeptics per finding) found 13
+  findings, 10 unique, and verified all 10: 7 confirmed, 2 plausible, 1 refuted. None changes a
+  published number; all 9 are fixed.
+  - **In tests:**
+    - nothing pinned which fill `_end_iv` reads: matching any instrument, or SELLs only, passed
+      every test, and SELLs only would move quant's short residual from +$99.72 to −$1,041.02;
+    - nothing kept X-S5's stock out of the short leg's Greek change;
+    - the scenario test's "no fill IV on stock rows" ran over a run with no stock rows;
+    - no attribution test held more than one contract (plausible: the spec fixes one);
+    - INV-13 never compared a Greek attribution across processes (plausible).
+    Each mutant the reviewers showed surviving now fails a test.
+  - **In docs:** DEC-63's outcome said none of the first five details arises on NVDA, but the
+    closing fill's IV and ΔV as the bar's P&L decide every published figure; the models'
+    docstrings lacked the carried spot and the below-floor rule; TEST-STRATEGY cited the wrong
+    file for the reconciliation and overstated the residual cases tested; ARCHITECTURE §11's
+    determinism table left out the Greek attribution's exact sums.
+  - **Refuted:** that the open details should have gone to the PO before building. The skeptics
+    found the below-floor reading is DEC-63's own wording ("a failed IV") read with DEC-27, and
+    the rest don't arise in the published runs; all are listed for the PO to change.
+
 ## E. Analytics definitions
 
 These define the reported numbers, so each goes to the PO. They're asked as one batch when P6 starts.
@@ -2044,7 +2124,43 @@ These define the reported numbers, so each goes to the PO. They're asked as one 
   - Per bar and per leg, predicted = δΔS + ½Γ(ΔS)² + θΔt + νΔσ, using the previous bar's Greeks and DEC-24 units.
   - Residual = actual − predicted.
   - A bar with a stale endpoint or a failed IV counts entirely as residual, and the number of such bars is reported.
-- **Outcome:** 2026-10-01 — PO, at P6 start: **as recommended.** To be built at P6-03 and P6-04.
+- **Outcome:** 2026-10-01 — PO, at P6 start: **as recommended.** Built at P6-03 and P6-04
+  (`pmcc/analytics/attribution.py`, `greek_attribution.py`, DEC-102). Where the recommendation
+  leaves a detail open, the build does this; each is in the docstrings of the models, which the
+  schema and the site's types carry, and any is the PO's to change. Three decide NVDA's published
+  figures: the closing fill's IV prices every buyback and long sale in both full runs, ΔV as the
+  leg's P&L over the bar is every bar's actual change, and the below-floor reading makes 25 of
+  quant's long bars residual. The rest (an open short, X-S5's stock, a carried spot, friction,
+  an X-S4 or X-S5 bar) don't arise in either:
+  - **a short still open at the window's end** is reported apart at its last mark
+    (`short_open`), so long + net short premium − open short + X-S5's stock = the run's P&L, to
+    the $0.0001; a run whose legs don't add up raises;
+  - **X-S5's stock** is one signed P&L: its sale at the strike, its cover, and any open mark;
+  - **the long's intrinsic value** uses the bar's spot (TRDPRC_1, DEC-23), or the last spot
+    before it on a bar without a trade; the extrinsic part, being the rest, holds the long's
+    fees and friction;
+  - **a bar's ΔV is the leg's P&L over the bar** (its value at the bar's end, plus its trades'
+    cash, less its value at the previous end), so the Greek table adds up to the leg attribution,
+    and a trade's friction and fees fall in the residual (none at the default fill model, so none
+    in the published runs);
+  - **on the bar a leg is closed,** Δσ ends at the IV its fill was at; an X-S4 expiry or an X-S5
+    assignment has no fill (and T is 0 at the close), so its bar is residual whole;
+  - **"a failed IV" includes a call under its floor,** although DEC-27 gives it Greeks (δ 1,
+    Γ = ν = 0): it has no IV, so Δσ is unknown and its bars are residual whole;
+  - **the unattributed bars are counted per leg,** beside the bars the leg was held, their
+    denominator.
+  - **NVDA, from the uncommitted tree** (results are regenerated at P6-09):
+    - **Baseline:** long +$4,162.50 (intrinsic +$5,877.28, extrinsic −$1,714.78); short credits
+      $2,742.00 less buybacks $3,232.00, −$490.00; P&L $3,672.50.
+    - **Quant:** long +$4,955.00 (intrinsic +$5,964.77, extrinsic −$1,009.77); short $803.50 less
+      $2,455.00, −$1,651.50; P&L $3,303.50. The credits and buybacks are DEC-62's.
+    - **Quant by Greek:** the long's δ +$6,686.05, Γ +$367.45, θ −$838.24, ν −$2,282.44 and
+      residual +$1,022.18 (20.6% of its change); the short's δ −$1,197.19, Γ −$1,091.09,
+      θ +$836.54, ν −$299.48 and residual +$99.72 (−6.0% of −$1,651.50).
+    - **Unattributed:** 25 of the long's 872 bars, every one a quote under its floor (DEC-27);
+      none of the short's 138. Those 25 carry −$1,497.50 of the long's residual and the 847 priced
+      bars +$2,519.68. Neither run had a stale mark, a bar without a spot, an X-S5 or a short
+      open at the end.
 
 ### DEC-64 — Fill-assumption check
 **Status:** SETTLED · **Basis:** PO, 2026-10-01, at P6 start · **Affects:** P6-07
@@ -2141,6 +2257,10 @@ These define the reported numbers, so each goes to the PO. They're asked as one 
 - A five-series stacked chart would need five hues the baseline palette doesn't have.
 - **Outcome:** 2026-10-01 — PO, at P6 start: **as recommended**, as UI-SPEC §4 and §6.2 already
   describe it. To be built at P6-04 and P7-01.
+- **Outcome:** 2026-10-01 — the data built at P6-04 (DEC-63, DEC-102): `attribution.greek` holds
+  a row per leg × component (δ, Γ, θ, ν, residual) with its dollars and its share of the leg's
+  change, each leg's change with its bars held and unattributed, and the cumulative residual over
+  both legs at every bar. The display waits for P7-01.
 
 ---
 

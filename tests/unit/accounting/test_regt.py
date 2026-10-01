@@ -6,7 +6,7 @@ import pytest
 
 from pmcc.accounting.book import Book
 from pmcc.accounting.events import Event, Instrument, StockId, expected_cash
-from pmcc.accounting.ledger import ledger_row
+from pmcc.accounting.ledger import NO_GREEKS, LegGreeks, ledger_row
 from pmcc.accounting.marks import Mark, carry
 from pmcc.accounting.regt import funds_after, regt
 from pmcc.accounting.valuation import value
@@ -125,12 +125,15 @@ def test_funds_negative_flags_the_ledger_row() -> None:
     v = value(book, marks)
     r = regt(book, v, marks)
     assert r.funds_negative
-    row = ledger_row(T, book, marks, v, r, {LONG: 0.95}, flags=["exit_pending"])
+    greeks = {LONG: LegGreeks(None, 0.95, 0.0, -1.5, 0.0)}  # under its floor (DEC-27): no IV
+    row = ledger_row(T, book, marks, v, r, Price(1_500_000), greeks, flags=["exit_pending"])
     assert row.flags == ("exit_pending", "funds_negative")
     assert row.stock is not None
     assert row.stock.shares == -100
     assert row.long is not None
     assert row.long.delta == 0.95
+    assert row.long.greeks == greeks[LONG]
+    assert row.spot == Price(1_500_000)
     assert row.short is None
 
 
@@ -138,12 +141,14 @@ def test_ledger_row_carries_stale_flags_and_marks() -> None:
     book = Book(Money.from_dollars(1_000), {LONG: 1, SHORT: -1})
     marks = carry({LONG: mark(160), SHORT: mark(3)}, {LONG: None, SHORT: Price(20_000)}, T)
     v = value(book, marks)
-    row = ledger_row(T, book, marks, v, regt(book, v, marks), {})
+    row = ledger_row(T, book, marks, v, regt(book, v, marks), None, {})
     assert row.flags == ("stale_long",)
     assert row.long is not None
     assert row.long.stale
     assert row.short is not None
     assert row.short.mark == Price(20_000)
+    assert row.short.greeks == NO_GREEKS  # none passed: none known
+    assert row.spot is None
     assert row.nav == v.nav
 
 

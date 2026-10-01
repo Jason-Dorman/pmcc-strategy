@@ -44,6 +44,7 @@ from pmcc.domain.money import Money, Price
 from pmcc.domain.rules import RuleId
 from pmcc.domain.sessions import Session
 from pmcc.engine.fills import fill
+from pmcc.engine.greeks import leg_greeks
 from pmcc.strategy.exits import ExitRule
 from pmcc.strategy.measures import expected_move_at
 from pmcc.strategy.ports import (
@@ -127,7 +128,12 @@ class Trader:
     def _trade(self, view: MarketView, side: Side, instrument: OptionId | StockId, qty: int,
                rule_id: RuleId, notes: str,
                audit: Mapping[str, AuditValue]) -> Event | None:  # fmt: skip
-        quote = view.stock_quote() if isinstance(instrument, StockId) else view.quote(instrument)
+        """The fill, an option's audit recording the IV it filled at (P6-04)."""
+        if isinstance(instrument, StockId):
+            quote = view.stock_quote()
+        else:
+            quote = view.quote(instrument)
+            audit = {**audit, "fill_iv": leg_greeks(view, instrument).iv}
         return fill(time=view.now, side=side, instrument=instrument, qty=qty, quote=quote,
                     model=self.fill_model, rule_id=rule_id, notes=notes, audit=audit)  # fmt: skip
 

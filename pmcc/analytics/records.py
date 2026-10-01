@@ -9,15 +9,15 @@ exit sells it; E-S1 sells the short, and X-S1 to X-S5 close it (a buyback, X-S4'
 X-S5's assignment). X-S5's stock rows are the stock's, never a leg's.
 """
 
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from typing import Protocol, final
 
 from pmcc.accounting.events import Event
-from pmcc.accounting.ledger import LedgerRow
+from pmcc.accounting.ledger import LedgerRow, LegRow, StockRow
 from pmcc.domain.clock import to_et
-from pmcc.domain.instruments import Side
+from pmcc.domain.instruments import OPTION_MULTIPLIER, Side
 from pmcc.domain.money import Money
 from pmcc.domain.rules import RuleId
 
@@ -123,6 +123,37 @@ def closes_short(event: Event) -> bool:
     return event.is_option and event.side is not Side.SELL and event.rule_id.startswith("X-S")
 
 
+def trades_long(event: Event) -> bool:
+    return opens_long(event) or closes_long(event)
+
+
+def trades_short(event: Event) -> bool:
+    return opens_short(event) or closes_short(event)
+
+
 def entry_cost(event: Event) -> Money:
     """What a long entry paid: fill × 100 × qty plus fees."""
     return -event.cash_delta
+
+
+def cash(events: Iterable[Event]) -> Money:
+    """The events' Cash Δ, fees included."""
+    return sum((e.cash_delta for e in events), Money.zero())
+
+
+def by_bar(blotter: Iterable[Event]) -> dict[datetime, list[Event]]:
+    """The blotter's rows by the bar they were booked on: an event's time is its bar's end."""
+    found: dict[datetime, list[Event]] = {}
+    for event in blotter:
+        found.setdefault(event.time, []).append(event)
+    return found
+
+
+def leg_value(leg: LegRow | None) -> Money:
+    """A held call at its mark: mark × 100 × contracts (0 when none is held)."""
+    return Money.zero() if leg is None else leg.mark.notional(OPTION_MULTIPLIER, leg.qty)
+
+
+def stock_value(stock: StockRow | None) -> Money:
+    """X-S5's stock at its mark, negative when short (0 when none is held)."""
+    return Money.zero() if stock is None else stock.mark.notional(1, stock.shares)

@@ -163,11 +163,11 @@ One component tree for both pages. The sections shown come from the result's `re
 | 1 | Account | 10 | NAV with IM and MM, available funds pane (§4) |
 | 2 | Reg T | 5 | key/value: starting cash, NAV, IM, MM, available funds, excess equity, min available funds (and when), breach count. If any bar breached, a `WarningBanner` states the position couldn't have been held in a real Reg T account |
 | 3 | Cycle statistics | 5 | weeks traded vs skipped (skips by rule, linked); win rate; average win and loss; payoff; premium captured; weekly credit as % of long cost; exit mix |
-| 4 | Leg attribution | 10 | table: net short premium (credits, buybacks, X-S5 losses) and long-leg P&L (intrinsic Δ, extrinsic Δ); cumulative two-line chart |
+| 4 | Leg attribution | 10 | table: net short premium (credits, buybacks; a short open at the end, at its mark, if any), X-S5's stock P&L, and long-leg P&L (intrinsic Δ, extrinsic Δ); cumulative two-line chart (DEC-63) |
 | 5 | Blotter | 10 | §5 |
 | 6 | Gate log | 10 | quant only, via `report.sections`; §5 |
 | 7 | Ledger | 10 | §5; virtualized; stale and breach flags |
-| 8 | Greek attribution | 10 | quant only; DEC-76 table plus the cumulative-residual line |
+| 8 | Greek attribution | 10 | quant only; DEC-76 table plus the cumulative-residual line, and each leg's bars wholly residual out of its bars held (DEC-63) |
 
 The numbers above are the quant page's. The baseline page has no [6] or [8], so it renumbers at render time: Blotter is [5] and Ledger is [6].
 

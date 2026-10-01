@@ -11,7 +11,7 @@ from datetime import date, datetime, time
 from typing import final
 
 from pmcc.accounting.events import Event, StockId, expected_cash
-from pmcc.accounting.ledger import LedgerRow, LegRow
+from pmcc.accounting.ledger import LedgerRow, LegGreeks, LegRow
 from pmcc.domain.clock import at_et
 from pmcc.domain.instruments import OptionId, Right, Side
 from pmcc.domain.money import Money, Price
@@ -34,18 +34,22 @@ def at(day: date, hour: int = 16) -> datetime:
 
 def bar(day: date, nav: str, hour: int = 16, *, long: bool = True) -> LedgerRow:
     """A ledger row at `hour` (the close bar by default) with NAV `nav` dollars."""
-    held = LegRow(LONG, 1, Price.from_dollars(40), False, 0.8) if long else None
+    greeks = LegGreeks(None, 0.8, None, None, None)
+    held = LegRow(LONG, 1, Price.from_dollars(40), False, greeks) if long else None
     value = Money.from_dollars(nav)
     zero = Money.zero()
-    return LedgerRow(at(day, hour), held, None, None, value, value, zero, zero, value, value, ())
+    return LedgerRow(at(day, hour), None, held, None, None, value, value, zero, zero, value, value,
+                     ())  # fmt: skip
 
 
 def trade(when: datetime, side: Side, instrument: OptionId | StockId, fill: str | None,
-          rule: str, fee: Money = FEE) -> Event:  # fmt: skip
-    """One blotter row of one contract (or 100 shares of stock, which pay no fee)."""
+          rule: str, fee: Money = FEE, *, contracts: int = 1) -> Event:  # fmt: skip
+    """One blotter row of `contracts` contracts, the fee per contract (or 100 shares of stock,
+    which pay no fee)."""
     price = None if fill is None else Price.from_dollars(fill)
-    qty = 1 if isinstance(instrument, OptionId) else 100
-    fee = Money.zero() if side in (Side.EXPIRE, Side.ASSIGN) or qty == 100 else fee
+    option = isinstance(instrument, OptionId)
+    qty = contracts if option else 100
+    fee = fee * contracts if option and side not in (Side.EXPIRE, Side.ASSIGN) else Money.zero()
     cash = expected_cash(side, instrument, qty, price, fee)
     return Event(when, side, instrument, qty, price, price, cash, RuleId(rule), fee=fee)
 

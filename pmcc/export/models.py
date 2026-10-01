@@ -75,7 +75,9 @@ class InstrumentOut(_Model):
 
 class BlotterRow(_Model):
     """A booked trade (Spec › Blotter). `audit` holds what `pmcc verify` re-derives INV-03, 06
-    and 08 from; its bid and ask are $0.0001 units, as the engine records them."""
+    and 08 from; its bid and ask are $0.0001 units, as the engine records them. An option fill's
+    audit also holds `fill_iv`, the IV of the quote it filled at (null where unknown), which the
+    Greek attribution reads on the bar a leg is closed (P6-04)."""
 
     time: datetime
     instrument: InstrumentOut
@@ -106,7 +108,9 @@ class StockOut(_Model):
 
 
 class LedgerRowOut(_Model):
-    """One bar's positions, cash, NAV and Reg T (Spec › Ledger)."""
+    """One bar's positions, cash, NAV and Reg T (Spec › Ledger). The engine's ledger also holds the
+    bar's spot and each leg's IV and Greeks, which the Greek attribution reads; the file keeps the
+    delta alone, so the results written before P6-04 keep their shape (DEC-102)."""
 
     time: datetime
     long: LegOut | None

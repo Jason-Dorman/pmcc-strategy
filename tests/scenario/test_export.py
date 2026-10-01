@@ -114,17 +114,55 @@ def test_dec_54_the_summary_counts_the_ledgers_flags(
 
 
 def test_p6_01_every_run_carries_its_analytics_and_a_full_run_its_cycles(runs: Runs) -> None:
-    """A summary run's analytics are what the robustness tables read (DEC-54); the attribution
-    waits for P6-03."""
+    """A summary run's analytics are what the robustness tables read (DEC-54); a full run also
+    keeps its cycles and its leg attribution, and its Greek attribution where its page shows it
+    (P6-03, P6-04)."""
     for result in runs[1].values():
         summary = result.summary
         analytics = (summary.metrics, summary.cycle_stats, summary.exit_mix, summary.skips_by_rule)
         assert None not in analytics
         assert summary.nav_close
         assert summary.weekly_returns
-        assert result.attribution is None
-        full = result.config.strategy.report.detail is Detail.FULL
+        report = result.config.strategy.report
+        full = report.detail is Detail.FULL
         assert (result.cycles is not None) == full
+        assert (result.attribution is not None) == full
+        if result.attribution is not None:
+            greek = Section.GREEK_ATTRIBUTION in report.sections
+            assert (result.attribution.greek is not None) == greek
+
+
+def test_p6_03_04_the_attribution_reconciles_with_the_runs_own_rows(runs: Runs) -> None:
+    """On the synthetic market: the legs add up to the run's P&L; the long's intrinsic and
+    extrinsic parts to its P&L; the series ends at the totals, a point per session; each leg's
+    Greek components to its change, which is the leg's own P&L; and the residual line ends at the
+    residual rows' total."""
+    for run_id in ("baseline_pmcc", "quant_pmcc"):
+        result = runs[1][run_id]
+        assert result.attribution is not None
+        assert result.summary.metrics is not None
+        assert result.summary.nav_close is not None
+        legs = result.attribution.leg
+        short_pnl = legs.net_short_premium - legs.short_open
+        assert legs.long_pnl + short_pnl + legs.assignment_stock_pnl == result.summary.metrics.pnl
+        assert legs.long_intrinsic + legs.long_extrinsic == legs.long_pnl
+        assert legs.net_short_premium == legs.short_credits - legs.short_buybacks
+        assert [p.session for p in legs.series] == [p.session for p in result.summary.nav_close]
+        assert (legs.series[-1].long_pnl, legs.series[-1].net_short_premium) == (
+            legs.long_pnl, legs.net_short_premium)  # fmt: skip
+    greek = runs[1]["quant_pmcc"].attribution
+    assert greek is not None
+    assert greek.greek is not None
+    changes = {g.leg: g.change for g in greek.greek.legs}
+    assert changes == {"long": greek.leg.long_pnl, "short": short_pnl}
+    for leg, change in changes.items():
+        dollars = [r.dollars for r in greek.greek.rows if r.leg == leg]
+        assert [r.component for r in greek.greek.rows if r.leg == leg] == [
+            "delta", "gamma", "theta", "vega", "residual"]  # fmt: skip
+        assert sum(dollars) == pytest.approx(float(change), abs=1e-6)
+    residual = sum(r.dollars for r in greek.greek.rows if r.component == "residual")
+    assert greek.greek.residual[-1].cumulative == pytest.approx(residual, abs=1e-6)
+    assert len(greek.greek.residual) == len(runs[1]["quant_pmcc"].ledger or ())
 
 
 def test_p6_01_the_analytics_reconcile_with_the_runs_own_rows(runs: Runs) -> None:

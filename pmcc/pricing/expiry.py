@@ -15,12 +15,17 @@ SECONDS_PER_YEAR = 365 * 24 * 3600
 
 
 def years_to_expiry(now: datetime, expiry: Session) -> float:
-    """T in years from `now` to `expiry`'s close. `now` must be tz-aware.
+    """T in years from `now` to `expiry`'s close. `now` must be tz-aware."""
+    return years_between(now, expiry.close_bar_end)
+
+
+def years_between(start: datetime, end: datetime) -> float:
+    """Elapsed years from `start` to `end`, ACT/365; both must be tz-aware.
 
     Both ends go to UTC first: Python subtracts two times in the same zone by wall clock, which
     would lose or gain the hour of a clock change in between.
     """
-    elapsed = expiry.close_bar_end.astimezone(UTC) - to_et(now).astimezone(UTC)
+    elapsed = to_et(end).astimezone(UTC) - to_et(start).astimezone(UTC)
     return elapsed.total_seconds() / SECONDS_PER_YEAR
 
 

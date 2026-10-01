@@ -25,6 +25,7 @@ from pmcc.domain.errors import EngineError
 from pmcc.domain.instruments import OptionId
 from pmcc.domain.money import Money, Price
 from pmcc.domain.sessions import Session
+from pmcc.engine.greeks import leg_greeks
 from pmcc.engine.invariants import check_bar, check_event
 from pmcc.engine.legs import GateLogRow, Trader
 from pmcc.engine.market_view import MarketData
@@ -114,10 +115,11 @@ def _mark(view: MarketView, trader: Trader, cash_before: Money,
     trader.marks = carry(trader.marks, fresh, view.now)
     valuation = value(book, trader.marks)
     requirements = regt(book, valuation, trader.marks)
-    deltas = {o: _delta(view, o) for o in book.positions if isinstance(o, OptionId)}
+    greeks = {o: leg_greeks(view, o) for o in book.positions if isinstance(o, OptionId)}
     flags = {*trader.flags, *(("exit_pending",) if trader.exit_pending else ())}
     trader.flags.clear()
-    row = ledger_row(view.now, book, trader.marks, valuation, requirements, deltas, flags)
+    row = ledger_row(view.now, book, trader.marks, valuation, requirements, view.spot(), greeks,
+                     flags)  # fmt: skip
     check_bar(view.now, book, cash_before, events, valuation, trader.marks, view.calendar())
     return row
 
@@ -125,12 +127,3 @@ def _mark(view: MarketView, trader: Trader, cash_before: Money,
 def _mid(view: MarketView, instrument: Instrument) -> Price | None:
     quote = view.stock_quote() if isinstance(instrument, StockId) else view.quote(instrument)
     return None if quote is None else quote.mid
-
-
-def _delta(view: MarketView, option: OptionId) -> float | None:
-    chain = view.chain(option.expiry, option.right)
-    row = chain.row(option.strike)
-    if row is None or not chain.quotes.valid[row]:
-        return None
-    delta = float(chain.quotes.delta[row])
-    return None if delta != delta else delta  # NaN: unknown

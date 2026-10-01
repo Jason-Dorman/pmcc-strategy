@@ -99,7 +99,7 @@ pmcc/
                  (DEC-46, DEC-87)
     load.py      load_symbol → SymbolData (no network): verified units, integer prices,
                  bar_end, session bars, quote validity (DEC-87)
-  pricing/       black_scholes.py (price, greeks), expiry.py (T and DTE, DEC-24), iv.py (implied_vol,
+  pricing/       black_scholes.py (price, greeks), expiry.py (T, elapsed years and DTE, DEC-24), iv.py (implied_vol,
                  IvCode), measures.py (close, ATM strike and IV, EM, RV20; DEC-23, DEC-25, DEC-26),
                  chain.py (price_quotes for one bar; price_symbol → PricedSymbol, memoized) (DEC-89)
   strategy/      ports.py (MarketView, LookAheadError, the values rules return), selectors.py
@@ -108,15 +108,18 @@ pmcc/
                  (ATM strike and IV, EM, RV20 through the MarketView), registry.py (kinds → code,
                  build_strategy) (DEC-91, DEC-95)
   engine/        market_view.py (MarketData, HistoricalView: the as-of gate), loop.py (run_backtest),
-                 legs.py (Trader: the leg state machines and the gate log), fills.py, invariants.py
+                 legs.py (Trader: the leg state machines and the gate log), fills.py, invariants.py,
+                 greeks.py (leg_greeks: a contract's IV and Greeks on the bar; DEC-102)
   accounting/    events.py, book.py, marks.py, valuation.py (market values, NAV), regt.py, ledger.py
   analytics/     records.py (what a run's records offer, as protocols the engine's output meets;
-                 session closes, weeks, each blotter row's leg), performance.py (NAV closes,
-                 returns, metrics; DEC-60), cycles.py (cycles, their statistics, exit mix, skips;
-                 DEC-62), bootstrap.py (mean weekly return CI, per run and pooled; DEC-61), run.py
-                 (analyze: one run's analytics), scores.py (RunScore: a finished run's summary),
-                 robustness.py (the four tables; DEC-65), universe.py (headline, pooled) (DEC-101);
-                 attribution.py, fillcheck.py, suitability.py join at P6-03, P6-04, P6-07, P6-08
+                 session closes, weeks, each blotter row's leg, a bar's trades, a leg's value),
+                 performance.py (NAV closes, returns, metrics; DEC-60), cycles.py (cycles, their
+                 statistics, exit mix, skips; DEC-62), bootstrap.py (mean weekly return CI, per run
+                 and pooled; DEC-61), attribution.py (by leg; DEC-63), greek_attribution.py (by
+                 Greek, bar by bar; DEC-63, DEC-76), run.py (analyze: one run's analytics;
+                 attribute: a full run's attribution), scores.py (RunScore: a finished run's
+                 summary), robustness.py (the four tables; DEC-65), universe.py (headline, pooled)
+                 (DEC-101, DEC-102); fillcheck.py, suitability.py join at P6-07, P6-08
   export/        canonical.py (canonical JSON, INV-13's timestamp drop), manifest.py (git SHA and
                  dirtiness, lockfile hash, version), results.py (write_result) (P3-08, DEC-92);
                  base.py (the strict model, dollars, schema version), models.py (a run's file),
@@ -155,7 +158,7 @@ The reference files at the repo root (`LSEG-DATA-GUIDE.md`, `DESIGN-GUIDE.md`, `
 | `strategy` | Decide what to trade | `build_strategy(cfg)` → `Strategy` | domain, config, pricing, `strategy.ports` |
 | `engine` | Run the clock; route decisions to fills and the book | `MarketData.build(stock, chains, calendar, r, root)`; `run_backtest(data, run_config, strategy, starting_cash)` → `RunOutput` (DEC-91) | domain, config, pricing, strategy, accounting; the loader's frames, never `pmcc.data` |
 | `accounting` | Record and value positions | `Book.apply()`, `carry()`, `value()`, `regt()`, `funds_after()`, `ledger_row()` | domain |
-| `analytics` | Summarize runs into export's result models | `analyze(run, seed)` → `RunAnalytics` (metrics, cycle statistics, exit mix, skips, closes, weekly returns, cycles); `mean_ci(table, seed)`; `robustness(symbol, scores, families)`; `headline(scores)`, `pooled(scores, seed)`; `RunScore.of(result)` | domain, accounting (its ledger and event types), config (`Family`), export's result models, numpy (DEC-101) |
+| `analytics` | Summarize runs into export's result models | `analyze(run, seed, report)` → `RunAnalytics` (metrics, cycle statistics, exit mix, skips, closes, weekly returns, cycles, and a full run's attribution); `leg_attribution(run)`, `greek_attribution(run)`; `mean_ci(table, seed)`; `robustness(symbol, scores, families)`; `headline(scores)`, `pooled(scores, seed)`; `RunScore.of(result)` | domain, accounting (its ledger and event types), config (`Family`, `Report`), `pricing.expiry` (elapsed years), export's result models, numpy (DEC-101, DEC-102) |
 | `export` | Result models, manifest, canonical JSON, JSON Schema, site data, verify | `write_result()`, `write_schemas()`, `export_site()`, `verify()`, `rederive()` | domain, config, accounting; `data.files` for whole-file writes (DEC-92); `engine.invariants` for the names of the runtime invariants a summary records (DEC-96) |
 | `runner` | Run configs on one symbol's cache into results | `run_symbol()`, `run_loaded()`; `Market.prepare()` once per symbol, then `run_market(…, seed=)` per config → `RunResult` with its analytics, or `run_output()` → the engine's `RunOutput` | domain, config, accounting, analytics, data, engine, strategy, export, polars (DEC-92, DEC-101) |
 | `calibration` | Calibrate the starting cash (E-L4) | `calibrate(markets, configs, universe)` → `Calibration` (the `StartingCash` and each run's `RunFunds`); `cash_rule()`, `measure()`, `first_long_entry()`, `verify()`, `run_funds()`, `blocked_entries()` | domain, config, accounting (the `Event` type), engine, runner (DEC-93) |
@@ -454,7 +457,7 @@ C  = S·N(d1) − K·e^(−rT)·N(d2)                P  = K·e^(−rT)·N(−d2)
 θC = −S·φ(d1)·σ/(2√T) − r·K·e^(−rT)·N(d2)     θP = −S·φ(d1)·σ/(2√T) + r·K·e^(−rT)·N(−d2)
 ```
 
-- **T and DTE (DEC-24):** T is elapsed time from the decision to the expiry session's close, in years, ACT/365, measured in UTC so a clock change counts its hour (`years_to_expiry`). DTE is calendar days from the decision's ET date (`days_to_expiry`).
+- **T and DTE (DEC-24):** T is elapsed time from the decision to the expiry session's close, in years, ACT/365, measured in UTC so a clock change counts its hour (`years_to_expiry`, over `years_between`, which the Greek attribution's Δt also uses; DEC-102). DTE is calendar days from the decision's ET date (`days_to_expiry`).
 - **Vectorized IV solver** (`implied_vol`) over any number of lanes (DEC-89):
   - **Codes, checked in this order:** `EXPIRED` (T ≤ 0), `NO_QUOTE`, `NO_SPOT` (the underlying didn't trade on the bar), `BELOW_FLOOR` (mid < max(0, S − K·e^(−rT)) for a call, max(0, K·e^(−rT) − S) for a put), `ABOVE_CAP` (mid ≥ S for a call, K·e^(−rT) for a put), then `NO_CONVERGENCE` or `OK`.
   - **Bracket:** σ ∈ [1e-4, 5.0]. A lane no vol in it can price is `NO_CONVERGENCE` before iterating.
@@ -486,6 +489,8 @@ for bar in session_bars(window):                             # ascending bar_end
     check_event(each new row); marks; value; regt; ledger_row; check_bar(...)
 # X-E1: the final ledger row marks everything at the last bar; nothing is liquidated
 ```
+
+The engine's ledger row also records the bar's spot and each held leg's IV and Greeks from its chain row (`engine/greeks.py`), and every option fill's audit the IV it filled at (`fill_iv`), so the Greek attribution reads what the engine saw (P6-04). The published ledger keeps the delta alone; `fill_iv` is published in the audit (DEC-102).
 
 ### 8.2 Leg state machines (DEC-21, DEC-22, DEC-28, DEC-34)
 
@@ -650,7 +655,7 @@ Determinism controls (INV-13):
 | Float accumulation in cash/NAV | Integer money (DEC-44) |
 | Aggregation and row order | Explicit sorts; polars `maintain_order=True` |
 | Randomness (bootstrap) | A fresh PCG64 per CI, seeded from `universe.yaml`'s `bootstrap.seed`; seed recorded in every CI (DEC-61) |
-| Float sums (analytics) | the metrics' `statistics.fmean` and `stdev` sum exactly; the bootstrap's numpy means are fixed by the weeks and their order; ratios come from integer money (DEC-101) |
+| Float sums (analytics) | the metrics' `statistics.fmean` and `stdev` sum exactly; the bootstrap's numpy means are fixed by the weeks and their order; the Greek attribution sums each float term as an exact `Fraction`, so its totals and residual line don't depend on order; ratios come from integer money (DEC-101, DEC-102) |
 | Parallelism | Runs are independent; one file each; content never depends on completion order |
 | Serialization | Canonical JSON (DEC-50) |
 | Clock | `run_timestamp` only in the manifest, excluded from INV-13 with `git_sha` (DEC-50) |
@@ -674,7 +679,7 @@ results/                            committed; every file here is one the pipeli
 
 `pmcc export` derives two more files from the results into its output, never committed under `results/`, so they can't disagree with the runs (DEC-96): `index.json` (per symbol, its runs with their detail, sections, path, data source, config hash and commit, and the analytics files present; the window, r and starting cash every run shares; the exporter's version) and `rules.json` (per run ID, the rules as it ran them: params, rendered text, and a variant's changes against its strategy).
 
-`RunResult` (pydantic; JSON Schema written by `pmcc export`), schema version 2 (P4-05, DEC-96). The detail is the strategy's `report.detail` (DEC-54): a summary run keeps no rows. Every run's summary holds its analytics (P6-01, P6-02, P6-05; DEC-60 to DEC-62), and a full run keeps its cycles; the attribution is null until P6-03 and P6-04. Results written before P6 have null analytics and still validate until P6-09 re-runs them (DEC-101):
+`RunResult` (pydantic; JSON Schema written by `pmcc export`), schema version 2 (P4-05, DEC-96). The detail is the strategy's `report.detail` (DEC-54): a summary run keeps no rows. Every run's summary holds its analytics (P6-01, P6-02, P6-05; DEC-60 to DEC-62), and a full run keeps its cycles and its attribution: by leg, and by Greek where its `report.sections` lists `greek_attribution` (P6-03, P6-04; DEC-63, DEC-102). Results written before P6 have null analytics and no fill IV, and still validate until P6-09 re-runs them (DEC-101, DEC-102):
 
 ```
 schema_version  2
@@ -689,6 +694,7 @@ summary     metrics{pnl, returns, drawdown, underwater, sharpe, sortino, weekly_
             skips_by_rule, nav_close[], weekly_returns[] (P6),
             flag_counts {flag: ledger rows}, invariants[{id, held}] (P4-05)
 blotter[]   time, instrument{…}, side, qty, limit, fill, fee, cash_delta, rule_id, notes, audit{…}     full
+            (an option fill's audit holds fill_iv, P6-04)
 ledger[]    time, long{instrument{…}, qty, mark, delta, stale}, short{…},
             stock{instrument{…}, shares, mark, stale}, cash, nav, im, mm, available_funds,
             excess_equity, flags[]                                                                   full
@@ -696,7 +702,11 @@ gate_log[]  session, decision_time, selected{…}, gates[{rule_id, status, value
             outcome{kind, rule_id}, notes                                                          full (every full run; report.sections only decides what the page shows)
 cycles[]    week_open, week_final, outcome, rule_id, long_held, credit, buyback, long_cost,
             exit_rule_id, pnl                                                                        full (P6-02)
-attribution leg{…}, greek{…} (if declared)                                                          full (P6-03, P6-04)
+attribution leg{short_credits, short_buybacks, net_short_premium, short_open, assignment_stock_pnl,
+            long_pnl, long_intrinsic, long_extrinsic, series[{session, long_pnl, net_short_premium}]},
+            greek{legs[{leg, change, bars_held, bars_unattributed}],
+            rows[{leg, component, dollars, share_of_change}], residual[{time, cumulative}]}
+            (greek if declared)                                                                     full (P6-03, P6-04)
 ```
 
 An `instrument` is `{ric, occ, kind, expiry, strike}`: `ric` is the RIC the cache answered with, so a row leads to its raw quotes; the stock has `kind: stock` and null `occ`, `expiry` and `strike`. The audit's `bid`, `ask` and `funds_after` are $0.0001 units, as the engine records them (DEC-91), and dollars inside the audit and the gate-log value maps are exact 4-dp strings (`"82.9900"`; PO, DEC-92); a value in those maps is always a JSON scalar.

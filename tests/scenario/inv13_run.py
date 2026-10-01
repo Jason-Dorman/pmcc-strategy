@@ -2,8 +2,9 @@
 `python -m tests.scenario.inv13_run CACHE OUT HOUR SHA`.
 
 Two processes with different `PYTHONHASHSEED`s must write the same bytes once the manifest's
-volatile values are dropped, so no set or dict order can leak into a result. Two markets:
-`random_walk`, the general market, and `friday_unquoted_at_check` without X-S1, whose ledger has
+volatile values are dropped, so no set or dict order can leak into a result. Three cases:
+`random_walk`, the general market, under the baseline and under quant (whose file adds the Greek
+attribution, P6-04), and `friday_unquoted_at_check` without X-S1, whose ledger has
 rows with two flags (`exit_pending`, `stale_short`), the one array a result builds from a set.
 The test's seeds put those two flags in opposite set orders.
 """
@@ -34,6 +35,7 @@ NO_TAKE_PROFIT = "baseline_pmcc--a5"  # the baseline without X-S1, as the scenar
 # name -> (builder, strategy file under configs/ or `NO_TAKE_PROFIT`)
 CASES: dict[str, tuple[Callable[[], SyntheticSpec], str]] = {
     "random_walk": (random_walk, "baseline_pmcc"),
+    "random_walk_quant": (random_walk, "quant_pmcc"),
     "friday_unquoted_at_check": (BUILDERS["friday_unquoted_at_check"], NO_TAKE_PROFIT),
 }
 
