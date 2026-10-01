@@ -116,3 +116,15 @@ def test_ci_only_the_deploy_job_may_write_pages() -> None:
     assert _job("deploy")["permissions"] == {"pages": "write", "id-token": "write"}
     assert "permissions" not in _job("web")
     assert _job("deploy")["steps"][-1]["uses"].startswith("actions/deploy-pages")
+
+
+def test_inv_15_ci_smoke_tests_every_route_after_the_dist_guard() -> None:
+    runs = _web_runs()
+    smoke = _index(runs, "npm run e2e")
+    assert _index(runs, "npm run guard") < _index(runs, "playwright install") < smoke
+
+
+def test_ci_uploads_the_smoke_tests_screenshots_even_when_it_fails() -> None:
+    upload = next(s for s in _job("web")["steps"]
+                  if s.get("uses", "").startswith("actions/upload-artifact"))  # fmt: skip
+    assert (upload["if"], upload["with"]["path"]) == ("always()", "web/test-results/screenshots")

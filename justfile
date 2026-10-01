@@ -64,8 +64,8 @@ web-dev: export
 web-build: export
     cd web && npm run build && npm run guard
 
-# Run the Playwright smoke test
-e2e:
+# Build the site, then smoke-test every route in Chromium (Playwright; INV-15)
+e2e: web-build
     cd web && npm run e2e
 
 # Serve the built site and the local data endpoints on 127.0.0.1

@@ -724,7 +724,8 @@ web/                            P4-06 (DEC-97); Node 22 (.nvmrc, engines)
     lib/        cn (shadcn/ui's class joiner)
     format/     money, time (ET), hash; percent and ric/occ at P7
     test/       fixtures for the route and loader tests
-  e2e/          Playwright smoke test (P4-08)
+  e2e/          smoke.spec.ts: the Playwright smoke test (P4-08, DEC-99); playwright.config.ts
+                serves web/dist with vite preview; tsconfig.e2e.json type-checks it
   public/data/  written by pmcc export (gitignored)
 ```
 
@@ -756,7 +757,7 @@ Recipes run under bash (`set shell := ["bash", "-cu"]`): Git Bash locally, bash 
 | `probe SYM` · `fetch SYM START END *ARGS` | LSEG probes / pull (local only); `fetch` passes extra args, e.g. `--plan-only` |
 | `run SYM CONFIG` · `batch` · `calibrate *ARGS` | backtests; `calibrate` passes extra args, e.g. `--symbol NVDA --config configs/baseline_pmcc.yaml` or `--check` (DEC-93) |
 | `export` · `verify` | site data / results validation |
-| `web-dev` · `web-build` · `e2e` · `serve` | frontend; `web-dev` and `web-build` run `export` first; `e2e` is a stub naming P4-08 |
+| `web-dev` · `web-build` · `e2e` · `serve` | frontend; `web-dev` and `web-build` run `export` first, and `web-build` the dist guard after; `e2e` builds, then runs the Playwright smoke test |
 | `reproduce` | cached data → batch → verify → export → web build (Spec › CLI) |
 
 CI (`.github/workflows/ci.yml`, on push and PR; DEC-79):
@@ -764,10 +765,10 @@ CI (`.github/workflows/ci.yml`, on push and PR; DEC-79):
 | Job | Steps |
 | --- | --- |
 | `python` | credentials guard (`git ls-files`) → setup-uv → `uv sync --frozen` → `pre-commit run --all-files` (ruff, format, pyright, guards) → `pytest` (ci profile) → `pmcc verify results/` (P4-05) |
-| `web` | `uv sync --frozen` → `pmcc export --out web/public/data/` (it verifies the results first) → setup-node from `web/.nvmrc` → `npm ci` → `lint` → `typecheck` (runs `gen:types`) → `vitest` → `build` → dist guard (`npm run guard`) → Playwright smoke (P4-08) → upload the Pages artifact (`main` pushes only) (P4-07, DEC-98) |
+| `web` | `uv sync --frozen` → `pmcc export --out web/public/data/` (it verifies the results first) → setup-node from `web/.nvmrc` → `npm ci` → `lint` → `typecheck` (runs `gen:types`) → `vitest` → `build` → dist guard (`npm run guard`) → Chromium (`npx playwright install --with-deps chromium`) → Playwright smoke (`npm run e2e`, INV-15) → upload the screenshots (always) → upload the Pages artifact (`main` pushes only), so a failed smoke test blocks the deploy (P4-07, P4-08; DEC-98, DEC-99) |
 | `deploy` | `main` pushes only; needs `python` and `web`; the only job with `pages: write` and `id-token: write`; `actions/deploy-pages` to the `github-pages` environment |
 
-- **Dist guard** (`web/scripts/dist-guard.mjs`, DEC-98): fails if any file in `web/dist` references `localhost:9000`, an `lseg`/`refinitiv` URL, or `fonts.googleapis.com`/`fonts.gstatic.com`, or if the build is empty. It matches hosts, not words: the results say `"data_source":"lseg"`, and the footer's github.com links and r's FRED source are expected. The smoke test also fails on any cross-origin request (P4-08).
+- **Dist guard** (`web/scripts/dist-guard.mjs`, DEC-98): fails if any file in `web/dist` references `localhost:9000`, an `lseg`/`refinitiv` URL, or `fonts.googleapis.com`/`fonts.gstatic.com`, or if the build is empty. It matches hosts, not words: the results say `"data_source":"lseg"`, and the footer's github.com links and r's FRED source are expected. The smoke test also fails on any cross-origin request (P4-08, DEC-99).
 - **Pre-commit:** ruff, ruff-format, pyright, check-yaml, end-of-file-fixer (never on `data_cache/`, DEC-05), check-added-large-files (500 KB; 2 MB under `results/` and `data_cache/`, DEC-92, DEC-05), detect-private-key, and a local hook that rejects a staged `lseg-data.config.json`.
   - ruff and pyright run through `uv run --frozen`, at the `uv.lock` versions. The reference files are excluded from every hook (DEC-57, DEC-77).
   - The CI pytest step sets `HYPOTHESIS_PROFILE=ci`.

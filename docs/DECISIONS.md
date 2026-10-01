@@ -109,7 +109,8 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-95 | The quant layer: selectors, gates G-3 to G-5, the quant and ablation configs | ENG · the three items put to the PO settled (PO, 2026-09-30) | — |
 | DEC-96 | Export and verify: result models at schema 2, JSON Schema, `pmcc verify`, `pmcc export` | ENG | — |
 | DEC-97 | The web scaffold: packages, tokens and shell, types, loader, routes, tests | ENG · packages approved, React's types included (PO, 2026-09-30) | — |
-| DEC-98 | Pages deploy: the CI `web` and `deploy` jobs and the dist guard | ENG | — |
+| DEC-98 | Pages deploy: the CI `web` and `deploy` jobs and the dist guard | ENG · live site checked | — |
+| DEC-99 | The Playwright smoke test (INV-15) | ENG | — |
 
 ---
 
@@ -1790,6 +1791,24 @@ How P4-05 builds the results contract (ARCHITECTURE §12). None of it changes wh
 - **Dist guard** (`web/scripts/dist-guard.mjs`, `npm run guard`; `just web-build` runs it too): fails on `localhost:9000`, an LSEG or Refinitiv URL, or a Google Fonts host anywhere in `web/dist`, and on an empty build. It matches hosts, not words (the results say `"data_source":"lseg"`), so the footer's github.com links, r's FRED source and React's library URLs pass. A Node script with no dependencies, tested by Vitest (`dist-guard.test.mjs`).
 - **The site's URL:** <https://jason-dorman.github.io/pmcc-strategy/>, in the README.
 - **Test:** `tests/unit/test_ci_workflow.py` holds the export before the site's checks, the order of those checks and the guard, Node from `.nvmrc`, the upload and deploy on `main` pushes only, and `pages: write` on the deploy job alone.
+- **Outcome:** 2026-09-30 — deployed from `c040e13`, checked live on 2026-09-30 in Chromium: `#/quant/NVDA` survives a reload, the pages show the committed NVDA results (the gate log's 26 weeks, the footer's commit `69c01b2`, source `lseg`) with no synthetic banner, no console error and no request to another origin, and the Data page says "Data connection required." on github.io.
+
+### DEC-99 — The Playwright smoke test (INV-15)
+**Status:** ENG · **Affects:** P4-08, P7, P7-07, P7-08, P8-02; DEC-97, DEC-98
+
+- **The package:** `@playwright/test` (Node, in `web/`; never the Python package, CLAUDE.md), in the PO's approved list as "Playwright at P4-08" (DEC-97). CI installs Chromium with its system libraries (`npx playwright install --with-deps chromium`); locally `npx playwright install chromium` once.
+- **What it runs on:** the built site, `web/dist` served by `vite preview` on 127.0.0.1 (`web/playwright.config.ts`), so it tests what Pages serves. `just e2e` exports, builds and guards first.
+- **What it checks** (`web/e2e/smoke.spec.ts`), for `#/` and every route for NVDA (compare, baseline, quant, rules, a rule, methodology, universe, data):
+  - no console error and no uncaught exception;
+  - no request to any origin but the site's own;
+  - the manifest footer is the page's `contentinfo` landmark, and no panel is still loading;
+  - at 390, 1100, 1366 and 1600 px, the page doesn't scroll sideways, and a full-page screenshot is saved (`web/test-results/screenshots/`, uploaded by CI as the `screenshots` artifact, even when the test fails, for P7-07 and P7-08's review);
+  - plus: `#/quant/NVDA` survives a reload, and real results show no synthetic banner.
+- **Placement in CI:** after the dist guard and before the Pages upload, so a failed smoke test blocks the deploy.
+- **Type-checked:** `web/tsconfig.e2e.json` (strict, DOM lib), referenced from `tsconfig.json`; ESLint lints it with the rest.
+- **Found by it:** `PageFrame` put the footer inside `<main>`, where a `<footer>` isn't the page's `contentinfo` landmark (jsdom doesn't apply that rule, so the route tests passed). The footer now follows `main`.
+- **Proved:** a planted `console.error` and a request to another origin, in a scratch build, failed it; screenshots at 390 px show a true phone layout, which headless Edge couldn't give (DEC-97).
+- **Outcome:** 2026-09-30 — 11 tests pass locally in about 11 s.
 
 ## E. Analytics definitions
 

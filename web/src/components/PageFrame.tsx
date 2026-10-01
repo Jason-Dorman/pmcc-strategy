@@ -15,11 +15,14 @@ export function PageFrame({ readouts = [], panels, manifests = [] }: PageFramePr
   const index = useIndex();
   const exporter = index.kind === "ready" ? index.value.pmcc_version : undefined;
   return (
-    <main>
-      {readouts.length > 0 && <Readouts items={readouts} />}
-      <PanelGrid panels={panels} />
+    <>
+      <main>
+        {readouts.length > 0 && <Readouts items={readouts} />}
+        <PanelGrid panels={panels} />
+      </main>
+      {/* After main, not in it: a footer inside main isn't the page's contentinfo landmark */}
       <ManifestFooter manifests={manifests} exporter={exporter} />
-    </main>
+    </>
   );
 }
 

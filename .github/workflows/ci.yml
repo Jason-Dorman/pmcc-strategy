@@ -1,8 +1,8 @@
 # CI (ARCHITECTURE §14). Builds only from committed files: no cache, no secrets,
 # never contacts LSEG (§15). Tools run at the uv.lock versions (DEC-77).
 # `python` checks the code and verifies the committed results (DEC-51); `web` exports them, checks
-# and builds the site and guards the build; `deploy` publishes it to GitHub Pages from main only
-# (P4-07, DEC-98).
+# and builds the site, guards the build and smoke-tests every route (INV-15); `deploy` publishes it
+# to GitHub Pages from main only (P4-07, P4-08; DEC-98, DEC-99).
 name: ci
 
 on:
@@ -104,6 +104,22 @@ jobs:
       - name: Dist guard (no LSEG, no Google Fonts)
         working-directory: web
         run: npm run guard
+
+      - name: Install Chromium for Playwright
+        working-directory: web
+        run: npx playwright install --with-deps chromium
+
+      - name: Smoke test every route (INV-15)
+        working-directory: web
+        run: npm run e2e
+
+      - name: Upload the smoke test's screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: web/test-results/screenshots
+          if-no-files-found: warn
 
       - name: Upload the Pages artifact
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'

@@ -15,7 +15,7 @@
     "typecheck": "npm run gen:types && tsc -b --noEmit",
     "lint": "eslint .",
     "test": "npm run gen:types && vitest run",
-    "e2e": "node -e \"console.error('Not built yet: see docs/BUILD-PLAN.md P4-08.'); process.exit(1)\"",
+    "e2e": "playwright test",
     "guard": "node scripts/dist-guard.mjs dist"
   },
   "dependencies": {
@@ -31,6 +31,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/vite": "^4.3.3",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/react": "^16.3.3",
