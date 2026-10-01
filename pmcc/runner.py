@@ -5,9 +5,11 @@ ledger and gate log into the result's rows, stamped with the run's manifest. The
 runtime invariants on every bar and raises on a failure, so a result exists only for a run that
 held them all (DEC-49).
 
-The strategy's `report` block decides the detail (PO, DEC-54): a full run keeps its rows, a
-summary run only its summary. Every result's summary records the runtime invariants the run held
-and how many ledger rows carried each flag; P6 adds the analytics.
+The strategy's `report` block decides the detail (PO, DEC-54): a full run keeps its rows and its
+cycles, a summary run only its summary. Every result's summary records the runtime invariants the
+run held, how many ledger rows carried each flag, and the run's analytics (`pmcc.analytics.run`):
+its metrics, cycle statistics, exit mix, skips, session closes and weekly returns, whose bootstrap
+CI is seeded with the universe's `bootstrap.seed` (DEC-60 to DEC-62).
 
 A symbol is priced once (`Market.prepare`) and each config runs on it (`run_market`), so
 `pmcc calibrate` and `pmcc batch` price a symbol once for all its runs (ARCHITECTURE §11). A run
@@ -27,6 +29,7 @@ import structlog
 
 from pmcc.accounting.events import Event, Instrument, StockId
 from pmcc.accounting.ledger import LedgerRow, LegRow, StockRow
+from pmcc.analytics.run import RunAnalytics, analyze
 from pmcc.config.strategy import Detail, RunConfig
 from pmcc.config.universe import Underlying
 from pmcc.data.cache import CacheError
@@ -91,25 +94,26 @@ class Market:
 
 
 def run_symbol(cache: Path, underlying: Underlying, calendar: SessionCalendar, config: RunConfig,
-               starting_cash: Money, stamp: Stamp) -> RunResult:  # fmt: skip
+               starting_cash: Money, stamp: Stamp, *, seed: int) -> RunResult:  # fmt: skip
     """Load `underlying`'s cache under `cache` and run `config` on it."""
     loaded = load_symbol(cache, underlying.symbol, calendar)
-    return run_loaded(loaded, underlying.option_root, config, starting_cash, stamp)
+    return run_loaded(loaded, underlying.option_root, config, starting_cash, stamp, seed=seed)
 
 
 def run_loaded(loaded: SymbolData, root: str, config: RunConfig, starting_cash: Money,
-               stamp: Stamp) -> RunResult:  # fmt: skip
+               stamp: Stamp, *, seed: int) -> RunResult:  # fmt: skip
     """Run `config` on a loaded cache whose options are named under `root`."""
     check_covers(loaded, config)  # before pricing: a short cache fails fast
     market = Market.prepare(loaded, root, config.risk_free_rate.value)
-    return run_market(market, config, starting_cash, stamp)
+    return run_market(market, config, starting_cash, stamp, seed=seed)
 
 
 def run_market(market: Market, config: RunConfig, starting_cash: Money,
-               stamp: Stamp) -> RunResult:  # fmt: skip
-    """Run `config` on a prepared market into its result; raises as `run_output` does."""
+               stamp: Stamp, *, seed: int) -> RunResult:  # fmt: skip
+    """Run `config` on a prepared market into its result, its bootstrap seeded with `seed`;
+    raises as `run_output` does."""
     output = run_output(market, config, starting_cash)
-    result = to_result(output, market, config, stamp)
+    result = to_result(output, market, config, stamp, analyze(output, seed))
     log.info("run.done", symbol=market.loaded.symbol, run_id=config.strategy.id,
              trades=len(output.blotter), bars=len(output.ledger), weeks=len(output.gate_log),
              detail=config.strategy.report.detail.value,
@@ -146,8 +150,8 @@ def check_covers(loaded: SymbolData, config: RunConfig) -> None:
         )
 
 
-def to_result(output: RunOutput, market: Market, config: RunConfig,
-              stamp: Stamp) -> RunResult:  # fmt: skip
+def to_result(output: RunOutput, market: Market, config: RunConfig, stamp: Stamp,
+              analytics: RunAnalytics) -> RunResult:  # fmt: skip
     """The run's result, at the detail its strategy's `report` block asks for (DEC-54)."""
     loaded, names = market.loaded, market.names
     full = config.strategy.report.detail is Detail.FULL
@@ -156,18 +160,25 @@ def to_result(output: RunOutput, market: Market, config: RunConfig,
         config=config,
         rule_text={r.id: RuleTextOut(**asdict(r.text())) for r in config.strategy.rules},
         starting_cash=output.starting_cash.to_dollars(),
-        summary=_summary(output),
+        summary=_summary(output, analytics),
         blotter=tuple(_blotter_row(e, names) for e in output.blotter) if full else None,
         ledger=tuple(_ledger_row(r, names) for r in output.ledger) if full else None,
         gate_log=tuple(_gate_row(g) for g in output.gate_log) if full else None,
+        cycles=analytics.cycles if full else None,
     )
 
 
-def _summary(output: RunOutput) -> Summary:
-    """What P4-05 summarizes: the invariants held (a run that broke one returned nothing, DEC-49)
-    and the ledger's flag counts. The analytics join at P6 (DEC-60, DEC-62)."""
+def _summary(output: RunOutput, analytics: RunAnalytics) -> Summary:
+    """The run's analytics, the invariants it held (a run that broke one returned nothing,
+    DEC-49) and the ledger's flag counts."""
     flags = Counter(flag for row in output.ledger for flag in row.flags)
     return Summary(
+        metrics=analytics.metrics,
+        cycle_stats=analytics.cycle_stats,
+        exit_mix=analytics.exit_mix,
+        skips_by_rule=analytics.skips_by_rule,
+        nav_close=analytics.nav_close,
+        weekly_returns=analytics.weekly_returns,
         flag_counts=dict(sorted(flags.items())),
         invariants=tuple(InvariantCheck(id=i, held=True) for i in RUNTIME_INVARIANTS),
     )

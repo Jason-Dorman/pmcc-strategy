@@ -28,6 +28,7 @@ from tests.fixtures.synthetic.scenarios import BUILDERS, random_walk
 
 PROVENANCE = Provenance(GitState("0" * 40, dirty=False), "1" * 64, "0.0.0")
 CASH = Money.from_dollars(10_000)
+SEED = 535  # the bootstrap seed configs/universe.yaml ships (DEC-61)
 NO_TAKE_PROFIT = "baseline_pmcc--a5"  # the baseline without X-S1, as the scenario tests run it
 
 # name -> (builder, strategy file under configs/ or `NO_TAKE_PROFIT`)
@@ -72,7 +73,7 @@ def main(cache: Path, out: Path, hour: int, sha: str = PROVENANCE.git.sha) -> li
     for name, (build, _strategy) in CASES.items():
         symbol = build().symbol
         loaded = load_symbol(cache / name, symbol, load_calendar())
-        result = run_loaded(loaded, symbol, config(name, out / "configs"), CASH, stamp)
+        result = run_loaded(loaded, symbol, config(name, out / "configs"), CASH, stamp, seed=SEED)
         written.append(write_result(result, out / name))
     return written
 

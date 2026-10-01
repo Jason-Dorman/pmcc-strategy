@@ -147,7 +147,7 @@ class FillModel(BaseModel):
 class Detail(StrEnum):
     """How much of a run its result file keeps (PO, DEC-54)."""
 
-    FULL = "full"  # the blotter, ledger and gate log, and at P6 the cycles and attribution
+    FULL = "full"  # the blotter, ledger, gate log and cycles, and from P6-03 the attribution
     SUMMARY = "summary"  # the summary only: ablation and sensitivity runs
 
 

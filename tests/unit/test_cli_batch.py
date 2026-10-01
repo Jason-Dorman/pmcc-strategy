@@ -1,5 +1,6 @@
 """`pmcc batch` (P5-03): the 24-run matrix on every universe symbol, one spawned process per symbol,
-each symbol's coverage file, failure isolation, and the universe-level stage (ARCHITECTURE §11).
+each symbol's coverage and robustness files (P6-06), failure isolation, and the universe-level
+stage with its headline and pooled files (P6-01, P6-05) (ARCHITECTURE §11).
 
 Two synthetic symbols, SYN and TWO, are the `random_walk` market under two names, cached in a
 temporary directory. A test universe in the working directory stands in for configs/universe.yaml,
@@ -17,10 +18,19 @@ import pytest
 from typer.testing import CliRunner
 
 from pmcc import batch, cli
-from pmcc.batch import SymbolJob, SymbolOutcome, run_batch, run_job, stale_mark_rate
+from pmcc.analytics.bootstrap import mean_ci
+from pmcc.analytics.robustness import robustness
+from pmcc.analytics.scores import RunScore
+from pmcc.batch import (
+    SymbolJob,
+    UniverseStage,
+    run_batch,
+    run_job,
+    stale_mark_rate,
+)
 from pmcc.cli import app
 from pmcc.config.calendar import load_calendar
-from pmcc.config.matrix import run_matrix
+from pmcc.config.matrix import run_families, run_matrix
 from pmcc.config.strategy import CONFIGS_DIR
 from pmcc.config.universe import UNIVERSE_PATH, Underlying, Universe, read_universe_file
 from pmcc.data import coverage as fetch_coverage
@@ -28,7 +38,8 @@ from pmcc.data.discovery import UnitKind
 from pmcc.domain.calendar import SessionCalendar
 from pmcc.domain.clock import ET
 from pmcc.domain.money import Money
-from pmcc.export.analytics_models import Coverage
+from pmcc.export import canonical
+from pmcc.export.analytics_models import Coverage, Headline, Metrics, Pooled, Robustness
 from pmcc.export.manifest import GitState, Provenance
 from pmcc.export.models import DataSource, LedgerRowOut, RunResult
 from pmcc.export.verify import verify
@@ -39,6 +50,7 @@ from tests.fixtures.synthetic.scenarios import random_walk
 NOW = datetime(2026, 9, 30, 9, tzinfo=ET)
 SYMBOLS = ("SYN", "TWO")
 RUNS = 24  # per symbol (ARCHITECTURE §11)
+SEED = 7  # the test universe's bootstrap seed: not the shipped 535, so a hardcoded seed fails
 
 runner = CliRunner()
 
@@ -53,6 +65,8 @@ def _universe(symbols: Sequence[str] = SYMBOLS) -> str:
     spec = random_walk()
     shipped = UNIVERSE_PATH.read_text(encoding="utf-8")
     rate = shipped[shipped.index("risk_free_rate:") : shipped.index("# The universe")]
+    assert "seed: 535" in rate
+    rate = rate.replace("seed: 535", f"seed: {SEED}")
     listed = "".join(f"  - {{symbol: {s}, stock_ric: {s}.O, option_root: {s}}}\n" for s in symbols)
     entries = ", ".join(
         f"{{symbol: {s}, strategy: {t}, time: '{NOW.isoformat()}', contract: X, cost: 7500}}"
@@ -93,7 +107,8 @@ def _batch(cache: Path, *extra: str) -> tuple[int, str]:
 
 
 def _runs(symbol: str, out: str = "results") -> list[str]:
-    return sorted(p.stem for p in Path(out, symbol).glob("*.json") if p.stem != "coverage")
+    return sorted(p.stem for p in Path(out, symbol).glob("*.json")
+                  if p.stem not in ("coverage", "robustness"))  # fmt: skip
 
 
 # ---- the CLI, through the process pool --------------------------------------------------------
@@ -118,13 +133,14 @@ def test_p5_03_batch_writes_every_run_and_coverage_for_each_symbol(
         assert coverage.symbol == symbol
         assert {r.kind for r in coverage.rows} >= {"stock", "puts"}
     assert len(matrix) * len(SYMBOLS) == 48
-    assert ("48 runs written for 2 symbol(s); 0 run(s) and 0 symbol(s) failed; 0 coverage "
-            "file(s) not written.") in output  # fmt: skip
-    assert "Universe files: none yet (P6)" in output
+    assert ("48 runs written for 2 symbol(s); 0 run(s) and 0 symbol(s) failed; 0 coverage and "
+            "0 robustness file(s) not written; 0 universe file(s) failed.") in output  # fmt: skip
+    assert ("Universe files: elsewhere/universe/headline.json, "
+            "elsewhere/universe/pooled.json") in output  # fmt: skip
     assert sorted(p.name for p in Path("logs").glob("batch_*_worker*.jsonl"))  # workers log apart
     verified = verify(Path("elsewhere"))  # schema, canonical bytes, a clean tree, the invariants
     assert verified.problems == ()
-    assert (verified.runs, verified.files) == (48, 50)
+    assert (verified.runs, verified.files) == (48, 54)  # + 2 coverage, 2 robustness, 2 universe
 
     # A run in the batch is the run `pmcc run` makes (both stamp the same clock here).
     config = (CONFIGS_DIR / "quant_pmcc.yaml").as_posix()
@@ -133,6 +149,42 @@ def test_p5_03_batch_writes_every_run_and_coverage_for_each_symbol(
     assert single.exit_code == 0, single.output
     assert Path("single/SYN/quant_pmcc.json").read_bytes() == Path(
         "elsewhere/SYN/quant_pmcc.json").read_bytes()  # fmt: skip
+
+    # The universe files: from both symbols' two strategies, the pooled CI over both at once.
+    results = {s: {i: RunResult.model_validate_json(Path("elsewhere", s, f"{i}.json").read_bytes())
+                   for i in ("baseline_pmcc", "quant_pmcc")} for s in SYMBOLS}  # fmt: skip
+    head = Headline.model_validate_json(Path("elsewhere/universe/headline.json").read_bytes())
+    assert [(r.symbol, r.strategy_id) for r in head.rows] == [
+        (s, i) for s in SYMBOLS for i in ("baseline_pmcc", "quant_pmcc")]  # fmt: skip
+    assert all(r.pnl == _metrics(results[r.symbol][r.strategy_id]).pnl for r in head.rows)
+    pool = Pooled.model_validate_json(Path("elsewhere/universe/pooled.json").read_bytes())
+    assert pool.symbols == SYMBOLS
+    baseline = [_weekly(results[s]["baseline_pmcc"]) for s in SYMBOLS]
+    expected = mean_ci([list(week) for week in zip(*baseline, strict=True)], SEED)
+    assert expected is not None
+    assert pool.strategies[0].weekly_return == expected.model_copy(
+        update={k: round(getattr(expected, k), 6) for k in ("mean", "low", "high")}
+    )  # 6 dp
+    # Every CI carries the universe's seed: the workers' runs, the robustness rows, the pool.
+    for symbol in SYMBOLS:
+        tables = Robustness.model_validate_json(Path("elsewhere", symbol, "robustness.json")
+                                                .read_bytes())  # fmt: skip
+        cis = [r.weekly_return for t in (tables.ablations, tables.friction, tables.timing,
+                                         tables.grid) for r in t]  # fmt: skip
+        assert {ci.seed for ci in cis if ci is not None} == {SEED}
+    assert {s.weekly_return.seed for s in pool.strategies if s.weekly_return} == {SEED}
+    assert pool.strategies[0].total_pnl == sum(
+        _metrics(results[s]["baseline_pmcc"]).pnl for s in SYMBOLS)  # fmt: skip
+
+
+def _metrics(result: RunResult) -> Metrics:
+    assert result.summary.metrics is not None
+    return result.summary.metrics
+
+
+def _weekly(result: RunResult) -> list[float]:
+    assert result.summary.weekly_returns is not None
+    return [w.value for w in result.summary.weekly_returns]
 
 
 def test_p5_03_batch_exits_non_zero_when_a_symbol_fails_and_writes_the_rest(
@@ -178,7 +230,8 @@ def _job(market: Path, out: Path, symbol: str = "SYN", rate: float | None = None
     stamp = Stamp(_provenance(), DataSource.LSEG, NOW)
     underlying = Underlying(symbol=symbol, stock_ric=f"{symbol}.O", option_root=symbol)
     return SymbolJob(market, underlying, load_calendar(), rate or universe.risk_free_rate.value,
-                     configs, Money.from_dollars(15_000), stamp, out)  # fmt: skip
+                     configs, Money.from_dollars(15_000), stamp, out, run_families(),
+                     universe.bootstrap.seed)  # fmt: skip
 
 
 def test_p5_03_a_failed_run_writes_nothing_and_the_rest_go_on(workdir: Path, market: Path) -> None:
@@ -196,6 +249,8 @@ def test_p5_03_a_failed_run_writes_nothing_and_the_rest_go_on(workdir: Path, mar
     assert not Path("out/SYN", f"{bad.strategy.id}.json").exists()
     assert len([r for r in outcome.runs if r.path is not None]) == RUNS - 1
     assert outcome.coverage == Path("out/SYN/coverage.json")
+    assert outcome.robustness is None  # a table missing a row would mislead
+    assert not Path("out/SYN/robustness.json").exists()
     assert not outcome.ok
 
 
@@ -215,6 +270,66 @@ def test_p5_03_a_coverage_file_not_written_fails_the_symbol(workdir: Path, marke
 
     assert len([r for r in outcome.runs if r.path is not None]) == RUNS
     assert (outcome.coverage, outcome.ok) == (None, False)
+
+
+def test_p6_06_robustness_file_tables_every_family_from_the_runs_summaries(
+    workdir: Path, market: Path
+) -> None:
+    """Each family against its strategy: 5 ablations, 4 friction runs, 7 timing and 6 grid, each
+    table led by its reference rows; built from the result files the batch wrote."""
+    job = _job(market, Path("out"))
+    outcome = run_job(job)
+
+    assert outcome.ok
+    assert outcome.robustness == Path("out/SYN/robustness.json")
+    raw = Path("out/SYN/robustness.json").read_bytes()
+    tables = Robustness.model_validate_json(raw)
+    files = [Path("out/SYN", f"{c.strategy.id}.json").read_bytes() for c in job.configs]
+    scores = [RunScore.of(RunResult.model_validate_json(f)) for f in files]
+    assert canonical.to_bytes(robustness("SYN", scores, run_families()).model_dump()) == raw
+    assert [len(t) for t in (tables.ablations, tables.friction, tables.timing, tables.grid)] == [
+        6, 6, 8, 7]  # fmt: skip
+    assert [r.run_id for r in tables.friction if r.run_id == r.reference] == [
+        "baseline_pmcc", "quant_pmcc"]  # fmt: skip
+    assert tables.timing_dispersion is not None
+    assert tables.timing_dispersion.runs == 7
+    assert verify(Path("out")).problems == ()
+
+
+def test_p6_06_a_robustness_file_that_cant_be_built_fails_the_symbol(
+    workdir: Path, market: Path
+) -> None:
+    """Every run and coverage.json written, but a run outside the families: no robustness.json,
+    and the symbol isn't ok, so the batch exits 1 and writes no universe file."""
+    job = _job(market, Path("out"))
+    families = dict(job.families)
+    del families["quant_pmcc--a1"]
+
+    outcome = run_job(dataclasses.replace(job, families=families))
+
+    assert len([r for r in outcome.runs if r.path is not None]) == RUNS
+    assert outcome.coverage == Path("out/SYN/coverage.json")
+    assert outcome.robustness is None
+    assert not Path("out/SYN/robustness.json").exists()
+    assert not outcome.ok
+
+
+def test_p6_01_a_universe_file_that_fails_is_reported_and_the_rest_written(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def broken(_stage: UniverseStage) -> Path:
+        raise ValueError("quant_pmcc has no metrics")
+
+    def fine(stage: UniverseStage) -> Path:
+        return stage.out / "universe" / "fine.json"
+
+    monkeypatch.setattr(batch, "UNIVERSE_WRITERS", (broken, fine))
+
+    written, errors = batch.write_universe(UniverseStage((), tmp_path, SEED))
+
+    assert written == (tmp_path / "universe" / "fine.json",)
+    assert errors == ("broken: quant_pmcc has no metrics",)
+    assert not batch.BatchOutcome((), written, errors).ok
 
 
 def test_hr_8_coverage_file_maps_the_fetch_summary_field_by_field(
@@ -295,10 +410,11 @@ def test_p5_03_universe_writers_run_last_and_only_when_nothing_failed(
 ) -> None:
     seen: list[tuple[str, ...]] = []
 
-    def writer(outcomes: Sequence[SymbolOutcome], out: Path) -> Path:
-        seen.append(tuple(o.symbol for o in outcomes))
-        assert all(len(_runs(o.symbol)) == RUNS for o in outcomes)  # every run is written first
-        path = out / "universe" / "test.json"
+    def writer(stage: UniverseStage) -> Path:
+        seen.append(tuple(o.symbol for o in stage.outcomes))
+        assert all(len(_runs(o.symbol)) == RUNS for o in stage.outcomes)  # every run is written
+        assert stage.seed == SEED
+        path = stage.out / "universe" / "test.json"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("{}\n", encoding="utf-8")
         return path
@@ -306,7 +422,7 @@ def test_p5_03_universe_writers_run_last_and_only_when_nothing_failed(
     monkeypatch.setattr(batch, "UNIVERSE_WRITERS", (writer,))
     jobs = [_job(market, Path("results"), symbol=s) for s in SYMBOLS]
 
-    done = run_batch(jobs, Path("results"), initializer=cli.worker_logging)
+    done = run_batch(jobs, Path("results"), seed=SEED, initializer=cli.worker_logging)
     assert done.ok
     assert seen == [SYMBOLS]
     assert done.universe == (Path("results/universe/test.json"),)
@@ -323,7 +439,7 @@ def test_p5_03_universe_writers_run_last_and_only_when_nothing_failed(
     dying = dataclasses.replace(_job(market, Path("died"), symbol="TWO"),
                                 starting_cash=_DiesWhenUnpickled())  # type: ignore[arg-type]  # fmt: skip
 
-    broken = run_batch([good, failing, raising, dying], Path("isolated"),
+    broken = run_batch([good, failing, raising, dying], Path("isolated"), seed=SEED,
                        initializer=cli.worker_logging)  # fmt: skip
 
     assert not broken.ok

@@ -1,10 +1,11 @@
 """Result models: one run's file, `results/{SYM}/{run_id}.json` (ARCHITECTURE §12).
 
 A result holds the manifest, the resolved config with its rendered rule text, the starting cash
-and the summary. A full-detail run adds its records (blotter, ledger, gate log) and, from P6, its
-cycles and attribution; a summary run holds none of them (PO, DEC-54). The strategy's `report`
-block decides which (`config.strategy.report`). The summary's analytics are null until P6 fills
-them; P4-05 records the invariants the run held and the ledger's flag counts.
+and the summary. A full-detail run adds its records (blotter, ledger, gate log), its cycles and,
+from P6-03, its attribution; a summary run holds none of them (PO, DEC-54). The strategy's
+`report` block decides which (`config.strategy.report`). Every summary holds the run's analytics
+(P6, DEC-60 to DEC-62), the invariants it held and the ledger's flag counts. The analytics are
+nullable so that results written before P6 still validate until P6-09 re-runs them (DEC-101).
 
 Typed dollars and prices are `Decimal` (exact $0.0001 units, DEC-44) and serialize as 4-dp JSON
 numbers. The config keeps its own dump, dollars as "0.1000" strings, since that is what its hash
@@ -153,8 +154,8 @@ class InvariantCheck(_Model):
 
 
 class Summary(_Model):
-    """Every run's summary (PO, DEC-54). The analytics are null until P6 computes them (DEC-60,
-    DEC-62)."""
+    """Every run's summary (PO, DEC-54), with its analytics (DEC-60 to DEC-62): null only in a
+    result written before P6."""
 
     metrics: Metrics | None = None
     cycle_stats: CycleStats | None = None
@@ -178,7 +179,7 @@ class RunResult(_Model):
     blotter: tuple[BlotterRow, ...] | None = None  # full detail only
     ledger: tuple[LedgerRowOut, ...] | None = None
     gate_log: tuple[GateLogRowOut, ...] | None = None
-    cycles: tuple[Cycle, ...] | None = None  # full detail, from P6
+    cycles: tuple[Cycle, ...] | None = None  # full detail (P6-02)
     attribution: Attribution | None = None
 
     @model_validator(mode="after")

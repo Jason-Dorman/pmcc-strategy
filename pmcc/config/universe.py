@@ -3,8 +3,8 @@
 One window for every symbol (DEC-07), one constant r stated with its source (DEC-11), and each
 symbol's stock RIC and option root (DEC-12). The file is found from this module, not the working
 directory, like the calendar. `starting_cash` is the block `pmcc calibrate` writes, the value with
-its basis (`pmcc.config.capital`, DEC-30); `pmcc run` refuses to run without it (PO, DEC-30). The
-bootstrap seed joins with P6-05 (DEC-61).
+its basis (`pmcc.config.capital`, DEC-30); `pmcc run` refuses to run without it (PO, DEC-30).
+`bootstrap.seed` seeds every bootstrap CI (P6-05; PO, DEC-61).
 """
 
 import math
@@ -102,6 +102,15 @@ class Underlying(BaseModel):
         return self
 
 
+class Bootstrap(BaseModel):
+    """The bootstrap's seed (PO, DEC-61): every CI draws from numpy's PCG64 seeded with it, so a
+    re-run resamples the same weeks, and each CI records it."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    seed: int = Field(ge=0)
+
+
 class Universe(BaseModel):
     """The file as validated on its own. `load_universe` also checks the window's sessions."""
 
@@ -110,6 +119,7 @@ class Universe(BaseModel):
     window: Window
     risk_free_rate: RiskFreeRate
     symbols: tuple[Underlying, ...] = Field(min_length=1)
+    bootstrap: Bootstrap
     starting_cash: StartingCash | None = None  # every run's cash, from pmcc calibrate (DEC-30)
 
     @model_validator(mode="after")

@@ -52,8 +52,11 @@ def _rule_4(importer: str, imported: str) -> bool:
 
 
 def _rule_5(importer: str, imported: str) -> bool:
-    """`pmcc.analytics` never imports `engine` or `data`."""
-    return _within(importer, "pmcc.analytics") and _within(imported, "pmcc.engine", "pmcc.data")
+    """`pmcc.analytics` never imports `engine` or `data`, and `pmcc.export` never imports
+    `pmcc.analytics`, which builds export's result models (DEC-101)."""
+    if _within(importer, "pmcc.analytics"):
+        return _within(imported, "pmcc.engine", "pmcc.data")
+    return _within(importer, "pmcc.export") and _within(imported, "pmcc.analytics")
 
 
 def _rule_6(importer: str, imported: str) -> bool:
@@ -149,6 +152,7 @@ PLANTED = [
     (4, "pmcc/pricing/iv.py", "import pmcc.strategy\n"),
     (5, "pmcc/analytics/performance.py", "from pmcc.engine.loop import run\n"),
     (5, "pmcc/analytics/performance.py", "from pmcc.data import load\n"),
+    (5, "pmcc/export/verify.py", "from pmcc.analytics.performance import metrics\n"),
     (6, "pmcc/domain/money.py", "from pmcc.config import models\n"),
     (6, "pmcc/engine/loop.py", "from pmcc.cli import app\n"),
     (7, "pmcc/data/fetch.py", "from pmcc.log import configure_logging\n"),

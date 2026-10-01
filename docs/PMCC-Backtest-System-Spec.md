@@ -282,19 +282,19 @@ NVDA, for now (PO, 2026-09-30, DEC-15): QQQ and TSLA are set aside, commented ou
 
 ## Analytics and metrics
 
-Every metric is computed per symbol and strategy, plus pooled across the universe. Small-sample statistics are reported with their uncertainty, never as standalone headline claims.
+Every metric is computed per symbol and strategy, plus pooled across the universe. Small-sample statistics are reported with their uncertainty, never as standalone headline claims. The PO's definitions of each number are DEC-60 to DEC-65 and DEC-76 in `docs/DECISIONS.md`.
 
 **Performance**
 
 - Dollar P\&L; return on starting NAV; return on capital deployed (P&L ÷ peak long-leg cost).
 - Max drawdown on NAV and longest time underwater.
-- Sharpe and Sortino on daily NAV returns, not annualized. If an annualized figure is shown, it's labeled with the sample length.
+- Sharpe and Sortino on daily NAV returns (session-close NAV), not annualized. If an annualized figure is shown, it's labeled with the sample length (PO, DEC-60).
 
 **Cycle statistics** (one cycle = one week)
 
 - Weeks traded vs skipped, with skips counted by gate ID.
-- Win rate, average win, average loss, payoff ratio (average win ÷ average loss).
-- Premium captured as % of credit received; weekly credit as % of long-leg cost.
+- Win rate, average win, average loss, payoff ratio (average win ÷ |average loss|), over weeks with a long held, a cycle's P&L being its NAV change (PO, DEC-62).
+- Premium captured as % of credit received, Σ(credit − buyback) ÷ Σcredit over traded weeks; weekly credit as % of long-leg cost, the mean over traded weeks (PO, DEC-62).
 - Exit mix: counts of X-S1 through X-S5, X-L1, X-L2.
 
 **Attribution**
@@ -308,15 +308,16 @@ Every metric is computed per symbol and strategy, plus pooled across the univers
 
 **Uncertainty**
 
-- Bootstrap (10,000 resamples) 95% CI on mean weekly return per symbol and strategy.
+- Bootstrap (10,000 resamples) 95% percentile CI on mean weekly return per symbol and strategy, seeded from `configs/universe.yaml` (PO, DEC-61).
 - Pooled universe CI uses a week-block bootstrap: resample whole weeks with all symbols together, so cross-symbol correlation isn't mistaken for independent evidence.
 
 **Robustness tables**
 
 - Ablation table: each A1–A5 run vs the full quant PMCC on P&L, drawdown, payoff ratio, and CI.
-- Friction table at `spread_capture` 0 / 0.25 / 0.50.
-- Entry-timing dispersion: range and spread of baseline P&L across fixed Monday bars.
-- Parameter grid results, published in full.
+- Friction table at `spread_capture` 0 / 0.25 / 0.50, each strategy against itself at 0.
+- Entry-timing dispersion: range and sample standard deviation of baseline P&L across the fixed Monday bars; the E-T1 baseline is shown beside them, not counted.
+- Parameter grid results, published in full, against quant at its defaults.
+- Every table has the ablation table's columns plus P&L against its reference run, whose own row leads it (PO, DEC-65).
 
 **Fill-assumption check**
 

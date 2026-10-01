@@ -125,7 +125,7 @@ Every row points to its source. "Verified by" names the invariant test (INV-nn),
 | --- | --- | --- | --- |
 | FR-B1 | Strategies `baseline_pmcc` and `quant_pmcc`, defined as configs | Spec › Strategies; DEC-53 | `tests/unit/config/test_baseline_config.py` (P3-01); `test_quant_config.py` (P4-03, DEC-95) |
 | FR-B2 | Ablations A1–A5: quant with one layer removed | Spec › Ablations; DEC-53, DEC-95 | config-diff test, `tests/unit/config/test_quant_config.py` (P4-03) |
-| FR-B3 | Sensitivity: friction at 0 / 0.25 / 0.50 for both strategies; entry timing (baseline, one run per week-open bar); parameter grid (quant, one parameter at a time). Every result is published. | Spec › Sensitivity checks; DEC-31 | `tests/unit/config/test_sensitivity_config.py`, `tests/scenario/test_scenario_timing.py` (P5-02); P6-06 |
+| FR-B3 | Sensitivity: friction at 0 / 0.25 / 0.50 for both strategies; entry timing (baseline, one run per week-open bar); parameter grid (quant, one parameter at a time). Every result is published. | Spec › Sensitivity checks; DEC-31 | `tests/unit/config/test_sensitivity_config.py`, `tests/scenario/test_scenario_timing.py` (P5-02); `tests/unit/analytics/test_robustness.py` (P6-06) |
 | FR-B4 | A universe batch over `configs/universe.yaml` (NVDA for now; QQQ and TSLA commented out, PO, DEC-15) on one common window, Mon Mar 30 – Fri Sep 25 2026 (26 weeks; at least 10 required); any symbol can run alone | Spec › Universe; DEC-07, DEC-15, DEC-100 | `tests/unit/config/test_universe_file.py`, `tests/unit/test_cli_batch.py` (P5-03); P5-04 |
 | FR-B5 | One starting cash balance for every symbol and run, fixed before the first run: `pmcc calibrate` sets it to 2 × the most expensive first long-leg cost, rounded up to $5,000 (E-L4's `cash_multiple` and `cash_round_to`), checks that it covers every entry, reports each run's lowest available funds, and writes it with its basis into `configs/universe.yaml`, provisional until every symbol is in under both strategies (final at P5-01: $15,000 from NVDA, DEC-30). `pmcc run` reads it only from there, refuses to run without it, and says when it's provisional | Spec › E-L4; DEC-30, DEC-93 | `tests/unit/test_cli_run.py` (P3-08); `tests/unit/config/test_capital.py`, `tests/scenario/test_calibration.py`, `tests/unit/test_cli_calibrate.py` (P3-09); P5-01 |
 | FR-B6 | `just reproduce`: cached data → all runs → export → built site | Spec › CLI | INV-13; P8-01 |
@@ -134,11 +134,11 @@ Every row points to its source. "Verified by" names the invariant test (INV-nn),
 
 | ID | Requirement | Source | Verified by |
 | --- | --- | --- | --- |
-| FR-M1 | Performance: dollar P&L; return on starting NAV; return on capital deployed; max drawdown; longest time underwater. Sharpe and Sortino on daily NAV returns, not annualized (any annualized figure is labelled with the sample length). | Spec › Performance; DEC-60 | P6-01 tests |
-| FR-M2 | Cycle stats: weeks traded vs skipped (skips by gate); win rate; average win and loss; payoff ratio; premium captured %; weekly credit as % of long cost; exit mix | Spec › Cycle statistics; DEC-62 | P6-02 tests |
+| FR-M1 | Performance: dollar P&L; return on starting NAV; return on capital deployed; max drawdown; longest time underwater. Sharpe and Sortino on daily NAV returns, not annualized (any annualized figure is labelled with the sample length). | Spec › Performance; DEC-60 | `tests/unit/analytics/test_performance.py`; `universe/headline.json` in `tests/unit/test_cli_batch.py`, `tests/unit/analytics/test_pooled_headline.py` (P6-01) |
+| FR-M2 | Cycle stats: weeks traded vs skipped (skips by gate); win rate; average win and loss; payoff ratio; premium captured %; weekly credit as % of long cost; exit mix | Spec › Cycle statistics; DEC-62 | `tests/unit/analytics/test_cycles.py`; reconciled with a run's rows in `tests/scenario/test_export.py` (P6-02) |
 | FR-M3 | Attribution by leg (net short premium vs long-leg P&L, split into intrinsic and extrinsic) and by Greek (bar by bar, with the residual) | Spec › Attribution; DEC-63 | P6-03, P6-04 tests |
-| FR-M4 | 95% bootstrap CI (10,000 resamples) on mean weekly return per symbol and strategy; the pooled CI uses a week-block bootstrap | Spec › Uncertainty; DEC-61 | P6-05 tests |
-| FR-M5 | Robustness tables: ablations, friction, entry-timing dispersion, and the full parameter grid | Spec › Robustness tables | P6-06 |
+| FR-M4 | 95% bootstrap CI (10,000 resamples) on mean weekly return per symbol and strategy; the pooled CI uses a week-block bootstrap | Spec › Uncertainty; DEC-61 | `tests/unit/analytics/test_bootstrap.py`, `test_pooled_headline.py`; `universe/pooled.json` in `tests/unit/test_cli_batch.py` (P6-05) |
+| FR-M5 | Robustness tables: ablations, friction, entry-timing dispersion, and the full parameter grid, each run against the strategy it varies | Spec › Robustness tables; DEC-65 | `tests/unit/analytics/test_robustness.py`; `{SYM}/robustness.json` in `tests/unit/test_cli_batch.py` (P6-06) |
 | FR-M6 | Fill-assumption check: TRDPRC_1 vs mid scatter with fitted line and R², shorts and longs shown separately | Spec › Fill-assumption check; DEC-64 | P6-07 |
 | FR-M7 | Symbol suitability screen with the spec's five point-in-time measures | Spec › Symbol suitability screen | P6-08 |
 | FR-M8 | Every metric computed per symbol × strategy, and pooled across the universe | Spec › Analytics | `pmcc verify` schema |
@@ -185,8 +185,8 @@ Every row points to its source. "Verified by" names the invariant test (INV-nn),
 | HR-2 | Fills happen only on a valid BID and ASK at the decision bar. No invented prints. Stale marks are flagged and never fill. | INV-03; ledger flags |
 | HR-3 | Missed assignments are recorded (X-S5 rows), never assumed away | scenario test |
 | HR-4 | Negative available funds are flagged per bar, with the statement that the position couldn't have been held in a real Reg T account | ledger flags; UI state |
-| HR-5 | Small-sample statistics are shown with bootstrap CIs, never as standalone headlines. Sharpe and Sortino are unannualized, or labelled. | P6-05 |
-| HR-6 | Every sensitivity result is published in full; no best-cell picks | P6-06 |
+| HR-5 | Small-sample statistics are shown with bootstrap CIs, never as standalone headlines. Sharpe and Sortino are unannualized, or labelled. | every run's weekly-return CI and the pooled CI (P6-05, DEC-61); no annualized figure is computed (DEC-60) |
+| HR-6 | Every sensitivity result is published in full; no best-cell picks | `{SYM}/robustness.json` holds every run (P6-06, DEC-65) |
 | HR-7 | The fill-assumption fit is published even where it's weak (the long leg) | P6-07 |
 | HR-8 | Data coverage is disclosed: unanswered contracts, IV failures, stale-mark rates, unavailable fields | `coverage.json`, written by `pmcc batch` (P5-03, DEC-100); Methodology |
 | HR-9 | Stated assumptions: r (value and source); q = 0; no early assignment; dividends out of scope; Black-Scholes on American calls; the bar's final quotes aren't proven to be the NBBO (LDG §4.14) | Methodology |

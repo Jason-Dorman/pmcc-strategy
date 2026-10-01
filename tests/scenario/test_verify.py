@@ -30,7 +30,7 @@ from pmcc.runner import Stamp, run_loaded
 from tests.fixtures.synthetic.scenarios import BUILDERS, random_walk
 from tests.fixtures.synthetic.store import SyntheticMarkets
 from tests.scenario import inv13_run
-from tests.scenario.harness import CASH, NO_TAKE_PROFIT, config
+from tests.scenario.harness import CASH, NO_TAKE_PROFIT, SEED, config
 
 WALK = "SYN/baseline_pmcc.json"
 SURGE = "SYN/baseline_pmcc--test.json"
@@ -59,7 +59,7 @@ def results(synthetic: SyntheticMarkets, tmp_path_factory: pytest.TempPathFactor
                              ("late_friday_surge", BUILDERS["late_friday_surge"], no_tp),
                              ("random_walk", random_walk, _summary(base))):  # fmt: skip
         loaded = synthetic.get(name, build).symbol
-        write_result(run_loaded(loaded, loaded.symbol, cfg, CASH, stamp), out)
+        write_result(run_loaded(loaded, loaded.symbol, cfg, CASH, stamp, seed=SEED), out)
     return out
 
 
@@ -131,7 +131,12 @@ def test_verify_accepts_the_analytics_files_where_they_belong(
 ) -> None:
     root = _copy(results, tmp_path)
     (root / "universe").mkdir()
-    pooled: Doc = {"schema_version": SCHEMA_VERSION, "strategies": [], "quant_beat_baseline": []}
+    pooled: Doc = {
+        "schema_version": SCHEMA_VERSION,
+        "symbols": [],
+        "strategies": [],
+        "quant_beat_baseline": [],
+    }
     (root / "universe" / "pooled.json").write_bytes(canonical.to_bytes(pooled))
     (root / "SYN" / "fill_check.json").write_bytes(
         canonical.to_bytes({"schema_version": SCHEMA_VERSION, "symbol": "SYN", "groups": []})
@@ -558,7 +563,7 @@ def friction(synthetic: SyntheticMarkets, tmp_path_factory: pytest.TempPathFacto
                  "{spread_capture: 0.5, fee_per_contract: 0.65}")  # fmt: skip
     loaded = synthetic.get("random_walk", random_walk).symbol
     stamp = Stamp(inv13_run.PROVENANCE, DataSource.SYNTHETIC, WHEN)
-    write_result(run_loaded(loaded, loaded.symbol, cfg, CASH, stamp), tmp / "results")
+    write_result(run_loaded(loaded, loaded.symbol, cfg, CASH, stamp, seed=SEED), tmp / "results")
     return tmp / "results"
 
 

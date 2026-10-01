@@ -26,6 +26,7 @@ from tests.fixtures.synthetic.store import SyntheticMarkets
 BASELINE, QUANT = "baseline_pmcc", "quant_pmcc"
 NO_TAKE_PROFIT = "X-S1: {remove: true}"  # A5's config: hold to the Friday check
 CASH = Money.from_dollars(10_000)
+SEED = 535  # the bootstrap seed configs/universe.yaml ships (DEC-61)
 
 
 def config(tmp: Path, overrides: str, start: date, end: date, fill_model: str = "",

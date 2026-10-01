@@ -23,6 +23,12 @@ risk_free_rate:
     Securities at 3-Month Constant Maturity, Quoted on an Investment Basis (DGS3MO), via FRED,
     Federal Reserve Bank of St. Louis, https://fred.stlouisfed.org/series/DGS3MO (read 2026-09-28)
 
+# The bootstrap (PO, DEC-61): each 95% CI of a mean weekly return, per run and pooled, draws its
+# 10,000 resamples from numpy's PCG64 seeded with this, and records it. Any fixed value would do;
+# this one is the course number. A new seed changes every CI, so re-run every result after.
+bootstrap:
+  seed: 535
+
 # The universe (DEC-15): an index ETF and two single names across a wide volatility range, cut by
 # the PO from the first plan's twelve. Each at its primary listing, Nasdaq .O (DEC-12); the option
 # roots are the tickers.

@@ -257,7 +257,7 @@ def test_cli_run_a_bad_config_fails_loudly(market: Path, config: str, said: str)
 def test_cli_run_a_run_error_writes_nothing(
     workdir: Path, market: Path, monkeypatch: pytest.MonkeyPatch, error: Exception
 ) -> None:
-    def fail(*_args: object) -> object:
+    def fail(*_args: object, **_kwargs: object) -> object:
         raise error
 
     monkeypatch.setattr(cli, "run_symbol", fail)

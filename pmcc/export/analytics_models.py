@@ -3,11 +3,12 @@ and the universe files.
 
 These are the shapes the site reads, fixed at P4-05 so the frontend is typed against every output
 it will load (INV-14). Their fields follow Spec › Analytics and metrics and the panels of UI-SPEC
-§6. Nothing computes them yet: a run's P6 sections are null until P6 fills them, and the other
-files are written by `pmcc batch` (P5-03) and the analytics (P6). How each number is defined is
-the PO's answer to DEC-60 to DEC-64 and DEC-76, asked when P6 starts; P6 may reshape a model when
-it builds it, regenerating the schema, and `tsc` then shows the site what changed (ARCHITECTURE
-§16).
+§6, and `pmcc.analytics` computes them as the PO defined each number (DEC-60 to DEC-64, DEC-76):
+the performance metrics, cycles and bootstrap CIs at P6-01, P6-02 and P6-05, the robustness tables
+at P6-06; the rest stay null until their P6 item. A P6 item may reshape a model when it builds it,
+regenerating the schema, and `tsc` then shows the site what changed (ARCHITECTURE §16).
+
+Every ratio is a fraction, whatever its name says (0.25 is 25%); the site formats it.
 """
 
 from collections.abc import Mapping
@@ -19,7 +20,9 @@ from pmcc.export.base import SCHEMA_VERSION, Dollars, Model, SchemaVersion
 
 
 class MeanCI(Model):
-    """A mean with its bootstrap confidence interval (P6-05, DEC-61)."""
+    """A mean weekly return with its percentile bootstrap CI (P6-05; PO, DEC-61): `resamples` draws
+    of whole weeks, with replacement, from numpy's PCG64 seeded with `seed`. `weeks` is the
+    sample's length; a pooled mean resamples each week across every symbol at once."""
 
     mean: float
     low: float
@@ -27,30 +30,41 @@ class MeanCI(Model):
     level: float
     resamples: int
     seed: int
+    weeks: int
 
 
 class Metrics(Model):
-    """Performance (P6-01, DEC-60)."""
+    """Performance (P6-01; PO, DEC-60). Daily returns are session-close NAV ÷ the previous close −
+    1, the first session's against the starting cash; Sharpe is their mean ÷ sample standard
+    deviation, Sortino their mean ÷ √mean(min(r, 0)²), neither annualized (null when the divisor
+    is 0). Drawdown is on every bar's NAV, from the starting cash as the first peak; the largest
+    fall in dollars and the largest as a fraction of its peak are each their own maximum. Time
+    underwater counts sessions from a close at a peak to the close that regains it, or to the last
+    session."""
 
     pnl: Dollars
     return_on_starting_nav: float
     return_on_capital: float | None  # P&L ÷ peak long-leg cost; None if no long was held
-    peak_long_cost: Dollars | None
-    max_drawdown: Dollars
+    peak_long_cost: Dollars | None  # the dearest long entry: fill × 100 × qty + fees
+    max_drawdown: Dollars  # a fall, so never negative
     max_drawdown_pct: float
     longest_underwater_sessions: int
     sharpe_daily: float | None
     sortino_daily: float | None
-    sessions: int
-    weekly_return: MeanCI | None
+    sessions: int  # session closes, so daily returns
+    weekly_return: MeanCI | None  # None under 2 weeks
 
 
 class CycleStats(Model):
-    """One cycle is one week (P6-02, DEC-62)."""
+    """One cycle is one week (P6-02; PO, DEC-62). A win is a week whose P&L is above 0 and a loss
+    one below it, over the weeks a long was held; payoff is the average win ÷ |average loss|.
+    Premium captured is Σ(credit − buyback) ÷ Σcredit over traded weeks; credit as a share of the
+    long's cost is the mean over traded weeks. Each is null without the weeks it needs."""
 
     weeks: int
     weeks_traded: int
     weeks_skipped: int
+    weeks_long_held: int  # the win rate's denominator
     win_rate: float | None
     average_win: Dollars | None
     average_loss: Dollars | None
@@ -73,14 +87,20 @@ class WeeklyReturn(Model):
 
 
 class Cycle(Model):
-    """One week of a full run (P6-02, DEC-62)."""
+    """One week of a full run (P6-02; PO, DEC-62). Its P&L is the NAV change from the previous
+    week-final close (the starting cash, for the first week) to this one, both legs included. A
+    traded week's credit and buyback are the short's cash, net of fees: X-S4 buys back at $0, and
+    X-S5's assignment does too, its stock shown apart (DEC-63). `long_cost` is the entry cost of
+    the long the short was sold against."""
 
     week_open: date
     week_final: date
     outcome: str  # "sold" or "skipped", as the gate log says
     rule_id: str
-    credit: Dollars | None
+    long_held: bool  # at any bar of the week, or carried into it
+    credit: Dollars | None  # null when skipped
     buyback: Dollars | None
+    long_cost: Dollars | None
     exit_rule_id: str | None
     pnl: Dollars
 
@@ -133,24 +153,30 @@ class Attribution(Model):
 
 
 class RobustnessRow(Model):
-    """One run in a robustness table, against its reference run."""
+    """One run in a robustness table, against its reference: the strategy it varies (P6-06). The
+    reference's own row leads its rows, at 0 against itself."""
 
     run_id: str
-    label: str
-    pnl: Dollars | None
-    max_drawdown: Dollars | None
+    label: str  # the run's name
+    reference: str  # the reference's run ID
+    pnl: Dollars
+    max_drawdown: Dollars
     payoff_ratio: float | None
     weekly_return: MeanCI | None
-    pnl_vs_reference: Dollars | None
+    pnl_vs_reference: Dollars
 
 
 class TimingDispersion(Model):
-    range: Dollars
-    std: Dollars
+    """The spread of P&L across the fixed-bar timing runs, the baseline left out (P6-06)."""
+
+    runs: int
+    range: Dollars  # highest − lowest
+    std: float | None  # sample standard deviation, in dollars; None under 2 runs
 
 
 class Robustness(Model):
-    """`{SYM}/robustness.json`: the ablation, friction, timing and grid tables (P6-06)."""
+    """`{SYM}/robustness.json`: the ablation, friction, timing and grid tables (P6-06), every row
+    published, none picked as best (HR-6)."""
 
     schema_version: SchemaVersion = SCHEMA_VERSION
     symbol: str
@@ -226,7 +252,7 @@ class HeadlineRow(Model):
 
 
 class Headline(Model):
-    """`universe/headline.json`: symbol × strategy (P6)."""
+    """`universe/headline.json`: symbol × strategy (P6-01)."""
 
     schema_version: SchemaVersion = SCHEMA_VERSION
     rows: tuple[HeadlineRow, ...]
@@ -239,9 +265,12 @@ class PooledStrategy(Model):
 
 
 class Pooled(Model):
-    """`universe/pooled.json` (P6-05)."""
+    """`universe/pooled.json` (P6-05): each strategy over every symbol. Its CI resamples whole
+    weeks of a week × symbol table, so the symbols move together and their correlation isn't
+    counted as independent evidence (PO, DEC-61)."""
 
     schema_version: SchemaVersion = SCHEMA_VERSION
+    symbols: tuple[str, ...]
     strategies: tuple[PooledStrategy, ...]
     quant_beat_baseline: tuple[str, ...]  # symbols
 

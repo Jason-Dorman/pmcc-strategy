@@ -150,7 +150,7 @@ Readouts come first on every page, then panels in the order listed. Widths are g
 | 1 | NAV — baseline vs quant | 10 | overlaid NAV curves (§4) |
 | 2 | Headline | 5 | rows = strategies; P&L, return on capital, max drawdown, payoff ratio, mean weekly return with 95% CI |
 | 3 | Pooled universe | 5 | both strategies pooled: mean weekly return with week-block CI, total P&L, symbols where quant beat baseline |
-| 4 | Ablations | 10 | A1–A5 vs full quant: P&L, max drawdown, payoff, CI, and the Δ vs quant |
+| 4 | Ablations | 10 | quant's row, then A1–A5 against it: P&L, Δ vs quant, max drawdown, payoff, weekly-return CI (`robustness.json`, DEC-65) |
 
 ### 6.2 Strategy — `#/baseline/:symbol`, `#/quant/:symbol`
 
@@ -199,9 +199,9 @@ Panels that depend on the data follow the selected symbol and show pooled figure
 | 2 | Mid vs print — weekly shorts | 5 | scatter + fit + R² |
 | 3 | Mid vs print — long-dated longs | 5 | scatter + fit + R² (expected to fit worse, and reported as such) |
 | — | Reg T treatment | 10 | Prose with exact citations (DEC-10) |
-| 4 | Friction | 5 | both strategies at `spread_capture` 0 / 0.25 / 0.50 |
-| 5 | Entry timing | 5 | baseline P&L per fixed Monday bar; range and spread; large dispersion flagged as fragility |
-| 6 | Parameter grid | 10 | every quant grid run, published in full (no best cell) |
+| 4 | Friction | 5 | each strategy at `spread_capture` 0, then 0.25 and 0.50 against it: P&L, Δ, max drawdown, payoff, CI (DEC-65) |
+| 5 | Entry timing | 5 | the E-T1 baseline, then each fixed Monday bar against it: P&L, Δ, max drawdown, payoff, CI; range and sample standard deviation over the fixed bars alone; large dispersion flagged as fragility (DEC-65) |
+| 6 | Parameter grid | 10 | quant at its defaults, then every grid run against it: P&L, Δ, max drawdown, payoff, CI; published in full (no best cell; DEC-65) |
 | 7 | Stated assumptions | 10 | key/value: r (value, source, date), q = 0, no early assignment, dividends out of scope (DEC-55), Black-Scholes on American calls, quotes not proven NBBO |
 
 ### 6.5 Universe — `#/universe`

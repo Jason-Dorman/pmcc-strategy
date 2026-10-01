@@ -27,7 +27,7 @@ from pmcc.engine.invariants import RUNTIME_INVARIANTS
 from pmcc.export import canonical
 from pmcc.export.base import SCHEMA_VERSION
 from pmcc.export.manifest import GitState, Provenance
-from pmcc.export.models import DataSource, RunResult
+from pmcc.export.models import BlotterRow, DataSource, RunResult
 from pmcc.export.results import write_result
 from pmcc.export.schema import SCHEMAS
 from pmcc.export.site import ExportError, check_export_dir, export_site, rule_changes
@@ -36,7 +36,7 @@ from pmcc.runner import Stamp, run_loaded
 from tests.fixtures.synthetic.scenarios import BUILDERS, random_walk
 from tests.fixtures.synthetic.store import SyntheticMarkets
 from tests.scenario import inv13_run
-from tests.scenario.harness import CASH, NO_TAKE_PROFIT, config
+from tests.scenario.harness import CASH, NO_TAKE_PROFIT, SEED, config
 
 WHEN = datetime(2026, 9, 30, 9, tzinfo=ET)
 RUNS = ("baseline_pmcc", "quant_pmcc", "ablations/a3")
@@ -53,7 +53,7 @@ def _write(synthetic: SyntheticMarkets, tmp: Path, out: Path, provenance: Proven
     written: dict[str, RunResult] = {}
     for strategy in strategies:
         cfg = config(tmp, "", spec.window_start, spec.window_end, strategy=strategy)
-        result = run_loaded(loaded, loaded.symbol, cfg, CASH, stamp)
+        result = run_loaded(loaded, loaded.symbol, cfg, CASH, stamp, seed=SEED)
         write_result(result, out)
         written[result.manifest.run_id] = result
     return written
@@ -113,11 +113,53 @@ def test_dec_54_the_summary_counts_the_ledgers_flags(
     assert result.summary.flag_counts == counted
 
 
-def test_dec_54_the_analytics_wait_for_p6(runs: Runs) -> None:
+def test_p6_01_every_run_carries_its_analytics_and_a_full_run_its_cycles(runs: Runs) -> None:
+    """A summary run's analytics are what the robustness tables read (DEC-54); the attribution
+    waits for P6-03."""
     for result in runs[1].values():
         summary = result.summary
-        assert (summary.metrics, summary.cycle_stats, summary.exit_mix) == (None, None, None)
-        assert (summary.skips_by_rule, summary.nav_close, summary.weekly_returns) == (None,) * 3
+        analytics = (summary.metrics, summary.cycle_stats, summary.exit_mix, summary.skips_by_rule)
+        assert None not in analytics
+        assert summary.nav_close
+        assert summary.weekly_returns
+        assert result.attribution is None
+        full = result.config.strategy.report.detail is Detail.FULL
+        assert (result.cycles is not None) == full
+
+
+def test_p6_01_the_analytics_reconcile_with_the_runs_own_rows(runs: Runs) -> None:
+    """On the synthetic market: the last close is the ledger's last NAV, the cycles' P&L adds up
+    to the run's, a week per gate-log row, and the exit mix counts the blotter's exits."""
+    for run_id in ("baseline_pmcc", "quant_pmcc"):
+        result = runs[1][run_id]
+        summary = result.summary
+        assert result.ledger
+        assert result.gate_log
+        assert result.blotter
+        assert result.cycles
+        assert summary.metrics
+        assert summary.nav_close
+        assert summary.weekly_returns
+        assert summary.exit_mix is not None
+        assert summary.cycle_stats is not None
+        final = result.ledger[-1].nav
+        assert summary.nav_close[-1].nav == summary.weekly_returns[-1].nav == final
+        assert summary.metrics.pnl == final - result.starting_cash
+        assert sum(c.pnl for c in result.cycles) == summary.metrics.pnl
+        assert [c.week_open for c in result.cycles] == [g.session for g in result.gate_log]
+        assert [c.outcome for c in result.cycles] == [g.outcome.kind for g in result.gate_log]
+        assert sum(summary.exit_mix.values()) == sum(map(_closes_a_leg, result.blotter))
+        sold = sum(r.rule_id == "E-S1" for r in result.blotter)
+        assert summary.cycle_stats.weeks_traded == sold
+        assert summary.metrics.weekly_return is not None
+        assert summary.metrics.weekly_return.seed == SEED
+
+
+def _closes_a_leg(row: BlotterRow) -> bool:
+    """An X-L sale of the long, or an X-S buyback, expiry or assignment of the short."""
+    if row.instrument.kind != "call":
+        return False
+    return row.rule_id.startswith("X-L") or (row.rule_id.startswith("X-S") and row.side != "SELL")
 
 
 def test_dec_54_a_summary_file_is_a_fraction_of_a_full_one(
@@ -460,7 +502,12 @@ def test_export_copies_the_universe_files(runs: Runs, tmp_path: Path) -> None:
     results = tmp_path / "results"
     shutil.copytree(runs[0], results)
     (results / "universe").mkdir()
-    pooled: Doc = {"schema_version": SCHEMA_VERSION, "strategies": [], "quant_beat_baseline": []}
+    pooled: Doc = {
+        "schema_version": SCHEMA_VERSION,
+        "symbols": [],
+        "strategies": [],
+        "quant_beat_baseline": [],
+    }
     (results / "universe" / "pooled.json").write_bytes(canonical.to_bytes(pooled))
 
     export_site(results, tmp_path / "site")
@@ -513,8 +560,8 @@ def test_dec_54_the_summary_counts_every_flag_on_a_bar(
     spec = build()
     loaded = synthetic.get("friday_unquoted_at_check", build).symbol
     cfg = config(tmp_path, NO_TAKE_PROFIT, spec.window_start, spec.window_end)
-    result = run_loaded(loaded, loaded.symbol, cfg, CASH,
-                        Stamp(inv13_run.PROVENANCE, DataSource.SYNTHETIC, WHEN))  # fmt: skip
+    stamp = Stamp(inv13_run.PROVENANCE, DataSource.SYNTHETIC, WHEN)
+    result = run_loaded(loaded, loaded.symbol, cfg, CASH, stamp, seed=SEED)
     assert result.ledger is not None
     assert any(len(bar.flags) == 2 for bar in result.ledger)
 

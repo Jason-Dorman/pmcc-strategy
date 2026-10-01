@@ -76,18 +76,19 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-57 | Reference files stay in place | ENG | — |
 | DEC-58 | Windows and Ubuntu parity | ENG | — |
 | DEC-59 | Git and GitHub belong to the PO | SETTLED (PO) | — |
-| DEC-60 | Returns and performance definitions | ASK | P6-01 |
-| DEC-61 | Bootstrap | ASK | P6-01 |
-| DEC-62 | Cycle definitions | ASK | P6-01 |
-| DEC-63 | Attribution conventions | ASK | P6-01 |
-| DEC-64 | Fill-assumption check | ASK | P6-01 |
+| DEC-60 | Returns and performance definitions | SETTLED (PO): as recommended | — |
+| DEC-61 | Bootstrap | SETTLED (PO): as recommended | — |
+| DEC-62 | Cycle definitions | SETTLED (PO): as recommended, two details too | — |
+| DEC-63 | Attribution conventions | SETTLED (PO): as recommended | — |
+| DEC-64 | Fill-assumption check | SETTLED (PO): as recommended | — |
+| DEC-65 | Robustness tables: references, dispersion, columns | SETTLED (PO) | — |
 | DEC-70 | Design tokens | ENG | — |
 | DEC-71 | shadcn/ui restyled | ENG | — |
 | DEC-72 | Fonts self-hosted | ENG | — |
 | DEC-73 | Routing and base path | ENG | — |
 | DEC-74 | Synthetic-data banner | ENG | — |
 | DEC-75 | Data page | ASK | P7-06 |
-| DEC-76 | Greek attribution display | ASK | P6-01 |
+| DEC-76 | Greek attribution display | SETTLED (PO): as recommended | — |
 | DEC-77 | Quality-gate configuration | ENG | — |
 | DEC-78 | justfile conventions | ENG | — |
 | DEC-79 | CI workflow conventions | ENG | — |
@@ -112,6 +113,7 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-98 | Pages deploy: the CI `web` and `deploy` jobs and the dist guard | ENG · live site checked | — |
 | DEC-99 | The Playwright smoke test (INV-15) | ENG | — |
 | DEC-100 | Sensitivity variants, the run matrix and `pmcc batch` | ENG · universe files at P6, coverage at P5-03 (PO, 2026-09-30); full batch run at P5-04 (2026-10-01) | — |
+| DEC-101 | The analytics: performance, cycles, bootstrap CIs, robustness tables | ENG | — |
 
 ---
 
@@ -1193,7 +1195,7 @@ Development runs in Git Bash on Windows (DEC-02) and CI runs on Ubuntu. Both mus
   - `risk_free_rate` (DEC-11): the value used, plus the quote, series, date and source it came from;
   - `symbols` (DEC-12): symbol, stock RIC and option root.
 
-  `starting_cash` joined, optional, at P3-08, and P3-09 sets its value (DEC-30, DEC-92); the bootstrap seed joins with P6-05 (DEC-61). Until then any other unknown key is refused.
+  `starting_cash` joined, optional, at P3-08, and P3-09 sets its value (DEC-30, DEC-92); the bootstrap seed joined at P6-05: `bootstrap: {seed}`, required, above the `starting_cash` block (DEC-61, DEC-101). Any other unknown key is refused.
 - **What it refuses:**
   - a window that doesn't run from a week-open session to a week-final session, spans fewer than 10 weekly expiries (Spec › Universe), or falls outside the calendar;
   - an r quoted on or after the window's first day, which the first decision couldn't have known;
@@ -1831,7 +1833,7 @@ How P4-05 builds the results contract (ARCHITECTURE §12). None of it changes wh
 - **Outcome:** 2026-09-30 — green in CI: the PO's push of `2dc3aa2` deployed, and Pages deploys only after the `python` and `web` jobs pass, the `web` job running INV-14's typecheck and INV-15's smoke test before the upload; the live site carries that commit's footer (a `contentinfo` landmark outside `main`, checked in Chromium on 2026-09-30).
 
 ### DEC-100 — Sensitivity variants, the run matrix and `pmcc batch`
-**Status:** ENG · two scope answers SETTLED (PO, 2026-09-30); the full batch run at P5-04 (2026-10-01, last outcome) · **Affects:** P5-02, P5-03, P5-04, P5-05, P6-01, P6-05, P6-06, P6-08; DEC-16, DEC-31, DEC-53, DEC-54, DEC-58, DEC-80
+**Status:** ENG · two scope answers SETTLED (PO, 2026-09-30); the full batch run at P5-04 (2026-10-01); P6 fills the stages and regroups the sensitivity file (2026-10-01, last outcome) · **Affects:** P5-02, P5-03, P5-04, P5-05, P6-01, P6-05, P6-06, P6-08; DEC-16, DEC-31, DEC-53, DEC-54, DEC-58, DEC-80
 
 - **PO answers at P5-03 (2026-09-30):**
   - **The universe files wait for P6.** Every field of `universe/pooled.json`, `headline.json` and `suitability.json` is a P6 analytic whose definition is still an ASK (DEC-60, DEC-61, P6-08). So the batch has its universe-level stage now, run last, but writes no universe file; P6-01, P6-05 and P6-08 add theirs. P5-03's done-when is amended: 48 run files, plus each symbol's `coverage.json`.
@@ -1872,13 +1874,82 @@ How P4-05 builds the results contract (ARCHITECTURE §12). None of it changes wh
   - **The seven committed runs** came out identical but for `run_timestamp` and `git_sha` (compared with `drop_volatile`'s fields removed), and every run's `data_manifest_hash` is the committed cache's (`5ada2fde…`), so NVDA's raw cache, committed at P3-10 (DEC-05), is unchanged and goes with these results as it is.
   - **Review notes**, end NAV from $15,000 (the 17 new runs are summary detail, so the figures come from an in-memory re-run that writes nothing; P6 puts the metrics in results): friction: baseline $18,571.79 at 0.25 and $18,471.00 at 0.50 ($18,672.50 at 0), quant $18,117.05 and $17,930.50 ($18,303.50), the same trades. Timing, the short decided only at bar k: t1 (10:00) $18,672.50, identical to the baseline, since all 26 of its weeks decide on the first bar; t2 $18,019.00, t3 $17,788.00, t4 $19,149.50, t5 $19,190.50, t6 $19,332.50, t7 $19,026.50, where t4–t7 sell 14 shorts, not 15, as G-2 fires one more week. Grid: k 0.75 $18,489.00, k 1.25 $18,330.00; G-4 ratio 0.90 $18,005.00 (13 shorts), 1.10 $19,163.50 (7); G-3 ratio 1.10 $19,103.00 (3 shorts, G-3 firing 9 weeks), 1.30 $18,303.50, identical to quant: raising G-3 from 1.20 to 1.30 changes no week's outcome.
   - **Milestone M3** (all results JSON written and verified) reached 2026-10-01.
+- **Outcome:** 2026-10-01 — **P6 fills the stages** (DEC-101): each symbol's worker writes
+  `{SYM}/robustness.json` after `coverage.json` (P6-06), and the universe stage writes
+  `universe/headline.json` (P6-01) and `universe/pooled.json` (P6-05). The stage now receives a
+  `UniverseStage` (the outcomes, the output directory and the bootstrap seed), and a writer that
+  fails is reported and fails the batch. The suitability screen joins at P6-08, which must widen
+  the stage or the worker's results with each symbol's cache measures: `UniverseStage` holds no
+  cache. **`configs/sensitivity.yaml` is now three lists**, `friction`, `timing` and `grid`, not
+  the `variants` list above, which the loader refuses; each list is a robustness table (DEC-65).
+
+### DEC-101 — The analytics: performance, cycles, bootstrap CIs, robustness tables
+**Status:** ENG · **Affects:** P6-01, P6-02, P6-05, P6-06, P6-09; DEC-54, DEC-60 to DEC-62, DEC-65, DEC-86, DEC-100
+
+- **`pmcc/analytics/`** (P6-01, P6-02, P6-05, P6-06):
+  - `records.py`: what the analytics read from one run, as protocols (`RunRecords`, `WeekDecision`) that the engine's `RunOutput` and gate-log rows satisfy, so analytics never imports the engine (ARCHITECTURE §3.3). Session closes are each session's last ledger row; weeks are calendar weeks of those closes. A blotter row's leg follows from its rule: E-L buys and X-L sells the long, E-S1 sells the short, X-S1 to X-S5 close it; X-S5's stock rows are neither leg.
+  - `performance.py` (DEC-60), `cycles.py` (DEC-62), `bootstrap.py` (DEC-61).
+  - `run.py`: `analyze(run, seed)`, every per-run analytic at once.
+  - `scores.py`: `RunScore`, a finished run's identity and summary. The tables across runs read summaries, never re-run anything, and refuse a summary without metrics.
+  - `robustness.py` (DEC-65) and `universe.py` (headline and pooled).
+  - Floats come from exact integer money. The metrics' means and deviations use `statistics.fmean` and `stdev`, which sum exactly, so they don't depend on summation order; the CI's means are numpy's, deterministic for the same weeks in the same order (and published to 6 places). Each CI draws from a fresh PCG64, so it never depends on which CI ran before it.
+- **Analytics builds export's result models** (`pmcc/export/analytics_models.py`) instead of mirroring them in its own types, so **export never imports analytics**: import rule 5 now says so, with a planted violation (`tests/architecture/test_imports.py`).
+- **Every run gets its analytics, whatever its detail** (DEC-54): the runner computes them from the engine's output (`run_market` → `analyze` → `to_result`), the summary holds them, and a full run's file also keeps its cycles. A summary run's summary is what the robustness tables read.
+- **The seed travels beside the starting cash, not in `RunConfig`** (`run_market(…, seed=)`, and `pmcc run` and `pmcc batch` read `bootstrap.seed`), so no config hash moves. Every CI records the seed.
+- **`configs/sensitivity.yaml` is three lists**, `friction`, `timing` and `grid`, in place of one `variants` list; the runs and their order are unchanged. `run_families()` gives each run ID its family (strategy, ablation or one of the three) from where its config sits, so a table's rows never depend on parsing run-ID suffixes. Each batch job carries the families.
+- **Model reshapes:**
+  - `MeanCI` gains `weeks`; `CycleStats` gains `weeks_long_held`; `Cycle` gains `long_held` and `long_cost`.
+  - `RobustnessRow` gains `reference`, and its P&L, drawdown and difference are never null.
+  - `TimingDispersion` gains `runs`, and its `std` is a float; `Pooled` gains `symbols`.
+  - Every ratio is a fraction, whatever its name (`premium_captured_pct` 0.25 is 25%), as the models' docstring says.
+  - The schema stays at version 2: every new section is nullable, so the committed results still pass `pmcc verify` until P6-09 regenerates them.
+- **`pmcc batch`** (DEC-100):
+  - **Per symbol:** after `coverage.json`, the worker writes `{SYM}/robustness.json` from the runs in memory, only when every run succeeded. A table missing a row would mislead, and the symbol has failed anyway. A symbol is `ok` only with both files.
+  - **Universe stage:** writers take a `UniverseStage` (the outcomes, the output directory, the seed) and read each symbol's two strategy runs back from their files. A writer that raises is logged (`batch.universe.abort`), named in the summary, and fails the batch; the other writers still run.
+  - **New log events:** `batch.robustness.abort`, `batch.universe.abort`.
+- **NVDA,** run into a scratch directory from the uncommitted tree (nothing under `results/` changed): the 24 runs, coverage, robustness and both universe files in 19 s (18 s before). `pmcc verify` on that output reports only `git_dirty`, on every run. P6-09 re-runs from a clean tree and commits.
+- **Tests (76 new, 2,023 in the suite, 7 of them from the review):**
+  - **Unit, `tests/unit/analytics/`, worked by hand:**
+    - `test_performance.py`: the three-week fixture's closes, returns, Sharpe and Sortino in closed form, drawdown on an intrabar low, each underwater edge.
+    - `test_cycles.py`: credits and buybacks net of fees, X-S4, X-S5's stock apart, a week without a long, the credit-weighted premium, half-even means, the exit mix.
+    - `test_bootstrap.py`: a plain-Python oracle over the same seeded draws, on twelve irregular weeks whose resample means don't tie at either percentile, so it pins the seed and the interpolation; the pooled table resampling whole weeks (two cancelling symbols give a CI of 0); the refusals.
+    - `test_robustness.py` and `test_pooled_headline.py`.
+  - **Fixtures:** `tests/fakes/records.py` and `tests/fakes/scores.py`.
+  - **Config:** each run's family; a variant's family is its list, whatever its ID; the old `variants` key refused; the shipped seed sits above the cash block; a missing or bad seed refused.
+  - **End to end:**
+    - `tests/scenario/test_export.py`: every run carries its analytics, and on the synthetic market they reconcile with the run's own rows (the last close is the ledger's last NAV; the cycles' P&L sums to the run's; one week per gate-log row; the exit mix counts the blotter's exits).
+    - `tests/unit/test_cli_batch.py`: the robustness file equals the tables rebuilt from the written results; headline and pooled from both synthetic symbols, the pooled CI over both at once; a failing universe writer reported; a robustness file that can't be built fails its symbol. Its test universe's seed is 7, not the shipped 535, so a seed hardcoded anywhere between `universe.yaml` and a CI fails.
+- **Review:** 2026-10-01 — an adversarial review (4 reviewers, 2 skeptics per finding) found 21 findings, 19 unique, and verified the 12 most severe: 8 confirmed, 1 plausible, 3 refuted. All 9 are fixed, and so are the 7 left unverified, all low.
+  - **In code:**
+    - A week whose long is sold on its first bar by an X-L reset that never re-enters now counts as held, since a ledger row is the state after its bar's trades (DEC-62's outcome).
+    - Weekly returns are kept at the 6 places the file prints, and the CI is drawn from them. Before, 5 of NVDA's 24 runs had a CI that their own file's values didn't rebuild, so a one-symbol pooled CI could differ from the run's own in the last digit (DEC-61's outcome).
+    - The batch's help and summary line now count robustness and universe-file failures.
+  - **In tests:**
+    - the bootstrap oracle's fixture could not tell another seed or quantile method from the right one;
+    - every test used seed 535, the shipped value;
+    - nothing checked that a symbol without `robustness.json` isn't `ok`;
+    - a half-even tie that half-up rounds the same way;
+    - the dearest long was also the last;
+    - no week held a long on only some bars;
+    - no P&L tie between quant and the baseline.
+  - **In docs:**
+    - the claim that no analytics figure depends on summation order (true of the metrics, not of the CI's numpy means);
+    - DEC-100's `variants` list and its "last outcome";
+    - "Built at" for items not yet built (DEC-63, DEC-64, DEC-76);
+    - UI-SPEC's timing and grid columns;
+    - the exit mix's key order in the file;
+    - `UniverseStage` holding no cache for P6-08's suitability screen.
+  - **Refuted:**
+    - `pmcc verify` not re-deriving the analytics (never its scope; the re-derivable invariants are DEC-51's);
+    - `RunRecords` lacking what P6-03 and P6-04 need (P6-03 and P6-04 aren't built yet);
+    - the spec's undefined "fragility" (older than this change, and nothing here depends on it).
 
 ## E. Analytics definitions
 
 These define the reported numbers, so each goes to the PO. They're asked as one batch when P6 starts.
 
 ### DEC-60 — Returns and performance
-**Status:** ASK · **Ask at:** P6-01
+**Status:** SETTLED · **Basis:** PO, 2026-10-01, at P6 start · **Affects:** P6-01
 
 - **Recommendation:**
   - **Session-close NAV:** the NAV at the session's close bar.
@@ -1891,10 +1962,27 @@ These define the reported numbers, so each goes to the PO. They're asked as one 
   - **Longest time underwater:** the most sessions from a peak to full recovery, or to the end.
   - **Return on starting NAV:** P&L ÷ starting cash.
   - **Return on capital deployed:** P&L ÷ the peak long-leg entry cost.
-- **Outcome:** —
+- **Outcome:** 2026-10-01 — PO, at P6 start: **as recommended.** Built at P6-01
+  (`pmcc/analytics/performance.py`, DEC-101). Where the recommendation leaves a detail open, the
+  build does this; each is in `Metrics`' docstring and the schema, and any is the PO's to change:
+  - the first session's daily return is against the starting cash, as the first week's is, so a
+    run has one daily return per session;
+  - the starting cash is the first peak, for drawdown and for time underwater;
+  - max drawdown's dollar figure and its share of the peak are each their own maximum (a larger
+    fall in dollars from a higher peak can be a smaller share);
+  - time underwater counts from a peak's close to the close that regains it (an equal close
+    regains it), or to the last session;
+  - Sharpe and Sortino are null when their divisor is 0 (no variation, no losing day), and no
+    annualized figure is published;
+  - the peak long-leg cost is the dearest long entry, fees included, as E-L4's cost is.
+  - **NVDA, from the uncommitted tree** (results are regenerated at P6-09): baseline P&L
+    $3,672.50, 24.5% on $15,000, 71.7% on its dearest long ($5,125.00); max drawdown $4,211.50
+    (20.6%); 92 sessions underwater, from the May 14 peak to the end; daily Sharpe 0.084 and
+    Sortino 0.131. Quant $3,303.50, 22.0%, 53.5% on $6,177.50; $4,261.50 (20.8%); 92 sessions;
+    0.075 and 0.117. Every P&L matches P5-04's end NAVs.
 
 ### DEC-61 — Bootstrap
-**Status:** ASK · **Ask at:** P6-01 · **Affects:** P6-05
+**Status:** SETTLED · **Basis:** PO, 2026-10-01, at P6 start · **Affects:** P6-05
 
 - **Recommendation (per symbol and strategy):** a percentile 95% CI of the mean weekly return, from 10,000 resamples.
 - **Randomness:** numpy PCG64, seeded from `configs/universe.yaml` (`bootstrap.seed`); the seed is recorded in results.
@@ -1902,10 +1990,21 @@ These define the reported numbers, so each goes to the PO. They're asked as one 
   - Build a week × symbol matrix of weekly returns.
   - Resample whole weeks (rows) with replacement, so all symbols move together.
   - Take the mean of each resample.
-- **Outcome:** —
+- **Outcome:** 2026-10-01 — PO, at P6 start: **as recommended.** Built at P6-05
+  (`pmcc/analytics/bootstrap.py`, DEC-101): one function takes a week × symbol table (one column
+  for a run, one per symbol pooled), draws 10,000 resamples of whole weeks from a fresh PCG64 at
+  the seed, and takes the 2.5th and 97.5th percentiles of the means (numpy's linear
+  interpolation). The weekly returns are kept at the 6 places results publish, and the CI is
+  drawn from those, so it can be rebuilt from the file and a one-symbol pooled CI equals the run's
+  own (found by the review). `configs/universe.yaml` holds `bootstrap: {seed: 535}`, above the
+  starting-cash block; every CI records its seed, resamples, level and weeks. Every run gets its CI, so each
+  robustness row has one. `universe/pooled.json` is written by the batch's universe stage.
+  - **NVDA:** the baseline's mean weekly return 0.95%, 95% CI −0.89% to 2.76%; quant 0.89%,
+    −1.01% to 2.74%; over 26 weeks both intervals hold 0. Pooled over NVDA alone, each equals the
+    run's own (DEC-15).
 
 ### DEC-62 — Cycles
-**Status:** ASK · **Ask at:** P6-01 · **Affects:** P6-02
+**Status:** SETTLED · **Basis:** PO, 2026-10-01, at P6 start · **Affects:** P6-02
 
 - **Recommendation:**
   - **Cycle:** one calendar week of the window.
@@ -1916,10 +2015,27 @@ These define the reported numbers, so each goes to the PO. They're asked as one 
   - **Weekly credit as % of long-leg cost:** credit ÷ the current long's entry cost.
   - **Exit mix:** counts of X-S1–X-S5, X-L1 and X-L2.
 - **Alternative:** base the win statistics on short-leg P&L instead of NAV.
-- **Outcome:** —
+- **Outcome:** 2026-10-01 — PO, at P6 start: **as recommended**, on NAV, with two details the
+  recommendation left open, each as recommended:
+  - **premium captured across weeks** is Σ(credit − buyback) ÷ Σcredit, weighted by credit, not
+    the mean of each week's ratio, which one large buyback would swing;
+  - **weekly credit as % of the long's cost across weeks** is the mean over traded weeks.
+  - **Built at P6-02** (`pmcc/analytics/cycles.py`, DEC-101). Credits and buybacks are cash, net
+    of fees; X-S4 buys back at $0, and so does X-S5's assignment, its stock reported apart
+    (DEC-63). A loss is P&L below 0; a flat week is neither, but counts in the win rate's
+    weeks. Average win and loss round half-even to $0.0001. The exit mix lists all seven exits,
+    at 0 too. Each cycle also says whether a long was held and the cost of the long its short
+    was sold against. A long was held in a week if any of its bars ends with one or one was
+    carried into it: a long sold on the week's first bar by an X-L reset whose re-entry never
+    completes still counts, since the week's P&L is that long's (found by the review).
+  - **NVDA:** premium captured is negative for both strategies. The baseline's 15 shorts took in
+    $2,742.00 and paid $3,232.00 to close, $2,952.50 of it in six X-S2 stop-losses: −17.9%. Quant's
+    8 took in $803.50 and paid $2,455.00 (four X-S2s, $2,385.00): −205.5%. Checked against the
+    blotters. Win rate 65.4% and 61.5%, payoff 0.79 and 0.88, credit 4.2% and 1.7% of the long's
+    cost a week.
 
 ### DEC-63 — Attribution
-**Status:** ASK · **Ask at:** P6-01 · **Affects:** P6-03, P6-04
+**Status:** SETTLED · **Basis:** PO, 2026-10-01, at P6 start · **Affects:** P6-03, P6-04
 
 - **Recommendation (by leg):**
   - The short leg is credits − buybacks (the spec's net short premium). X-S5 stock losses are shown separately.
@@ -1928,16 +2044,38 @@ These define the reported numbers, so each goes to the PO. They're asked as one 
   - Per bar and per leg, predicted = δΔS + ½Γ(ΔS)² + θΔt + νΔσ, using the previous bar's Greeks and DEC-24 units.
   - Residual = actual − predicted.
   - A bar with a stale endpoint or a failed IV counts entirely as residual, and the number of such bars is reported.
-- **Outcome:** —
+- **Outcome:** 2026-10-01 — PO, at P6 start: **as recommended.** To be built at P6-03 and P6-04.
 
 ### DEC-64 — Fill-assumption check
-**Status:** ASK · **Ask at:** P6-01 · **Affects:** P6-07
+**Status:** SETTLED · **Basis:** PO, 2026-10-01, at P6 start · **Affects:** P6-07
 
 - **Recommendation:**
   - **Sample:** session bars with a TRDPRC_1 print and a valid end-of-bar BID/ASK. Weekly call bands are the "shorts" group and monthly long candidates the "longs" group. Computed per symbol and pooled.
   - **Fit:** OLS of TRDPRC_1 on mid, reporting slope, intercept, R² and N. Also report the median |print − mid| as a % of the spread.
   - **Caveat stated on the page:** a print can be up to an hour older than the end-of-bar quote.
-- **Outcome:** —
+- **Outcome:** 2026-10-01 — PO, at P6 start: **as recommended.** To be built at P6-07.
+
+### DEC-65 — Robustness tables: references, dispersion, columns
+**Status:** SETTLED · **Basis:** PO, 2026-10-01, at P6 start · **Affects:** P6-06, P7-02, P7-04; Spec › Robustness tables
+
+- **Context:** the spec lists the four tables and the ablation table's columns, but not what each
+  run is compared with, what "spread" means for timing, or the other tables' columns.
+- **PO answers, as recommended:**
+  - **References:** the ablations against quant; each friction run against its own strategy at
+    spread capture 0; the timing runs against the baseline (E-T1's liquidity trigger); the grid
+    against quant at its defaults. The reference's own row leads its rows.
+  - **Timing dispersion:** the range (highest − lowest) and sample standard deviation of P&L
+    over the fixed-bar runs only. The E-T1 baseline is shown for comparison, not counted.
+  - **Columns, every table:** P&L, P&L against the reference, max drawdown, payoff ratio and the
+    weekly-return CI (the spec's ablation columns).
+- **Outcome:** 2026-10-01 — built at P6-06 (`pmcc/analytics/robustness.py`, DEC-101): the batch
+  writes `{SYM}/robustness.json` once every run of the symbol has succeeded. A table's rows follow
+  `configs/sensitivity.yaml`'s lists, never run-ID suffixes.
+  - **NVDA:** ablations against quant's $3,303.50: A1 +$294.00, A2 +$77.50, A3 +$123.00, A4
+    −$254.50, A5 +$70.00. Friction: the baseline −$100.71 and −$201.50 at 0.25 and 0.50, quant
+    −$186.45 and −$373.00. Timing: P&L from $2,788.00 (t3) to $4,332.50 (t6), a range of
+    $1,544.50 and a standard deviation of $610.26 over the seven fixed bars, against the
+    baseline's $3,672.50. Grid: from −$298.50 (G-4 at 0.90) to +$860.00 (G-4 at 1.10).
 
 ## F. Frontend
 
@@ -1997,11 +2135,12 @@ These define the reported numbers, so each goes to the PO. They're asked as one 
 - **Outcome:** —
 
 ### DEC-76 — Greek attribution display
-**Status:** ASK · **Ask at:** P6-01
+**Status:** SETTLED · **Basis:** PO, 2026-10-01, at P6 start · **Affects:** P6-04, P7-01
 
 - **Recommendation:** a table per leg × component (δ, Γ, θ, ν, residual) shows cumulative $ and % of ΔV, plus one cumulative-residual line.
 - A five-series stacked chart would need five hues the baseline palette doesn't have.
-- **Outcome:** —
+- **Outcome:** 2026-10-01 — PO, at P6 start: **as recommended**, as UI-SPEC §4 and §6.2 already
+  describe it. To be built at P6-04 and P7-01.
 
 ---
 

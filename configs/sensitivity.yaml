@@ -6,9 +6,12 @@
 # `overrides` keyed by rule ID (DEC-53). Its run ID is the strategy's ID, `--`, a suffix. Every
 # variant keeps a summary (PO, DEC-54). Loaded by pmcc.config.matrix, which runs them after the two
 # strategies and the five ablations: 24 runs per symbol.
+#
+# The three lists are the three checks, and each is its own robustness table (P6-06): a variant
+# sits in its check's table against the strategy it extends.
 
-variants:
-  # ── Friction: both strategies at spread_capture 0.25 and 0.50 (the strategies run at 0) ───────
+# ── Friction: both strategies at spread_capture 0.25 and 0.50 (the strategies run at 0) ───────
+friction:
   - id: baseline_pmcc--sc025
     name: "Friction: baseline at spread capture 0.25"
     extends: baseline_pmcc.yaml
@@ -33,9 +36,10 @@ variants:
     report: {detail: summary}
     fill_model: {spread_capture: 0.50}
 
-  # ── Entry timing (PO, DEC-31): the baseline with E-T1 replaced by a fixed bar of the week-open
-  # session, one run per session bar. Every bar's rule has the same text (the aliases set in t1)
-  # and E-T1's spread limits (a test holds them equal); only `bar` changes. ─────────────────────
+# ── Entry timing (PO, DEC-31): the baseline with E-T1 replaced by a fixed bar of the week-open
+# session, one run per session bar. Every bar's rule has the same text (the aliases set in t1)
+# and E-T1's spread limits (a test holds them equal); only `bar` changes. ─────────────────────
+timing:
   - id: baseline_pmcc--t1
     name: "Timing: baseline, short decided on bar 1 (10:00)"
     extends: baseline_pmcc.yaml
@@ -143,8 +147,9 @@ variants:
           action: *timing_action
           rationale: *timing_rationale
 
-  # ── Parameter grid (quant): one parameter at a time from its default (k 1.00, G-4 1.00,
-  # G-3 1.20) ───────────────────────────────────────────────────────────────────────────────────
+# ── Parameter grid (quant): one parameter at a time from its default (k 1.00, G-4 1.00,
+# G-3 1.20) ───────────────────────────────────────────────────────────────────────────────────
+grid:
   - id: quant_pmcc--k075
     name: "Grid: quant with k = 0.75"
     extends: quant_pmcc.yaml

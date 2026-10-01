@@ -41,7 +41,7 @@ from tests.fakes.git_repo import make_repo
 from tests.fixtures.synthetic.scenarios import BUILDERS, random_walk
 from tests.fixtures.synthetic.store import SyntheticMarkets
 from tests.scenario import inv13_run
-from tests.scenario.harness import CASH, NO_TAKE_PROFIT, config, run
+from tests.scenario.harness import CASH, NO_TAKE_PROFIT, SEED, config, run
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 WHEN = datetime(2026, 9, 30, 9, tzinfo=ET)
@@ -80,7 +80,7 @@ def _cfg(tmp: Path, overrides: str = "", fill_model: str = "") -> RunConfig:
 
 def _result(synthetic: SyntheticMarkets, cfg: RunConfig, stamp: Stamp | None = None) -> RunResult:
     loaded = _walk(synthetic)
-    return run_loaded(loaded, loaded.symbol, cfg, CASH, stamp or _stamp())
+    return run_loaded(loaded, loaded.symbol, cfg, CASH, stamp or _stamp(), seed=SEED)
 
 
 Pair = tuple[RunOutput, RunResult]
@@ -95,7 +95,7 @@ def _pair(synthetic: SyntheticMarkets, tmp: Path, name: str, overrides: str = ""
     loaded = synthetic.get(name, build).symbol
     spec = build()
     cfg = config(tmp, overrides, spec.window_start, spec.window_end, fill_model)
-    return engine, run_loaded(loaded, loaded.symbol, cfg, CASH, _stamp())
+    return engine, run_loaded(loaded, loaded.symbol, cfg, CASH, _stamp(), seed=SEED)
 
 
 @pytest.fixture(scope="module")
@@ -330,8 +330,8 @@ def test_dec_92_one_prepared_market_serves_several_runs(
     market = Market.prepare(loaded, loaded.symbol, base.risk_free_rate.value)
 
     for cfg in (base, variant, base):
-        alone = run_loaded(loaded, loaded.symbol, cfg, CASH, _stamp())
-        assert to_bytes(run_market(market, cfg, CASH, _stamp())) == to_bytes(alone)
+        alone = run_loaded(loaded, loaded.symbol, cfg, CASH, _stamp(), seed=SEED)
+        assert to_bytes(run_market(market, cfg, CASH, _stamp(), seed=SEED)) == to_bytes(alone)
 
 
 def test_dec_92_a_market_priced_at_another_rate_is_refused(
@@ -342,7 +342,7 @@ def test_dec_92_a_market_priced_at_another_rate_is_refused(
     market = Market.prepare(loaded, loaded.symbol, cfg.risk_free_rate.value + 0.01)
 
     with pytest.raises(ValueError, match="priced at"):
-        run_market(market, cfg, CASH, _stamp())
+        run_market(market, cfg, CASH, _stamp(), seed=SEED)
 
 
 @pytest.mark.parametrize(
@@ -358,7 +358,7 @@ def test_dec_92_a_window_the_cache_doesnt_cover_is_refused(
     cfg = config(tmp_path, "", start, end)
 
     with pytest.raises(CacheError, match="no stock bars on"):
-        run_loaded(loaded, loaded.symbol, cfg, CASH, _stamp())
+        run_loaded(loaded, loaded.symbol, cfg, CASH, _stamp(), seed=SEED)
 
 
 # ---- the file -----------------------------------------------------------------------------------
@@ -455,5 +455,5 @@ def test_inv_13_the_subprocess_entry_is_the_in_process_run(tmp_path: Path) -> No
     for path, name in zip(paths, inv13_run.CASES, strict=True):
         loaded = load_symbol(cache / name, "SYN", load_calendar())
         cfg = inv13_run.config(name, tmp_path / "again")
-        again = run_loaded(loaded, "SYN", cfg, CASH, _stamp())
+        again = run_loaded(loaded, "SYN", cfg, CASH, _stamp(), seed=SEED)
         assert path.read_bytes() == to_bytes(again)

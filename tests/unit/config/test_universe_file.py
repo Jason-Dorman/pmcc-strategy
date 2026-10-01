@@ -118,10 +118,12 @@ def _body(
     rate: str = _rate(),
     symbols: str = "[{symbol: SPY, stock_ric: SPY.P, option_root: SPY}]",
     extra: str = "",
+    bootstrap: str = "bootstrap: {seed: 535}\n",
 ) -> str:
     return (
         f"window: {{start: {start}, end: {end}}}\n"
         f"risk_free_rate: {rate}\n"
+        f"{bootstrap}"
         f"symbols: {symbols}\n"
         f"{extra}"
     )
@@ -166,6 +168,21 @@ def test_dec_30_universe_file_starting_cash_is_the_block_calibrate_wrote() -> No
 
 def test_universe_file_starting_cash_is_optional(tmp_path: Path) -> None:
     assert read_universe_file(_write(tmp_path, _body())).starting_cash is None
+
+
+def test_dec_61_universe_file_ships_the_bootstrap_seed_above_the_cash_block() -> None:
+    """P6-05: one fixed seed for every CI; `pmcc calibrate` replaces only the last block, so the
+    seed sits above it (DEC-93)."""
+    assert UNIVERSE.bootstrap.seed == 535
+    text = UNIVERSE_PATH.read_text(encoding="utf-8")
+    assert text.index("\nbootstrap:") < text.index("\nstarting_cash:")
+
+
+@pytest.mark.parametrize("bootstrap", ["", "bootstrap: {seed: -1}\n", "bootstrap: {}\n",
+                                       "bootstrap: {seed: 1, resamples: 10}\n"])  # fmt: skip
+def test_dec_61_universe_file_refuses_a_missing_or_bad_seed(tmp_path: Path, bootstrap: str) -> None:
+    with pytest.raises(ValidationError, match="bootstrap"):
+        read_universe_file(_write(tmp_path, _body(bootstrap=bootstrap)))
 
 
 RULE = "cash_multiple: 2, cash_round_to: 5000, calibration_cash: 1000000"  # E-L4's, and $1M

@@ -18,7 +18,7 @@ from pmcc.export.schema import SCHEMAS
 from pmcc.runner import Stamp, run_loaded
 from tests.fixtures.synthetic.scenarios import random_walk
 from tests.fixtures.synthetic.store import SyntheticMarkets
-from tests.scenario.harness import CASH, config
+from tests.scenario.harness import CASH, SEED, config
 
 WHEN = datetime(2026, 9, 30, 9, tzinfo=ET)
 CLEAN = Provenance(GitState("0" * 40, dirty=False), "1" * 64, "0.0.0")
@@ -31,8 +31,8 @@ def _results(synthetic: SyntheticMarkets, tmp: Path, provenance: Provenance = CL
     loaded = synthetic.get("random_walk", random_walk).symbol
     cfg = config(tmp, "", spec.window_start, spec.window_end)
     out = tmp / "results"
-    write_result(run_loaded(loaded, loaded.symbol, cfg, CASH,
-                            Stamp(provenance, DataSource.SYNTHETIC, WHEN)), out)  # fmt: skip
+    stamp = Stamp(provenance, DataSource.SYNTHETIC, WHEN)
+    write_result(run_loaded(loaded, loaded.symbol, cfg, CASH, stamp, seed=SEED), out)
     return out
 
 

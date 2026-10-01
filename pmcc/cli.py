@@ -14,7 +14,7 @@ from pmcc.calibration import Calibration, CalibrationError
 from pmcc.calibration import calibrate as calibrate_cash
 from pmcc.config.calendar import load_calendar
 from pmcc.config.capital import CALIBRATED_STRATEGIES, StartingCash, render_block, with_block
-from pmcc.config.matrix import run_matrix
+from pmcc.config.matrix import Family, run_families, run_matrix
 from pmcc.config.strategy import CONFIGS_DIR, RunConfig, load_run_config
 from pmcc.config.universe import UNIVERSE_PATH, Underlying, load_universe
 from pmcc.config.universe import Universe as UniverseConfig
@@ -165,7 +165,14 @@ def run(
     cash = settings.starting_cash
     if cash is None:
         _fail("configs/universe.yaml has no starting_cash yet: run pmcc calibrate (DEC-30)")
-    result = _backtest(cache, underlying, calendar, _run_config(config, settings), cash.value)
+    result = _backtest(
+        cache,
+        underlying,
+        calendar,
+        _run_config(config, settings),
+        cash.value,
+        settings.bootstrap.seed,
+    )
     path = write_result(result, out)
     _say(_describe_run(result, path))
     if cash.provisional:
@@ -189,11 +196,11 @@ def _run_config(path: Path, settings: UniverseConfig) -> RunConfig:
 
 
 def _backtest(cache: Path, underlying: Underlying, calendar: SessionCalendar,
-              config: RunConfig, cash: Money) -> RunResult:  # fmt: skip
+              config: RunConfig, cash: Money, seed: int) -> RunResult:  # fmt: skip
     """The run's result, or exit 1 with nothing written (DEC-49)."""
     try:
         stamp = Stamp(provenance(), DataSource.LSEG, _now())
-        return run_symbol(cache, underlying, calendar, config, cash, stamp)
+        return run_symbol(cache, underlying, calendar, config, cash, stamp, seed=seed)
     except (CacheError, CalendarMismatchError, ProvenanceError, EngineError, ValueError) as exc:
         log.exception("run.abort", symbol=underlying.symbol, run_id=config.strategy.id)
         _fail(f"{underlying.symbol}: {exc}; nothing was written")
@@ -229,8 +236,9 @@ def batch(
     out: Annotated[Path, typer.Option(help="Results directory.")] = Path("results"),
 ) -> None:
     """Run every symbol, strategy and variant in the universe: the 24-run matrix per symbol
-    (ARCHITECTURE §11), one process per symbol, then each symbol's coverage file. Exits 1 if any
-    run or symbol failed; the rest are still written."""
+    (ARCHITECTURE §11), one process per symbol, then each symbol's coverage and robustness files,
+    then the universe's headline and pooled files. Exits 1 if any run, symbol file, symbol or
+    universe file failed; the rest are still written."""
     log_path = configure_logging("batch")
     if universe is not None and universe.resolve() != UNIVERSE_PATH.resolve():
         _fail(f"{universe.as_posix()}: the universe is always configs/universe.yaml, so every run "
@@ -240,11 +248,11 @@ def batch(
     cash = settings.starting_cash
     if cash is None:
         _fail("configs/universe.yaml has no starting_cash yet: run pmcc calibrate (DEC-30)")
-    configs = _matrix(settings)
-    stamp = _stamp()
+    configs, families = _matrix(settings)
+    stamp, seed = _stamp(), settings.bootstrap.seed
     jobs = [SymbolJob(cache, u, calendar, settings.risk_free_rate.value, configs, cash.value,
-                      stamp, out) for u in settings.symbols]  # fmt: skip
-    outcome = run_batch(jobs, out, initializer=worker_logging)
+                      stamp, out, families, seed) for u in settings.symbols]  # fmt: skip
+    outcome = run_batch(jobs, out, seed=seed, initializer=worker_logging)
     log.info("batch.done", symbols=len(outcome.symbols), runs=outcome.written,
              ok=outcome.ok, universe=len(outcome.universe))  # fmt: skip
     _say(_describe_batch(outcome, out, len(configs)))
@@ -258,9 +266,9 @@ def batch(
         raise typer.Exit(code=1)
 
 
-def _matrix(settings: UniverseConfig) -> tuple[RunConfig, ...]:
+def _matrix(settings: UniverseConfig) -> tuple[tuple[RunConfig, ...], dict[str, Family]]:
     try:
-        return run_matrix(settings)
+        return run_matrix(settings), run_families()
     except (OSError, ValueError, yaml.YAMLError) as exc:  # a config missing, unreadable or refused
         _fail(f"the run matrix: {exc}")
 
@@ -279,14 +287,17 @@ def worker_logging() -> None:
 
 def _describe_batch(outcome: BatchOutcome, out: Path, matrix: int) -> str:
     lines = [_describe_symbol(s, out, matrix) for s in outcome.symbols]
-    universe = ", ".join(p.as_posix() for p in outcome.universe) or "none yet (P6)"
+    universe = ", ".join(p.as_posix() for p in outcome.universe) or "none"
     lines.append(f"Universe files: {universe}")
+    lines += [f"  FAILED universe file {e}" for e in outcome.universe_errors]
     failed = sum(len(s.failed) for s in outcome.symbols)
     broken = sum(s.error is not None for s in outcome.symbols)
     uncovered = sum(s.error is None and s.coverage is None for s in outcome.symbols)
+    untabled = sum(s.error is None and s.robustness is None for s in outcome.symbols)
     lines.append(f"{outcome.written} runs written for {len(outcome.symbols)} symbol(s); "
-                 f"{failed} run(s) and {broken} symbol(s) failed; {uncovered} coverage "
-                 "file(s) not written.")  # fmt: skip
+                 f"{failed} run(s) and {broken} symbol(s) failed; {uncovered} coverage and "
+                 f"{untabled} robustness file(s) not written; {len(outcome.universe_errors)} "
+                 "universe file(s) failed.")  # fmt: skip
     return "\n".join(lines)
 
 
@@ -294,11 +305,16 @@ def _describe_symbol(symbol: SymbolOutcome, out: Path, matrix: int) -> str:
     if symbol.error is not None:
         return f"{symbol.symbol}: FAILED: {symbol.error}"
     written = len(symbol.runs) - len(symbol.failed)
-    coverage = "written" if symbol.coverage is not None else "NOT written: FAILED (see the log)"
+    coverage, robustness = (_written(p) for p in (symbol.coverage, symbol.robustness))
     lines = [f"{symbol.symbol}: {written} of {matrix} runs written to "
-             f"{(out / symbol.symbol).as_posix()}/; coverage.json {coverage}"]  # fmt: skip
+             f"{(out / symbol.symbol).as_posix()}/; coverage.json {coverage}; "
+             f"robustness.json {robustness}"]  # fmt: skip
     lines += [f"  FAILED {r.run_id}: {r.error}" for r in symbol.failed]
     return "\n".join(lines)
+
+
+def _written(path: Path | None) -> str:
+    return "written" if path is not None else "NOT written: FAILED (see the log)"
 
 
 Symbols = Annotated[

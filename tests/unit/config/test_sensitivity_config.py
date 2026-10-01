@@ -11,7 +11,14 @@ from pydantic import ValidationError
 from pmcc.config.calendar import load_calendar
 from pmcc.config.extends import ConfigError
 from pmcc.config.kinds import FixedBarTrigger, SpreadTrigger
-from pmcc.config.matrix import SENSITIVITY_PATH, load_sensitivity, run_matrix, strategy_configs
+from pmcc.config.matrix import (
+    SENSITIVITY_PATH,
+    Family,
+    load_sensitivity,
+    run_families,
+    run_matrix,
+    strategy_configs,
+)
 from pmcc.config.strategy import CONFIGS_DIR, Detail, StrategyConfig, load_strategy
 from pmcc.config.universe import load_universe
 from pmcc.domain import RuleId
@@ -156,11 +163,11 @@ def test_grid_variant_moves_one_parameter_from_the_quant_default(
 # ---- the loader's refusals ----------------------------------------------------------------------
 
 
-def _configs(tmp_path: Path, variants: str) -> Path:
-    """A copy of configs/ whose sensitivity.yaml holds `variants` (YAML list items)."""
+def _configs(tmp_path: Path, variants: str, check: str = "friction") -> Path:
+    """A copy of configs/ whose sensitivity.yaml holds `variants` (YAML list items) as `check`'s."""
     copied = tmp_path / "configs"
     shutil.copytree(CONFIGS_DIR, copied)
-    (copied / "sensitivity.yaml").write_text(f"variants:\n{variants}", encoding="utf-8",
+    (copied / "sensitivity.yaml").write_text(f"{check}:\n{variants}", encoding="utf-8",
                                              newline="\n")  # fmt: skip
     return copied
 
@@ -196,12 +203,42 @@ def test_p5_02_matrix_refuses_a_bad_variant(tmp_path: Path, variants: str, messa
 def test_p5_02_sensitivity_file_refuses_unknown_keys_and_an_empty_list(tmp_path: Path) -> None:
     cases = {
         "  - {id: baseline_pmcc--x, name: T, extends: baseline_pmcc.yaml, x: 1}\n": "x",
-        " []\n": "variants",
+        " []\n": "lists no variants",
     }
     for text, field in cases.items():
         configs = _configs(tmp_path / str(len(text)), text)
         with pytest.raises(ValidationError, match=field):
             load_sensitivity(configs / "sensitivity.yaml")
+
+
+def test_p6_06_sensitivity_file_refuses_a_list_outside_the_three_checks(tmp_path: Path) -> None:
+    variant = VARIANT.format(id="baseline_pmcc--x", extends="baseline_pmcc.yaml")
+    configs = _configs(tmp_path, variant, check="variants")
+    with pytest.raises(ValidationError, match="variants"):
+        load_sensitivity(configs / "sensitivity.yaml")
+
+
+# ---- families (P6-06) ---------------------------------------------------------------------------
+
+
+def test_p6_06_every_run_has_its_family_in_section_11s_order() -> None:
+    families = run_families()
+
+    assert tuple(families) == RUN_IDS
+    expected = [Family.STRATEGY] * 2 + [Family.ABLATION] * 5 + [Family.FRICTION] * 4 + [
+        Family.TIMING] * 7 + [Family.GRID] * 6  # fmt: skip
+    assert list(families.values()) == expected
+
+
+@pytest.mark.parametrize("check", ["friction", "timing", "grid"])
+def test_p6_06_a_variants_family_is_the_list_it_sits_in(tmp_path: Path, check: str) -> None:
+    """A friction-looking variant under `grid` is grid's: the list decides, never the run ID."""
+    configs = _configs(tmp_path, VARIANT.format(id="baseline_pmcc--sc099",
+                                                extends="baseline_pmcc.yaml"), check)  # fmt: skip
+
+    families = run_families(configs, configs / "sensitivity.yaml")
+
+    assert families["baseline_pmcc--sc099"] is Family(check)
 
 
 def test_p5_02_sensitivity_file_ships_next_to_the_strategies() -> None:
