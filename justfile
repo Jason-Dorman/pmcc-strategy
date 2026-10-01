@@ -60,9 +60,9 @@ verify:
 web-dev: export
     cd web && npm run dev
 
-# Build the static site into web/dist from the exported results
+# Build the static site into web/dist from the exported results, then run the dist guard
 web-build: export
-    cd web && npm run build
+    cd web && npm run build && npm run guard
 
 # Run the Playwright smoke test
 e2e:

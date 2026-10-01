@@ -1,7 +1,8 @@
 # CI (ARCHITECTURE §14). Builds only from committed files: no cache, no secrets,
 # never contacts LSEG (§15). Tools run at the uv.lock versions (DEC-77).
-# `pmcc verify` checks the committed results (P4-05, DEC-51); the `web` and `deploy` jobs land
-# with P4-07.
+# `python` checks the code and verifies the committed results (DEC-51); `web` exports them, checks
+# and builds the site and guards the build; `deploy` publishes it to GitHub Pages from main only
+# (P4-07, DEC-98).
 name: ci
 
 on:
@@ -54,3 +55,74 @@ jobs:
 
       - name: Verify the committed results (DEC-51)
         run: uv run --frozen pmcc verify results/
+
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Install from uv.lock
+        run: uv sync --frozen
+
+      - name: Export the committed results (pmcc export verifies them first)
+        run: uv run --frozen pmcc export --out web/public/data/
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: web/.nvmrc
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install from package-lock.json
+        working-directory: web
+        run: npm ci
+
+      - name: Lint
+        working-directory: web
+        run: npm run lint
+
+      - name: Typecheck against the exported schema (INV-14)
+        working-directory: web
+        run: npm run typecheck
+
+      - name: Vitest
+        working-directory: web
+        run: npm run test
+
+      - name: Build
+        working-directory: web
+        run: npm run build
+
+      - name: Dist guard (no LSEG, no Google Fonts)
+        working-directory: web
+        run: npm run guard
+
+      - name: Upload the Pages artifact
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: web/dist
+
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: [python, web]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -109,6 +109,7 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-95 | The quant layer: selectors, gates G-3 to G-5, the quant and ablation configs | ENG · the three items put to the PO settled (PO, 2026-09-30) | — |
 | DEC-96 | Export and verify: result models at schema 2, JSON Schema, `pmcc verify`, `pmcc export` | ENG | — |
 | DEC-97 | The web scaffold: packages, tokens and shell, types, loader, routes, tests | ENG · packages approved, React's types included (PO, 2026-09-30) | — |
+| DEC-98 | Pages deploy: the CI `web` and `deploy` jobs and the dist guard | ENG | — |
 
 ---
 
@@ -955,6 +956,7 @@ Development runs in Git Bash on Windows (DEC-02) and CI runs on Ubuntu. Both mus
 - **Staging:** `pmcc verify results/` joins the `python` job with P4-05, once the command and committed results exist. The `web` and `deploy` jobs arrive with P4-07.
 - **Test:** `tests/unit/test_ci_workflow.py` reads `ci.yml` and checks the triggers, the Ubuntu runner, the frozen install, pre-commit on all files, pytest under the `ci` profile, the credentials guard, and that CI never runs `pmcc fetch` or `pmcc probe`.
 - **Outcome:** 2026-09-30 — P4-05 adds `uv run --frozen pmcc verify results/` as the `python` job's last step, after pytest; the workflow test holds it there.
+- **Outcome:** 2026-09-30 — P4-07 adds the `web` and `deploy` jobs (DEC-98).
 
 ### DEC-80 — Logging setup and the import-boundary test
 **Status:** ENG · **Affects:** P0-07, P1-03, P1-08, P3-07
@@ -1774,6 +1776,20 @@ How P4-05 builds the results contract (ARCHITECTURE §12). None of it changes wh
   - formatters, the loader, and every route, with its banners and footer.
   - ESLint holds complexity to 10; a planted complexity-11 function was refused, then removed.
 - **Outcome:** 2026-09-30 — `npm run build` builds from NVDA's exported results (dirty-tree runs of baseline, quant and A4), and the built `dist/` names no Google Fonts, LSEG, refinitiv or `localhost:9000` host (it does carry the footer's github.com links, library error URLs and r's FRED source, which the dist guard must allow). Headless Edge screenshots of the served build at 1500 and 1366 px show the terminal layout. Headless Edge won't lay out narrower than 496 px, so the 390 px check loads the page in a 390 px iframe; that found the nav overflowing, now wrapping. P4-08's Playwright captures the four widths properly.
+
+### DEC-98 — Pages deploy: the CI `web` and `deploy` jobs and the dist guard
+**Status:** ENG · **Affects:** P4-07, P4-08, P8-02; DEC-72, DEC-73, DEC-74, DEC-79
+
+- **`web` job** (ARCHITECTURE §14): from a clean checkout on Ubuntu,
+  - `uv sync --frozen`, then `pmcc export --out web/public/data/`, which verifies the committed results before writing anything (DEC-96), so CI never builds a site from results that fail verify;
+  - Node from `web/.nvmrc` (`actions/setup-node`, npm cache keyed on `web/package-lock.json`), `npm ci`, then `lint`, `typecheck` (which runs `gen:types` from the exported schema, INV-14), Vitest, `build` and the dist guard;
+  - on a push to `main` only, `actions/upload-pages-artifact` uploads `web/dist`.
+  - The lockfile was written on Windows, and it holds the Linux x64 native packages Vite, Tailwind and lightningcss need (checked), so `npm ci` works on the runner.
+- **`deploy` job:** on a push to `main` only, after `python` and `web` pass; `actions/deploy-pages` to the `github-pages` environment. It is the only job with `pages: write` and `id-token: write`; the workflow's default stays `contents: read`. The Pages source is GitHub Actions (P0-02).
+- **What it deploys:** the committed results, real NVDA, so no synthetic banner (PO, DEC-74). `base: './'` with HashRouter (DEC-73) serves the site under `/pmcc-strategy/`, and a deep link like `#/quant/NVDA` survives a refresh since the server only ever sees the site's root.
+- **Dist guard** (`web/scripts/dist-guard.mjs`, `npm run guard`; `just web-build` runs it too): fails on `localhost:9000`, an LSEG or Refinitiv URL, or a Google Fonts host anywhere in `web/dist`, and on an empty build. It matches hosts, not words (the results say `"data_source":"lseg"`), so the footer's github.com links, r's FRED source and React's library URLs pass. A Node script with no dependencies, tested by Vitest (`dist-guard.test.mjs`).
+- **The site's URL:** <https://jason-dorman.github.io/pmcc-strategy/>, in the README.
+- **Test:** `tests/unit/test_ci_workflow.py` holds the export before the site's checks, the order of those checks and the guard, Node from `.nvmrc`, the upload and deploy on `main` pushes only, and `pages: write` on the deploy job alone.
 
 ## E. Analytics definitions
 

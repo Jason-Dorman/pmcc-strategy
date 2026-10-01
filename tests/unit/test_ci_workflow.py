@@ -62,3 +62,57 @@ def test_ci_never_contacts_lseg() -> None:
     text = WORKFLOW.read_text(encoding="utf-8")
     assert "pmcc fetch" not in text
     assert "pmcc probe" not in text
+
+
+# ---- the web and deploy jobs (P4-07) ------------------------------------------------------------
+
+
+def _job(name: str) -> dict[str, Any]:
+    return _workflow()["jobs"][name]
+
+
+def _web_runs() -> list[str]:
+    return [step["run"] for step in _job("web")["steps"] if "run" in step]
+
+
+def _index(runs: list[str], command: str) -> int:
+    return next(i for i, run in enumerate(runs) if command in run)
+
+
+def test_ci_web_job_exports_the_committed_results_before_the_site_is_checked() -> None:
+    runs = _web_runs()
+    export = _index(runs, "pmcc export --out web/public/data/")
+    assert export < _index(runs, "npm run typecheck")
+    assert export < _index(runs, "npm run build")
+
+
+def test_ci_web_job_checks_then_builds_then_guards_the_site() -> None:
+    runs = _web_runs()
+    steps = ("npm ci", "npm run lint", "npm run typecheck", "npm run test", "npm run build",
+             "npm run guard")  # fmt: skip
+    order = [_index(runs, c) for c in steps]
+    assert order == sorted(order)
+
+
+def test_ci_web_job_installs_node_from_nvmrc() -> None:
+    node = next(
+        s for s in _job("web")["steps"] if s.get("uses", "").startswith("actions/setup-node")
+    )
+    assert node["with"]["node-version-file"] == "web/.nvmrc"
+
+
+def test_ci_uploads_and_deploys_only_from_main() -> None:
+    main = "github.ref == 'refs/heads/main' && github.event_name == 'push'"
+    upload = next(s for s in _job("web")["steps"]
+                  if s.get("uses", "").startswith("actions/upload-pages-artifact"))  # fmt: skip
+    assert (upload["if"], upload["with"]["path"]) == (main, "web/dist")
+    deploy = _job("deploy")
+    assert deploy["if"] == main
+    assert set(deploy["needs"]) == {"python", "web"}
+
+
+def test_ci_only_the_deploy_job_may_write_pages() -> None:
+    assert _workflow()["permissions"] == {"contents": "read"}
+    assert _job("deploy")["permissions"] == {"pages": "write", "id-token": "write"}
+    assert "permissions" not in _job("web")
+    assert _job("deploy")["steps"][-1]["uses"].startswith("actions/deploy-pages")

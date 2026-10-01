@@ -30,6 +30,7 @@ Sep 25, 2026 · implements Spec › Invariant tests and EP › Testing mindset �
 | Runtime | Invariants checked every bar of every real run; a failure writes nothing | engine | every run |
 | Frontend unit | Formatters (`src/format/format.test.ts`), the loader (`src/data/loader.test.ts`), every route with its banners (on and off), footer, render-time numbering, the Data page on github.io, the remembered symbol and the symbol select (`src/app/routes.test.tsx`), token-lint (`src/theme/tokenlint.test.ts`), and contrast with the grid, breakpoints and every token's `theme.py` value (`src/theme/contrast.test.ts`), with `TZ=UTC` as in CI (P4-06, DEC-97) | Vitest | `just check`; CI web job (P4-07) |
 | Types | `tsc` against types generated from the current schema (INV-14) | tsc | CI |
+| Dist guard | The built site names no LSEG, Refinitiv, `localhost:9000` or Google Fonts host, and isn't empty (`web/scripts/dist-guard.test.mjs` plants each and checks what a correct build carries passes; DEC-98) | Vitest; `npm run guard` | `just web-build`; CI web job |
 | Smoke | Every route for one symbol; no console errors; no cross-origin requests; footer present; screenshots | Playwright (Node) | CI |
 | Data acceptance | answered + unanswered = requested; mid coverage; holiday weeks; spot checks against Workspace | fetch summary + manual | local, per fetch |
 

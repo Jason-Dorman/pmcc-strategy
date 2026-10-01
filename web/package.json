@@ -15,7 +15,8 @@
     "typecheck": "npm run gen:types && tsc -b --noEmit",
     "lint": "eslint .",
     "test": "npm run gen:types && vitest run",
-    "e2e": "node -e \"console.error('Not built yet: see docs/BUILD-PLAN.md P4-08.'); process.exit(1)\""
+    "e2e": "node -e \"console.error('Not built yet: see docs/BUILD-PLAN.md P4-08.'); process.exit(1)\"",
+    "guard": "node scripts/dist-guard.mjs dist"
   },
   "dependencies": {
     "@fontsource/inter": "^5.3.0",

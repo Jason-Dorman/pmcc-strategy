@@ -708,6 +708,7 @@ An `instrument` is `{ric, occ, kind, expiry, strike}`: `ric` is the RIC the cach
 ```
 web/                            P4-06 (DEC-97); Node 22 (.nvmrc, engines)
   scripts/gen-types.mjs         public/data/schema → src/types/generated/ (+ version.ts)
+  scripts/dist-guard.mjs        the dist guard (P4-07): no LSEG or Google Fonts host in web/dist
   src/
     main.tsx    the entry: fonts, stylesheet, App
     app/        App (HashRouter + IndexProvider), routes (the table), AppShell (command bar, banners),
@@ -763,10 +764,10 @@ CI (`.github/workflows/ci.yml`, on push and PR; DEC-79):
 | Job | Steps |
 | --- | --- |
 | `python` | credentials guard (`git ls-files`) → setup-uv → `uv sync --frozen` → `pre-commit run --all-files` (ruff, format, pyright, guards) → `pytest` (ci profile) → `pmcc verify results/` (P4-05) |
-| `web` | `uv sync --frozen` → `pmcc export --out web/public/data/` → `npm ci` → `gen:types` → `lint` → `typecheck` → `vitest` → `build` → dist guard → Playwright smoke → upload the Pages artifact |
-| `deploy` | `main` only; needs `python` and `web`; `actions/deploy-pages` |
+| `web` | `uv sync --frozen` → `pmcc export --out web/public/data/` (it verifies the results first) → setup-node from `web/.nvmrc` → `npm ci` → `lint` → `typecheck` (runs `gen:types`) → `vitest` → `build` → dist guard (`npm run guard`) → Playwright smoke (P4-08) → upload the Pages artifact (`main` pushes only) (P4-07, DEC-98) |
+| `deploy` | `main` pushes only; needs `python` and `web`; the only job with `pages: write` and `id-token: write`; `actions/deploy-pages` to the `github-pages` environment |
 
-- **Dist guard:** fails if `web/dist` references `localhost:9000`, an `lseg`/`refinitiv` URL, or `fonts.googleapis.com`. The smoke test also fails on any cross-origin request.
+- **Dist guard** (`web/scripts/dist-guard.mjs`, DEC-98): fails if any file in `web/dist` references `localhost:9000`, an `lseg`/`refinitiv` URL, or `fonts.googleapis.com`/`fonts.gstatic.com`, or if the build is empty. It matches hosts, not words: the results say `"data_source":"lseg"`, and the footer's github.com links and r's FRED source are expected. The smoke test also fails on any cross-origin request (P4-08).
 - **Pre-commit:** ruff, ruff-format, pyright, check-yaml, end-of-file-fixer (never on `data_cache/`, DEC-05), check-added-large-files (500 KB; 2 MB under `results/` and `data_cache/`, DEC-92, DEC-05), detect-private-key, and a local hook that rejects a staged `lseg-data.config.json`.
   - ruff and pyright run through `uv run --frozen`, at the `uv.lock` versions. The reference files are excluded from every hook (DEC-57, DEC-77).
   - The CI pytest step sets `HYPOTHESIS_PROFILE=ci`.

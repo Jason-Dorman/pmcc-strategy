@@ -8,7 +8,7 @@ const SOURCES: Record<string, string> = {
   ...import.meta.glob(["../**/*.{ts,tsx,css}", "!./**", "!../types/generated/**", "!../**/*.test.*"],
                       { query: "?raw", import: "default", eager: true }),
   ...import.meta.glob(["../../index.html", "../../vite.config.ts", "../../eslint.config.js",
-                       "../../scripts/*.mjs"],
+                       "../../scripts/*.mjs", "!../../scripts/*.test.mjs"],
                       { query: "?raw", import: "default", eager: true }),
 };
 
