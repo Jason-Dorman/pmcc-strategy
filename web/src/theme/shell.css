@@ -257,6 +257,12 @@ body {
 .pm-figure {
   min-width: 520px; /* FIGURE_MIN_WIDTH: the panel scrolls rather than squeeze a chart */
 }
+.pm-figure-hero {
+  min-width: 680px; /* HERO_MIN_WIDTH: the hero carries the widest legend */
+}
+.pm-caption-line {
+  display: block;
+}
 .pm-loading {
   background: var(--surface-alt); /* a flat block while data loads; no spinner (UI-SPEC §8) */
   min-height: 120px;
@@ -300,6 +306,12 @@ body {
 }
 .pm-details > summary:hover {
   color: var(--accent);
+}
+.pm-details-body {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 12px;
+  padding-top: 10px;
 }
 
 /* ---- tables (TanStack at P7): hairlines, no zebra, sticky header, mono numbers ---- */

@@ -8,9 +8,9 @@ define, patches `fill_model` field by field, and changes the parent's rules only
 - `replace`: a whole new rule under the same ID (a variant swaps a kind this way);
 - `remove: true`: drop the rule ("off" is absence, never a flag).
 
-`id` and `name` are never inherited: the file loaded names the strategy. A `report` block is
-inherited, and a child's replaces its parent's whole (PO, DEC-54). Rules stay raw mappings here;
-`pmcc.config.strategy` validates the result.
+`id`, `name` and `report` are never inherited: the file loaded names the strategy and says how
+much of its runs to keep, so a variant keeps a summary unless its own file says otherwise (PO,
+DEC-54). Rules stay raw mappings here; `pmcc.config.strategy` validates the result.
 """
 
 from dataclasses import dataclass, field
@@ -76,8 +76,8 @@ class StrategyFile(BaseModel):
 
 @dataclass(frozen=True, slots=True)
 class Resolved:
-    """A file with its parents folded in: the loaded file's id and name, the nearest report block,
-    and raw rules by ID."""
+    """A file with its parents folded in: the loaded file's id, name and report block, and raw
+    rules by ID."""
 
     id: str | None = None
     name: str | None = None
@@ -125,8 +125,9 @@ def _fold(parent: Resolved, file: StrategyFile) -> Resolved:
         if rule_id not in parent.rules:
             raise ConfigError(f"overrides {rule_id}, which no parent defines")
         _apply(rules, rule_id, override)
-    report = parent.report if file.report is None else file.report
-    return Resolved(file.id, file.name, {**parent.fill_model, **file.fill_model}, rules, report)
+    return Resolved(
+        file.id, file.name, {**parent.fill_model, **file.fill_model}, rules, file.report
+    )
 
 
 def _apply(rules: dict[RuleId, RawRule], rule_id: RuleId, override: Override) -> None:

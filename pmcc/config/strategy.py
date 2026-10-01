@@ -159,10 +159,12 @@ class Section(StrEnum):
 
 
 class Report(BaseModel):
-    """A strategy's `report` block. A file without one keeps its parent's; a strategy none of
-    whose files has one keeps a summary."""
+    """A strategy's `report` block, never inherited: a file without one keeps a summary."""
 
-    model_config = ConfigDict(extra="forbid", frozen=True)
+    # A dump always holds `sections`, so the results schema marks it required.
+    model_config = ConfigDict(
+        extra="forbid", frozen=True, json_schema_serialization_defaults_required=True
+    )
 
     detail: Detail
     sections: tuple[Section, ...] = ()

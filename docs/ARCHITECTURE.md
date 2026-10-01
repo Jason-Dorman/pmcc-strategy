@@ -596,7 +596,7 @@ overrides:
   - A file extends one parent, by a relative path with forward slashes to a `.yaml` file.
   - A child adds rules the parent lacks and changes the parent's only through `overrides` keyed by rule ID: `params` (a patch), `replace` (a whole rule) or `remove: true`.
   - `fill_model` is patched field by field. `id` and `name` are never inherited.
-  - `report` (what the results keep and the page shows, DEC-54) is inherited, and a child's replaces its parent's whole. A strategy none of whose files has one keeps a summary. It is part of the config hash.
+  - `report` (what the results keep and the page shows, DEC-54) is never inherited, like `id` and `name`: a file without one keeps a summary, so a variant is a summary unless its own file says otherwise. It is part of the config hash.
 - **Required rules:** every spec rule but G-3, G-4, G-5 and X-S1, the layers variants switch off (DEC-53).
 - **Rule text (DEC-52):** `condition`, `action` and `rationale` are templates with bare-name placeholders (`{max_delta:.2f}`), rendered by `Rule.text()`. Every param must appear in the condition or the action.
 - **`config_hash`:** the sha256 of `RunConfig` as JSON with sorted keys, no whitespace and UTF-8. It covers the resolved strategy and the window and r, not the file layout or the symbol list (DEC-90).
@@ -673,7 +673,7 @@ ledger[]    time, long{instrument{…}, qty, mark, delta, stale}, short{…},
             stock{instrument{…}, shares, mark, stale}, cash, nav, im, mm, available_funds,
             excess_equity, flags[]                                                                   full
 gate_log[]  session, decision_time, selected{…}, gates[{rule_id, status, values, reason}],
-            outcome{kind, rule_id}, notes                                                          full, if declared
+            outcome{kind, rule_id}, notes                                                          full (every full run; report.sections only decides what the page shows)
 cycles[]    full (P6)
 attribution leg{…}, greek{…} (if declared)                                                          full (P6)
 ```
@@ -690,7 +690,7 @@ An `instrument` is `{ric, occ, kind, expiry, strike}`: `ric` is the RIC the cach
   - `\n` line endings on every OS
 - **`pmcc export --results results/ --out web/public/data/`** (`export/site.py`, DEC-96):
   - refuses results that fail `pmcc verify`, a dirty tree aside (a local preview; CI's verify keeps dirty results off the site), and writes nothing then
-  - rebuilds the output directory whole, refusing one it didn't write
+  - rebuilds the output directory whole, but only when it's missing, empty, or holds nothing but files an export writes; one foreign file and it touches nothing (`--schema-only` too)
   - writes `schema/*.schema.json`, one per model (`export/schema.py`), in serialization mode: dollars are numbers, a result's config is its dump, and every field is required
   - copies every results file byte for byte, and writes `index.json` and `rules.json`
   - `--schema-only` writes only the schemas, which the site's types need (`just check`)
@@ -700,7 +700,8 @@ An `instrument` is `{ric, occ, kind, expiry, strike}`: `ric` is the RIC the cach
   - canonical bytes; the manifest's symbol and run ID match the path
   - `git_dirty` must be false; the config hashes to `manifest.config_hash`; the rule text is the config's
   - every run's summary records every runtime invariant as held
-  - a full run's rows re-derive INV-01, 02, 03, 05, 06, 07, 08, 09 and 10 (`export/rederive.py`, with its own arithmetic, not the engine's)
+  - a full run's rows re-derive INV-01, 02, 03, 05, 06, 07, 08, 09 and 10 (`export/rederive.py`, with its own arithmetic, not the engine's), judging each row by what it does (opens a long or a short), and the ledger's positions must be what the rows booked
+  - an analytics file must be canonical and hold its own folder's symbol
 
 ## 13. Frontend
 
@@ -708,6 +709,7 @@ An `instrument` is `{ric, occ, kind, expiry, strike}`: `ric` is the RIC the cach
 web/                            P4-06 (DEC-97); Node 22 (.nvmrc, engines)
   scripts/gen-types.mjs         public/data/schema → src/types/generated/ (+ version.ts)
   src/
+    main.tsx    the entry: fonts, stylesheet, App
     app/        App (HashRouter + IndexProvider), routes (the table), AppShell (command bar, banners),
                 pages (paths), site (repo URL, wordmark)
     data/       loader (index, per-run cache, schema_version check), IndexContext, useRun, state
@@ -716,7 +718,9 @@ web/                            P4-06 (DEC-97); Node 22 (.nvmrc, engines)
                 tokens), tokens.ts, fonts.ts; echarts.ts with the first chart (P7-01)
     components/ CommandBar, Readouts, PanelGrid, Panel, Note (Details, Empty, Loading), PageFrame,
                 ManifestFooter, WarningBanner, ui/select; DataTable and charts/* at P7
-    pages/      Comparison, Strategy, Rules, Methodology, Universe, Data (placeholders until P7)
+    pages/      Comparison, Strategy, Rules, Methodology, Universe, Data (placeholders until P7);
+                placeholder (the placeholder helpers)
+    lib/        cn (shadcn/ui's class joiner)
     format/     money, time (ET), hash; percent and ric/occ at P7
     test/       fixtures for the route and loader tests
   e2e/          Playwright smoke test (P4-08)

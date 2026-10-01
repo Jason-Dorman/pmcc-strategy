@@ -37,7 +37,7 @@ No rounded corners, no shadows, no floating cards, no whitespace gaps. shadcn/ui
 
 ## 3. Tokens (DEC-70)
 
-`web/src/theme/tokens.css` is the only place colours and font stacks exist. Its values are `theme.py`'s, unchanged. There is one theme, dark: the PO kept the look identical to `DESIGN-GUIDE.md` and `theme.py`, with no light theme (PO, DEC-03). The panel chrome is `web/src/theme/shell.css`, `theme.py`'s `PAGE_CSS` ported rule for rule with a `pm-` prefix; Tailwind's utilities read the tokens by name (`web/src/theme/index.css`).
+`web/src/theme/tokens.css` is the only place colours and font stacks exist. Its values are `theme.py`'s, unchanged. There is one theme, dark: the PO kept the look identical to `DESIGN-GUIDE.md` and `theme.py`, with no light theme (PO, DEC-03). The panel chrome is `web/src/theme/shell.css`, `theme.py`'s `PAGE_CSS` ported with a `pm-` prefix (the commentary grid and the Plotly menu, which have no counterpart here, aren't); Tailwind's utilities read the tokens by name (`web/src/theme/index.css`).
 
 | theme.py | CSS variable | Role |
 | --- | --- | --- |
@@ -246,7 +246,7 @@ Panels that depend on the data follow the selected symbol and show pooled figure
 | Loading | a fetch is in flight | the panel body shows a flat `--surface-alt` block; no spinner |
 | Missing run | the index lacks the run | in-panel "No results for SYMBOL / RUN" |
 | Schema mismatch | `schema_version` ≠ the app's | page-level `WarningBanner` |
-| Synthetic data | `manifest.data_source = synthetic` | page-level `WarningBanner`: "Synthetic data — not market results" (DEC-74) |
+| Synthetic data | the index lists any run with `data_source = synthetic` (every page, since Comparison and Universe mix runs) | page-level `WarningBanner`: "Synthetic data — not market results" (DEC-74) |
 | Stale mark | ledger flag | the mark cell uses `flag`, with a tooltip "last valid mid carried; never filled" |
 | Negative available funds | any ledger row flagged | the Reg T panel banner, plus row flags |
 | Data page on github.io | hostname ends in `github.io` | "Data connection required" |
@@ -268,4 +268,4 @@ Panels that depend on the data follow the selected symbol and show pooled figure
 - **Widths:** 390, 1100, 1366 and 1600 px. Playwright captures screenshots in CI, and they are reviewed by eye at P7-08. DG §6: check the rendered page, not only the tests.
 - **Contrast:** every text pairing clears AA (4.5:1), and data marks clear 3:1, on the grounds they sit on. `web/src/theme/contrast.test.ts` pins this, and that `shell.css`'s grid and breakpoints match `tokens.ts`.
 - **Keyboard:** every control can be reached by keyboard, with an amber focus ring (chrome). Every chart has an HTML caption, and its values are also available in a table.
-- **Token lint:** `web/src/theme/tokenlint.test.ts` fails on a hex colour, `rgb()`, a font-family name, or an arbitrary `[Npx]` value anywhere outside `web/src/theme/`. This ports the old repo's grep test (DG §5, rule 1).
+- **Token lint:** `web/src/theme/tokenlint.test.ts` fails on a hex colour, `rgb()`/`hsl()`, a font-family name, a px value, an arbitrary Tailwind value, or a unitless number in a style (which React reads as px) anywhere in `web/src/`, `index.html`, `vite.config.ts`, `eslint.config.js` and `web/scripts/`, outside `web/src/theme/`; test files are exempt, since they plant samples. Tailwind's own palette and font stacks are switched off (`index.css`), so only the tokens exist. `contrast.test.ts` also holds every token to `theme.py`'s value (DEC-03). This ports the old repo's grep test (DG §5, rule 1).

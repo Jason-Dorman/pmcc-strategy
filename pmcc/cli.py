@@ -33,7 +33,7 @@ from pmcc.export.manifest import ProvenanceError, provenance
 from pmcc.export.models import DataSource, RunResult
 from pmcc.export.results import write_result
 from pmcc.export.schema import write_schemas
-from pmcc.export.site import Exported, ExportError, export_site
+from pmcc.export.site import Exported, ExportError, check_export_dir, export_site
 from pmcc.export.verify import Verified
 from pmcc.export.verify import verify as verify_results
 from pmcc.log import configure_logging
@@ -349,6 +349,10 @@ def export(
     rules.json. Refuses results that fail pmcc verify, a dirty tree aside."""
     configure_logging("export")
     if schema_only:
+        try:
+            check_export_dir(out)  # never plant files in a directory export doesn't own
+        except ExportError as exc:
+            _fail(f"{exc}\nNothing was written.")
         written = write_schemas(out)
         _say(f"{len(written)} schemas written to {(out / 'schema').as_posix()}")
         return

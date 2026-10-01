@@ -10,7 +10,7 @@ export function Details({ summary, children }: { summary: string; children: Reac
   return (
     <details className="pm-details">
       <summary>{summary}</summary>
-      <div className="pm-note">{children}</div>
+      <div className="pm-details-body pm-note">{children}</div>
     </details>
   );
 }

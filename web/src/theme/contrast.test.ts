@@ -3,6 +3,8 @@
 // and breakpoints in shell.css to tokens.ts (DG §6: CSS fails open).
 import { describe, expect, it } from "vitest";
 
+import THEME_PY from "../../../theme.py?raw";
+import INDEX from "./index.css?raw";
 import SHELL from "./shell.css?raw";
 import { BREAK_ONE_COL, BREAK_TWO_COL, COLOR_TOKENS, GRID_COLUMNS, type ColorToken } from "./tokens";
 import TOKENS from "./tokens.css?raw";
@@ -66,5 +68,40 @@ describe("shell.css follows tokens.ts", () => {
       `@media (max-width: ${BREAK_TWO_COL - 1}px) and (min-width: ${BREAK_ONE_COL + 1}px)`,
     );
     expect(SHELL).toContain(`@media (max-width: ${BREAK_ONE_COL}px)`);
+  });
+});
+
+// tokens.css against theme.py, the baseline the PO kept unchanged (DEC-03): name → theme.py name.
+const THEME_NAMES: Record<ColorToken, string> = {
+  bg: "BG", surface: "SURFACE", "surface-alt": "SURFACE_ALT", border: "BORDER", grid: "GRID",
+  text: "TEXT", "text-muted": "TEXT_MUTED", "text-inverse": "TEXT_INVERSE", accent: "ACCENT",
+  "accent-dim": "ACCENT_DIM", mark: "MARK", trade: "TRADE", "trade-edge": "TRADE_EDGE",
+  positive: "POSITIVE", negative: "NEGATIVE", warn: "WARN", "nav-line": "NAV_LINE",
+  "margin-im": "MARGIN_IM", "margin-mm": "MARGIN_MM", "fit-line": "FIT_LINE",
+  "identity-line": "TEXT_MUTED", // IDENTITY_LINE = TEXT_MUTED in theme.py
+};
+
+function themePy(name: string): string {
+  const found = new RegExp(`^${name}\\s*=\\s*"(#[0-9A-Fa-f]{6})"`, "m").exec(THEME_PY);
+  if (!found?.[1]) throw new Error(`theme.py has no hex value for ${name}`);
+  return found[1];
+}
+
+describe("tokens.css is theme.py (DEC-03)", () => {
+  it("reads theme.py", () => {
+    expect(THEME_PY).toContain("ACCENT = ");
+  });
+
+  it.each(COLOR_TOKENS.map((t) => [t]))("--%s is theme.py's value", (token) => {
+    expect(hex(token).toLowerCase()).toBe(themePy(THEME_NAMES[token]).toLowerCase());
+  });
+
+  it("tints the warning ground as theme.py does: NEGATIVE at 14%", () => {
+    expect(TOKENS).toContain("--negative-tint: color-mix(in srgb, var(--negative) 14%, transparent)");
+  });
+
+  it("switches Tailwind's own palette and font stacks off", () => {
+    expect(INDEX).toContain("--color-*: initial;");
+    expect(INDEX).toContain("--font-*: initial;");
   });
 });

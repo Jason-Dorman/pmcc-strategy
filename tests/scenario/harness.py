@@ -40,7 +40,9 @@ def config(tmp: Path, overrides: str, start: date, end: date, fill_model: str = 
         shutil.copytree(CONFIGS_DIR, copied, dirs_exist_ok=True)
         path = copied / "variant.yaml"
         run_id = f"{Path(strategy).name}--test"
-        lines = [f"id: {run_id}", "name: Test", f"extends: {strategy}.yaml"]
+        # A test variant keeps every row, whatever its parent reports (DEC-54).
+        lines = [f"id: {run_id}", "name: Test", f"extends: {strategy}.yaml",
+                 "report: {detail: full}"]  # fmt: skip
         if overrides:
             lines += ["overrides:", *(f"  {line}" for line in overrides.splitlines())]
         if fill_model:

@@ -59,7 +59,7 @@ def _strategy_file(strategy: str, work: Path) -> Path:
         (work / name).write_bytes((CONFIGS_DIR / name).read_bytes())
     path = work / "a5.yaml"
     lines = [f"id: {NO_TAKE_PROFIT}", "name: No take-profit", "extends: baseline_pmcc.yaml",
-             "overrides:", "  X-S1: {remove: true}"]  # fmt: skip
+             "report: {detail: full}", "overrides:", "  X-S1: {remove: true}"]  # fmt: skip
     path.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
     return path
 

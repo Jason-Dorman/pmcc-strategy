@@ -10,8 +10,8 @@ export function onGithubPages(hostname: string = window.location.hostname): bool
   return hostname.endsWith("github.io");
 }
 
-export function Data() {
-  const body = onGithubPages() ? (
+export function Data({ hostname = window.location.hostname }: { hostname?: string }) {
+  const body = onGithubPages(hostname) ? (
     <Note>
       <b>Data connection required.</b> Raw LSEG data stays on the author&apos;s machine and is served
       only locally, by <code>just serve</code>.

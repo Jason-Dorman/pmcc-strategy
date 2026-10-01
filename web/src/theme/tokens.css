@@ -4,8 +4,8 @@
  * The values are theme.py's, unchanged: the baseline look the PO carried over from Options Surface
  * Lab (DESIGN-GUIDE.md). One theme, dark: the PO kept the site identical to that look, with no
  * light theme (PO, DEC-03). Names mirror theme.py's, so a palette change is one edit here.
- * Components read these through classes in shell.css, Tailwind utilities (tailwind.css) or
- * tokens.ts; never as literals (the token-lint test).
+ * Components read these through classes in shell.css, Tailwind utilities (index.css maps them)
+ * or tokens.ts; never as literals (the token-lint test).
  */
 :root {
   /* surfaces */

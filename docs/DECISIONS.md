@@ -108,7 +108,7 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-94 | The baseline on NVDA: the run, the hand audit and the committed cache | ENG | — |
 | DEC-95 | The quant layer: selectors, gates G-3 to G-5, the quant and ablation configs | ENG · the three items put to the PO settled (PO, 2026-09-30) | — |
 | DEC-96 | Export and verify: result models at schema 2, JSON Schema, `pmcc verify`, `pmcc export` | ENG | — |
-| DEC-97 | The web scaffold: packages, tokens and shell, types, loader, routes, tests | ENG · packages approved (PO, 2026-09-30) | — |
+| DEC-97 | The web scaffold: packages, tokens and shell, types, loader, routes, tests | ENG · packages approved, React's types included (PO, 2026-09-30) | — |
 
 ---
 
@@ -152,7 +152,7 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
   - Every text pairing must reach ≥ 4.5:1 and every data mark ≥ 3:1, both in the contrast test.
   - A toggle in the command bar switches themes and is remembered per browser.
 - **Note:** the palette is a baseline the PO may change.
-- **Outcome:** 2026-09-30 — PO, at P4-06: **no light theme.** The site's styling is to be identical to what the previous project provided, as `DESIGN-GUIDE.md` and `theme.py` describe it: one theme, dark, and no toggle. The PO asked where the light theme came from: the spec itself, "light and dark themes" under Frontend constraints and "theme-aware" charts. Both lines now say one dark theme, the baseline look unchanged, citing this entry; PRD FR-S10, UI-SPEC §2, §3 and §10, P7-07 and P7-08 follow. `web/src/theme/tokens.css` holds `theme.py`'s values unchanged, and the contrast test checks the one theme (DEC-97).
+- **Outcome:** 2026-09-30 — PO, at P4-06: **no light theme.** The site's styling is to be identical to what the previous project provided, as `DESIGN-GUIDE.md` and `theme.py` describe it: one theme, dark, and no toggle. The PO asked where the light theme came from: the spec itself, "light and dark themes" under Frontend constraints and "theme-aware" charts. The Styling line now says one dark theme, the baseline look unchanged, and the Charts line says styled from the design tokens; both cite this entry. PRD FR-S10, UI-SPEC §2, §3 and §10, P7-07 and P7-08 follow. `web/src/theme/tokens.css` holds `theme.py`'s values unchanged, and the contrast test checks the one theme (DEC-97).
 
 ### DEC-04 — Chart colour roles
 **Status:** ASK · **Ask at:** P7-01 · **Affects:** P7-01, P7-02, UI-SPEC §4
@@ -865,7 +865,7 @@ INV-14 and INV-15 run in the web job.
 - **Outcome:** 2026-09-29 — built in P3-01 (`pmcc/config/kinds.py`, `extends.py`, `strategy.py`; DEC-90). A kind names the one rule ID it implements, and the rules a variant may remove are G-3, G-4, G-5 and X-S1; every other spec rule is required.
 
 ### DEC-54 — Result detail levels and report sections
-**Status:** ASK · **Ask at:** P4-05 · **Affects:** P7-01
+**Status:** SETTLED · **Basis:** PO, 2026-09-30 · **Affects:** P4-05, P4-06, P5-02, P5-03, P7-01
 
 - **Recommendation (detail levels):**
   - **Full detail** (`baseline_pmcc`, `quant_pmcc`): blotter, ledger, gate log, cycles, attribution.
@@ -873,7 +873,7 @@ INV-14 and INV-15 run in the web job.
 - **Recommendation (report sections):** each strategy YAML declares which sections its page shows (`report.sections`). Quant declares `gate_log` and `greek_attribution`; baseline doesn't. One component tree then renders both pages (Spec › Site and UI), and the difference lives in config.
 - **Outcome:** 2026-09-30 — PO, at P4-04's handover: as recommended.
 - **Outcome:** 2026-09-30 — PO, at P4-05, on what the summary holds before P6: **its analytics stay null until P6.** Metrics, cycle statistics, exit mix, skips by rule, session-close NAV and weekly returns are in the model but null; P4-05 records only the invariants the run held and the ledger's flag counts, since the rest depend on DEC-60 and DEC-62, asked at P6. The ablation files carry few numbers until P6-09 re-runs everything; the P4-04 review notes stay in BUILD-PLAN and DEC-95.
-- **Built at P4-05 (DEC-96):** each strategy YAML has a `report` block: `detail` (`full` or `summary`) and `sections` (`gate_log`, `greek_attribution`). It is inherited through `extends`, and a child's replaces its parent's whole, so the test harness's variants of the baseline stay full and each ablation declares `report: {detail: summary}`. A strategy none of whose files has one keeps a summary, and sections need full detail. The block is part of the config and so of its hash. A summary result keeps no blotter, ledger or gate log: over NVDA's 26 weeks the quant file is about 430 KB and A4's summary about 23 KB.
+- **Built at P4-05 (DEC-96):** each strategy YAML has a `report` block: `detail` (`full` or `summary`) and `sections` (`gate_log`, `greek_attribution`). Like `id` and `name`, it is never inherited: a file without one keeps a summary, so every variant (the ablations, and P5-02's sensitivity runs) is a summary unless its own file says otherwise. The ablations also say so explicitly; the test harness's variants ask for `full`. Sections need full detail. (P4-05 first made it inherited; the review found that P5-02's variants would then have published full detail, contrary to this entry.) The block is part of the config and so of its hash. A summary result keeps no blotter, ledger or gate log: over NVDA's 26 weeks the quant file is about 430 KB and A4's summary about 23 KB.
 
 ### DEC-55 — Dividends
 **Status:** SETTLED · **Basis:** Spec › Overview and scope
@@ -1746,6 +1746,11 @@ How P4-05 builds the results contract (ARCHITECTURE §12). None of it changes wh
 - **Logging:** `export.done`, `export.abort`, `verify.done`, `verify.failed`; `run.done` gains `detail`.
 - **Outcome:** 2026-09-30 — on dirty-tree runs of NVDA's baseline, quant and A4 at schema 2, verify found only `git_dirty` (one INV-06 false positive, the audit's `"45.0000"` against a Decimal read back as `45`, fixed by comparing values). Every hand-corrupted copy fails on the invariant it targets and no other (`tests/scenario/test_verify.py`).
 - **Outcome:** 2026-09-30 — NVDA's seven results re-run from the code commit `69c01b2` on a clean tree (DEC-59). The baseline's and quant's blotter, ledger, gate log, starting cash and rule text are identical to P4-04's (end NAV $18,672.50 and $18,303.50); the ablations are summaries of 23 KB. `pmcc verify results/` passes all 7, and `pmcc export` and `npm run build` run on them.
+- **Outcome:** 2026-09-30 — An adversarial review of P4-05 and P4-06 (4 reviewers, 2 skeptics per finding) confirmed 7 findings and rated 5 plausible; all 12 are fixed, with the clear ones of the 22 left unverified:
+  - **Export's directory guard (high):** `_clear` treated any directory holding `index.json` or a `schema/` folder as an earlier export and ran `rmtree` on it, and `--schema-only` planted `schema/` anywhere, so `pmcc export --schema-only --out .` then `pmcc export --out .` would have deleted the repo root. Now both refuse a directory holding any file an export doesn't write (`check_export_dir`), and an `--out` that is a file.
+  - **Verify judges a row by what it does:** the blotter is walked holding each position, so a row opening a short must be an E-S1 sale that satisfied E-S5, and a row opening a long an E-L1 buy, whatever label it carries (INV-06, INV-08). INV-08's exact funds check now runs whenever no stock is held at the entry, so on X-S5's cover bar too. A new `positions` check holds the ledger's legs and stock to the rows booked. INV-03's exemption is only X-S5's stock sale, at the strike of the call assigned on the same bar. A row missing a value a check needs is a `rows` finding, not a crash. Analytics files must be canonical and under their own symbol, and a symbol with analytics files but no runs is indexed.
+  - **`report` is no longer inherited (DEC-54):** otherwise P5-02's sensitivity variants would have published full detail.
+  - **Tests:** the review's surviving mutants now fail: E-S5's terms, the change kinds `replaced`, `params`, `text` and `added`, INV-03 with friction, the synthetic banner's absence, the Data page on github.io, the remembered symbol and the symbol select, and more. The committed NVDA results verify unchanged, since no fix changes what a run writes. 40 new pytest tests (1,872) and 40 new Vitest tests (151).
 
 ### DEC-97 — The web scaffold: packages, tokens and shell, types, loader, routes, tests
 **Status:** ENG · packages approved (PO, 2026-09-30) · **Affects:** P4-06, P4-07, P4-08, P7; DEC-03, DEC-70 to DEC-74, DEC-78
@@ -1753,11 +1758,12 @@ How P4-05 builds the results contract (ARCHITECTURE §12). None of it changes wh
 - **Packages (PO, 2026-09-30, approved as listed):**
   - runtime: react, react-dom, react-router-dom (HashRouter), `@radix-ui/react-select` with clsx and tailwind-merge (shadcn/ui's Select and its `cn`), and `@fontsource` Space Grotesk, Inter and JetBrains Mono (DEC-72);
   - dev: vite, `@vitejs/plugin-react`, typescript, tailwindcss with `@tailwindcss/vite`, eslint with `@eslint/js`, typescript-eslint and eslint-plugin-react-hooks, vitest with jsdom and `@testing-library/react` (and its `dom` peer), and json-schema-to-typescript.
+  - React's type declarations, `@types/react` and `@types/react-dom`, came with React though the list didn't name them; the review found them, and the PO approved them on 2026-09-30.
   - ECharts and TanStack join at P7, Playwright at P4-08. `class-variance-authority` and an icon package weren't needed. No `@types/node`: the tests read files through Vite (`?raw`, `import.meta.glob`).
   - Node 22 is pinned by `web/.nvmrc` and `engines` (DEC-58); `package-lock.json` is committed.
 - **Look:**
-  - `tokens.css` holds `theme.py`'s values unchanged, one theme (DEC-03).
-  - `shell.css` ports `theme.py`'s `PAGE_CSS` rule for rule, with a `pm-` prefix and the ten width classes written out (the contrast test holds them, and the breakpoints, to `tokens.ts`; DG §6). Two additions: the nav wraps, since seven pages don't fit a phone on one line (the baseline had two), and the manifest footer, which `PAGE_CSS` never had, takes the panel chrome's surface and hairline and muted mono type.
+  - `tokens.css` holds `theme.py`'s values unchanged, one theme (DEC-03); the contrast test holds each to `theme.py` (Vitest alone may read the repo root for it; the dev server keeps Vite's default, `web/`). Tailwind's own palette and font stacks are switched off.
+  - `shell.css` ports `theme.py`'s `PAGE_CSS` with a `pm-` prefix (the commentary grid and the Plotly menu have no counterpart here and aren't ported; the hero figure's 680 px floor, `HERO_MIN_WIDTH`, is) and the ten width classes written out (the contrast test holds them, and the breakpoints, to `tokens.ts`; DG §6). Two additions: the nav wraps, since seven pages don't fit a phone on one line (the baseline had two), and the manifest footer, which `PAGE_CSS` never had, takes the panel chrome's surface and hairline and muted mono type.
   - Tailwind's utilities read the tokens by name (`index.css`), with radius and shadow reset.
 - **Types:** `npm run gen:types` (`scripts/gen-types.mjs`) compiles each `public/data/schema/*.schema.json` into `src/types/generated/` (gitignored), dropping pydantic's per-field titles so fields get plain types, and writes `version.ts` with the schema version. `typecheck`, `test`, `build` and `dev` run it first.
 - **Data:** `data/loader.ts` fetches `data/index.json` and each run relative to the document, caches runs by path, and refuses another schema version. `IndexContext` loads the index once, and `useRun` finds a run by symbol and run ID (missing → "No results for …").
@@ -1767,7 +1773,7 @@ How P4-05 builds the results contract (ARCHITECTURE §12). None of it changes wh
   - contrast (text ≥ 4.5:1 on each ground, marks ≥ 3:1, type on amber);
   - formatters, the loader, and every route, with its banners and footer.
   - ESLint holds complexity to 10; a planted complexity-11 function was refused, then removed.
-- **Outcome:** 2026-09-30 — `npm run build` builds from NVDA's exported results (dirty-tree runs of baseline, quant and A4), and the built `dist/` names no external host. Headless Edge screenshots of the served build at 1500 and 1366 px show the terminal layout. Headless Edge won't lay out narrower than 496 px, so the 390 px check loads the page in a 390 px iframe; that found the nav overflowing, now wrapping. P4-08's Playwright captures the four widths properly.
+- **Outcome:** 2026-09-30 — `npm run build` builds from NVDA's exported results (dirty-tree runs of baseline, quant and A4), and the built `dist/` names no Google Fonts, LSEG, refinitiv or `localhost:9000` host (it does carry the footer's github.com links, library error URLs and r's FRED source, which the dist guard must allow). Headless Edge screenshots of the served build at 1500 and 1366 px show the terminal layout. Headless Edge won't lay out narrower than 496 px, so the 390 px check loads the page in a 390 px iframe; that found the nav overflowing, now wrapping. P4-08's Playwright captures the four widths properly.
 
 ## E. Analytics definitions
 
@@ -1844,7 +1850,7 @@ These define the reported numbers, so each goes to the PO. They're asked as one 
   - Values start from `theme.py` (the baseline), with names that mirror it (`--nav-line`, `--margin-im`, …).
   - A palette change the PO asks for is one edit in this file.
 - **`web/src/theme/tokens.ts`:** typed accessors plus the numeric layout constants.
-- **ECharts:** reads colours from the CSS variables at render time, so a theme switch re-renders charts in the new colours.
+- **ECharts:** reads colours from the CSS variables at render time, so a palette change in `tokens.css` reaches every chart. (One theme, DEC-03: there is no theme switch.)
 - **Ported tests:**
   - Token-lint: no hex, `rgb()`, font name or `[Npx]` arbitrary value outside `web/src/theme/`.
   - AA contrast for every text pairing.
@@ -1879,6 +1885,7 @@ These define the reported numbers, so each goes to the PO. They're asked as one 
 - Every result carries `manifest.data_source` (`lseg` | `synthetic`).
 - Any page showing a synthetic result shows a warning banner, so generated data can never pass for real (DG §4).
 - The P4 sample deploy relies on this.
+- **Outcome:** 2026-09-30 — PO, asked at P4-06's review handover: **P4-07 deploys the real committed results**, not a synthetic sample. Real NVDA results exist and pass `pmcc verify`, so the first Pages deploy shows them, with no banner. The banner stays for any synthetic data and is tested (`web/src/app/routes.test.tsx`), so no synthetic entry point to `pmcc run` is needed (DEC-92's note). Spec › Build order's Oct 1–2 row and P4-07's done-when now say so.
 - **Outcome:** 2026-09-30 — built at P4-06: the banner shows on every page while the index lists any synthetic run, since the Comparison and Universe pages mix runs.
 
 ### DEC-75 — Data page

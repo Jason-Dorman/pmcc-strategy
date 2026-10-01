@@ -17,6 +17,14 @@ describe("loader", () => {
     await expect(loadIndex(stale)).rejects.toBeInstanceOf(SchemaMismatchError);
   });
 
+  it("refuses a run file of another schema version", async () => {
+    const stale = { ...(FILES["data/NVDA/quant_pmcc.json"] as object), schema_version: 1 };
+    const fetcher = fakeFetch({ "data/NVDA/quant_pmcc.json": stale });
+    await expect(loadRun("NVDA/quant_pmcc.json", fetcher)).rejects.toBeInstanceOf(
+      SchemaMismatchError,
+    );
+  });
+
   it("fetches a run once and serves it from memory after", async () => {
     const fetcher = vi.fn(fakeFetch());
     const first = await loadRun("NVDA/quant_pmcc.json", fetcher);

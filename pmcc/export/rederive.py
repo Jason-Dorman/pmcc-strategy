@@ -5,20 +5,31 @@ works only from the blotter, ledger, gate log, config and starting cash a result
 arithmetic is this module's own, not the engine's: a bug in the fill model or the book can't hide
 from a check that reuses it. Every amount is compared in integer $0.0001 units (DEC-44).
 
+The blotter is walked once, holding each instrument's position row by row, so a row is judged by
+what it does (opens a long, opens a short), never by the rule ID it carries (DEC-96).
+
+- **positions:** after each bar's rows, the ledger holds exactly the long, short and stock the rows
+  booked; a deleted, duplicated, resized or moved row can't hide.
 - **INV-01:** each row's Cash Δ follows from its fill, quantity and fee, and cash walks from the
   starting cash bar by bar, moving by exactly the rows booked on that bar.
 - **INV-02:** NAV = cash + long MV − short call MV + stock MV on every bar.
 - **INV-03:** every BUY and SELL had a valid BID/ASK (from its audit), its Limit is that quote's mid
-  and its Fill is mid ± capture × half-spread; X-S5's stock sale at the strike is exempt.
+  and its Fill is mid ± capture × half-spread. Only X-S5's stock sale is exempt, and it must be at
+  the strike of the call assigned on the same bar, for its shares.
 - **INV-05, INV-10:** every bar's short is covered by its long (strike, expiry) in equal quantity.
-- **INV-06:** every short entry satisfied E-S5 against the long's entry fill.
+- **INV-06:** every row that opens a short is an E-S1 sale that satisfied E-S5 against the long's
+  entry fill.
 - **INV-07:** no bar holds a short after its expiry session.
-- **INV-08:** every entry's audit records available funds ≥ 0 after it, and, where no stock is held,
-  the amount follows from cash and the short's value.
+- **INV-08:** every row that opens a leg is its entry rule's (E-L1, E-S1), and its audit records
+  available funds ≥ 0 after it; with no stock held at that moment, the amount must follow from
+  cash and the short's value.
 - **INV-09:** every blotter, gate-log and gate row carries a rule ID the config defines.
+
+A row missing a value its check needs (an option without a strike) is itself a finding, never a
+crash.
 """
 
-from collections.abc import Callable, Iterable, Iterator, Sequence
+from collections.abc import Callable, Iterable, Iterator, Mapping
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
@@ -29,14 +40,29 @@ from pmcc.domain.clock import to_et
 from pmcc.export.models import BlotterRow, LedgerRowOut, LegOut, RunResult
 
 OPTION_MULTIPLIER = 100  # shares per contract
-LONG_ENTRY, SHORT_ENTRY = "E-L1", "E-S1"
+LONG_ENTRY, SHORT_ENTRY, ASSIGNMENT = "E-L1", "E-S1", "X-S5"
+_SIGN = {"BUY": 1, "SELL": -1, "EXPIRE": 1, "ASSIGN": 1}
 
 
 @final
 @dataclass(frozen=True, slots=True)
 class Finding:
-    invariant: str
+    invariant: str  # the check: an invariant ("INV-01") or "positions" / "rows"
     message: str
+
+
+class _MissingValueError(ValueError):
+    """A row lacks a value a check needs; reported as a finding."""
+
+
+@final
+@dataclass(frozen=True, slots=True)
+class _Booked:
+    """A blotter row with what it did: the leg it opened, and the positions just before it."""
+
+    row: BlotterRow
+    opens: str | None  # "long" or "short" when it opens an option leg
+    before: Mapping[str, int]  # RIC → signed quantity (contracts; shares for the stock)
 
 
 @final
@@ -47,6 +73,8 @@ class _Rows:
     result: RunResult
     blotter: tuple[BlotterRow, ...]
     ledger: tuple[LedgerRowOut, ...]
+    booked: tuple[_Booked, ...]
+    stock: frozenset[str]  # the RICs the blotter trades as stock
 
 
 def rederive(result: RunResult) -> list[Finding]:
@@ -54,8 +82,38 @@ def rederive(result: RunResult) -> list[Finding]:
     no rows to re-derive from."""
     if result.blotter is None or result.ledger is None or result.gate_log is None:
         return []
-    rows = _Rows(result, result.blotter, result.ledger)
-    return [finding for check in _CHECKS for finding in check(rows)]
+    stock = frozenset(r.instrument.ric for r in result.blotter if r.instrument.kind == "stock")
+    rows = _Rows(result, result.blotter, result.ledger, _walk(result.blotter), stock)
+    findings: list[Finding] = []
+    for check in _CHECKS:
+        try:
+            findings += check(rows)
+        except _MissingValueError as e:
+            findings.append(Finding("rows", f"{check.__name__.strip('_')}: {e}"))
+    return findings
+
+
+def _walk(blotter: Iterable[BlotterRow]) -> tuple[_Booked, ...]:
+    held: dict[str, int] = {}
+    booked: list[_Booked] = []
+    for row in blotter:
+        ric = row.instrument.ric
+        before = held.get(ric, 0)
+        booked.append(_Booked(row, _opens(row, before), dict(held)))
+        held[ric] = before + _SIGN.get(row.side, 0) * row.qty
+        if held[ric] == 0:
+            del held[ric]
+    return tuple(booked)
+
+
+def _opens(row: BlotterRow, before: int) -> str | None:
+    if row.instrument.kind == "stock":
+        return None
+    if row.side == "BUY" and before >= 0:
+        return "long"
+    if row.side == "SELL" and before <= 0:
+        return "short"
+    return None
 
 
 def units(amount: Decimal) -> int:
@@ -77,6 +135,42 @@ def _multiplier(row: BlotterRow) -> int:
 
 def _label(row: BlotterRow) -> str:
     return f"{row.side} {row.instrument.ric} at {row.time.isoformat()} ({row.rule_id})"
+
+
+def _need[T](value: T | None, what: str) -> T:
+    if value is None:
+        raise _MissingValueError(f"a row has no {what}")
+    return value
+
+
+# ---- positions ----------------------------------------------------------------------------------
+
+
+def _positions(rows: _Rows) -> Iterator[Finding]:
+    """The ledger's legs and stock, bar by bar, against the positions the rows booked."""
+    held: dict[str, int] = {}
+    booked = iter(rows.blotter)
+    row = next(booked, None)
+    for bar in rows.ledger:
+        while row is not None and row.time <= bar.time:
+            held[row.instrument.ric] = held.get(row.instrument.ric, 0) + (
+                _SIGN.get(row.side, 0) * row.qty)  # fmt: skip
+            row = next(booked, None)
+        if _ledger_holds(bar) != {ric: q for ric, q in held.items() if q}:
+            yield Finding("positions", f"the ledger at {bar.time.isoformat()} holds "
+                                       f"{_ledger_holds(bar)}, the rows booked "
+                                       f"{ {r: q for r, q in held.items() if q} }")  # fmt: skip
+
+
+def _ledger_holds(bar: LedgerRowOut) -> dict[str, int]:
+    holds: dict[str, int] = {}
+    if bar.long is not None:
+        holds[bar.long.instrument.ric] = holds.get(bar.long.instrument.ric, 0) + bar.long.qty
+    if bar.short is not None:
+        holds[bar.short.instrument.ric] = holds.get(bar.short.instrument.ric, 0) - bar.short.qty
+    if bar.stock is not None:
+        holds[bar.stock.instrument.ric] = bar.stock.shares
+    return {ric: q for ric, q in holds.items() if q}
 
 
 # ---- INV-01 -------------------------------------------------------------------------------------
@@ -133,10 +227,12 @@ def _nav(rows: _Rows) -> Iterator[Finding]:
 def _fills(rows: _Rows) -> Iterator[Finding]:
     capture = rows.result.config.strategy.fill_model.spread_capture
     for row in rows.blotter:
-        if row.side in ("BUY", "SELL") and not row.audit.get("assignment"):
-            problem = _fill_problem(row, capture)
-            if problem:
-                yield Finding("INV-03", f"{_label(row)}: {problem}")
+        if row.side not in ("BUY", "SELL"):
+            continue
+        problem = (_assignment_problem(row, rows.blotter) if row.audit.get("assignment")
+                   else _fill_problem(row, capture))  # fmt: skip
+        if problem:
+            yield Finding("INV-03", f"{_label(row)}: {problem}")
 
 
 def _fill_problem(row: BlotterRow, capture: float) -> str:
@@ -155,6 +251,26 @@ def _fill_problem(row: BlotterRow, capture: float) -> str:
     return ""
 
 
+def _assignment_problem(row: BlotterRow, blotter: tuple[BlotterRow, ...]) -> str:
+    """The one sale not at a quote: X-S5's short stock, at the strike of the call assigned on the
+    same bar, 100 shares a contract."""
+    assigned = [
+        r
+        for r in blotter  # the call assigned on this bar
+        if r.side == "ASSIGN" and r.rule_id == ASSIGNMENT and r.time == row.time
+    ]
+    is_sale = row.side == "SELL" and row.rule_id == ASSIGNMENT and row.instrument.kind == "stock"
+    if not is_sale or len(assigned) != 1:
+        return "claims the assignment exemption but isn't X-S5's stock sale on an assignment"
+    call = assigned[0]
+    if row.fill != call.instrument.strike or row.qty != call.qty * OPTION_MULTIPLIER:
+        return (
+            f"sold {row.qty} shares at {row.fill}, not {call.qty * OPTION_MULTIPLIER} at "
+            f"the assigned strike {call.instrument.strike}"
+        )
+    return ""
+
+
 # ---- INV-05, INV-10, INV-07 ---------------------------------------------------------------------
 
 
@@ -168,30 +284,18 @@ def _covered(rows: _Rows) -> Iterator[Finding]:
             yield Finding("INV-05", f"a short is open at {when} with no long")
             continue
         long_i, short_i = long.instrument, short.instrument
-        if not (_strike(long_i.strike) <= _strike(short_i.strike)
-                and _day(long_i.expiry) >= _day(short_i.expiry)):  # fmt: skip
+        strike_ok = _need(long_i.strike, "strike") <= _need(short_i.strike, "strike")
+        if not (strike_ok and _need(long_i.expiry, "expiry") >= _need(short_i.expiry, "expiry")):
             yield Finding("INV-05", f"short {short_i.ric} at {when} isn't covered by long "
                                     f"{long_i.ric}")  # fmt: skip
         if long.qty != short.qty:
             yield Finding("INV-10", f"at {when} the short is {short.qty}, the long {long.qty}")
 
 
-def _strike(strike: Decimal | None) -> Decimal:
-    if strike is None:
-        raise ValueError("an option row has no strike")
-    return strike
-
-
-def _day[T](value: T | None) -> T:
-    if value is None:
-        raise ValueError("an option row has no expiry")
-    return value
-
-
 def _expired(rows: _Rows) -> Iterator[Finding]:
     for bar in rows.ledger:
         short = bar.short
-        if short is not None and to_et(bar.time).date() > _day(short.instrument.expiry):
+        if short is not None and to_et(bar.time).date() > _need(short.instrument.expiry, "expiry"):
             yield Finding("INV-07", f"short {short.instrument.ric} is open at "
                                     f"{bar.time.isoformat()}, after its expiry")  # fmt: skip
 
@@ -201,27 +305,32 @@ def _expired(rows: _Rows) -> Iterator[Finding]:
 
 def _e_s5(rows: _Rows) -> Iterator[Finding]:
     by_time = {bar.time: bar for bar in rows.ledger}
-    for i, row in enumerate(rows.blotter):
-        if row.rule_id != SHORT_ENTRY or row.side != "SELL":
+    for i, booked in enumerate(rows.booked):
+        if booked.opens != "short":
             continue
+        row = booked.row
         bar = by_time.get(row.time)
         long = None if bar is None else bar.long
-        entry = None if long is None else _long_entry(rows.blotter[:i], long.instrument.ric)
-        if row.audit.get("e_s5_satisfied") is not True or long is None or entry is None:
+        entry = None if long is None else _long_entry(rows.booked[:i], long.instrument.ric)
+        if row.rule_id != SHORT_ENTRY or row.audit.get("e_s5_satisfied") is not True:
+            yield Finding("INV-06", f"{_label(row)}: opens a short without an E-S1 sale that "
+                                    "satisfied E-S5")  # fmt: skip
+            continue
+        if long is None or entry is None:
             yield Finding("INV-06", f"{_label(row)}: no long entry it satisfied E-S5 against")
             continue
-        gap = _strike(row.instrument.strike) - _strike(long.instrument.strike)
-        debit = _need(entry.fill) - _need(row.limit)
+        gap = _need(row.instrument.strike, "strike") - _need(long.instrument.strike, "strike")
+        debit = _need(entry.fill, "fill") - _need(row.limit, "limit")
         recorded = (row.audit.get("e_s5_strike_gap"), row.audit.get("e_s5_net_debit"))
         if not gap > debit or tuple(map(_amount, recorded)) != (gap, debit):
             yield Finding("INV-06", f"{_label(row)}: strike gap {gap} against net debit {debit} "
                                     f"(recorded {recorded[0]}, {recorded[1]})")  # fmt: skip
 
 
-def _long_entry(before: Sequence[BlotterRow], ric: str) -> BlotterRow | None:
-    return next((r for r in reversed(before)
-                 if r.rule_id == LONG_ENTRY and r.side == "BUY" and r.instrument.ric == ric),
-                None)  # fmt: skip
+def _long_entry(before: Iterable[_Booked], ric: str) -> BlotterRow | None:
+    """The row that opened the long `ric` most recently."""
+    return next((b.row for b in reversed(tuple(before))
+                 if b.opens == "long" and b.row.instrument.ric == ric), None)  # fmt: skip
 
 
 def _amount(text: object) -> Decimal | None:
@@ -232,40 +341,41 @@ def _amount(text: object) -> Decimal | None:
         return None
 
 
-def _need(price: Decimal | None) -> Decimal:
-    if price is None:
-        raise ValueError("an entry row has no price")
-    return price
-
-
 # ---- INV-08 -------------------------------------------------------------------------------------
 
 
 def _funds(rows: _Rows) -> Iterator[Finding]:
     """Available funds = NAV − IM, which with no stock held is cash − short call MV (the long's
     requirement is its whole value). The entry's own leg is marked at its Limit, as the engine's
-    check marks it."""
+    check marks it; a short held before a long entry at its last bar's mark."""
     cash, previous = units(rows.result.starting_cash), None
     bars = iter(rows.ledger)
     bar = next(bars, None)
-    for row in rows.blotter:
+    for booked in rows.booked:
+        row = booked.row
         while bar is not None and bar.time < row.time:
             cash, previous, bar = units(bar.cash), bar, next(bars, None)
         cash += units(row.cash_delta)
-        if row.rule_id in (LONG_ENTRY, SHORT_ENTRY) and row.side in ("BUY", "SELL"):
-            problem = _funds_problem(row, cash, previous, bar)
+        if booked.opens is not None:
+            stock_held = any(booked.before.get(ric) for ric in rows.stock)
+            problem = _funds_problem(booked, cash, previous, stock_held)
             if problem:
                 yield Finding("INV-08", f"{_label(row)}: {problem}")
 
 
-def _funds_problem(row: BlotterRow, cash: int, previous: LedgerRowOut | None,
-                   bar: LedgerRowOut | None) -> str:  # fmt: skip
+def _funds_problem(booked: _Booked, cash: int, previous: LedgerRowOut | None,
+                   stock_held: bool) -> str:  # fmt: skip
+    row = booked.row
+    entry_rule = LONG_ENTRY if booked.opens == "long" else SHORT_ENTRY
+    if row.rule_id != entry_rule:
+        return f"opens a {booked.opens} leg under {row.rule_id}, not {entry_rule}"
     funds = row.audit.get("funds_after")
     if type(funds) is not int or funds < 0:
         return f"available funds after it were {funds!r}"
-    if any(b is not None and b.stock is not None for b in (previous, bar)):
+    if stock_held:
         return ""  # stock held: the audit's figure is all there is to check
-    short = (units(_need(row.limit)) * OPTION_MULTIPLIER * row.qty if row.rule_id == SHORT_ENTRY
+    short = (units(_need(row.limit, "limit")) * OPTION_MULTIPLIER * row.qty
+             if booked.opens == "short"
              else _leg_mv(None if previous is None else previous.short))  # fmt: skip
     if funds != cash - short:
         return f"funds_after {funds} isn't cash − short call MV = {cash - short}"
@@ -289,5 +399,5 @@ def _rule_ids(rows: _Rows) -> Iterator[Finding]:
 
 
 _CHECKS: tuple[Callable[[_Rows], Iterable[Finding]], ...] = (
-    _row_cash, _cash_walk, _nav, _fills, _covered, _e_s5, _expired, _funds, _rule_ids,
+    _positions, _row_cash, _cash_walk, _nav, _fills, _covered, _e_s5, _expired, _funds, _rule_ids,
 )  # fmt: skip

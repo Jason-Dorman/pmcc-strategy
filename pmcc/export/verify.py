@@ -24,6 +24,7 @@ from typing import final
 from pydantic import BaseModel, ValidationError
 
 from pmcc.engine.invariants import RUNTIME_INVARIANTS
+from pmcc.export import canonical
 from pmcc.export.analytics_models import SYMBOL_FILES, UNIVERSE_FILES
 from pmcc.export.models import RunResult
 from pmcc.export.rederive import rederive
@@ -64,7 +65,7 @@ def verify(root: Path) -> Verified:
     for path in sorted(p for p in root.rglob("*") if p.is_file()):
         files += 1
         name = path.relative_to(root).as_posix()
-        kind = _kind(path.relative_to(root))
+        kind = kind_of(path.relative_to(root))
         if kind is None:
             problems.append(Problem(name, "layout", "isn't a file the pipeline writes here"))
         elif kind is RunResult:
@@ -75,7 +76,7 @@ def verify(root: Path) -> Verified:
     return Verified(runs, files, tuple(problems))
 
 
-def _kind(relative: Path) -> type[BaseModel] | None:
+def kind_of(relative: Path) -> type[BaseModel] | None:
     """The model a file at `relative` must hold, or None if nothing belongs there."""
     if len(relative.parts) != 2 or relative.suffix != ".json":
         return None
@@ -90,11 +91,21 @@ def _kind(relative: Path) -> type[BaseModel] | None:
 
 
 def _check_other(path: Path, name: str, kind: type[BaseModel]) -> list[Problem]:
+    """An analytics file: its schema, canonical bytes, and a symbol file under its own symbol."""
+    raw = path.read_bytes()
     try:
-        kind.model_validate_json(path.read_bytes())
+        model = kind.model_validate_json(raw)
     except ValidationError as e:
         return [Problem(name, "schema", _describe(e))]
-    return []
+    problems: list[Problem] = []
+    if canonical.to_bytes(canonical.loads(raw)) != raw:
+        problems.append(Problem(name, "canonical", "isn't canonical JSON (DEC-50)"))
+    symbol = getattr(model, "symbol", None)
+    if symbol is not None and symbol != path.parent.name:
+        problems.append(
+            Problem(name, "manifest", f"holds {symbol}'s data under {path.parent.name}/")
+        )
+    return problems
 
 
 def _check_run(path: Path, name: str) -> list[Problem]:

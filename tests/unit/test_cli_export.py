@@ -139,3 +139,15 @@ def test_cli_export_schema_only_needs_no_results(workdir: Path) -> None:
     assert code == 0, output
     assert f"{len(SCHEMAS)} schemas written to site/schema" in output
     assert sorted(p.name for p in (workdir / "site").iterdir()) == ["schema"]
+
+
+def test_cli_export_schema_only_never_plants_files_in_a_foreign_directory(workdir: Path) -> None:
+    """Otherwise a later export would take the directory for its own and clear it."""
+    (workdir / "project").mkdir()
+    (workdir / "project" / "notes.txt").write_text("keep\n", encoding="utf-8")
+
+    code, output = _invoke("export", "--schema-only", "--out", "project")
+
+    assert code == 1
+    assert "doesn't write" in output
+    assert sorted(p.name for p in (workdir / "project").iterdir()) == ["notes.txt"]

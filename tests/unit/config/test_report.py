@@ -52,16 +52,19 @@ def test_dec_54_an_ablation_keeps_a_summary(path: Path) -> None:
     assert (report.detail, report.sections) == (Detail.SUMMARY, ())
 
 
-def test_dec_54_report_is_inherited_through_extends(configs: Path) -> None:
-    variant = load_strategy(_variant(configs, parent="quant_pmcc.yaml"))
+def test_dec_54_report_is_never_inherited(configs: Path) -> None:
+    """A variant keeps a summary unless its own file says otherwise, so a sensitivity variant of
+    a full strategy can't publish full detail by accident."""
+    for parent in ("baseline_pmcc.yaml", "quant_pmcc.yaml"):
+        report = load_strategy(_variant(configs, parent=parent)).report
+        assert (report.detail, report.sections) == (Detail.SUMMARY, ())
 
-    assert variant.report == load_strategy(configs / "quant_pmcc.yaml").report
 
+def test_dec_54_a_variant_can_ask_for_full_detail(configs: Path) -> None:
+    block = "report: {detail: full, sections: [gate_log]}\n"
+    variant = load_strategy(_variant(configs, block, parent="quant_pmcc.yaml"))
 
-def test_dec_54_a_childs_report_replaces_the_parents_whole(configs: Path) -> None:
-    variant = load_strategy(_variant(configs, "report: {detail: full}\n", parent="quant_pmcc.yaml"))
-
-    assert (variant.report.detail, variant.report.sections) == (Detail.FULL, ())
+    assert (variant.report.detail, variant.report.sections) == (Detail.FULL, (Section.GATE_LOG,))
 
 
 def test_dec_54_a_strategy_no_file_reports_on_keeps_a_summary(configs: Path) -> None:
@@ -96,7 +99,7 @@ def test_dec_54_report_is_part_of_the_config_hash(configs: Path) -> None:
                            risk_free_rate=universe.risk_free_rate)  # fmt: skip
         return config.config_hash()
 
-    full = hashed(_variant(configs))
-    summary = hashed(_variant(configs, "report: {detail: summary}\n"))
+    full = hashed(_variant(configs, "report: {detail: full}\n"))
+    summary = hashed(_variant(configs))
 
     assert full != summary

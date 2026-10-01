@@ -355,7 +355,7 @@ A static React app on GitHub Pages with a global symbol selector; the comparison
 - **Styling.** Tailwind with shadcn/ui components, in one dark theme: the look of `DESIGN-GUIDE.md` and `theme.py`, unchanged (DEC-03).
 - **Run manifest footer** on every page.
 
-**Charts.** ECharts with mouseover on all time series; NAV charts show IM, MM, and available funds on a shared time axis. Styled from the design tokens and readable on mobile.
+**Charts.** ECharts with mouseover on all time series; NAV charts show IM, MM, and available funds on a shared time axis. Styled from the design tokens and readable on mobile (DEC-03).
 
 ## Invariant tests
 
@@ -388,7 +388,7 @@ A gradable baseline exists by Sep 30; everything after that adds depth, and Oct 
 | Sep 26–27 | Repo tooling (uv, ruff, pyright, pre-commit, justfile, CI skeleton); resolve open items; RIC builder, chain discovery, parquet cache; fetch one symbol | One symbol's full chain cached; tests 11–12 pass |
 | Sep 27 onward | Start universe fetches in the background as soon as the fetcher works | All 3 symbols cached by Oct 3 |
 | Sep 28–30 | Pricing (IV, Greeks, EM, RV20); engine and MarketView; fill simulator; accounting; baseline PMCC | Baseline blotter, ledger, NAV, Reg T for one symbol; tests 1–10 and 13 pass |
-| Oct 1–2 | Quant long and short selectors; gates G-3 to G-5; gate log; ablation configs; scaffold the Vite app and Pages deploy Action with sample JSON | Quant PMCC and A1–A5 run on one symbol |
+| Oct 1–2 | Quant long and short selectors; gates G-3 to G-5; gate log; ablation configs; scaffold the Vite app and Pages deploy Action, deploying the committed results (DEC-74) | Quant PMCC and A1–A5 run on one symbol |
 | Oct 3–4 | Batch runs across the universe; friction, timing, and parameter sensitivity | All results JSON written |
 | Oct 5–6 | Analytics: metrics, attribution, bootstrap, scatters, suitability screen | All tables and series in results JSON |
 | Oct 7–8 | React pages (comparison, strategy, rules from YAML, methodology, universe) and write-up | CI builds and deploys the site after `pmcc export`, and the site passes a full read-through |

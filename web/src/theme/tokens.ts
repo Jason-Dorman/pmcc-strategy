@@ -49,6 +49,7 @@ export const BREAK_ONE_COL = 1100;
 export const PANEL_FIGURE_HEIGHT = 360;
 export const HERO_FIGURE_HEIGHT = 600;
 export const FIGURE_MIN_WIDTH = 520;
+export const HERO_MIN_WIDTH = 680;
 export const TABLE_MIN_WIDTH = 720;
 export const TABLE_MAX_HEIGHT = 420;
 export const TABLE_FONT_SIZE = 11.5;

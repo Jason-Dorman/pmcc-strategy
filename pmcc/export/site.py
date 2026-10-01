@@ -26,7 +26,7 @@ from pmcc.config.strategy import Rule
 from pmcc.export import canonical
 from pmcc.export.analytics_models import SYMBOL_FILES, UNIVERSE_FILES
 from pmcc.export.models import RunResult
-from pmcc.export.schema import write_schemas
+from pmcc.export.schema import SCHEMA_DIR, write_schemas
 from pmcc.export.site_models import (
     Index,
     IndexRun,
@@ -36,7 +36,7 @@ from pmcc.export.site_models import (
     Rules,
     StrategyRules,
 )
-from pmcc.export.verify import UNIVERSE_DIR, Problem, verify
+from pmcc.export.verify import UNIVERSE_DIR, Problem, kind_of, verify
 
 INDEX, RULES = "index.json", "rules.json"
 PUBLISHABLE_ONLY = "git_dirty"  # the one verify check a local export lets through
@@ -90,7 +90,10 @@ def build_index(runs: Sequence[_Loaded], extras: Sequence[str]) -> Index:
     first = runs[0].result
     for run in runs:
         _check_shared(first, run)
-    symbols = sorted({run.result.manifest.symbol for run in runs})
+    symbols = sorted(
+        {run.result.manifest.symbol for run in runs}
+        | {Path(p).parent.name for p in extras if Path(p).parent.name != UNIVERSE_DIR}
+    )
     return Index(
         pmcc_version=version("pmcc"),
         window=first.config.window,
@@ -170,7 +173,7 @@ def _strategy_rules(result: RunResult, by_id: Mapping[str, RunResult]) -> Strate
         rules=tuple(
             _rule(r, d["params"]) for r, d in zip(strategy.rules, dumped["rules"], strict=True)
         ),
-        changes=() if base is result else _changes(base.config.strategy.rules, strategy.rules),
+        changes=() if base is result else rule_changes(base.config.strategy.rules, strategy.rules),
     )
 
 
@@ -181,7 +184,7 @@ def _rule(rule: Rule, params: Mapping[str, float | int | str]) -> RuleOut:
                    rationale=text.rationale)  # fmt: skip
 
 
-def _changes(base: Sequence[Rule], variant: Sequence[Rule]) -> tuple[RuleChange, ...]:
+def rule_changes(base: Sequence[Rule], variant: Sequence[Rule]) -> tuple[RuleChange, ...]:
     theirs, mine = {r.id: r for r in base}, {r.id: r for r in variant}
     changes: list[RuleChange] = []
     for rule_id in SPEC_RULE_IDS:
@@ -221,13 +224,38 @@ def _extras(results: Path) -> list[str]:
     return sorted(p.relative_to(results).as_posix() for p in found)
 
 
+def check_export_dir(out: Path) -> None:
+    """Raises `ExportError` unless `out` is missing, empty, or holds nothing but files an export
+    writes, so an export can clear it whole: a misdirected `--out` never deletes anything else."""
+    if out.exists() and not out.is_dir():
+        raise ExportError(f"{out} is a file, not an export directory")
+    if not out.is_dir():
+        return
+    foreign = [p.relative_to(out).as_posix() for p in sorted(out.rglob("*"))
+               if not p.is_dir() and not _exported(p.relative_to(out))]  # fmt: skip
+    if foreign:
+        shown = ", ".join(foreign[:3]) + (
+            f" and {len(foreign) - 3} more" if len(foreign) > 3 else ""
+        )
+        raise ExportError(f"{out} holds files pmcc export doesn't write ({shown}); not touching it")
+
+
+def _exported(relative: Path) -> bool:
+    """A path an export writes: index.json, rules.json, a schema, or a results file."""
+    parts = relative.parts
+    if parts in ((INDEX,), (RULES,)):
+        return True
+    if len(parts) == 2 and parts[0] == SCHEMA_DIR:
+        return parts[1].endswith(".schema.json")
+    return kind_of(relative) is not None
+
+
 def _clear(out: Path) -> None:
-    """Empty `out` for a fresh export, refusing a directory an export didn't write."""
-    if out.is_dir() and any(out.iterdir()):
-        if not ((out / INDEX).is_file() or (out / "schema").is_dir()):
-            raise ExportError(f"{out} holds files pmcc export didn't write; not clearing it")
+    """Empty `out` for a fresh export (after `check_export_dir`)."""
+    check_export_dir(out)
+    if out.is_dir():
         shutil.rmtree(out)
-    out.mkdir(parents=True, exist_ok=True)
+    out.mkdir(parents=True)
 
 
 def _copy(results: Path, out: Path) -> int:

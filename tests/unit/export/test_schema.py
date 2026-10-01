@@ -41,6 +41,7 @@ def test_schema_a_field_with_a_default_is_still_required_as_written() -> None:
 
     assert set(result["required"]) == set(result["properties"])
     assert "report" in strategy["required"]
+    assert set(_defs("run_result")["Report"]["required"]) == {"detail", "sections"}
 
 
 def test_schema_dollars_are_numbers() -> None:

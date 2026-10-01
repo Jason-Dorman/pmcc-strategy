@@ -7,6 +7,7 @@ detail), `late_friday_surge` without X-S1 (X-S5's short stock, so INV-08's stock
 canonical and valid against the schema, so only the check it targets can catch it.
 """
 
+import json
 import shutil
 from collections.abc import Callable
 from datetime import date, datetime, timedelta
@@ -203,7 +204,9 @@ def test_verify_fails_a_copy_corrupted_against_one_invariant(
 
     problems = verify(root).problems
 
-    assert {p.check for p in problems} == {invariant}
+    # A leg resized in the ledger alone is also one no row booked.
+    also: set[str] = {"positions"} if invariant == "INV-10" else set()
+    assert {p.check for p in problems} == {invariant} | also
     assert {p.path for p in problems} == {WALK}
 
 
@@ -361,3 +364,240 @@ def test_verify_refuses_another_schema_version(results: Path, tmp_path: Path) ->
 def test_verify_needs_a_directory(tmp_path: Path) -> None:
     with pytest.raises(FileNotFoundError, match="isn't a directory"):
         verify(tmp_path / "missing")
+
+
+# ---- the adversarial review's regressions (P4-05 review, DEC-96) --------------------------------
+
+
+def _row(doc: Doc, rule: str, side: str, kind: str = "call", nth: int = 0) -> Doc:
+    wanted = (rule, side, kind)
+    matching = [r for r in doc["blotter"]
+                if (r["rule_id"], r["side"], r["instrument"]["kind"]) == wanted]  # fmt: skip
+    return matching[nth]
+
+
+def test_inv_08_is_rederived_on_the_bar_x_s5s_stock_is_covered(
+    results: Path, tmp_path: Path
+) -> None:
+    """The cover buys the stock back before E-S1 sells, so no stock is held at the entry and its
+    funds must follow from cash and the short, exactly."""
+    doc = cast(Doc, canonical.loads((results / SURGE).read_bytes()))
+    cover = _row(doc, "X-S5", "BUY", "stock")
+    assert _row(doc, "E-S1", "SELL", nth=1)["time"] == cover["time"]
+    root = _copy(results, tmp_path)
+
+    def corrupt(doc: Doc) -> None:
+        audit = _row(doc, "E-S1", "SELL", nth=1)["audit"]
+        audit["funds_after"] = Number(str(int(audit["funds_after"]) + 5_000_000))  # still >= 0
+
+    _edit(root, SURGE, corrupt)
+
+    assert _checks(root) == {"INV-08"}
+
+
+@pytest.mark.parametrize(
+    ("change", "value"), [("e_s5_net_debit", "0.0100"), ("e_s5_strike_gap", "999.0000")]
+)
+def test_inv_06_compares_the_recorded_terms_with_the_rows(
+    results: Path, tmp_path: Path, change: str, value: str
+) -> None:
+    root = _copy(results, tmp_path)
+    _edit(root, WALK, lambda doc: _entry(doc, "E-S1")["audit"].update({change: value}))
+
+    assert _checks(root) == {"INV-06"}
+
+
+def test_inv_06_rederives_the_gap_from_the_strikes(results: Path, tmp_path: Path) -> None:
+    root = _copy(results, tmp_path)
+
+    def corrupt(doc: Doc) -> None:  # the short's strike down to the long's: no gap at all
+        long = _entry(doc, "E-L1")["instrument"]["strike"]
+        _entry(doc, "E-S1")["instrument"]["strike"] = long
+
+    _edit(root, WALK, corrupt)
+
+    assert _checks(root) == {"INV-06"}
+
+
+def test_inv_06_08_a_short_opened_under_another_rule_is_caught(
+    results: Path, tmp_path: Path
+) -> None:
+    """A row is judged by what it does: a sale opening the short is an entry, whatever its label."""
+    root = _copy(results, tmp_path)
+    _edit(root, WALK, lambda doc: _entry(doc, "E-S1").update(rule_id="E-S3"))
+
+    assert _checks(root) == {"INV-06", "INV-08"}
+
+
+def test_inv_08_a_long_opened_under_another_rule_is_caught(results: Path, tmp_path: Path) -> None:
+    root = _copy(results, tmp_path)
+    _edit(root, WALK, lambda doc: _entry(doc, "E-L1").update(rule_id="E-L3"))
+
+    assert _checks(root) == {"INV-08"}
+
+
+def test_inv_03_only_x_s5s_stock_sale_is_exempt(results: Path, tmp_path: Path) -> None:
+    root = _copy(results, tmp_path)
+    _edit(root, WALK, lambda doc: _entry(doc, "E-S1")["audit"].update(assignment=True))
+
+    problems = verify(root).problems
+
+    assert {p.check for p in problems} == {"INV-03"}
+    assert "claims the assignment exemption" in problems[0].message
+
+
+def test_inv_03_x_s5s_stock_sale_must_be_at_the_assigned_strike(
+    results: Path, tmp_path: Path
+) -> None:
+    root = _copy(results, tmp_path)
+    sale = Number("101.0000")
+    _edit(root, SURGE, lambda doc: _row(doc, "X-S5", "SELL", "stock").update(fill=sale))
+
+    problems = [p for p in verify(root).problems if p.check == "INV-03"]
+
+    assert len(problems) == 1
+    assert "the assigned strike" in problems[0].message
+
+
+def test_verify_the_ledger_must_hold_what_the_rows_booked(results: Path, tmp_path: Path) -> None:
+    """ASSIGN moves no cash, so only the position walk sees it go missing."""
+    root = _copy(results, tmp_path)
+    _edit(root, SURGE, lambda doc: doc["blotter"].remove(_row(doc, "X-S5", "ASSIGN")))
+
+    assert "positions" in _checks(root)
+
+
+def test_verify_reports_a_row_missing_a_value_instead_of_crashing(
+    results: Path, tmp_path: Path
+) -> None:
+    root = _copy(results, tmp_path)
+    _edit(root, WALK, lambda doc: _quiet_short_bar(doc)["short"]["instrument"].update(strike=None))
+
+    assert "rows" in _checks(root)
+
+
+def test_inv_05_the_long_must_expire_no_earlier_than_the_short(
+    results: Path, tmp_path: Path
+) -> None:
+    root = _copy(results, tmp_path)
+
+    def corrupt(doc: Doc) -> None:
+        bar = _quiet_short_bar(doc)
+        short = date.fromisoformat(bar["short"]["instrument"]["expiry"])
+        bar["long"]["instrument"]["expiry"] = (short - timedelta(days=1)).isoformat()
+
+    _edit(root, WALK, corrupt)
+
+    assert _checks(root) == {"INV-05"}
+
+
+def test_inv_09_a_gate_row_carries_a_defined_rule(results: Path, tmp_path: Path) -> None:
+    root = _copy(results, tmp_path)
+    _edit(root, WALK, lambda doc: doc["gate_log"][0]["gates"][0].update(rule_id="G-4"))
+
+    assert _checks(root) == {"INV-09"}
+
+
+def test_inv_01_rows_booked_off_the_ledgers_bars_are_caught(results: Path, tmp_path: Path) -> None:
+    root = _copy(results, tmp_path)
+    _edit(root, WALK, lambda doc: doc["blotter"][-1].update(time="2026-09-12T03:00:00-04:00"))
+
+    problems = [p.message for p in verify(root).problems if p.check == "INV-01"]
+
+    assert any("have no ledger bar" in m for m in problems)
+
+
+def test_verify_a_summary_must_not_record_an_invariant_twice(results: Path, tmp_path: Path) -> None:
+    root = _copy(results, tmp_path)
+
+    def corrupt(doc: Doc) -> None:
+        checks = doc["summary"]["invariants"]
+        checks.append(dict(checks[0]))
+
+    _edit(root, SUMMARY, corrupt)
+
+    assert _checks(root) == {"summary"}
+
+
+def _coverage(symbol: str) -> Doc:
+    return {"schema_version": SCHEMA_VERSION, "symbol": symbol, "rows": [], "iv_failures": {},
+            "stale_mark_rate": None, "unavailable_fields": []}  # fmt: skip
+
+
+def test_verify_an_analytics_file_must_sit_under_its_own_symbol(
+    results: Path, tmp_path: Path
+) -> None:
+    root = _copy(results, tmp_path)
+    (root / "SYN" / "coverage.json").write_bytes(canonical.to_bytes(_coverage("ABC")))
+
+    found = [(p.path, p.check) for p in verify(root).problems]
+
+    assert found == [("SYN/coverage.json", "manifest")]
+
+
+def test_verify_an_analytics_file_must_be_canonical(results: Path, tmp_path: Path) -> None:
+    root = _copy(results, tmp_path)
+    pretty = json.dumps(_coverage("SYN"), indent=2) + "\n"
+    (root / "SYN" / "coverage.json").write_text(pretty, encoding="utf-8", newline="\n")
+
+    found = [(p.path, p.check) for p in verify(root).problems]
+
+    assert found == [("SYN/coverage.json", "canonical")]
+
+
+# ---- fills with friction: spread_capture 0.5 and a fee ------------------------------------------
+
+FRICTION = "SYN/baseline_pmcc--test.json"
+
+
+@pytest.fixture(scope="module")
+def friction(synthetic: SyntheticMarkets, tmp_path_factory: pytest.TempPathFactory) -> Path:
+    tmp = tmp_path_factory.mktemp("friction")
+    spec = random_walk()
+    cfg = config(tmp, "", spec.window_start, spec.window_end,
+                 "{spread_capture: 0.5, fee_per_contract: 0.65}")  # fmt: skip
+    loaded = synthetic.get("random_walk", random_walk).symbol
+    stamp = Stamp(inv13_run.PROVENANCE, DataSource.SYNTHETIC, WHEN)
+    write_result(run_loaded(loaded, loaded.symbol, cfg, CASH, stamp), tmp / "results")
+    return tmp / "results"
+
+
+def test_inv_03_passes_fills_at_mid_plus_capture_times_half_spread(friction: Path) -> None:
+    doc = cast(Doc, canonical.loads((friction / FRICTION).read_bytes()))
+    traded = [r for r in doc["blotter"] if r["side"] in ("BUY", "SELL")]
+    assert any(r["limit"] != r["fill"] for r in traded)
+
+    assert verify(friction).problems == ()
+
+
+def _limit_up(doc: Doc) -> None:  # the long's: E-S1's Limit also feeds INV-06 and INV-08
+    row = _entry(doc, "E-L1")
+    row["limit"] = _add(row["limit"], "0.0001")
+
+
+def _other_capture(doc: Doc) -> None:
+    _entry(doc, "E-S1")["audit"]["spread_capture"] = 0.25
+
+
+@pytest.mark.parametrize("corrupt", [_limit_up, _other_capture], ids=["limit-only", "capture"])
+def test_inv_03_with_friction_the_limit_and_capture_are_checked(
+    friction: Path, tmp_path: Path, corrupt: Callable[[Doc], None]
+) -> None:
+    root = _copy(friction, tmp_path)
+    _edit(root, FRICTION, corrupt)
+
+    assert _checks(root) == {"INV-03"}
+
+
+def test_inv_03_with_friction_a_fill_off_the_model_is_caught(
+    friction: Path, tmp_path: Path
+) -> None:
+    root = _copy(friction, tmp_path)
+
+    def corrupt(doc: Doc) -> None:
+        row = _entry(doc, "E-S1")
+        row["fill"] = _add(row["fill"], "0.0001")
+
+    _edit(root, FRICTION, corrupt)
+
+    assert "INV-03" in _checks(root)

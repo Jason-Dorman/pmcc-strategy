@@ -9,6 +9,9 @@
 @import "./shell.css";
 
 @theme inline {
+  /* Tailwind's own palette and font stacks off: only the tokens exist (DEC-70) */
+  --color-*: initial;
+  --font-*: initial;
   --color-bg: var(--bg);
   --color-surface: var(--surface);
   --color-surface-alt: var(--surface-alt);
