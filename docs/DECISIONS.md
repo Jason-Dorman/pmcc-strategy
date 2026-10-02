@@ -125,7 +125,7 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-108 | The blotter's Trade P&L | SETTLED (PO) | — |
 | DEC-109 | The backtest's limits, stated on the site; a long-only run and another regime later | SETTLED (PO) · the two additions deferred | P7-02, P7-04; later if time allows |
 | DEC-110 | P7-02: the comparison page | ENG · the limit sentence's wording where a run doesn't bear it out put to the PO | handover 2026-10-02 |
-| DEC-111 | The headline return and an annualized Sharpe, for an institutional reader | SETTLED (PO) · results re-run pending | P7-02 |
+| DEC-111 | The headline return and an annualized Sharpe, for an institutional reader | SETTLED (PO) | P7-02 |
 
 ---
 
@@ -2487,9 +2487,10 @@ How P7-02 builds UI-SPEC §6.1. Nothing here changes a result.
     on the capital allocated. NVDA: 24.5% (baseline), 22.0% (quant).
   - **Sharpe, annualized:** each daily return less the risk-free rate's trading day,
     e^(r/252) − 1 (r continuously compounded, DEC-11); the mean of those excess returns ÷ their
-    sample standard deviation, × √252; labelled with the daily returns it's from (HR-5). Expected
-    on NVDA, from the session closes: 1.24 (baseline), 1.11 (quant); the re-run publishes them.
-  - **Sortino** gets the same treatment (excess over r, × √252) and isn't shown. Like Sharpe, it
+    sample standard deviation, × √252; labelled with the daily returns it's from (HR-5). NVDA,
+    from 125 daily returns: 1.24 (baseline), 1.11 (quant).
+  - **Sortino** gets the same treatment (excess over r, × √252) and isn't shown (NVDA: 1.92,
+    1.70). Like Sharpe, it
     needs two daily returns: one flat day is below the rate but no sample.
   - **Where they show:** the Comparison readouts (Quant return on starting NAV, Quant Sharpe
     (annualized)) and headline table (P&L · return on starting NAV · max drawdown · Sharpe
@@ -2510,8 +2511,11 @@ How P7-02 builds UI-SPEC §6.1. Nothing here changes a result.
   version goes to **3** (ENG): a site and data of different builds show the mismatch banner
   rather than a blank figure. Tests worked by hand: the day's rate, Sharpe and Sortino on excess
   returns, a day below the rate counted as downside, the three-week fixture.
-- **The results:** the committed v2 results no longer validate until the batch is re-run, from a
-  clean tree with this change committed; push the two commits together.
+- **The results:** re-run 2026-10-02 with `just batch` from a clean tree at `9cd5dbf`, every run
+  `git_dirty: false`; `just verify` passed all 31 files. Against the v2 results nothing moved but
+  the schema version, `git_sha`, `run_timestamp` and the metrics this entry changes: every P&L,
+  row and CI is as committed at P6-09. The code commit and the results commit are pushed
+  together, since the code alone doesn't validate the v2 results.
 
 ## E. Analytics definitions
 
