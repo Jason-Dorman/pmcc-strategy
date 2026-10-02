@@ -106,6 +106,23 @@ test("the strategy pages show the run's numbers, charts and tables", async ({ pa
   await expect(page).toHaveURL(/#\/rules\/[A-Z]-[A-Z0-9]+$/);
 });
 
+test("the comparison page shows both runs, the pooled universe and the ablations", async ({ page }) => {
+  await page.goto(`./#/compare/${SYMBOL}`);
+  await settled(page);
+  const label = page.locator(".pm-readout-label", { hasText: /^Quant − Baseline$/ });
+  const gap = page.locator(".pm-readout", { has: label }).locator(".pm-readout-value");
+  await expect(gap).toHaveText(/^[+−]?\$\d{1,3}(,\d{3})*\.\d{2}$/);
+  const nav = page.getByRole("figure", { name: /NAV on every bar/ });
+  await expect(nav.locator("svg path").first()).toBeAttached();
+  const rows = (name: string) =>
+    page.getByRole("table", { name, exact: true }).locator("tbody tr:not(.pm-spacer)");
+  await expect(rows("Headline")).toHaveCount(2);
+  await expect(rows("Pooled universe").first()).toBeVisible();
+  expect(await rows("Ablations").count()).toBeGreaterThan(1);
+  // The purpose's sentence on the result's main limit reads both runs' legs (DEC-109).
+  await expect(page.getByRole("region", { name: "Purpose" })).toContainText("the long leg made");
+});
+
 // ---- the adversarial review's regressions (P7-01 review, DEC-106) ------------------------------
 
 /** Each chart's week labels (`Mar 30`), left to right, with their horizontal extents. */

@@ -191,6 +191,7 @@ Every row points to its source. "Verified by" names the invariant test (INV-nn),
 | HR-8 | Data coverage is disclosed: unanswered contracts, IV failures, stale-mark rates, unavailable fields | `coverage.json`, written by `pmcc batch` (P5-03, DEC-100); Methodology |
 | HR-9 | Stated assumptions: r (value and source); q = 0; no early assignment; dividends out of scope; Black-Scholes on American calls; the bar's final quotes aren't proven to be the NBBO (LDG §4.14) | Methodology |
 | HR-10 | Synthetic data can never pass for real | banner (DEC-74) |
+| HR-11 | The backtest's limits are stated: one symbol in one window, a rising one, and how much of each strategy's P&L the long call made against the shorts; figures read from the results (PO, DEC-109) | Comparison purpose panel (P7-02, DEC-110); Methodology |
 
 ## 8. Non-functional requirements
 

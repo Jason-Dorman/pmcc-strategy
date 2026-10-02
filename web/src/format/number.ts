@@ -37,3 +37,8 @@ export function count(value: number): string {
 export function orDash<T>(value: T | null | undefined, format: (v: T) => string): string {
   return value === null || value === undefined ? "—" : format(value);
 }
+
+/** A mean weekly return with its CI, as percents: `0.9% (−1.0% to 2.7%)`. */
+export function meanCI(ci: { mean: number; low: number; high: number }): string {
+  return `${pct(ci.mean)} (${pct(ci.low)} to ${pct(ci.high)})`;
+}

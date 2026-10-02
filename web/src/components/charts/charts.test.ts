@@ -10,6 +10,7 @@ import { LEDGER } from "../../test/fixtures";
 import { accountOption } from "./account";
 import { barAxis, sessionAxis, shortDate, weekOf, xAxis } from "./axis";
 import { legOption } from "./legs";
+import { navCompareOption, navGap, navRows } from "./navCompare";
 import { residualOption } from "./residual";
 
 const P = new Proxy({} as Palette, { get: (_t, key) => String(key) });
@@ -188,5 +189,41 @@ describe("the residual chart (DEC-76)", () => {
     expect(option.series).toHaveLength(1);
     expect(series(option, "Cumulative residual").lineStyle.color).toBe("text");
     expect(tooltip(option, 1)).toContain("+$2.31");
+  });
+});
+
+describe("the NAV comparison (DEC-04)", () => {
+  const ahead = LEDGER.map((r) => ({ ...r, nav: r.nav + 100 }));
+  const names = { quant: "Quant PMCC", baseline: "Baseline PMCC" };
+
+  it("puts both runs' NAV on every bar either has, in time order, a missing bar a hole", () => {
+    const rows = navRows(ahead.slice(1), [...LEDGER].reverse().slice(1));
+    expect(rows.map((r) => r.time)).toEqual(LEDGER.map((r) => r.time));
+    expect(rows[0]).toEqual({ time: LEDGER[0]?.time, quant: null, baseline: 15000 });
+    expect(rows.at(-1)).toEqual({ time: LEDGER[3]?.time, quant: 15812, baseline: null });
+    expect(rows.map(navGap)).toEqual([null, 100, 100, null]);
+  });
+
+  it("draws quant in --strategy-quant and the baseline in --strategy-baseline, holes kept", () => {
+    const option = navCompareOption(P, navRows(ahead.slice(1), LEDGER), names);
+    expect(series(option, "Quant PMCC").lineStyle.color).toBe("strategy-quant");
+    expect(series(option, "Baseline PMCC").lineStyle.color).toBe("strategy-baseline");
+    expect(series(option, "Quant PMCC").data).toEqual([null, 14950, 15500, 15812]);
+    expect(series(option, "Quant PMCC").connectNulls).toBe(false);
+  });
+
+  it("shows both NAVs and the difference at the bar's ET time", () => {
+    const option = navCompareOption(P, navRows(ahead, LEDGER), names);
+    const tip = tooltip(option, 1);
+    expect(tip).toContain("2026-03-30 16:00 ET");
+    expect(tip).toContain("$14,950.00");
+    expect(tip).toContain("$14,850.00");
+    expect(tip).toContain("Quant PMCC − Baseline PMCC");
+    expect(tip).toContain("+$100.00");
+  });
+
+  it("shows a dash for a run without the bar", () => {
+    const option = navCompareOption(P, navRows(ahead.slice(1), LEDGER), names);
+    expect(tooltip(option, 0)).toContain("—");
   });
 });

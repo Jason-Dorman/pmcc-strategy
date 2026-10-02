@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { short } from "./hash";
 import { money, moneySigned, moneyTick, price } from "./money";
-import { count, iv, orDash, pct, ratio, spreadPct } from "./number";
+import { count, iv, meanCI, orDash, pct, ratio, spreadPct } from "./number";
 import { ruleLabel } from "./rule";
 import { timeET } from "./time";
 
@@ -103,5 +103,12 @@ describe("ruleLabel", () => {
                       "X-E1", "G-1", "G-2", "G-3", "G-4", "G-5"]) {
       expect(ruleLabel(id)).not.toBe(id);
     }
+  });
+});
+
+describe("meanCI", () => {
+  it("shows a weekly mean with its CI as percents, a true minus on a negative bound", () => {
+    expect(meanCI({ mean: 0.008852, low: -0.010061, high: 0.027401 })).toBe(
+      "0.9% (−1.0% to 2.7%)");
   });
 });

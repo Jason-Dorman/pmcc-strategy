@@ -172,7 +172,7 @@ describe("routes, after review", () => {
 
   it("shows both runs' manifests on the comparison page", async () => {
     renderAt("/compare/NVDA");
-    await screen.findAllByText(/4 bars/);
+    await screen.findByRole("table", { name: "Headline" });
     const footer = screen.getByRole("contentinfo");
     expect(within(footer).getByText("NVDA baseline_pmcc")).toBeDefined();
     expect(within(footer).getByText("NVDA quant_pmcc")).toBeDefined();

@@ -123,6 +123,8 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-106 | P7-01: the strategy page, its charts and tables | ENG · the gate log's Selected column put to the PO | handover 2026-10-01 |
 | DEC-107 | Filter buttons say what happened, not a rule ID | SETTLED (PO) | — |
 | DEC-108 | The blotter's Trade P&L | SETTLED (PO) | — |
+| DEC-109 | The backtest's limits, stated on the site; a long-only run and another regime later | SETTLED (PO) · the two additions deferred | P7-02, P7-04; later if time allows |
+| DEC-110 | P7-02: the comparison page | ENG · the limit sentence's wording where a run doesn't bear it out put to the PO | handover 2026-10-02 |
 
 ---
 
@@ -2369,6 +2371,99 @@ How P4-05 builds the results contract (ARCHITECTURE §12). None of it changes wh
     end), and the long's closes plus the open long's mark to its long-leg P&L (baseline
     $4,132.50 + $30.00 = $4,162.50; quant $3,630.00 + $1,325.00 = $4,955.00). The baseline's
     nine take profits run +$106.50 to +$384.50; its 17 closes win 11 times, quant's 11 win 6.
+
+### DEC-109 — The backtest's limits, stated on the site
+**Status:** SETTLED · **Basis:** PO, 2026-10-02, after P7-01 · **Affects:** P7-02, P7-04, Spec › Site and UI (Methodology), UI-SPEC §6.1, §6.4, PRD HR-11; BUILD-PLAN L-01, L-02; DEC-07, DEC-15, DEC-30, DEC-63
+
+- **Context:** reading the leg attribution with the new Trade P&L (DEC-108), the PO drew two
+  takeaways: "pnl on the baseline strategy was better than the quant strategy but the long
+  positions taken in isoltation the quant strategy did better", and "this doesn't seem like a
+  good backtest of pmcc as a strategy because the profits just came from the long in a bull
+  market - in a flat, mean reverting, bear market the outcome would probably change pretty
+  drastically". The committed NVDA results bear both out:
+  - **The long call earned more than the whole P&L, the shorts lost:** baseline long +$4,162.50,
+    shorts −$490.00, P&L +$3,672.50; quant long +$4,955.00, shorts −$1,651.50, P&L +$3,303.50.
+    The long's intrinsic part rose +$5,877.28 and +$5,964.77 (NVDA from about $166 on Mar 30 to
+    about $215 in late May); its extrinsic part fell −$1,714.78 and −$1,009.77 (DEC-63).
+  - **Rolls book the gain; they don't make it.** Each strategy's first long made nearly all of
+    it: +$3,862.50 at the baseline's Jun 22 roll, +$4,522.50 at quant's May 26 roll; quant's
+    second long lost −$1,122.50.
+  - **Quant's better long is mostly timing:** its August expiry hit the roll rule (DTE < 90) near
+    a high. A1, quant with the baseline's long selection, made $3,597.50, $294.00 more than
+    quant, so the selector itself isn't shown to help. Quant's short leg decided the ranking:
+    gates skipped 18 of 26 weeks, its credits came to $803.50, and 4 of its 8 shorts ended in
+    a defensive buyback.
+  - **The two can't be told apart:** mean weekly return, quant 0.89% (95% CI −1.01% to 2.74%),
+    baseline 0.95% (−0.89% to 2.76%).
+- **Options put to the PO:** (1) state the limits on the site; (2) a long-only reference run, the
+  same long rules with no short, to measure what the overlay added or cost; (3) a symbol that
+  fell or went sideways over the window. LSEG's hourly option history reaches back about a
+  year (DEC-07), so no bear market like 2022 is in reach.
+- **Outcome:** 2026-10-02 — PO: "lets just 1 for now - make a note to possibly add 2 later will
+  also hopefully be able to do 3".
+  - **(1), now, built at P7-02 and P7-04:**
+    - the Comparison page's purpose panel says, in a sentence, that over this window the result
+      is mostly the long call riding a rising stock, with the leg attribution as the evidence;
+    - the Methodology page gains a prose panel, **Limits of this backtest**: one symbol and one
+      26-week window, a rising one; a PMCC is net long delta, so a rally rewards the long and
+      runs over the shorts; the leg split for each strategy; what a flat or mean-reverting
+      market (the shorts become the income, the long still decays) or a falling one (the long
+      loses intrinsic value, X-L1 sells it at a loss) would likely change; that the two
+      strategies' weekly-return CIs overlap, and that quant's better long is mostly when its
+      roll fell; that the data reach back about a year, so no bear market is tested.
+    - **Every figure in that prose is read from the results when the page renders** (each run's
+      leg attribution, metrics and CI; the blotter's trade P&L), never typed in, so the text
+      can't drift from the results, and holds when another symbol joins.
+  - **(2) and (3), later if time allows:** BUILD-PLAN L-01 (a long-only reference run) and L-02
+    (a flat or falling symbol: QQQ and TSLA set aside under DEC-15; bringing one back means
+    recalibrating the starting cash first, DEC-30). Neither is started; each goes to the PO
+    with a proposal before any work.
+  - Spec › Site and UI's Methodology row now lists the backtest's limits, citing this entry.
+
+### DEC-110 — P7-02: the comparison page
+**Status:** ENG · the limit sentence's wording where a run doesn't bear it out put to the PO at the handover, 2026-10-02 · **Affects:** P7-02, P7-04 (the robustness table), P7-05 (the universe files); UI-SPEC §4, §6.1; ARCHITECTURE §13; DEC-61, DEC-63, DEC-65, DEC-105, DEC-109
+
+How P7-02 builds UI-SPEC §6.1. Nothing here changes a result.
+
+- **Data** (`web/src/data/`): the loader's cache now holds any results file by its index path
+  (`loadFile`; `loadRun` is that for a run), each checked for its schema version.
+  `useSymbolFile` and `useUniverseFile` find a symbol's or the universe's file by its key in
+  `index.json` (`robustness`, `pooled`), and a key the index lacks is "No results for …", as a
+  missing run is. `both()` waits on two loads, showing a file that won't come before one still
+  loading.
+- **What each panel reads** (DEC-105): the readouts and [2] from each strategy's summary
+  (payoff is `cycle_stats.payoff_ratio`, the figure `universe/headline.json` carries), [1] from
+  both full runs' ledgers, [3] `universe/pooled.json`, [4] `robustness.json`'s `ablations`.
+  Quant comes first wherever both are listed (readouts, legend, headline, pooled), as the page
+  is quant against the baseline.
+- **[1] NAV comparison:** one row per bar either run has, in time order; a bar a run lacks is a
+  hole, never filled. Its values sit in a disclosure under the chart, virtualized (875 bars on
+  NVDA), with quant less the baseline on each bar.
+- **[4] Ablations:** `web/src/components/RobustnessTable.tsx`, which P7-04's friction, timing and
+  grid tables reuse: Run · P&L · Δ vs the reference · max drawdown · payoff · mean weekly return
+  (95% CI), the reference's own row saying "reference" in the Δ column.
+- **The purpose panel's limit sentence** (DEC-109) reads each run's leg attribution as the page
+  renders. The shorts are everything but the long leg: the net short premium, less a short open
+  at the end, plus X-S5's stock (DEC-63), so long + shorts = P&L. The sentence says
+  "**mostly the long call riding a rising stock**" only where every run bears it out: the long's
+  intrinsic change is above zero (the stock rose under it) and the shorts lost, so the long made
+  more than the whole P&L. Otherwise it states the same figures without the claim. On NVDA both
+  runs bear it out: the long +$4,955.00 (quant) and +$4,162.50 (baseline), the shorts
+  −$1,651.50 and −$490.00. **Put to the PO:** whether that is the wording wanted for a symbol
+  that doesn't bear it out (only L-02 would bring one).
+- **The footer** lists the two full runs' manifests. The ablation rows come from
+  `robustness.json`, which has no manifest of its own; their runs were written by the same batch
+  at the same commit (DEC-105).
+- **On the committed NVDA results:** quant +$3,303.50, the baseline +$3,672.50, quant − baseline
+  −$369.00; quant's return on capital 53.5% (peak long $6,177.50); quant's weekly-return CI −1.0%
+  to 2.7% (mean 0.9%, 26 weeks); weeks traded 8 / 15; quant beat the baseline on no symbol (0 of
+  1); A1 +$294.00 against quant, A4 −$254.50.
+- **Tests:** `web/src/pages/Comparison.test.tsx` (18: readouts, panel order and numbering, the
+  limit sentence and when it makes its claim, the NAV values, the headline, pooled and ablation
+  cells, missing files and runs), the NAV chart's rows, roles and tooltip
+  (`charts.test.ts`), `loadFile` and `both()` (`loader.test.ts`), `meanCI`; the fixtures gain
+  NVDA's robustness file and the pooled universe. The smoke test checks the page on the built
+  site.
 
 ## E. Analytics definitions
 

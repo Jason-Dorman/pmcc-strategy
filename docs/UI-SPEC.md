@@ -90,7 +90,7 @@ The baseline chart rules (DG §5–6), restated for ECharts:
 | Chart | Page · panel | Series and encoding |
 | --- | --- | --- |
 | Account | Strategy [1] | **Upper grid:** NAV (`--nav-line`, 2.2 solid), IM (`--margin-im`, dashed), MM (`--margin-mm`, dotted). **Lower grid, shared axis:** available funds (`--available-funds`), shaded `--negative-shade` below zero, zero ruler. **Tooltip:** NAV, IM, MM, available funds, excess equity, flags |
-| NAV comparison | Comparison [1] | quant NAV (`--strategy-quant`), baseline NAV (`--strategy-baseline`); tooltip shows both and the difference |
+| NAV comparison | Comparison [1] | quant NAV (`--strategy-quant`), baseline NAV (`--strategy-baseline`) on every bar either run has, a bar one lacks a hole; tooltip shows both and the difference; the values, with the difference, in a virtualized disclosure (DEC-110) |
 | Leg attribution | Strategy [4] | cumulative long-leg P&L (`--long-leg`) vs cumulative net short premium (`--short-leg`) |
 | Mid vs print | Methodology [2], [3] | points as cyan circles (x = mid, y = print); OLS fit (`--fit-line`); y = x (`--identity-line`, dashed). Shorts and longs in separate panels; R² and N in the caption |
 | Greek residual | Strategy [8] (quant) | one cumulative-residual line (`--text`), beside the DEC-76 table |
@@ -149,11 +149,11 @@ Readouts come first on every page, then panels in the order listed. Widths are g
 
 | # | Panel | Width | Content |
 | --- | --- | --- | --- |
-| — | Purpose | 10 | Prose, 3–4 sentences: what a PMCC is, what the quant layer tests, how to read this page |
+| — | Purpose | 10 | Prose, 3–4 sentences: what a PMCC is, what the quant layer tests, how to read this page; and one sentence on the result's main limit: over this window it is mostly the long call riding a rising stock, with each strategy's long and short legs read from the results (DEC-109). The shorts are the P&L less the long leg (net short premium − a short open at the end + X-S5's stock); the sentence claims the long call rode a rising stock only where every run shows it (the long's intrinsic change above zero, the shorts negative), and otherwise states the figures alone (DEC-110) |
 | 1 | NAV — baseline vs quant | 10 | overlaid NAV curves (§4) |
-| 2 | Headline | 5 | rows = strategies; P&L, return on capital, max drawdown, payoff ratio, mean weekly return with 95% CI |
-| 3 | Pooled universe | 5 | both strategies pooled: mean weekly return with week-block CI, total P&L, symbols where quant beat baseline |
-| 4 | Ablations | 10 | quant's row, then A1–A5 against it: P&L, Δ vs quant, max drawdown, payoff, weekly-return CI (`robustness.json`, DEC-65) |
+| 2 | Headline | 5 | rows = strategies, quant first; P&L, return on capital, max drawdown (and its % of the peak), payoff ratio, mean weekly return with 95% CI |
+| 3 | Pooled universe | 5 | key/value: the symbols pooled; each strategy, quant first: total P&L, mean weekly return with week-block CI; symbols where quant beat baseline (n of N) |
+| 4 | Ablations | 10 | quant's row (its Δ reads "reference"), then A1–A5 against it: P&L, Δ vs quant, max drawdown, payoff, weekly-return CI (`robustness.json`, DEC-65; `RobustnessTable`, which Methodology [4]–[6] reuse, DEC-110) |
 
 ### 6.2 Strategy — `#/baseline/:symbol`, `#/quant/:symbol`
 
@@ -206,6 +206,7 @@ Panels that depend on the data follow the selected symbol and show pooled figure
 | 5 | Entry timing | 5 | the E-T1 baseline, then each fixed Monday bar against it: P&L, Δ, max drawdown, payoff, CI; range and sample standard deviation over the fixed bars alone; large dispersion flagged as fragility (DEC-65; what counts as large is DEC-67, asked at P7-04) |
 | 6 | Parameter grid | 10 | quant at its defaults, then every grid run against it: P&L, Δ, max drawdown, payoff, CI; published in full (no best cell; DEC-65) |
 | 7 | Stated assumptions | 10 | key/value: r (value, source, date), q = 0, no early assignment, dividends out of scope (DEC-55), Black-Scholes on American calls, quotes not proven NBBO |
+| — | Limits of this backtest | 10 | Prose (DEC-109): one symbol and one 26-week window, a rising one; a PMCC is net long delta, so a rally rewards the long and runs over the shorts; each strategy's long and short legs; what a flat or falling market would likely change; the strategies' weekly-return CIs overlap, and quant's better long is mostly its roll's timing; no bear market is in the data's reach (DEC-07). Every figure is read from the results as the page renders, never typed in |
 
 ### 6.5 Universe — `#/universe`
 

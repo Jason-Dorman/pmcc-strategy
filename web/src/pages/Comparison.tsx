@@ -1,36 +1,60 @@
-// Comparison, the landing page (UI-SPEC §6.1). The panels are built at P7-02.
+// Comparison, the landing page (UI-SPEC §6.1): quant against the baseline on one symbol. The
+// readouts and headline come from each strategy's summary, the NAV chart from both full runs'
+// ledgers, the pooled universe from `universe/pooled.json` and the ablations from the symbol's
+// `robustness.json` (DEC-105); the purpose panel's sentence on the result's main limit reads both
+// runs' leg attribution (DEC-109).
 import { useParams } from "react-router-dom";
 
+import { STRATEGY_PAGES } from "../app/pages";
 import { pending, PageFrame } from "../components/PageFrame";
-import { useRun } from "../data/useRun";
+import { RobustnessTable } from "../components/RobustnessTable";
+import { useIndex } from "../data/IndexContext";
+import { both } from "../data/state";
+import { strategyName, useRun, useSymbolFile, useUniverseFile } from "../data/useRun";
 import { W_FULL, W_HALF } from "../theme/tokens";
-import { panel, toCome, whenLoaded } from "./placeholder";
+import type { Pooled as PooledFile } from "../types/generated/pooled";
+import type { Robustness } from "../types/generated/robustness";
+import { READOUT_HINTS, readouts } from "./compare/figures";
+import { Headline, NavCompare, Pooled, Purpose } from "./compare/sections";
+import { panel, whenLoaded } from "./placeholder";
+
+const QUANT = STRATEGY_PAGES.quant;
 
 export function Comparison() {
   const { symbol = "" } = useParams();
-  const baseline = useRun(symbol, "baseline_pmcc");
-  const quant = useRun(symbol, "quant_pmcc");
-  const manifests = [baseline, quant].flatMap((r) => (r.kind === "ready" ? [r.value.manifest] : []));
-  const bars = (r: typeof quant) =>
-    whenLoaded(r, (run) => toCome("P7-02", `${run.manifest.run_id}: ${run.ledger?.length ?? 0} bars`));
+  const index = useIndex();
+  const runs = both(useRun(symbol, QUANT), useRun(symbol, STRATEGY_PAGES.baseline));
+  const robustness = useSymbolFile<Robustness>(symbol, "robustness");
+  const pooled = useUniverseFile<PooledFile>("pooled");
+  const ready = runs.kind === "ready" ? runs.value : null;
+  const name = (id: string) => (index.kind === "ready" ? strategyName(index.value, id) : id);
   return (
     <PageFrame
-      readouts={pending([
-        ["Quant P&L", "Ending NAV − starting cash"],
-        ["Baseline P&L", "Ending NAV − starting cash"],
-        ["Quant − Baseline", "The quant layer's P&L over the baseline"],
-        ["Quant return on capital", "P&L ÷ peak long-leg cost"],
-        ["Quant weekly-return 95% CI", "Bootstrap, 10,000 resamples"],
-        ["Weeks traded (Q / B)", "Weeks a short was sold"],
-      ])}
+      readouts={ready ? readouts(...ready) : pending(READOUT_HINTS.map(([l, h]) => [l, h]))}
       panels={[
-        panel("purpose", "Purpose", W_FULL, toCome("P7-02"), false),
-        panel("nav", "NAV — baseline vs quant", W_FULL, <>{bars(baseline)}{bars(quant)}</>),
-        panel("headline", "Headline", W_HALF, toCome("P7-02")),
-        panel("pooled", "Pooled universe", W_HALF, toCome("P7-02")),
-        panel("ablations", "Ablations", W_FULL, toCome("P7-02")),
+        panel("purpose", "Purpose", W_FULL, <Purpose symbol={symbol} runs={ready} />, false),
+        { ...panel("nav", "NAV — baseline vs quant", W_FULL,
+                   whenLoaded(runs, ([q, b]) => <NavCompare quant={q} baseline={b} />)),
+          note: "every hourly bar",
+          caption: <>Each strategy&apos;s NAV from the same starting cash; hover for both and the
+            difference. Each strategy&apos;s page has its account in full.</> },
+        { ...panel("headline", "Headline", W_HALF,
+                   whenLoaded(runs, (rs) => <Headline runs={rs} />)),
+          caption: <>Return on capital is P&amp;L ÷ the dearest long held; payoff is the average
+            winning week ÷ the average losing week. The CI resamples whole weeks.</> },
+        { ...panel("pooled", "Pooled universe", W_HALF,
+                   whenLoaded(pooled, (p) => <Pooled pooled={p} name={name} quantId={QUANT} />)),
+          caption: <>The pooled CI resamples each week across every symbol at once, so symbols
+            that move together aren&apos;t counted as independent evidence.</> },
+        { ...panel("ablations", "Ablations", W_FULL,
+                   whenLoaded(robustness, (r) => (
+                     <RobustnessTable label="Ablations" rows={r.ablations} against="quant" />))),
+          note: "each against quant",
+          caption: <>Each ablation switches off one quant layer and keeps the rest. Δ is its
+            P&amp;L less quant&apos;s, so a positive Δ means quant did better without that
+            layer.</> },
       ]}
-      manifests={manifests}
+      manifests={ready ? ready.map((r) => r.manifest) : []}
     />
   );
 }

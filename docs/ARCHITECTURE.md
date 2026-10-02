@@ -754,7 +754,9 @@ web/                            P4-06 (DEC-97); Node 22 (.nvmrc, engines)
     main.tsx    the entry: fonts, stylesheet, App
     app/        App (HashRouter + IndexProvider), routes (the table), AppShell (command bar, banners),
                 pages (paths), site (repo URL, wordmark)
-    data/       loader (index, per-run cache, schema_version check), IndexContext, useRun, state
+    data/       loader (index; a per-file cache of runs and a symbol's or the universe's files;
+                schema_version check), IndexContext, useRun (useRun, useSymbolFile,
+                useUniverseFile; P7-02), state (with both(), two loads as one)
     types/generated/   json-schema-to-typescript output (gitignored; regenerated before typecheck/build)
     theme/      tokens.css (theme.py's values), shell.css (PAGE_CSS, ported), index.css (Tailwind +
                 tokens), tokens.ts (with DEC-04's chart roles), fonts.ts; echarts.ts (the modular
@@ -762,16 +764,18 @@ web/                            P4-06 (DEC-97); Node 22 (.nvmrc, engines)
     components/ CommandBar, Readouts, PanelGrid, Panel, Note (Details, Empty, Loading), PageFrame,
                 ManifestFooter, WarningBanner, ui/select; DataTable (sorting, toggle filters,
                 virtualization) and cells (RuleLink, Instrument, KeyValue) at P7-01;
+                RobustnessTable (a robustness.json table, P7-02);
                 charts/: Chart, axis (trading time), tooltip, and one option builder per chart
-                (account, legs, residual) (P7-01, DEC-106)
+                (account, legs, residual; navCompare at P7-02) (P7-01, DEC-106, DEC-110)
     pages/      Strategy (P7-01) and strategy/ (its sections, tables and each close's Trade P&L);
-                Comparison, Rules, Methodology, Universe, Data (placeholders until their P7 item);
+                Comparison (P7-02) and compare/ (its figures and panels, DEC-110);
+                Rules, Methodology, Universe, Data (placeholders until their P7 item);
                 placeholder (the placeholder helpers)
     lib/        cn (shadcn/ui's class joiner)
     format/     money (and chart ticks, signed), number (percent, ratio, IV), time (ET), hash,
                 rule (a rule ID's plain label for the filters, DEC-107)
-    test/       fixtures (an index and two full runs, typed against the schema); page (the
-                strategy page tests' helpers); setup (Vitest: jsdom's missing canvas, for ECharts)
+    test/       fixtures (an index, two full runs, NVDA's robustness and the pooled universe,
+                typed against the schema); page (the page tests' helpers); setup (Vitest: jsdom's missing canvas, for ECharts)
   e2e/          smoke.spec.ts: the Playwright smoke test (P4-08, DEC-99); playwright.config.ts
                 serves web/dist with vite preview; tsconfig.e2e.json type-checks it
   public/data/  written by pmcc export (gitignored)
@@ -779,7 +783,7 @@ web/                            P4-06 (DEC-97); Node 22 (.nvmrc, engines)
 
 - **Data:**
   - `index.json` loads at startup.
-  - Run files load on demand when the symbol or page changes, and are cached in memory by path.
+  - Run files, and a symbol's or the universe's files (found by their key in the index), load on demand when the symbol or page changes, and are cached in memory by path.
   - A `schema_version` mismatch shows an error banner.
 - **State:**
   - The URL is the state; the symbol comes from the route.
@@ -789,8 +793,8 @@ web/                            P4-06 (DEC-97); Node 22 (.nvmrc, engines)
 - **Charts:** modular `echarts/core` via `echarts-for-react`, drawn as SVG. The theme is built from the CSS variables when a chart renders. Animation is off. Each chart's option is a pure function of the palette and the result's rows (`components/charts/`), tested without a DOM.
 - **Tables:** TanStack Table (v9, its sorting feature) plus TanStack Virtual for the ledger and blotter, at a fixed row height. Filters run before TanStack sees the rows, so a filter needn't be a column (DEC-106).
 - **Tests:**
-  - Vitest (jsdom; `css: true`, so a stylesheet read `?raw` has its text): formatters, the loader, every route, the strategy page over the fixture runs, the chart options, the data table, token-lint, contrast and DEC-04's roles.
-  - Playwright: every route, console errors, cross-origin requests, screenshots, and both strategy pages' numbers, charts and tables on the built site.
+  - Vitest (jsdom; `css: true`, so a stylesheet read `?raw` has its text): formatters, the loader, every route, the strategy and comparison pages over the fixture runs, the chart options, the data table, token-lint, contrast and DEC-04's roles.
+  - Playwright: every route, console errors, cross-origin requests, screenshots, and both strategy pages' and the comparison page's numbers, charts and tables on the built site.
 - **Build:** Vite `base: './'` with HashRouter (DEC-73). The static `dist/` makes no cross-origin requests (fonts are bundled, DEC-72).
 
 ## 14. Tooling and CI/CD

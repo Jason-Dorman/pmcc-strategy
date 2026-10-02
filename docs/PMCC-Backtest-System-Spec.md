@@ -338,7 +338,7 @@ A static React app on GitHub Pages with a global symbol selector; the comparison
 | Baseline PMCC | Blotter; NAV chart with IM, MM, and available funds on mouseover; ledger; Reg T panel; cycle statistics; leg attribution |
 | Quant PMCC | Everything on the baseline page, plus the gate log and Greek attribution |
 | Trade rules | Entry, skip-gate, and exit tables rendered from the YAML configs, with rule IDs and live parameter values, plus the short rationale text for each rule |
-| Methodology | Data and RIC scheme; bar-timing convention; fill model; mid-vs-trade scatters with R²; Reg T treatment; look-ahead guard; friction, timing, and parameter sensitivity; stated assumptions (r, q = 0, no early assignment) |
+| Methodology | Data and RIC scheme; bar-timing convention; fill model; mid-vs-trade scatters with R²; Reg T treatment; look-ahead guard; friction, timing, and parameter sensitivity; stated assumptions (r, q = 0, no early assignment); the backtest's limits: one symbol in one window, and how much of the P&L the long call made (DEC-109) |
 | Universe | Symbol suitability screen and per-symbol headline table |
 | Data | Shows "Data connection required" on github.io; only works via the local server |
 

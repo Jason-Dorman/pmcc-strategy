@@ -1,10 +1,11 @@
-// Helpers for the strategy page's tests: render a page over a fake fetch, and read its readouts,
-// panels and tables the way a reader sees them.
+// Helpers for the page tests (strategy, comparison): render a page over a fake fetch, and read its
+// readouts, panels and tables the way a reader sees them.
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { vi } from "vitest";
 
 import { IndexProvider } from "../data/IndexContext";
+import { Comparison } from "../pages/Comparison";
 import { Strategy } from "../pages/Strategy";
 import type { RunResult, Section } from "../types/generated/run_result";
 import { fakeFetch, FILES, run } from "./fixtures";
@@ -16,6 +17,19 @@ export function renderPage(page: "baseline" | "quant", files: Record<string, unk
       <IndexProvider>
         <Routes>
           <Route path="/:page/:symbol" element={<Strategy page={page} />} />
+        </Routes>
+      </IndexProvider>
+    </MemoryRouter>,
+  );
+}
+
+export function renderComparison(files: Record<string, unknown> = FILES) {
+  vi.stubGlobal("fetch", vi.fn(fakeFetch(files)));
+  return render(
+    <MemoryRouter initialEntries={["/compare/NVDA"]}>
+      <IndexProvider>
+        <Routes>
+          <Route path="/compare/:symbol" element={<Comparison />} />
         </Routes>
       </IndexProvider>
     </MemoryRouter>,

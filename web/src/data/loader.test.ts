@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { fakeFetch, FILES, INDEX } from "../test/fixtures";
-import { clearRunCache, loadIndex, loadRun, SchemaMismatchError } from "./loader";
+import { fakeFetch, FILES, INDEX, ROBUSTNESS } from "../test/fixtures";
+import { clearRunCache, loadFile, loadIndex, loadRun, SchemaMismatchError } from "./loader";
+import { both, type Loaded } from "./state";
 
 afterEach(clearRunCache);
 
@@ -39,5 +40,32 @@ describe("loader", () => {
     const fixed = vi.fn(fakeFetch(FILES));
     await expect(loadRun("NVDA/quant_pmcc.json", fixed)).resolves.toBeDefined();
     expect(fixed).toHaveBeenCalledTimes(1);
+  });
+
+  it("loads a symbol's file once, and refuses one of another schema version", async () => {
+    const fetcher = vi.fn(fakeFetch());
+    await expect(loadFile("NVDA/robustness.json", fetcher)).resolves.toEqual(ROBUSTNESS);
+    await loadFile("NVDA/robustness.json", fetcher);
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    const stale = fakeFetch({ "data/universe/pooled.json": { schema_version: 1 } });
+    await expect(loadFile("universe/pooled.json", stale)).rejects.toBeInstanceOf(
+      SchemaMismatchError,
+    );
+  });
+});
+
+describe("both", () => {
+  const loading: Loaded<number> = { kind: "loading" };
+  const missing: Loaded<number> = { kind: "missing", what: "NVDA / quant_pmcc" };
+  const ready = (value: number): Loaded<number> => ({ kind: "ready", value });
+
+  it("is ready when both are, with both values", () => {
+    expect(both(ready(1), ready(2))).toEqual({ kind: "ready", value: [1, 2] });
+  });
+
+  it("shows a load that won't come before one still loading, either way round", () => {
+    expect(both(loading, missing)).toBe(missing);
+    expect(both(missing, loading)).toBe(missing);
+    expect(both(ready(1), loading)).toEqual({ kind: "loading" });
   });
 });

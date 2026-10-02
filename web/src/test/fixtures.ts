@@ -1,6 +1,9 @@
-// A small index and two full runs, shaped as `pmcc export` writes them, for the page, route and
-// loader tests. The runs are typed against the generated schema, so a schema change shows here.
+// A small index, two full runs, and NVDA's robustness and the pooled universe files, shaped as
+// `pmcc export` writes them, for the page, route and loader tests. Each is typed against the
+// generated schema, so a schema change shows here.
 import type { Index } from "../types/generated/index";
+import type { Pooled } from "../types/generated/pooled";
+import type { Robustness, RobustnessRow } from "../types/generated/robustness";
 import type {
   BlotterRow,
   GateLogRowOut,
@@ -26,11 +29,11 @@ export const INDEX: Index = {
     source: "FRED",
   },
   starting_cash: 15000,
-  universe: {},
+  universe: { pooled: "universe/pooled.json" },
   symbols: [
     {
       symbol: "NVDA",
-      files: {},
+      files: { robustness: "NVDA/robustness.json" },
       runs: [
         {
           run_id: "baseline_pmcc",
@@ -185,6 +188,11 @@ const GREEK: GreekAttribution = {
   residual: LEDGER.map((r, i) => ({ time: r.time, cumulative: i * -25 })),
 };
 
+const NAMES: Readonly<Record<string, string>> = {
+  baseline_pmcc: "Baseline PMCC",
+  quant_pmcc: "Quant PMCC",
+};
+
 /** A full run: every section its page shows, for the strategy's `report.sections`. */
 export function run(runId: string, sections: Section[]): RunResult {
   return {
@@ -194,7 +202,7 @@ export function run(runId: string, sections: Section[]): RunResult {
     config: {
       strategy: {
         id: runId,
-        name: runId,
+        name: NAMES[runId] ?? runId,
         fill_model: { spread_capture: 0, fee_per_contract: "0.00" },
         report: { detail: "full", sections },
         rules: [],
@@ -240,10 +248,48 @@ export function run(runId: string, sections: Section[]): RunResult {
   };
 }
 
+function ci(mean: number, low: number, high: number) {
+  return { mean, low, high, level: 0.95, resamples: 10000, seed: 535, weeks: 2 };
+}
+
+function robustnessRow(run_id: string, label: string, pnl: number, pnl_vs_reference: number,
+                       payoff_ratio: number | null): RobustnessRow {
+  return { run_id, label, reference: "quant_pmcc", pnl, pnl_vs_reference, max_drawdown: 150,
+           payoff_ratio, weekly_return: ci(0.0237, -0.01, 0.0574) };
+}
+
+/** NVDA's robustness file: quant, then two ablations against it. */
+export const ROBUSTNESS: Robustness = {
+  schema_version: SCHEMA_VERSION,
+  symbol: "NVDA",
+  ablations: [
+    robustnessRow("quant_pmcc", "Quant PMCC", 712, 0, 35.6),
+    robustnessRow("quant_pmcc--a1", "A1: quant with the baseline long leg", 1006, 294, null),
+    robustnessRow("quant_pmcc--a4", "A4: quant without the VRP gate", 457.5, -254.5, 2.1),
+  ],
+  friction: [],
+  timing: [],
+  timing_dispersion: null,
+  grid: [],
+};
+
+/** The universe pooled over NVDA alone. */
+export const POOLED: Pooled = {
+  schema_version: SCHEMA_VERSION,
+  symbols: ["NVDA"],
+  quant_beat_baseline: [],
+  strategies: [
+    { strategy_id: "baseline_pmcc", total_pnl: 712, weekly_return: ci(0.009547, -0.008884, 0.027615) },
+    { strategy_id: "quant_pmcc", total_pnl: 712, weekly_return: ci(0.008852, -0.010061, 0.027401) },
+  ],
+};
+
 export const FILES: Record<string, unknown> = {
   "data/index.json": INDEX,
   "data/NVDA/baseline_pmcc.json": run("baseline_pmcc", []),
   "data/NVDA/quant_pmcc.json": run("quant_pmcc", ["gate_log", "greek_attribution"]),
+  "data/NVDA/robustness.json": ROBUSTNESS,
+  "data/universe/pooled.json": POOLED,
 };
 
 /** A fetch over `files`, answering 404 for anything else. */
