@@ -219,9 +219,8 @@ export function run(runId: string, sections: Section[]): RunResult {
       flag_counts: { stale_short: 1 },
       invariants: [],
       metrics: {
-        pnl: 712, return_on_starting_nav: 0.047467, return_on_capital: 0.126465,
-        peak_long_cost: 5630, max_drawdown: 150, max_drawdown_pct: 0.01, sessions: 2,
-        longest_underwater_sessions: 1, sharpe_daily: 0.5, sortino_daily: null,
+        pnl: 712, return_on_starting_nav: 0.047467, max_drawdown: 150, max_drawdown_pct: 0.01,
+        sessions: 2, longest_underwater_sessions: 1, sharpe_annualized: 1.234, sortino_annualized: null,
         weekly_return: null,
       },
       cycle_stats: {

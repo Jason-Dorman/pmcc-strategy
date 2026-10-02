@@ -2,15 +2,17 @@
 // strategy's summary, and each strategy's split between the long call and the shorts from its leg
 // attribution, which the purpose panel's sentence on the result's main limit reads (DEC-109).
 import type { Readout } from "../../components/Readouts";
-import { money, moneySigned } from "../../format/money";
+import { moneySigned } from "../../format/money";
 import { count, orDash, pct } from "../../format/number";
 import type { CycleStats, MeanCI, Metrics, RunResult } from "../../types/generated/run_result";
+import { RETURN_HINT, returnShown, SHARPE_HINT, sharpeShown } from "../strategy/figures";
 
 export const READOUT_HINTS = [
   ["Quant P&L", "Ending NAV − starting cash"],
   ["Baseline P&L", "Ending NAV − starting cash"],
   ["Quant − Baseline", "The quant layer's P&L over the baseline"],
-  ["Quant return on capital", "P&L ÷ peak long-leg cost"],
+  ["Quant return on starting NAV", RETURN_HINT],
+  ["Quant Sharpe (annualized)", SHARPE_HINT],
   ["Quant weekly-return 95% CI", "Bootstrap of whole weeks"],
   ["Weeks traded (Q / B)", "Weeks a short was sold"],
 ] as const;
@@ -28,12 +30,6 @@ function pnlShown(q: Metrics | null, b: Metrics | null): Shown[] {
   return [[moneySigned(q.pnl)], [moneySigned(b.pnl)], [moneySigned(q.pnl - b.pnl)]];
 }
 
-function capitalShown(q: Metrics | null): Shown {
-  if (!q) return ["—"];
-  const peak = q.peak_long_cost === null ? undefined : ` (${money(q.peak_long_cost)})`;
-  return [orDash(q.return_on_capital, pct), peak];
-}
-
 function weeksShown(q: CycleStats | null, b: CycleStats | null): Shown {
   return q && b ? [`${q.weeks_traded} / ${b.weeks_traded}`, `, of ${q.weeks}`] : ["—"];
 }
@@ -42,7 +38,8 @@ export function readouts(quant: RunResult, baseline: RunResult): Readout[] {
   const q = quant.summary.metrics;
   const shown: Shown[] = [
     ...pnlShown(q, baseline.summary.metrics),
-    capitalShown(q),
+    returnShown(q),
+    sharpeShown(q),
     ciShown(q?.weekly_return),
     weeksShown(quant.summary.cycle_stats, baseline.summary.cycle_stats),
   ];
@@ -88,24 +85,27 @@ export interface HeadlineRow {
   id: string;
   name: string;
   pnl: number | null;
-  returnOnCapital: number | null;
+  returnOnNav: number | null;
   maxDrawdown: number | null;
   maxDrawdownPct: number | null;
+  sharpe: number | null;
   payoff: number | null;
   weekly: MeanCI | null;
 }
 
 const NO_METRICS = {
-  pnl: null, returnOnCapital: null, maxDrawdown: null, maxDrawdownPct: null, weekly: null,
+  pnl: null, returnOnNav: null, maxDrawdown: null, maxDrawdownPct: null, sharpe: null,
+  weekly: null,
 } as const;
 
 function metricCells(m: Metrics | null) {
   if (!m) return NO_METRICS;
   return {
     pnl: m.pnl,
-    returnOnCapital: m.return_on_capital,
+    returnOnNav: m.return_on_starting_nav,
     maxDrawdown: m.max_drawdown,
     maxDrawdownPct: m.max_drawdown_pct,
+    sharpe: m.sharpe_annualized,
     weekly: m.weekly_return,
   };
 }

@@ -39,12 +39,12 @@ class RunAnalytics:
     attribution: Attribution | None  # a full run's only
 
 
-def analyze(run: RunRecords, seed: int, report: Report) -> RunAnalytics:
-    """`run`'s analytics, its bootstrap seeded with `seed` (DEC-61), its attribution as `report`
-    asks (DEC-54)."""
+def analyze(run: RunRecords, seed: int, report: Report, risk_free_rate: float) -> RunAnalytics:
+    """`run`'s analytics, its bootstrap seeded with `seed` (DEC-61), its Sharpe and Sortino in
+    excess of `risk_free_rate` (DEC-111), its attribution as `report` asks (DEC-54)."""
     weekly = cycles(run)
     return RunAnalytics(
-        metrics=metrics(run, seed),
+        metrics=metrics(run, seed, risk_free_rate),
         cycle_stats=cycle_stats(weekly),
         exit_mix=exit_mix(run.blotter),
         skips_by_rule=skips_by_rule(run.gate_log),

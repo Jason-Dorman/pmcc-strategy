@@ -31,7 +31,8 @@ def test_p6_01_headline_has_each_symbols_two_strategies_and_no_variant() -> None
     nvda_quant = SCORES["NVDA"][1].metrics
     assert (rows[1].max_drawdown, rows[1].payoff_ratio, rows[1].weekly_return) == (
         nvda_quant.max_drawdown, 1.5, nvda_quant.weekly_return)  # fmt: skip
-    assert rows[1].return_on_capital == nvda_quant.return_on_capital
+    assert (rows[1].return_on_starting_nav, rows[1].sharpe_annualized) == (
+        nvda_quant.return_on_starting_nav, nvda_quant.sharpe_annualized)  # fmt: skip
 
 
 def test_dec_61_pooled_ci_resamples_a_week_by_symbol_table() -> None:

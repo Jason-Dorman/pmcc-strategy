@@ -7,13 +7,15 @@ weekly returns, and the run's metrics.
   week's is against the starting cash. It is kept at the 6 places results publish, and the CI is
   drawn from those published values, so it can be rebuilt from the file and a one-symbol pooled
   CI equals the run's own.
-- **Sharpe:** the daily returns' mean ÷ their sample standard deviation. **Sortino:** their mean ÷
-  √mean(min(r, 0)²), over every day. Target 0, neither annualized; null when the divisor is 0.
+- **Sharpe:** on excess daily returns, each less the risk-free rate's trading day, e^(r/252) − 1
+  (r continuously compounded, DEC-11): their mean ÷ their sample standard deviation, × √252.
+  **Sortino:** their mean ÷ √mean(min(excess, 0)²) over every day, × √252. Both annualized by
+  √252 trading days (PO, DEC-111); null when the divisor is 0.
 - **Max drawdown:** on every bar's NAV, the starting cash the first peak. The largest fall in
   dollars and the largest as a share of its peak are each their own maximum.
 - **Longest time underwater:** the most sessions from a close at a peak to the close that regains
   it, or to the last session if none does; the starting cash is the peak before the first close.
-- **Returns:** P&L ÷ the starting cash, and P&L ÷ the dearest long entry (the capital deployed).
+- **Return:** P&L ÷ the starting cash, over the window, not annualized (PO, DEC-111).
 
 Ratios are floats from exact integer money; the metrics here use `statistics`, which sums floats
 exactly, so they don't depend on summation order. The CI's means are numpy's (`bootstrap`).
@@ -25,7 +27,7 @@ from statistics import fmean, stdev
 
 from pmcc.accounting.ledger import LedgerRow
 from pmcc.analytics.bootstrap import mean_ci
-from pmcc.analytics.records import RunRecords, entry_cost, opens_long, session_closes, weeks
+from pmcc.analytics.records import RunRecords, session_closes, weeks
 from pmcc.domain.money import Money
 from pmcc.export.analytics_models import Metrics, NavPoint, WeeklyReturn
 from pmcc.export.canonical import FLOAT_PLACES
@@ -55,18 +57,32 @@ def daily_returns(navs: Sequence[Money], starting_cash: Money) -> list[float]:
     return [now.units / then.units - 1 for now, then in zip(navs, before, strict=True)]
 
 
-def sharpe(returns: Sequence[float]) -> float | None:
+TRADING_DAYS = 252  # a year of sessions, for the daily risk-free rate and annualizing (DEC-111)
+_ANNUALIZE = math.sqrt(TRADING_DAYS)
+
+
+def daily_rate(risk_free_rate: float) -> float:
+    """The risk-free return over one trading day; `risk_free_rate` is continuously compounded."""
+    return math.expm1(risk_free_rate / TRADING_DAYS)
+
+
+def sharpe(returns: Sequence[float], rf_daily: float) -> float | None:
+    """Excess daily returns' mean ÷ their sample standard deviation, annualized."""
     if len(returns) < 2:
         return None
-    spread = stdev(returns)
-    return fmean(returns) / spread if spread else None
+    excess = [r - rf_daily for r in returns]
+    spread = stdev(excess)
+    return fmean(excess) / spread * _ANNUALIZE if spread else None
 
 
-def sortino(returns: Sequence[float]) -> float | None:
-    if not returns:
+def sortino(returns: Sequence[float], rf_daily: float) -> float | None:
+    """Excess daily returns' mean ÷ √mean(min(excess, 0)²) over every day, annualized; like
+    Sharpe, it needs two days."""
+    if len(returns) < 2:
         return None
-    downside = fmean([min(r, 0.0) ** 2 for r in returns])
-    return fmean(returns) / math.sqrt(downside) if downside else None
+    excess = [r - rf_daily for r in returns]
+    downside = fmean([min(e, 0.0) ** 2 for e in excess])
+    return fmean(excess) / math.sqrt(downside) * _ANNUALIZE if downside else None
 
 
 def max_drawdown(navs: Sequence[Money], starting_cash: Money) -> tuple[Money, float]:
@@ -93,25 +109,24 @@ def longest_underwater(closes: Sequence[Money], starting_cash: Money) -> int:
     return longest
 
 
-def metrics(run: RunRecords, seed: int) -> Metrics:
-    """The run's metrics, its weekly CI seeded with `seed` (DEC-61)."""
+def metrics(run: RunRecords, seed: int, risk_free_rate: float) -> Metrics:
+    """The run's metrics, its weekly CI seeded with `seed` (DEC-61), its Sharpe and Sortino in
+    excess of `risk_free_rate` (DEC-111)."""
     start = run.starting_cash
     closes = [c.nav for c in session_closes(run.ledger)]
     daily = daily_returns(closes, start)
     pnl = (closes[-1] if closes else start) - start
-    peak_long = max((entry_cost(e) for e in run.blotter if opens_long(e)), default=None)
+    rf_daily = daily_rate(risk_free_rate)
     fall, share = max_drawdown([row.nav for row in run.ledger], start)
     weekly = [[w.value] for w in weekly_returns(run.ledger, start)]
     return Metrics(
         pnl=pnl.to_dollars(),
         return_on_starting_nav=pnl.units / start.units,
-        return_on_capital=None if peak_long is None else pnl.units / peak_long.units,
-        peak_long_cost=None if peak_long is None else peak_long.to_dollars(),
         max_drawdown=fall.to_dollars(),
         max_drawdown_pct=share,
         longest_underwater_sessions=longest_underwater(closes, start),
-        sharpe_daily=sharpe(daily),
-        sortino_daily=sortino(daily),
+        sharpe_annualized=sharpe(daily, rf_daily),
+        sortino_annualized=sortino(daily, rf_daily),
         sessions=len(closes),
         weekly_return=mean_ci(weekly, seed),
     )

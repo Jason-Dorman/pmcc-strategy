@@ -145,13 +145,13 @@ Readouts come first on every page, then panels in the order listed. Widths are g
 
 ### 6.1 Comparison (landing) — `#/compare/:symbol`
 
-**Readouts:** Quant P&L · Baseline P&L · Quant − Baseline · Quant return on capital · Quant weekly-return 95% CI · Weeks traded (Q / B)
+**Readouts:** Quant P&L · Baseline P&L · Quant − Baseline · Quant return on starting NAV (not annualized, over N weeks) · Quant Sharpe (annualized, from N daily returns) · Quant weekly-return 95% CI · Weeks traded (Q / B) (DEC-111)
 
 | # | Panel | Width | Content |
 | --- | --- | --- | --- |
 | — | Purpose | 10 | Prose, 3–4 sentences: what a PMCC is, what the quant layer tests, how to read this page; and one sentence on the result's main limit: over this window it is mostly the long call riding a rising stock, with each strategy's long and short legs read from the results (DEC-109). The shorts are the P&L less the long leg (net short premium − a short open at the end + X-S5's stock); the sentence claims the long call rode a rising stock only where every run shows it (the long's intrinsic change above zero, the shorts negative), and otherwise states the figures alone (DEC-110) |
 | 1 | NAV — baseline vs quant | 10 | overlaid NAV curves (§4) |
-| 2 | Headline | 5 | rows = strategies, quant first; P&L, return on capital, max drawdown (and its % of the peak), payoff ratio, mean weekly return with 95% CI |
+| 2 | Headline | 5 | rows = strategies, quant first; P&L, return on starting NAV, max drawdown (and its % of the peak), Sharpe (annualized), payoff ratio, mean weekly return with 95% CI (DEC-111) |
 | 3 | Pooled universe | 5 | key/value: the symbols pooled; each strategy, quant first: total P&L, mean weekly return with week-block CI; symbols where quant beat baseline (n of N) |
 | 4 | Ablations | 10 | quant's row (its Δ reads "reference"), then A1–A5 against it: P&L, Δ vs quant, max drawdown, payoff, weekly-return CI (`robustness.json`, DEC-65; `RobustnessTable`, which Methodology [4]–[6] reuse, DEC-110) |
 
@@ -159,7 +159,7 @@ Readouts come first on every page, then panels in the order listed. Widths are g
 
 One component tree for both pages. The sections shown come from the result's `report.sections` (DEC-54); the page never checks a strategy name.
 
-**Readouts:** Ending NAV · P&L · Return on starting NAV · Return on capital deployed · Max drawdown · Min available funds · Weeks traded / skipped
+**Readouts:** Ending NAV · P&L · Return on starting NAV · Sharpe (annualized) · Max drawdown · Min available funds · Weeks traded / skipped (DEC-111)
 
 | # | Panel | Width | Content |
 | --- | --- | --- | --- |
@@ -213,7 +213,7 @@ Panels that depend on the data follow the selected symbol and show pooled figure
 | # | Panel | Width | Content |
 | --- | --- | --- | --- |
 | 1 | Symbol suitability | 10 | symbol · long extrinsic per delta (% of spot) · median spread % (long / short) · average weekly credit after half-spread (% of long cost) · average IV ÷ RV20 · G-3 fires of the weeks it was evaluated; each measure with the weeks it's over, and a note that it's read at each week's first week-open bar from quant's picks (`universe/suitability.json`, DEC-66) |
-| 2 | Headline by symbol | 10 | symbol × strategy: P&L, return on capital, max drawdown, payoff, weekly-return CI; each row links to that symbol's comparison page |
+| 2 | Headline by symbol | 10 | symbol × strategy: P&L, return on starting NAV, max drawdown, Sharpe (annualized), payoff, weekly-return CI (DEC-111); each row links to that symbol's comparison page |
 | 3 | Pooled universe | 10 | same content as Comparison [3] |
 
 ### 6.6 Data — `#/data/:symbol?` (DEC-75)

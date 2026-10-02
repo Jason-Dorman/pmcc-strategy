@@ -40,8 +40,10 @@ export function Comparison() {
             difference. Each strategy&apos;s page has its account in full.</> },
         { ...panel("headline", "Headline", W_HALF,
                    whenLoaded(runs, (rs) => <Headline runs={rs} />)),
-          caption: <>Return on capital is P&amp;L ÷ the dearest long held; payoff is the average
-            winning week ÷ the average losing week. The CI resamples whole weeks.</> },
+          caption: <>Return on starting NAV is P&amp;L ÷ the starting cash over the window, not
+            annualized. Sharpe is the excess daily return over the risk-free rate ÷ its standard
+            deviation, × √252. Payoff is the average winning week ÷ the average losing week; the
+            CI resamples whole weeks.</> },
         { ...panel("pooled", "Pooled universe", W_HALF,
                    whenLoaded(pooled, (p) => <Pooled pooled={p} name={name} quantId={QUANT} />)),
           caption: <>The pooled CI resamples each week across every symbol at once, so symbols

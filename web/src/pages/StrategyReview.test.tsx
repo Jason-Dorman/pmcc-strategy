@@ -82,7 +82,7 @@ describe("readouts and Reg T", () => {
   it("dashes each metric of a summary without metrics, and no other readout", async () => {
     renderPage("quant", withQuant((r) => ({ ...r, summary: { ...r.summary, metrics: null } })));
     await screen.findByRole("table", { name: "Ledger" });
-    for (const label of ["P&L", "Return on starting NAV", "Return on capital deployed",
+    for (const label of ["P&L", "Return on starting NAV", "Sharpe (annualized)",
                          "Max drawdown"]) {
       expect(readout(label).value).toBe("—");
     }

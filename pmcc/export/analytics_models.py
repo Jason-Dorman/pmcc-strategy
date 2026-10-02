@@ -39,22 +39,21 @@ class MeanCI(Model):
 
 class Metrics(Model):
     """Performance (P6-01; PO, DEC-60). Daily returns are session-close NAV ÷ the previous close −
-    1, the first session's against the starting cash; Sharpe is their mean ÷ sample standard
-    deviation, Sortino their mean ÷ √mean(min(r, 0)²), neither annualized (null when the divisor
-    is 0). Drawdown is on every bar's NAV, from the starting cash as the first peak; the largest
-    fall in dollars and the largest as a fraction of its peak are each their own maximum. Time
-    underwater counts sessions from a close at a peak to the close that regains it, or to the last
+    1, the first session's against the starting cash. Sharpe and Sortino are on excess daily
+    returns, each less e^(r/252) − 1: Sharpe their mean ÷ sample standard deviation, Sortino their
+    mean ÷ √mean(min(excess, 0)²), both × √252 (PO, DEC-111; null when the divisor is 0).
+    Drawdown is on every bar's NAV, from the starting cash as the first peak; the largest fall in
+    dollars and the largest as a fraction of its peak are each their own maximum. Time underwater
+    counts sessions from a close at a peak to the close that regains it, or to the last
     session."""
 
     pnl: Dollars
-    return_on_starting_nav: float
-    return_on_capital: float | None  # P&L ÷ peak long-leg cost; None if no long was held
-    peak_long_cost: Dollars | None  # the dearest long entry: fill × 100 × qty + fees
+    return_on_starting_nav: float  # over the window, not annualized (DEC-111)
     max_drawdown: Dollars  # a fall, so never negative
     max_drawdown_pct: float
     longest_underwater_sessions: int
-    sharpe_daily: float | None
-    sortino_daily: float | None
+    sharpe_annualized: float | None  # from `sessions` daily returns, × √252
+    sortino_annualized: float | None
     sessions: int  # session closes, so daily returns
     weekly_return: MeanCI | None  # None under 2 weeks
 
@@ -325,8 +324,9 @@ class HeadlineRow(Model):
     symbol: str
     strategy_id: str
     pnl: Dollars
-    return_on_capital: float | None
+    return_on_starting_nav: float
     max_drawdown: Dollars
+    sharpe_annualized: float | None
     payoff_ratio: float | None
     weekly_return: MeanCI | None
 

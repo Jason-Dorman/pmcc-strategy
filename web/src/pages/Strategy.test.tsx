@@ -23,8 +23,9 @@ describe("readouts", () => {
     expect(readout("Ending NAV").value).toBe("$15,712.00");
     expect(readout("P&L").value).toBe("+$712.00");
     expect(readout("Return on starting NAV").value).toBe("4.7%");
-    expect(readout("Return on capital deployed").value).toBe("12.6%");
-    expect(readout("Return on capital deployed").hint).toContain("($5,630.00)");
+    expect(readout("Return on starting NAV").hint).toContain("not annualized");
+    expect(readout("Sharpe (annualized)").value).toBe("1.23");
+    expect(readout("Sharpe (annualized)").hint).toContain("× √252; from 2 daily returns");
   });
 
   it("shows drawdown, the lowest available funds and when, and the weeks", () => {

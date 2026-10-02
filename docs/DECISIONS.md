@@ -125,6 +125,7 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-108 | The blotter's Trade P&L | SETTLED (PO) | — |
 | DEC-109 | The backtest's limits, stated on the site; a long-only run and another regime later | SETTLED (PO) · the two additions deferred | P7-02, P7-04; later if time allows |
 | DEC-110 | P7-02: the comparison page | ENG · the limit sentence's wording where a run doesn't bear it out put to the PO | handover 2026-10-02 |
+| DEC-111 | The headline return and an annualized Sharpe, for an institutional reader | SETTLED (PO) · results re-run pending | P7-02 |
 
 ---
 
@@ -2455,7 +2456,7 @@ How P7-02 builds UI-SPEC §6.1. Nothing here changes a result.
   `robustness.json`, which has no manifest of its own; their runs were written by the same batch
   at the same commit (DEC-105).
 - **On the committed NVDA results:** quant +$3,303.50, the baseline +$3,672.50, quant − baseline
-  −$369.00; quant's return on capital 53.5% (peak long $6,177.50); quant's weekly-return CI −1.0%
+  −$369.00; quant's return on starting NAV 22.0% (return on capital deployed dropped, DEC-111); quant's weekly-return CI −1.0%
   to 2.7% (mean 0.9%, 26 weeks); weeks traded 8 / 15; quant beat the baseline on no symbol (0 of
   1); A1 +$294.00 against quant, A4 −$254.50.
 - **Tests:** `web/src/pages/Comparison.test.tsx` (18: readouts, panel order and numbering, the
@@ -2465,12 +2466,59 @@ How P7-02 builds UI-SPEC §6.1. Nothing here changes a result.
   NVDA's robustness file and the pooled universe. The smoke test checks the page on the built
   site.
 
+### DEC-111 — The headline return and an annualized Sharpe, for an institutional reader
+**Status:** SETTLED · **Basis:** PO, 2026-10-02, at P7-02 · **Affects:** P7-02, P7-05; Spec › Performance, Spec › Site and UI (Comparison); PRD FR-M1, HR-5; UI-SPEC §6.1, §6.2, §6.5; ARCHITECTURE §12; amends DEC-60, DEC-110
+
+- **Context:** reading the Comparison page, the PO asked whether quant's 53.5% and the baseline's
+  71.7% "return on capital" were right beside a NAV gain of about 24%. They were right as
+  defined (DEC-60: P&L ÷ the dearest long entry, $6,177.50 and $5,125.00), but that is the retail
+  PMCC convention, return on the debit paid. An institutional reader takes "return on capital
+  deployed" as P&L over the capital tied up across the same period, and this one mixes 26 weeks of
+  P&L across three or four longs over one long's cost, leaves out the cash the sizing rule holds
+  back (DEC-30; lowest cash $10,027.00 and $8,330.00), and states no period. Return on the average
+  initial margin isn't a fix: a long call is paid in full and the covered short adds nothing, so
+  it gives 62.0% and 47.3%. The PO: "my audience here is not retail traders".
+- **Outcome:** 2026-10-02 — PO: "use annualised sharpe", taking every recommendation but the
+  name, and "NAV should remain the headline".
+  - **Dropped:** return on capital deployed and the peak long-leg cost, from the metrics, the
+    results and the site.
+  - **The headline return** is **return on starting NAV**: P&L ÷ the starting cash, over the
+    window, not annualized, labelled so. With no money in or out, it is the time-weighted return
+    on the capital allocated. NVDA: 24.5% (baseline), 22.0% (quant).
+  - **Sharpe, annualized:** each daily return less the risk-free rate's trading day,
+    e^(r/252) − 1 (r continuously compounded, DEC-11); the mean of those excess returns ÷ their
+    sample standard deviation, × √252; labelled with the daily returns it's from (HR-5). Expected
+    on NVDA, from the session closes: 1.24 (baseline), 1.11 (quant); the re-run publishes them.
+  - **Sortino** gets the same treatment (excess over r, × √252) and isn't shown. Like Sharpe, it
+    needs two daily returns: one flat day is below the rate but no sample.
+  - **Where they show:** the Comparison readouts (Quant return on starting NAV, Quant Sharpe
+    (annualized)) and headline table (P&L · return on starting NAV · max drawdown · Sharpe
+    (annualized) · payoff · mean weekly return (95% CI)); the strategy page's readouts, where
+    Sharpe (annualized) replaces return on capital deployed; `universe/headline.json`, so the
+    Universe page's headline by symbol (P7-05). The ablation table is unchanged: adding Sharpe
+    would change `robustness.json`.
+  - **Not added:** the account readouts of the PO's earlier stock covered-call screenshot (cash,
+    stock LMV, IM, maintenance, available funds, excess equity). In a PMCC maintenance equals IM
+    and excess equity equals available funds on every bar until a missed assignment leaves short
+    stock (none on NVDA), and the end of a backtest isn't the moment that tests the account. The
+    Reg T panel stays as it is (PO).
+- **Build:** `pmcc/analytics/performance.py` (`daily_rate`, `sharpe` and `sortino` take the day's
+  rate; `metrics` takes r, from the run's config through `analyze`); `Metrics` loses
+  `return_on_capital` and `peak_long_cost`, and `sharpe_daily`, `sortino_daily` become
+  `sharpe_annualized`, `sortino_annualized`; `HeadlineRow` swaps `return_on_capital` for
+  `return_on_starting_nav` and adds `sharpe_annualized`. Fields renamed and removed, so the schema
+  version goes to **3** (ENG): a site and data of different builds show the mismatch banner
+  rather than a blank figure. Tests worked by hand: the day's rate, Sharpe and Sortino on excess
+  returns, a day below the rate counted as downside, the three-week fixture.
+- **The results:** the committed v2 results no longer validate until the batch is re-run, from a
+  clean tree with this change committed; push the two commits together.
+
 ## E. Analytics definitions
 
 These define the reported numbers, so each goes to the PO. They're asked as one batch when P6 starts.
 
 ### DEC-60 — Returns and performance
-**Status:** SETTLED · **Basis:** PO, 2026-10-01, at P6 start · **Affects:** P6-01
+**Status:** SETTLED, amended by DEC-111 (no return on capital deployed; Sharpe and Sortino on excess returns, annualized) · **Basis:** PO, 2026-10-01, at P6 start · **Affects:** P6-01
 
 - **Recommendation:**
   - **Session-close NAV:** the NAV at the session's close bar.

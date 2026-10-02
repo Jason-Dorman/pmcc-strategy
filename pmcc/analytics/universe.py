@@ -2,8 +2,8 @@
 
 Both read each symbol's two strategy runs, never a variant.
 
-- **Headline:** symbol × strategy, with P&L, return on capital deployed, max drawdown, payoff
-  ratio and the weekly-return CI, symbols in alphabetical order.
+- **Headline:** symbol × strategy, with P&L, return on starting NAV, max drawdown, annualized
+  Sharpe, payoff ratio and the weekly-return CI, symbols in alphabetical order.
 - **Pooled:** per strategy, the P&L summed over the symbols and the mean weekly return's CI from
   the week-block bootstrap over a week × symbol table (PO, DEC-61), plus the symbols where quant
   made more than the baseline. Every symbol runs the same window, so their weeks must match.
@@ -29,8 +29,9 @@ def headline(scores: Scores) -> Headline:
 def _headline_row(symbol: str, run: RunScore) -> HeadlineRow:
     metrics = run.metrics
     return HeadlineRow(symbol=symbol, strategy_id=run.run_id, pnl=metrics.pnl,
-                       return_on_capital=metrics.return_on_capital,
-                       max_drawdown=metrics.max_drawdown, payoff_ratio=run.payoff_ratio,
+                       return_on_starting_nav=metrics.return_on_starting_nav,
+                       max_drawdown=metrics.max_drawdown,
+                       sharpe_annualized=metrics.sharpe_annualized, payoff_ratio=run.payoff_ratio,
                        weekly_return=metrics.weekly_return)  # fmt: skip
 
 

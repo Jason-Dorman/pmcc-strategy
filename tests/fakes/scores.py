@@ -34,9 +34,10 @@ def score(
 ) -> RunScore:
     """A run whose P&L is `pnl` dollars; its strategy is its run ID's part before `--`."""
     metrics = Metrics(
-        pnl=Decimal(pnl), return_on_starting_nav=0.0, return_on_capital=None, peak_long_cost=None,
+        pnl=Decimal(pnl), return_on_starting_nav=float(pnl) / 15_000,
         max_drawdown=Decimal(drawdown), max_drawdown_pct=0.01, longest_underwater_sessions=0,
-        sharpe_daily=None, sortino_daily=None, sessions=125, weekly_return=ci(float(pnl) / 1e6),
+        sharpe_annualized=1.25, sortino_annualized=None, sessions=125,
+        weekly_return=ci(float(pnl) / 1e6),
     )  # fmt: skip
     stats = CycleStats(
         weeks=26, weeks_traded=13, weeks_skipped=13, weeks_long_held=26, win_rate=0.5,

@@ -114,7 +114,7 @@ def run_market(market: Market, config: RunConfig, starting_cash: Money,
     """Run `config` on a prepared market into its result, its bootstrap seeded with `seed`;
     raises as `run_output` does."""
     output = run_output(market, config, starting_cash)
-    analytics = analyze(output, seed, config.strategy.report)
+    analytics = analyze(output, seed, config.strategy.report, config.risk_free_rate.value)
     result = to_result(output, market, config, stamp, analytics)
     log.info("run.done", symbol=market.loaded.symbol, run_id=config.strategy.id,
              trades=len(output.blotter), bars=len(output.ledger), weeks=len(output.gate_log),

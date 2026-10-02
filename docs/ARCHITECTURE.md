@@ -689,17 +689,18 @@ results/                            committed; every file here is one the pipeli
 
 `pmcc export` derives two more files from the results into its output, never committed under `results/`, so they can't disagree with the runs (DEC-96): `index.json` (per symbol, its runs with their detail, sections, path, data source, config hash and commit, and the analytics files present; the window, r and starting cash every run shares; the exporter's version) and `rules.json` (per run ID, the rules as it ran them: params, rendered text, and a variant's changes against its strategy).
 
-`RunResult` (pydantic; JSON Schema written by `pmcc export`), schema version 2 (P4-05, DEC-96). The detail is the strategy's `report.detail` (DEC-54): a summary run keeps no rows. Every run's summary holds its analytics (P6-01, P6-02, P6-05; DEC-60 to DEC-62), and a full run keeps its cycles and its attribution: by leg, and by Greek where its `report.sections` lists `greek_attribution` (P6-03, P6-04; DEC-63, DEC-102). A result written before P6 would have null analytics and no fill IV and still validate; the committed results were re-run with both at P6-09 (DEC-101, DEC-102, DEC-105):
+`RunResult` (pydantic; JSON Schema written by `pmcc export`), schema version 3 (2 at P4-05, DEC-96; 3 at DEC-111, when the metrics dropped return on capital and annualized Sharpe and Sortino). The detail is the strategy's `report.detail` (DEC-54): a summary run keeps no rows. Every run's summary holds its analytics (P6-01, P6-02, P6-05; DEC-60 to DEC-62), and a full run keeps its cycles and its attribution: by leg, and by Greek where its `report.sections` lists `greek_attribution` (P6-03, P6-04; DEC-63, DEC-102). A result written before P6 would have null analytics and no fill IV and still validate; the committed results were re-run with both at P6-09 (DEC-101, DEC-102, DEC-105):
 
 ```
-schema_version  2
+schema_version  3
 manifest    run_id, symbol, strategy_id, git_sha, git_dirty, config_hash, data_manifest_hash,
             lock_hash, run_timestamp, data_source (lseg|synthetic), pmcc_version
 config      the resolved RunConfig, dumped exactly as config_hash covers it (dollars as "0.1000");
             its strategy's report {detail, sections} tells the site what to show
 rule_text   {rule_id: {condition, action, rationale}}, rendered from the params
 starting_cash
-summary     metrics{pnl, returns, drawdown, underwater, sharpe, sortino, weekly_return CI},
+summary     metrics{pnl, return_on_starting_nav, drawdown, underwater, sharpe_annualized,
+            sortino_annualized, weekly_return CI},
             cycle_stats, exit_mix {rule: count, all of X-S1…X-L2; the file sorts its keys},
             skips_by_rule, nav_close[], weekly_returns[] (P6),
             flag_counts {flag: ledger rows}, invariants[{id, held}] (P4-05)

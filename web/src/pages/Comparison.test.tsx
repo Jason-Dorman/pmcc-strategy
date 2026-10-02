@@ -66,11 +66,13 @@ describe("readouts", () => {
     expect(readout("Quant − Baseline").value).toBe("−$300.00");
   });
 
-  it("shows quant's return on capital with its peak long, and the weeks traded", async () => {
-    renderComparison();
+  it("shows quant's return on starting NAV, its annualized Sharpe and the weeks traded", async () => {
+    renderComparison({ ...FILES, [QUANT]: quant(withPnl(712, CI)) });
     await loaded();
-    expect(readout("Quant return on capital").value).toBe("12.6%");
-    expect(readout("Quant return on capital").hint).toContain("($5,630.00)");
+    expect(readout("Quant return on starting NAV").value).toBe("4.7%");
+    expect(readout("Quant return on starting NAV").hint).toContain("not annualized; over 2 weeks");
+    expect(readout("Quant Sharpe (annualized)").value).toBe("1.23");
+    expect(readout("Quant Sharpe (annualized)").hint).toContain("from 2 daily returns");
     expect(readout("Weeks traded (Q / B)").value).toBe("1 / 1");
     expect(readout("Weeks traded (Q / B)").hint).toContain("of 2");
   });
@@ -189,10 +191,11 @@ describe("the headline", () => {
     const table = screen.getByRole("table", { name: "Headline" });
     expect(column(table, 0)).toEqual(["Quant PMCC", "Baseline PMCC"]);
     expect(column(table, 1)).toEqual(["+$412.00", "+$712.00"]);
-    expect(column(table, 2)).toEqual(["12.6%", "12.6%"]);
+    expect(column(table, 2)).toEqual(["4.7%", "4.7%"]);
     expect(column(table, 3)).toEqual(["$150.00 (1.0%)", "$150.00 (1.0%)"]);
-    expect(column(table, 4)).toEqual(["35.60", "35.60"]);
-    expect(column(table, 5)).toEqual(["0.9% (−1.0% to 2.7%)", "—"]);
+    expect(column(table, 4)).toEqual(["1.23", "1.23"]);
+    expect(column(table, 5)).toEqual(["35.60", "35.60"]);
+    expect(column(table, 6)).toEqual(["0.9% (−1.0% to 2.7%)", "—"]);
   });
 });
 

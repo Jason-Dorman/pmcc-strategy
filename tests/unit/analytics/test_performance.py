@@ -13,6 +13,7 @@ import pytest
 
 from pmcc.analytics.bootstrap import mean_ci
 from pmcc.analytics.performance import (
+    daily_rate,
     daily_returns,
     longest_underwater,
     max_drawdown,
@@ -22,22 +23,18 @@ from pmcc.analytics.performance import (
     sortino,
     weekly_returns,
 )
-from pmcc.domain.instruments import Side
 from pmcc.domain.money import Money
 from tests.fakes.records import (
     FRI_1,
     FRI_3,
-    LONG,
-    LONG_2,
     Records,
-    at,
     bar,
     three_weeks,
-    trade,
     week_of_closes,
 )
 
 SEED = 535
+R = 0.0371  # the window's continuously compounded risk-free rate (DEC-11)
 CLOSES = [10050, 10100, 9950, 10000, 10200, 10150, 9995, 10050, 10100, 10098,
           10300, 10250, 10350, 10400, 10500]  # fmt: skip
 
@@ -87,21 +84,41 @@ def test_dec_60_a_holiday_friday_ends_its_week_on_thursday() -> None:
 # ---- Sharpe and Sortino -------------------------------------------------------------------------
 
 
-def test_dec_60_sharpe_is_mean_over_sample_std_not_annualized() -> None:
-    """+10%, −10%, +10%: mean 1/30, sample std 2/√300, so Sharpe 1/(2√3)."""
-    assert sharpe([0.1, -0.1, 0.1]) == pytest.approx(1 / (2 * math.sqrt(3)))
+def test_dec_111_the_daily_risk_free_rate_compounds_r_over_252_trading_days() -> None:
+    """r is continuously compounded, so a trading day earns e^(r/252) − 1."""
+    assert daily_rate(0.0371) == pytest.approx(math.exp(0.0371 / 252) - 1)
+    assert daily_rate(0.0) == 0.0
 
 
-def test_dec_60_sortino_divides_by_root_mean_square_of_the_losses_over_every_day() -> None:
-    """mean(min(r, 0)²) = 0.01/3 over all three days, so Sortino = (1/30) ÷ √(0.01/3) = 1/√3."""
-    assert sortino([0.1, -0.1, 0.1]) == pytest.approx(1 / math.sqrt(3))
+def test_dec_111_sharpe_is_excess_mean_over_sample_std_annualized_by_root_252() -> None:
+    """+10%, −10%, +10% less 1% a day: excess mean 1/30 − 0.01, sample std 2/√300 (a constant
+    shift leaves it), so Sharpe (1/30 − 0.01) ÷ (2/√300) × √252."""
+    want = (1 / 30 - 0.01) / (2 / math.sqrt(300)) * math.sqrt(252)
+    assert sharpe([0.1, -0.1, 0.1], 0.01) == pytest.approx(want)
 
 
-def test_dec_60_sharpe_and_sortino_are_null_without_a_divisor() -> None:
-    assert sharpe([0.01, 0.01, 0.01]) is None  # no variation
-    assert sharpe([0.01]) is None  # a sample std needs two
-    assert sortino([0.01, 0.02]) is None  # no losing day
-    assert sortino([]) is None
+def test_dec_111_with_no_risk_free_rate_sharpe_is_dec_60s_annualized() -> None:
+    assert sharpe([0.1, -0.1, 0.1], 0.0) == pytest.approx(math.sqrt(252) / (2 * math.sqrt(3)))
+
+
+def test_dec_111_sortino_counts_every_day_below_the_risk_free_rate_as_downside() -> None:
+    """+10%, +0.5%, +10% less 1% a day: excess 0.09, −0.005, 0.09, so the +0.5% day is a loss:
+    mean(min(e, 0)²) = 0.000025/3, Sortino = (0.175/3) ÷ √(0.000025/3) × √252."""
+    want = (0.175 / 3) / math.sqrt(0.000025 / 3) * math.sqrt(252)
+    assert sortino([0.1, 0.005, 0.1], 0.01) == pytest.approx(want)
+
+
+def test_dec_111_sortino_with_no_risk_free_rate_divides_by_the_losses_over_every_day() -> None:
+    """mean(min(r, 0)²) = 0.01/3 over all three days, so (1/30) ÷ √(0.01/3) = 1/√3, × √252."""
+    assert sortino([0.1, -0.1, 0.1], 0.0) == pytest.approx(math.sqrt(252) / math.sqrt(3))
+
+
+def test_dec_111_sharpe_and_sortino_are_null_without_a_divisor() -> None:
+    assert sharpe([0.01, 0.01, 0.01], 0.001) is None  # no variation
+    assert sharpe([0.01], 0.001) is None  # a sample std needs two
+    assert sortino([0.01, 0.02], 0.001) is None  # no day below the rate
+    assert sortino([], 0.001) is None
+    assert sortino([0.0], 0.001) is None  # one flat day is below the rate, but no sample
 
 
 # ---- drawdown and time underwater ---------------------------------------------------------------
@@ -152,22 +169,23 @@ def test_dec_60_longest_underwater_is_zero_on_a_rising_nav() -> None:
 
 def test_dec_60_metrics_on_three_weeks() -> None:
     run = three_weeks()
-    got = metrics(run, SEED)
-    returns = [Fraction(n, p) - 1 for n, p in zip(CLOSES, [10_000, *CLOSES[:-1]], strict=True)]
-    mean = sum(returns) / len(returns)
-    sample_var = sum((r - mean) ** 2 for r in returns) / (len(returns) - 1)
-    downside = sum(min(r, Fraction(0)) ** 2 for r in returns) / len(returns)
+    got = metrics(run, SEED, R)
+    rf = Fraction(math.expm1(R / 252))
+    excess = [Fraction(n, p) - 1 - rf
+              for n, p in zip(CLOSES, [10_000, *CLOSES[:-1]], strict=True)]  # fmt: skip
+    mean = sum(excess) / len(excess)
+    sample_var = sum((e - mean) ** 2 for e in excess) / (len(excess) - 1)
+    downside = sum(min(e, Fraction(0)) ** 2 for e in excess) / len(excess)
+    year = math.sqrt(252)
 
     assert got.pnl == Decimal(500)
     assert got.return_on_starting_nav == pytest.approx(0.05)
-    assert got.peak_long_cost == Decimal("5000.65")  # the second long, dearer than $4,000.65
-    assert got.return_on_capital == pytest.approx(500 / 5000.65)
     assert got.max_drawdown == Decimal(205)  # 10,200 → 9,995 on Tue Sep 22
     assert got.max_drawdown_pct == pytest.approx(205 / 10200)
     assert got.longest_underwater_sessions == 6
     assert got.sessions == 15
-    assert got.sharpe_daily == pytest.approx(float(mean) / math.sqrt(float(sample_var)))
-    assert got.sortino_daily == pytest.approx(float(mean) / math.sqrt(float(downside)))
+    assert got.sharpe_annualized == pytest.approx(float(mean) / math.sqrt(float(sample_var)) * year)
+    assert got.sortino_annualized == pytest.approx(float(mean) / math.sqrt(float(downside)) * year)
     assert got.weekly_return is not None
     assert got.weekly_return.mean == pytest.approx((0.02 - 0.01 + 0.03981) / 3)
     assert (got.weekly_return.weeks, got.weekly_return.seed) == (3, SEED)
@@ -179,43 +197,28 @@ def test_dec_60_intrabar_low_counts_for_drawdown_but_not_for_returns() -> None:
     day = date(2026, 9, 14)
     run = Records((bar(day, "9000", 12), bar(day, "10000")))
 
-    got = metrics(run, SEED)
+    got = metrics(run, SEED, R)
 
     assert (got.max_drawdown, got.max_drawdown_pct) == (Decimal(1000), pytest.approx(0.1))
-    assert (got.sessions, got.sharpe_daily, got.sortino_daily) == (1, None, None)
+    assert (got.sessions, got.sharpe_annualized, got.sortino_annualized) == (1, None, None)
     assert got.longest_underwater_sessions == 0
 
 
-def test_dec_60_return_on_capital_is_null_when_no_long_was_bought() -> None:
+def test_dec_60_a_run_without_a_long_has_no_pnl_and_one_week_no_ci() -> None:
     run = Records(tuple(week_of_closes(date(2026, 9, 14), ["10000"] * 5, long=False)))
 
-    got = metrics(run, SEED)
+    got = metrics(run, SEED, R)
 
-    assert (got.pnl, got.peak_long_cost, got.return_on_capital) == (Decimal(0), None, None)
+    assert (got.pnl, got.return_on_starting_nav) == (Decimal(0), 0.0)
+    assert got.sharpe_annualized is None  # a flat NAV has no spread
     assert got.weekly_return is None  # one week: no CI
-
-
-def test_dec_60_return_on_capital_uses_the_dearest_long_not_the_last() -> None:
-    """A roll from a $50.00 long to a $40.00 one: the capital deployed is the first's $5,000.65."""
-    mon, next_mon = date(2026, 9, 14), date(2026, 9, 21)
-    run = Records(
-        tuple(week_of_closes(mon, ["10000"] * 5) + week_of_closes(next_mon, ["10500"] * 5)),
-        (trade(at(mon, 10), Side.BUY, LONG, "50.00", "E-L1"),
-         trade(at(next_mon, 10), Side.SELL, LONG, "51.00", "X-L2"),
-         trade(at(next_mon, 10), Side.BUY, LONG_2, "40.00", "E-L1")),
-    )  # fmt: skip
-
-    got = metrics(run, SEED)
-
-    assert got.peak_long_cost == Decimal("5000.65")
-    assert got.return_on_capital == pytest.approx(500 / 5000.65)
 
 
 def test_dec_61_the_ci_is_drawn_from_the_weekly_returns_as_published() -> None:
     """Each weekly return is kept at the 6 places the file prints, so the CI rebuilt from the
     file's values is the run's own (and a one-symbol pooled CI equals it)."""
     run = three_weeks()
-    got = metrics(run, SEED)
+    got = metrics(run, SEED, R)
     weeks = weekly_returns(run.ledger, run.starting_cash)
 
     assert all(w.value == round(w.value, 6) for w in weeks)

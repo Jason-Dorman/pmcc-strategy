@@ -286,9 +286,9 @@ Every metric is computed per symbol and strategy, plus pooled across the univers
 
 **Performance**
 
-- Dollar P\&L; return on starting NAV; return on capital deployed (P&L ÷ peak long-leg cost).
+- Dollar P\&L; return on starting NAV (P&L ÷ starting cash, over the window, not annualized: the headline return; PO, DEC-111).
 - Max drawdown on NAV and longest time underwater.
-- Sharpe and Sortino on daily NAV returns (session-close NAV), not annualized. If an annualized figure is shown, it's labeled with the sample length (PO, DEC-60).
+- Sharpe and Sortino on daily NAV returns (session-close NAV) in excess of the risk-free rate's trading day, e^(r/252) − 1, annualized by √252 and labeled with the sample length (PO, DEC-60, DEC-111).
 
 **Cycle statistics** (one cycle = one week)
 
@@ -334,7 +334,7 @@ A static React app on GitHub Pages with a global symbol selector; the comparison
 
 | Page | Contents |
 | --- | --- |
-| Comparison (landing) | Overlaid NAV curves for baseline and quant PMCC; headline table (P&L, return on capital, max drawdown, payoff ratio, weekly-return CI); ablation table; pooled-universe summary |
+| Comparison (landing) | Overlaid NAV curves for baseline and quant PMCC; headline table (P&L, return on starting NAV, max drawdown, annualized Sharpe, payoff ratio, weekly-return CI; DEC-111); ablation table; pooled-universe summary |
 | Baseline PMCC | Blotter; NAV chart with IM, MM, and available funds on mouseover; ledger; Reg T panel; cycle statistics; leg attribution |
 | Quant PMCC | Everything on the baseline page, plus the gate log and Greek attribution |
 | Trade rules | Entry, skip-gate, and exit tables rendered from the YAML configs, with rule IDs and live parameter values, plus the short rationale text for each rule |

@@ -2,7 +2,7 @@
 // the ending account and the lowest available funds, with when. The readouts are built here too.
 import type { Readout } from "../../components/Readouts";
 import { money, moneySigned } from "../../format/money";
-import { orDash, pct } from "../../format/number";
+import { count, orDash, pct, ratio } from "../../format/number";
 import { timeET } from "../../format/time";
 import type { LedgerRowOut, Metrics, RunResult } from "../../types/generated/run_result";
 
@@ -22,25 +22,41 @@ export function breaches(run: RunResult): number {
   return run.summary.flag_counts[FUNDS_NEGATIVE] ?? 0;
 }
 
+// The headline return and the risk-adjusted one, as every page names them (PO, DEC-111).
+export const RETURN_HINT = "P&L ÷ starting cash, not annualized";
+export const SHARPE_HINT = "Excess daily return over r ÷ its std, × √252";
+
+type Shown = readonly [value: string, extra?: string | undefined];
+
+/** Return on starting NAV, with the weeks it's over. */
+export function returnShown(m: Metrics | null): Shown {
+  if (!m) return ["—"];
+  const weeks = m.weekly_return ? `; over ${m.weekly_return.weeks} weeks` : undefined;
+  return [pct(m.return_on_starting_nav), weeks];
+}
+
+/** The annualized Sharpe, with the daily returns it's from. */
+export function sharpeShown(m: Metrics | null): Shown {
+  if (!m) return ["—"];
+  return [orDash(m.sharpe_annualized, ratio), `; from ${count(m.sessions)} daily returns`];
+}
+
 export const READOUT_HINTS = [
   ["Ending NAV", "Cash + long call − short call + stock, at the last bar"],
   ["P&L", "Ending NAV − starting cash"],
-  ["Return on starting NAV", "P&L ÷ starting cash"],
-  ["Return on capital deployed", "P&L ÷ peak long-leg cost"],
+  ["Return on starting NAV", RETURN_HINT],
+  ["Sharpe (annualized)", SHARPE_HINT],
   ["Max drawdown", "Largest fall in NAV from a peak"],
   ["Min available funds", "NAV − initial margin, at its lowest"],
   ["Weeks traded / skipped", "Weeks a short was sold / weeks skipped by a rule"],
 ] as const;
 
-type Shown = readonly [value: string, extra?: string | undefined];
-
 function metricReadouts(m: Metrics | null): Shown[] {
   if (!m) return [["—"], ["—"], ["—"], ["—"]];
-  const peak = m.peak_long_cost === null ? undefined : ` (${money(m.peak_long_cost)})`;
   return [
     [moneySigned(m.pnl)],
-    [pct(m.return_on_starting_nav)],
-    [orDash(m.return_on_capital, pct), peak],
+    returnShown(m),
+    sharpeShown(m),
     [money(m.max_drawdown), `: ${pct(m.max_drawdown_pct)}`],
   ];
 }
