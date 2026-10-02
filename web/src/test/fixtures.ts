@@ -1,6 +1,17 @@
-// A small index and two runs, shaped as `pmcc export` writes them, for the route and loader tests.
+// A small index and two full runs, shaped as `pmcc export` writes them, for the page, route and
+// loader tests. The runs are typed against the generated schema, so a schema change shows here.
 import type { Index } from "../types/generated/index";
-import type { Manifest, RunResult, Section } from "../types/generated/run_result";
+import type {
+  BlotterRow,
+  GateLogRowOut,
+  GreekAttribution,
+  InstrumentOut,
+  LedgerRowOut,
+  LegOut,
+  Manifest,
+  RunResult,
+  Section,
+} from "../types/generated/run_result";
 import { SCHEMA_VERSION } from "../types/generated/version";
 
 export const INDEX: Index = {
@@ -65,16 +76,168 @@ function manifest(runId: string): Manifest {
   };
 }
 
-/** Only the fields the pages read; the rest of a result isn't needed here. */
+export const LONG: InstrumentOut = {
+  kind: "call",
+  ric: "NVDAH212611500.U^H26",
+  occ: "NVDA  260821C00115000",
+  expiry: "2026-08-21",
+  strike: 115,
+};
+
+export const SHORT: InstrumentOut = {
+  kind: "call",
+  ric: "NVDAD022617250.U^D26",
+  occ: "NVDA  260402C00172500",
+  expiry: "2026-04-02",
+  strike: 172.5,
+};
+
+function leg(instrument: InstrumentOut, mark: number, delta: number, stale = false): LegOut {
+  return { instrument, mark, delta, qty: 1, stale };
+}
+
+function bar(time: string, nav: number, funds: number, short: LegOut | null,
+             flags: string[] = []): LedgerRowOut {
+  return {
+    time,
+    long: leg(LONG, 56.3, 0.9),
+    short,
+    stock: null,
+    cash: 9439.5,
+    nav,
+    im: nav - funds,
+    mm: nav - funds,
+    available_funds: funds,
+    excess_equity: funds,
+    flags,
+  };
+}
+
+/** Four bars over two sessions; the third carries a stale short mark. */
+export const LEDGER: LedgerRowOut[] = [
+  bar("2026-03-30T10:00:00-04:00", 15000, 9370, leg(SHORT, 0.695, 0.19)),
+  bar("2026-03-30T16:00:00-04:00", 14850, 9100, leg(SHORT, 0.5, 0.15)),
+  bar("2026-03-31T10:00:00-04:00", 15400, 9650, leg(SHORT, 0.5, 0.15, true), ["stale_short"]),
+  bar("2026-03-31T16:00:00-04:00", 15712, 9900, null),
+];
+
+export const BLOTTER: BlotterRow[] = [
+  {
+    time: "2026-03-30T10:00:00-04:00", instrument: LONG, side: "BUY", qty: 1, limit: 56.3,
+    fill: 56.3, cash_delta: -5630, fee: 0, rule_id: "E-L1", notes: "dte 144, delta 0.897503",
+    audit: {},
+  },
+  {
+    time: "2026-03-30T10:00:00-04:00", instrument: SHORT, side: "SELL", qty: 1, limit: 0.695,
+    fill: 0.695, cash_delta: 69.5, fee: 0, rule_id: "E-S1", notes: "dte 3, delta 0.190744",
+    audit: {},
+  },
+  {
+    time: "2026-03-31T16:00:00-04:00", instrument: SHORT, side: "BUY", qty: 1, limit: 0.3,
+    fill: 0.3, cash_delta: -30, fee: 0, rule_id: "X-S1", notes: "take profit", audit: {},
+  },
+];
+
+function gate(rule_id: string, status: string, values: GateLogRowOut["gates"][number]["values"]) {
+  return { rule_id, status, reason: "", values };
+}
+
+export const GATE_LOG: GateLogRowOut[] = [
+  {
+    session: "2026-03-30",
+    decision_time: "2026-03-30T10:00:00-04:00",
+    selected: { option: "NVDA 2026-04-02 C 172.5000", delta: 0.190744, mid: "0.6950" },
+    gates: [
+      gate("G-1", "pass", { bars_checked: 1 }),
+      gate("G-3", "pass", { ratio: 1.105527, max_ratio: 1.2 }),
+      gate("G-4", "pass", { ratio: 1.403563, min_ratio: 1 }),
+      gate("G-5", "pass", { mid: "0.6950", min_mid: "0.1000" }),
+    ],
+    outcome: { kind: "sold", rule_id: "E-S1" },
+    notes: "",
+  },
+  {
+    session: "2026-04-06",
+    decision_time: "2026-04-06T10:00:00-04:00",
+    selected: { option: "NVDA 2026-04-10 C 180.0000", delta: 0.21, mid: "0.9000" },
+    gates: [
+      gate("G-1", "pass", { bars_checked: 1 }),
+      gate("G-3", "n/a", {}),
+      gate("G-4", "fire", { ratio: 0.951, min_ratio: 1 }),
+      gate("G-5", "not_evaluated", {}),
+    ],
+    outcome: { kind: "skipped", rule_id: "G-4" },
+    notes: "",
+  },
+];
+
+const GREEK: GreekAttribution = {
+  rows: [
+    { leg: "long", component: "delta", dollars: 800, share_of_change: 1.12 },
+    { leg: "long", component: "residual", dollars: -85, share_of_change: -0.12 },
+    { leg: "short", component: "theta", dollars: 30, share_of_change: 0.75 },
+    { leg: "short", component: "residual", dollars: 10, share_of_change: null },
+  ],
+  legs: [
+    { leg: "long", change: 715, bars_held: 4, bars_unattributed: 1 },
+    { leg: "short", change: 39.5, bars_held: 3, bars_unattributed: 0 },
+  ],
+  residual: LEDGER.map((r, i) => ({ time: r.time, cumulative: i * -25 })),
+};
+
+/** A full run: every section its page shows, for the strategy's `report.sections`. */
 export function run(runId: string, sections: Section[]): RunResult {
   return {
     schema_version: SCHEMA_VERSION,
     manifest: manifest(runId),
-    config: { strategy: { report: { detail: "full", sections } } },
-    blotter: [{}, {}],
-    ledger: [{}, {}, {}],
-    gate_log: [{}],
-  } as unknown as RunResult;
+    starting_cash: 15000,
+    config: {
+      strategy: {
+        id: runId,
+        name: runId,
+        fill_model: { spread_capture: 0, fee_per_contract: "0.00" },
+        report: { detail: "full", sections },
+        rules: [],
+      },
+      window: { start: "2026-03-30", end: "2026-09-25" },
+      risk_free_rate: INDEX.risk_free_rate,
+    },
+    rule_text: {},
+    blotter: BLOTTER,
+    ledger: LEDGER,
+    gate_log: GATE_LOG,
+    cycles: [],
+    summary: {
+      flag_counts: { stale_short: 1 },
+      invariants: [],
+      metrics: {
+        pnl: 712, return_on_starting_nav: 0.047467, return_on_capital: 0.126465,
+        peak_long_cost: 5630, max_drawdown: 150, max_drawdown_pct: 0.01, sessions: 2,
+        longest_underwater_sessions: 1, sharpe_daily: 0.5, sortino_daily: null,
+        weekly_return: null,
+      },
+      cycle_stats: {
+        weeks: 2, weeks_traded: 1, weeks_skipped: 1, weeks_long_held: 2, win_rate: 0.5,
+        average_win: 712, average_loss: -20, payoff_ratio: 35.6, premium_captured_pct: 0.568345,
+        credit_pct_of_long_cost: 0.012345,
+      },
+      exit_mix: { "X-S1": 1, "X-S2": 0 },
+      skips_by_rule: { "G-4": 1 },
+      nav_close: null,
+      weekly_returns: null,
+    },
+    attribution: {
+      leg: {
+        short_credits: 69.5, short_buybacks: 30, net_short_premium: 39.5, short_open: 0,
+        assignment_stock_pnl: 0, long_intrinsic: 900, long_extrinsic: -227.5, long_pnl: 672.5,
+        series: [
+          { session: "2026-03-30", long_pnl: -150, net_short_premium: 19.5 },
+          { session: "2026-03-31", long_pnl: 672.5, net_short_premium: 39.5 },
+        ],
+      },
+      greek: sections.includes("greek_attribution") ? GREEK : null,
+    },
+  };
 }
 
 export const FILES: Record<string, unknown> = {

@@ -6,11 +6,16 @@ export function Note({ children }: { children: ReactNode }) {
   return <div className="pm-note">{children}</div>;
 }
 
-export function Details({ summary, children }: { summary: string; children: ReactNode }) {
+export function Details({ summary, children, table = false }: {
+  summary: string;
+  children: ReactNode;
+  /** The disclosure holds a table (a chart's values), one column wide, not prose. */
+  table?: boolean;
+}) {
   return (
     <details className="pm-details">
       <summary>{summary}</summary>
-      <div className="pm-details-body pm-note">{children}</div>
+      <div className={table ? "pm-details-table" : "pm-details-body pm-note"}>{children}</div>
     </details>
   );
 }

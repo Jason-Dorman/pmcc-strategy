@@ -81,13 +81,13 @@ describe("routes", () => {
 
   it("shows the quant page's optional sections", async () => {
     renderAt("/quant/NVDA");
-    await screen.findByText(/1 weeks/);
+    await screen.findByRole("table", { name: "Gate log" });
     expect(await panelNames()).toEqual(expect.arrayContaining(["Gate log", "Greek attribution"]));
   });
 
   it("leaves them off the baseline's page, which renumbers", async () => {
     renderAt("/baseline/NVDA");
-    await screen.findAllByText(/2 rows/);
+    await screen.findByRole("table", { name: "Blotter" });
     const names = await panelNames();
     expect(names).not.toContain("Gate log");
     expect(names).not.toContain("Greek attribution");
@@ -97,7 +97,7 @@ describe("routes", () => {
 
   it("shows the run's manifest in the footer, its commit linked", async () => {
     renderAt("/quant/NVDA");
-    await screen.findByText(/1 weeks/);
+    await screen.findByRole("table", { name: "Gate log" });
     const footer = screen.getByRole("contentinfo");
     expect(within(footer).getByText("aaaaaaa").getAttribute("href")).toBe(
       `https://github.com/Jason-Dorman/pmcc-strategy/commit/${"a".repeat(40)}`,
@@ -172,7 +172,7 @@ describe("routes, after review", () => {
 
   it("shows both runs' manifests on the comparison page", async () => {
     renderAt("/compare/NVDA");
-    await screen.findAllByText(/875|3 bars/);
+    await screen.findAllByText(/4 bars/);
     const footer = screen.getByRole("contentinfo");
     expect(within(footer).getByText("NVDA baseline_pmcc")).toBeDefined();
     expect(within(footer).getByText("NVDA quant_pmcc")).toBeDefined();
@@ -183,7 +183,7 @@ describe("routes, after review", () => {
     dirty.manifest = { ...dirty.manifest, git_dirty: true, data_manifest_hash: "9".repeat(64) };
     vi.stubGlobal("fetch", vi.fn(fakeFetch({ ...FILES, "data/NVDA/quant_pmcc.json": dirty })));
     renderAt("/quant/NVDA");
-    await screen.findByText(/1 weeks/);
+    await screen.findByRole("table", { name: "Gate log" });
     const footer = screen.getByRole("contentinfo").textContent ?? "";
     expect(footer).toContain("(dirty)");
     expect(footer).toContain("data 99999999");
@@ -228,7 +228,7 @@ describe("the symbol select", () => {
 
   it("keeps the page and swaps the symbol", async () => {
     renderAt("/quant/NVDA");
-    await screen.findByText(/1 weeks/);
+    await screen.findByRole("table", { name: "Gate log" });
     const trigger = screen.getByRole("combobox", { name: "Symbol" });
     fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false, pointerType: "mouse" });
     fireEvent.click(await screen.findByRole("option", { name: "QQQ" }));

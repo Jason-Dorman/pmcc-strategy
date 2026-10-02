@@ -37,8 +37,16 @@
   --fit-line: #7fa8d9; /* FIT_LINE: OLS fit */
   --identity-line: #94897a; /* IDENTITY_LINE: y = x, TEXT_MUTED */
 
+  /* chart roles (PO, DEC-04): each names a palette colour above, never a new hex value */
+  --long-leg: var(--nav-line); /* the long call: violet, it's the asset */
+  --short-leg: var(--mark); /* the short call: cyan, a quoted mark */
+  --strategy-quant: var(--nav-line); /* quant's NAV on the comparison page, solid */
+  --strategy-baseline: var(--mark); /* the baseline's NAV there, solid: no mid or print series */
+  --available-funds: var(--text); /* the account chart's lower pane; below zero shaded NEGATIVE */
+
   /* derived */
   --negative-tint: color-mix(in srgb, var(--negative) 14%, transparent); /* warning ground */
+  --negative-shade: color-mix(in srgb, var(--negative) 30%, transparent); /* funds below zero */
 
   /* type stacks (self-hosted, DEC-72) */
   --font-display: "Space Grotesk", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;

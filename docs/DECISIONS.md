@@ -27,7 +27,7 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-01 | RIC day field: padded or not | SETTLED (PO) | — |
 | DEC-02 | Fetch environment | SETTLED (PO) | — |
 | DEC-03 | Light theme | SETTLED (PO): none, the baseline look unchanged | — |
-| DEC-04 | Chart colour roles | ASK | P7-01 |
+| DEC-04 | Chart colour roles | SETTLED (PO): as recommended | — |
 | DEC-05 | LSEG terms: raw cache and derived series | SETTLED (PO) | — |
 | DEC-06 | Bar timestamps, decision time, session bars | SETTLED (PO) | — |
 | DEC-07 | Backtest window | SETTLED (PO) | — |
@@ -120,6 +120,7 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-103 | The fill-assumption check: its sample, exact fit, files and size limit | ENG · the file's size put to the PO | handover 2026-10-01 |
 | DEC-104 | The suitability screen: the module, the batch's hand-back, the file | ENG | — |
 | DEC-105 | P6-09: the re-run with analytics, and what the site reads where | ENG | — |
+| DEC-106 | P7-01: the strategy page, its charts and tables | ENG · the gate log's Selected column put to the PO | handover 2026-10-01 |
 
 ---
 
@@ -166,7 +167,7 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 - **Outcome:** 2026-09-30 — PO, at P4-06: **no light theme.** The site's styling is to be identical to what the previous project provided, as `DESIGN-GUIDE.md` and `theme.py` describe it: one theme, dark, and no toggle. The PO asked where the light theme came from: the spec itself, "light and dark themes" under Frontend constraints and "theme-aware" charts. The Styling line now says one dark theme, the baseline look unchanged, and the Charts line says styled from the design tokens; both cite this entry. PRD FR-S10, UI-SPEC §2, §3 and §10, P7-07 and P7-08 follow. `web/src/theme/tokens.css` holds `theme.py`'s values unchanged, and the contrast test checks the one theme (DEC-97).
 
 ### DEC-04 — Chart colour roles
-**Status:** ASK · **Ask at:** P7-01 · **Affects:** P7-01, P7-02, UI-SPEC §4
+**Status:** SETTLED · **Basis:** PO, 2026-10-01, at P7-01 · **Affects:** P7-01, P7-02, UI-SPEC §3, §4; DEC-106
 
 The baseline palette never had two option legs in one chart or two NAV series on one page (DG §7 leaves the leg colours to the PO).
 
@@ -180,7 +181,16 @@ The baseline palette never had two option legs in one chart or two NAV series on
 
 Whichever is chosen becomes named tokens (`--long-leg`, `--short-leg`, `--strategy-quant`, `--strategy-baseline`, `--available-funds`), never hex values in chart code.
 
-**Outcome:** —
+**Outcome:** 2026-10-01 — PO, at P7-01: **as recommended.**
+- `web/src/theme/tokens.css` defines each role as the palette colour it names, never a hex value:
+  `--long-leg: var(--nav-line)`, `--short-leg: var(--mark)`, `--strategy-quant: var(--nav-line)`,
+  `--strategy-baseline: var(--mark)`, `--available-funds: var(--text)`. Funds below zero are
+  shaded `--negative-shade`, NEGATIVE at 30%, beside the warning ground's 14%.
+- `tokens.ts`'s `ROLE_TOKENS` holds the same map; `contrast.test.ts` pins both to this answer and
+  holds each role's colour to 3:1 on the plot grounds.
+- In the same message the PO also approved `@tanstack/react-virtual`, the one package P7-01 adds
+  that the spec's stack list doesn't name (the spec asks for virtualized tables; ARCHITECTURE §13
+  names TanStack Virtual). Built at P7-01 (DEC-106).
 
 ### DEC-05 — LSEG terms and what gets published
 **Status:** SETTLED · **Basis:** PO, 2026-09-30, at P3-10 · **Affects:** P3-10, P5-04, P6-07, `.gitignore`, `.pre-commit-config.yaml`; DEC-15, DEC-56, DEC-64, DEC-94
@@ -2192,6 +2202,103 @@ How P4-05 builds the results contract (ARCHITECTURE §12). None of it changes wh
 - **Export:** `just export` wrote the 31 files with `index.json` (each symbol's runs and its
   coverage, robustness and fill-check files; the universe's four) and `rules.json`; none is
   committed (DEC-96).
+
+### DEC-106 — P7-01: the strategy page, its charts and tables
+**Status:** ENG · the gate log's Selected column put to the PO at the handover, 2026-10-01 · **Affects:** P7-01, P7-02 onward (the chart and table components); UI-SPEC §3–§6.2; DEC-04, DEC-54, DEC-70, DEC-105
+
+- **Packages** (`web/package.json`): `echarts` 6.1, `echarts-for-react` 3.0, `@tanstack/react-table`
+  9.2 and `@tanstack/react-virtual` 3.14, the last approved by the PO (DEC-04). TanStack Table
+  installed at v9, whose API differs from v8's (`useTable` with explicit `tableFeatures`); the
+  site uses its sorting feature alone.
+- **Charts:**
+  - `web/src/theme/echarts.ts` registers only what the site draws (lines, grid, tooltip, legend,
+    mark lines, ARIA, the SVG renderer) and holds the base option, the insets, the type sizes and
+    the series builders; its colours and font stacks are read from `tokens.css` when a chart
+    renders (`readPalette`).
+  - **SVG, not canvas:** hairlines stay crisp at any zoom, and the chart is in the DOM for the
+    tests. jsdom has no canvas, which ECharts asks for to measure text even when it draws SVG;
+    `web/src/test/setup.ts` answers null quietly.
+  - `web/src/components/charts/`: `axis.ts` (trading time: a category axis of the result's bars or
+    sessions, ticked at each session's first point and labelled at each week's), `tooltip.ts`
+    (the axis tooltip's HTML, escaped), `account.ts`, `legs.ts`, `residual.ts` (one option builder
+    each, pure, tested against a palette that names each colour by its token), `Chart.tsx`.
+  - **Week labels:** a holiday week is narrower than its label on a narrow chart, so a label that
+    would overlap the one before it is left out (ECharts' `hideOverlap`), and the first week's
+    is always kept (`showMinLabel`). At 1366 and 1600 px every week is labelled; at 1100 px the
+    week after a short one loses its label; at a phone's minimum width about every other week.
+  - The account chart's lower pane asks ECharts for two value ticks (`splitNumber`, a hint: it
+    draws three or four), so its labels don't crowd.
+  - The region below zero is shaded at `--negative-shade`'s own strength (the area's opacity is
+    set to 1; ECharts' default of 0.7 would draw it at about 21%).
+  - Every chart's values are also in a table (UI-SPEC §10): the ledger panel for the account
+    chart, and a disclosure between the leg and residual charts and their captions.
+- **Tables** (`web/src/components/DataTable.tsx`):
+  - Every column sorts, ascending first, with a missing value last either way: a gate not
+    evaluated, a week with nothing selected. A gate column sorts by status (fire, pass, n/a),
+    then by the value its cell shows.
+  - A header keeps a lowercase Greek letter out of its capitals (`L δ`, not `L Δ`: Δ is the
+    site's sign for a change, as in `Cash Δ`).
+  - **Filters are rows of toggles** above the table, one per value the rows have, each with its
+    count; a row passes when it offers a toggled value, and with none on a filter is off.
+    Filtering happens before TanStack sees the rows, so a filter needn't be a column: the gate
+    log filters by outcome and by rule from its one Outcome column.
+  - **Virtualized** (the ledger, the blotter, the residual's values): rows a fixed 42 px
+    (`TABLE_ROW_HEIGHT`, a RIC over its OCC symbol), spacer rows for the rest. Until the scroller
+    has a size (a closed disclosure, the first paint, jsdom) the first rows render in its place,
+    so a table with rows is never empty.
+  - Key/value tables (`components/cells.tsx`'s `KeyValue`) are exempt from the 720 px minimum.
+- **The page** (`web/src/pages/Strategy.tsx`, its sections in `web/src/pages/strategy/`): one
+  tree for both strategies, its optional panels from `report.sections` (DEC-54).
+  - The readouts and the Reg T panel read the ending account and the lowest available funds (and
+    the first bar it's reached on) from the ledger's rows, as DEC-105 planned; the breach count is
+    `summary.flag_counts.funds_negative`, and the panel's warning shows when it's above 0.
+  - **Gate log:** a column per gate the log has, in its order. A gate's cell is its status and
+    the one value it's judged on, where it has one (a ratio, or G-5's mid): `pass 1.11`,
+    `FIRE 0.97`, `n/a`, `—` for not evaluated; hover shows every value, and the cell links to the
+    rule.
+  - **The Selected column shows the option** (`NVDA 2026-04-02 C 172.5000`) with its δ and mid,
+    not UI-SPEC's RIC over OCC: the gate log's `selected` holds no RIC. The spec asks only for
+    the gate results and the outcome. Put to the PO at the handover: keep it, or add the RIC and
+    OCC to the gate log at export (a schema change and a re-run of the results).
+  - **Blotter notes** are cut to one line with an ellipsis, the full text on hover, so a row stays
+    one line high (a note runs to about 250 characters).
+  - A panel's note counts its table only when the run's file keeps it, so a missing ledger shows
+    no "0 bars" above "This run's file doesn't keep it."
+  - Short stock shows its shares with a true minus (`−100 sh`), as money does.
+- **Bundle:** the build is 1.03 MB (342 kB gzipped, as Vite reports it), ECharts most of it;
+  Vite warns past 500 kB. Nothing is split yet; P7-07 can lazy-load the charts if the page is
+  slow on a phone.
+- **Tests:** 105 new Vitest tests, 268 in the web suite (163 at HEAD; the token lint's per-file
+  cases for the new source files are among them): the chart options (each role's colour,
+  reference styles, holes, the trading-time axis and its labels, the tooltip, the shade's pane
+  and strength, the shared pointer), the table (filters, number and missing-value sorting, the
+  virtual window with and without a sized scroller, scrolled and sorted), the page over two
+  full fixture runs (`web/src/test/fixtures.ts`, typed against the schema; helpers in
+  `web/src/test/page.tsx`) with its edge cases in `StrategyReview.test.tsx`, the formatters,
+  DEC-04's roles and the row height. The smoke test gains three (14): both strategy pages'
+  numbers, charts and tables; week labels that never overlap, the first week always labelled,
+  at every width; and the 875-bar ledger scrolled to its start, middle and end, its rows the
+  run's bars in order. On NVDA's committed results both pages render with no console error and
+  no sideways scroll at 390, 1100, 1366 and 1600 px, and match the committed figures: ending NAV
+  $18,672.50 (baseline) and $18,303.50 (quant).
+- **Adversarial review** (4 reviewers, 2 skeptics per finding), 2026-10-02: 24 unique findings
+  from 29; of the 12 most severe, 8 confirmed and 4 plausible, none refuted. All 24 are fixed,
+  the 12 unverified low ones with them:
+  - **Week labels** overlapped at 1100 px and at a phone's chart width, and the first week's was
+    dropped (fixed as above; the smoke test now measures them).
+  - **Missing values sorted first** in the gate log (a week G-1 fired: nothing selected, later
+    gates not evaluated), and gate columns ignored the value they show.
+  - **Test gaps:** the virtual window when scrolled; numbers sorted as text; a real breach row
+    (the funds cell and flag); the shade's pane and the shared pointer; the first of tied minimum
+    funds (quant's real ledger has 49 bars at $8,330.00); sections chosen by name rather than
+    `report.sections`; every leg row's sign with a short open and X-S5 stock; null shares, the
+    residual's times, average loss and premium captured; readouts without metrics; the loading
+    block; SELL's class, a gate's hover, ET decision times, the ledger's δ, the empty state.
+  - **Display:** the ledger's δ headers read Δ; the shade drew at 21%, not 30%; panel notes said
+    "0" for a table the file doesn't keep; short stock used a hyphen.
+  - **Docs:** this entry's test count (66 claimed; 81 then), its lower-pane ticks and the place
+    of each chart's values; ARCHITECTURE §13 listing Strategy as a placeholder; UI-SPEC §4's
+    shade token and §9's signed money and chart ticks.
 
 ## E. Analytics definitions
 

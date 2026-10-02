@@ -6,7 +6,15 @@ import { describe, expect, it } from "vitest";
 import THEME_PY from "../../../theme.py?raw";
 import INDEX from "./index.css?raw";
 import SHELL from "./shell.css?raw";
-import { BREAK_ONE_COL, BREAK_TWO_COL, COLOR_TOKENS, GRID_COLUMNS, type ColorToken } from "./tokens";
+import {
+  BREAK_ONE_COL,
+  BREAK_TWO_COL,
+  COLOR_TOKENS,
+  GRID_COLUMNS,
+  ROLE_TOKENS,
+  TABLE_ROW_HEIGHT,
+  type ColorToken,
+} from "./tokens";
 import TOKENS from "./tokens.css?raw";
 
 function hex(token: ColorToken): string {
@@ -103,5 +111,40 @@ describe("tokens.css is theme.py (DEC-03)", () => {
   it("switches Tailwind's own palette and font stacks off", () => {
     expect(INDEX).toContain("--color-*: initial;");
     expect(INDEX).toContain("--font-*: initial;");
+  });
+});
+
+// The chart roles (PO, DEC-04): each names a palette colour, never a hex value of its own.
+const DEC_04: Record<string, ColorToken> = {
+  "long-leg": "nav-line",
+  "short-leg": "mark",
+  "strategy-quant": "nav-line",
+  "strategy-baseline": "mark",
+  "available-funds": "text",
+};
+
+describe("chart roles (DEC-04)", () => {
+  it("are the PO's choices, in tokens.ts", () => {
+    expect(ROLE_TOKENS).toEqual(DEC_04);
+  });
+
+  it.each(Object.entries(DEC_04))("--%s is var(--%s) in tokens.css", (role, token) => {
+    expect(TOKENS).toContain(`--${role}: var(--${token});`);
+  });
+
+  it.each(Object.entries(DEC_04))("--%s's colour (%s) clears 3:1 as a mark", (_role, token) => {
+    for (const ground of ["surface", "surface-alt"] as const) {
+      expect(contrast(hex(token), hex(ground))).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  it("shades funds below zero in NEGATIVE", () => {
+    expect(TOKENS).toContain("--negative-shade: color-mix(in srgb, var(--negative) 30%, transparent)");
+  });
+});
+
+describe("shell.css's fixed table row follows tokens.ts", () => {
+  it("is TABLE_ROW_HEIGHT tall", () => {
+    expect(SHELL).toContain(`.pm-table-fixed tbody td {\n  height: ${TABLE_ROW_HEIGHT}px;`);
   });
 });

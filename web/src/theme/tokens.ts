@@ -28,8 +28,23 @@ export const COLOR_TOKENS = [
 
 export type ColorToken = (typeof COLOR_TOKENS)[number];
 
-/** A colour token's current value, read from the document at render time (charts, P7). */
-export function color(token: ColorToken, root: Element = document.documentElement): string {
+/**
+ * The chart roles (PO, DEC-04), each the palette colour tokens.css points it at. A chart names a
+ * role, never the colour behind it, so a role can move to another colour in one edit.
+ */
+export const ROLE_TOKENS = {
+  "long-leg": "nav-line",
+  "short-leg": "mark",
+  "strategy-quant": "nav-line",
+  "strategy-baseline": "mark",
+  "available-funds": "text",
+} as const satisfies Record<string, ColorToken>;
+
+export type RoleToken = keyof typeof ROLE_TOKENS;
+
+/** A colour token's current value, read from the document at render time (the charts). */
+export function color(token: ColorToken | RoleToken | "negative-shade",
+                      root: Element = document.documentElement): string {
   return getComputedStyle(root).getPropertyValue(`--${token}`).trim();
 }
 
@@ -53,6 +68,10 @@ export const HERO_MIN_WIDTH = 680;
 export const TABLE_MIN_WIDTH = 720;
 export const TABLE_MAX_HEIGHT = 420;
 export const TABLE_FONT_SIZE = 11.5;
+// A virtualized table's fixed row: a RIC over its OCC symbol (shell.css's .pm-table-fixed).
+export const TABLE_ROW_HEIGHT = 42;
+// Rows a virtualized table renders past the visible ones, each way.
+export const TABLE_OVERSCAN = 12;
 
 // The account chart: NAV is a series, IM and MM are rulers (theme.py ACCOUNT_LINES).
 export const ACCOUNT_LINES = {

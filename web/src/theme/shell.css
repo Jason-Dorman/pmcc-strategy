@@ -386,8 +386,155 @@ body {
 }
 .pm-table-kv td:first-child {
   color: var(--text-muted);
-  width: 38%;
+  width: 58%;
   white-space: normal;
+  font-family: var(--font-body);
+}
+.pm-table-kv td:first-child b {
+  color: var(--text);
+  font-weight: 600;
+}
+.pm-table-kv td.pm-num {
+  white-space: normal;
+}
+/* a virtualized table: every row the same height, a RIC over its OCC (TABLE_ROW_HEIGHT) */
+.pm-table-fixed tbody td {
+  height: 42px;
+}
+.pm-table .pm-spacer td {
+  height: auto;
+  padding: 0;
+  border: 0;
+}
+/* a header sorts on click; the mark follows aria-sort */
+.pm-sort {
+  all: unset;
+  cursor: pointer;
+  display: inline-flex;
+  gap: 4px;
+  align-items: baseline;
+}
+.pm-sort:hover {
+  color: var(--accent);
+}
+.pm-sort:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 1px;
+}
+th[aria-sort="ascending"] .pm-sort-mark::after {
+  content: "▲";
+  color: var(--accent);
+}
+th[aria-sort="descending"] .pm-sort-mark::after {
+  content: "▼";
+  color: var(--accent);
+}
+.pm-table thead .pm-greek {
+  text-transform: none; /* δ stays δ: Δ means a change (Cash Δ) */
+}
+.pm-table .pm-notes {
+  max-width: 420px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-muted);
+}
+.pm-table .pm-fire {
+  font-weight: 700;
+}
+.pm-rule {
+  color: var(--text);
+  font-family: var(--font-mono);
+  text-decoration: underline;
+  text-decoration-color: var(--border);
+  text-underline-offset: 2px;
+}
+.pm-rule:hover {
+  color: var(--accent);
+  text-decoration-color: var(--accent);
+}
+
+/* ---- a table's filters: a row of toggles each; none on is no filter ---- */
+.pm-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin-bottom: 8px;
+}
+.pm-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px;
+}
+.pm-filter-name {
+  color: var(--text-muted);
+  font-size: 10px;
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
+  margin-right: 4px;
+}
+.pm-filter-none {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+.pm-chip {
+  background: var(--surface-alt);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 1px 7px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  cursor: pointer;
+}
+.pm-chip:hover {
+  border-color: var(--accent);
+}
+.pm-chip[aria-pressed="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--text-inverse);
+}
+.pm-chip-n {
+  opacity: 0.75;
+}
+
+/* ---- a panel body holding more than one block ---- */
+.pm-stack {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.pm-stack + .pm-figure,
+.pm-table-kv + .pm-figure {
+  margin-top: 10px;
+}
+.pm-details-table {
+  padding-top: 10px;
+}
+
+/* ---- a chart's tooltip (ECharts' className): the time, then each series, in mono ---- */
+.pm-tip-time {
+  color: var(--text-muted);
+  margin-bottom: 3px;
+}
+.pm-tip-row {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  line-height: 1.5;
+}
+.pm-tip-swatch {
+  width: 10px;
+}
+.pm-tip-label {
+  flex: 1;
+  color: var(--text-muted);
+}
+.pm-tip-value {
+  margin-left: 14px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 /* ---- warnings: synthetic data, a schema mismatch, a Reg T breach ---- */

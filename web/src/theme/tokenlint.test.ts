@@ -13,7 +13,8 @@ const SOURCES: Record<string, string> = {
 };
 
 // Every source directory the lint must reach, so a narrowed glob can't pass quietly.
-const DIRECTORIES = ["app", "components", "components/ui", "data", "format", "lib", "pages"];
+const DIRECTORIES = ["app", "components", "components/charts", "components/ui", "data", "format",
+                     "lib", "pages", "pages/strategy", "test"];
 
 const RULES: readonly [string, RegExp][] = [
   ["a hex colour", /#[0-9a-fA-F]{3,8}\b/],

@@ -14,6 +14,7 @@ export default defineConfig(({ mode }) => ({
   test: {
     environment: "jsdom",
     include: ["src/**/*.test.{ts,tsx}", "scripts/**/*.test.mjs"],
+    setupFiles: ["src/test/setup.ts"],
     css: true, // so a stylesheet imported `?raw` reads as its text (the token tests)
     env: { TZ: "UTC" }, // like CI: times must show in ET whatever the machine's zone
   },

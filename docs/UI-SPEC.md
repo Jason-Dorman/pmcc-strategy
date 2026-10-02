@@ -53,7 +53,8 @@ No rounded corners, no shadows, no floating cards, no whitespace gaps. shadcn/ui
 | `NAV_LINE` | `--nav-line` | the NAV series |
 | `MARGIN_IM` / `MARGIN_MM` | `--margin-im` / `--margin-mm` | IM / MM rulers |
 | `FIT_LINE` / `IDENTITY_LINE` | `--fit-line` / `--identity-line` | OLS fit / y = x |
-| new, per DEC-04 | `--long-leg`, `--short-leg`, `--strategy-quant`, `--strategy-baseline`, `--available-funds` | pending the user's choice; values come from the existing palette |
+| chart roles (PO, DEC-04) | `--long-leg` → `--nav-line`; `--short-leg` → `--mark`; `--strategy-quant` → `--nav-line`; `--strategy-baseline` → `--mark`; `--available-funds` → `--text` | each role is `var()` of a palette colour, never a hex value; charts name the role (`tokens.ts`'s `ROLE_TOKENS`) |
+| derived | `--negative-tint` / `--negative-shade` | `NEGATIVE` at 14% (a warning's ground) / 30% (available funds below zero) |
 | `FONT_DISPLAY` / `FONT_BODY` / `FONT_MONO` | `--font-display` / `--font-body` / `--font-mono` | Space Grotesk / Inter / JetBrains Mono, self-hosted (DEC-72) |
 
 **Layout constants.** `web/src/theme/tokens.ts` holds these, typed. They're consumed by components and never re-typed as literals.
@@ -63,7 +64,7 @@ No rounded corners, no shadows, no floating cards, no whitespace gaps. shadcn/ui
 | Grid | `GRID_COLUMNS` 10; `W_FULL` 10; `W_HALF` 5; `W_HERO` 6; `W_SIDECAR` 4 |
 | Breakpoints | `BREAK_TWO_COL` 1400; `BREAK_ONE_COL` 1100 |
 | Figures | `PANEL_FIGURE_HEIGHT` 360; `HERO_FIGURE_HEIGHT` 600; `FIGURE_MIN_WIDTH` 520 |
-| Tables | `TABLE_MIN_WIDTH` 720; `TABLE_MAX_HEIGHT` 420; `TABLE_FONT_SIZE` 11.5 |
+| Tables | `TABLE_MIN_WIDTH` 720; `TABLE_MAX_HEIGHT` 420; `TABLE_FONT_SIZE` 11.5; `TABLE_ROW_HEIGHT` 42 (a virtualized row); `TABLE_OVERSCAN` 12 |
 | Account lines | NAV 2.2px solid; IM 1.4px dashed; MM 1.2px dotted |
 | Markers | mark 4; trade 6; account markers 5 |
 
@@ -73,7 +74,7 @@ No rounded corners, no shadows, no floating cards, no whitespace gaps. shadcn/ui
 
 The baseline chart rules (DG §5–6), restated for ECharts:
 
-1. **Base option.** Every chart starts from `baseOption(theme)`:
+1. **Base option.** Every chart starts from `baseOption(palette)` (`web/src/theme/echarts.ts`, with the palette read from `tokens.css` as the chart renders; SVG renderer, DEC-106):
    - paper `--surface`, plot `--surface-alt`, gridlines `--grid`
    - body font, mono tick labels
    - mono tooltip on `--surface` with a `--border` edge
@@ -84,11 +85,11 @@ The baseline chart rules (DG §5–6), restated for ECharts:
 5. **References aren't series.** IM, MM, fit lines, y = x and zero lines are thinner and dashed or dotted, and never take a series hue.
 6. **Holes render as holes.** Use `connectNulls: false`. A missing value is `null`, never interpolated.
 7. **Every time series has mouseover.** An axis tooltip lists every series at that time, in mono, with the time in ET.
-8. **The time axis is trading time.** It is a category axis of session bars with day and week labels, so nights and weekends don't take 70% of the width. A market closure is not missing data. Stacked grids share the axis.
+8. **The time axis is trading time.** It is a category axis of the result's bars (or sessions), ticked at each session's first point and labelled at each week's (`Mar 30`), so nights and weekends don't take 70% of the width. A label that would overlap the one before it (a short holiday week on a narrow chart) is left out; the first week's is always shown. A market closure is not missing data. Stacked grids share the axis and the pointer.
 
 | Chart | Page · panel | Series and encoding |
 | --- | --- | --- |
-| Account | Strategy [1] | **Upper grid:** NAV (`--nav-line`, 2.2 solid), IM (`--margin-im`, dashed), MM (`--margin-mm`, dotted). **Lower grid, shared axis:** available funds (`--available-funds`), shaded `--negative` below zero, zero ruler. **Tooltip:** NAV, IM, MM, available funds, excess equity, flags |
+| Account | Strategy [1] | **Upper grid:** NAV (`--nav-line`, 2.2 solid), IM (`--margin-im`, dashed), MM (`--margin-mm`, dotted). **Lower grid, shared axis:** available funds (`--available-funds`), shaded `--negative-shade` below zero, zero ruler. **Tooltip:** NAV, IM, MM, available funds, excess equity, flags |
 | NAV comparison | Comparison [1] | quant NAV (`--strategy-quant`), baseline NAV (`--strategy-baseline`); tooltip shows both and the difference |
 | Leg attribution | Strategy [4] | cumulative long-leg P&L (`--long-leg`) vs cumulative net short premium (`--short-leg`) |
 | Mid vs print | Methodology [2], [3] | points as cyan circles (x = mid, y = print); OLS fit (`--fit-line`); y = x (`--identity-line`, dashed). Shorts and longs in separate panels; R² and N in the caption |
@@ -106,12 +107,14 @@ The baseline chart rules (DG §5–6), restated for ECharts:
 
 **Behaviour:**
 
-- Every column sorts.
-- Filters, per table:
+- Every column sorts on a header click, ascending first; a missing value sorts last either way (a gate not evaluated, a week with nothing selected). A gate column sorts by status (fire, pass, n/a), then by the value its cell shows.
+- Headers are set in capitals, but a lowercase Greek letter keeps its case (`L δ`; Δ means a change, as in `Cash Δ`).
+- Filters are rows of toggles above the table, one per value the rows have, with its count; a row passes when it offers a toggled value, and with none on the filter is off (DEC-106). Per table:
   - Blotter: rule ID (multi-select) and side.
   - Gate log: outcome and rule ID.
   - Ledger: flags.
-- The ledger and blotter use TanStack Virtual, with fixed row heights.
+- The ledger and blotter use TanStack Virtual, with fixed row heights (`TABLE_ROW_HEIGHT`, 42 px: a RIC over its OCC symbol). A chart's values in a disclosure use it too when they run to every bar.
+- A blotter note is cut to one line with an ellipsis; the cell's hover shows it whole.
 
 **Cell classes:**
 
@@ -132,9 +135,9 @@ Rule ID cells link to `#/rules/<ID>`.
 | --- | --- |
 | Blotter | Time (ET) · Instrument (RIC / OCC) · Side · Qty · Limit · Fill · Cash Δ · Rule · Notes |
 | Ledger | Time · Long (RIC / K · expiry) · L qty · L mark · L δ · Short (RIC / K · expiry) · S qty · S mark · S δ · Stock · Cash · NAV · IM · MM · Avail. funds · Excess eq. · Flags |
-| Gate log | Session · Decision time · Selected (RIC / OCC) · G-1 … G-5 (for the gates the strategy has) · Outcome |
+| Gate log | Session · Decision time · Selected (the option, with its δ and mid under it; RIC / OCC put to the PO, DEC-106) · G-1 … G-5 (for the gates the log has) · Outcome |
 
-Each gate-log gate cell shows its status and value, e.g. `pass 1.08`, `FIRE 1.32`, `n/a`, or `—` (not evaluated). The Outcome cell shows "sold" or "skipped" with a link to the rule.
+Each gate-log gate cell shows its status and the one value it's judged on, where it has one (a ratio, or G-5's mid), e.g. `pass 1.08`, `FIRE 1.32`, `pass $0.6950`, `n/a`, or `—` (not evaluated); hover shows every value, and the cell links to `#/rules/G-n`. The Outcome cell shows "sold" or "skipped" with a link to the rule.
 
 ## 6. Pages
 
@@ -255,7 +258,9 @@ Panels that depend on the data follow the selected symbol and show pooled figure
 
 | Value | Format |
 | --- | --- |
-| Money | `$12,345.67`; negatives with a true minus (−); 4 dp only in audit tooltips |
+| Money | `$12,345.67`; negatives with a true minus (−); 4 dp only in audit tooltips. A P&L or a part of one shows its sign: `+$3,672.50`, `−$490.00` (zero unsigned) |
+| Chart ticks (money) | `$15.2k` from a thousand up, else whole dollars (`−$850`) |
+| Counts | grouped by thousands; a negative (short shares) with a true minus: `−100 sh` |
 | Option prices | `$2.3450` (4 dp, as quantized) |
 | Percent | 1 dp; spreads < 1% at 2 dp |
 | Greeks, IV | δ 2 dp; IV as % at 1 dp |

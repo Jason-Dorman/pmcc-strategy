@@ -19,3 +19,16 @@ export function money(value: number): string {
 export function price(value: number): string {
   return signed(value, 4);
 }
+
+/** A chart tick: `$15.2k`, `−$850`. */
+export function moneyTick(value: number): string {
+  if (Math.abs(value) < 1000) return signed(value, 0);
+  const text = signed(value / 1000, 1);
+  return `${text}k`;
+}
+
+/** Money with its sign always shown: `+$803.50`, `−$2,455.00`, `$0.00`. */
+export function moneySigned(value: number): string {
+  const text = money(value);
+  return value > 0 && text !== "$0.00" ? `+${text}` : text;
+}
