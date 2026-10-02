@@ -109,9 +109,9 @@ The baseline chart rules (DG §5–6), restated for ECharts:
 
 - Every column sorts on a header click, ascending first; a missing value sorts last either way (a gate not evaluated, a week with nothing selected). A gate column sorts by status (fire, pass, n/a), then by the value its cell shows.
 - Headers are set in capitals, but a lowercase Greek letter keeps its case (`L δ`; Δ means a change, as in `Cash Δ`).
-- Filters are rows of toggles above the table, one per value the rows have, with its count; a row passes when it offers a toggled value, and with none on the filter is off (DEC-106). Per table:
-  - Blotter: rule ID (multi-select) and side.
-  - Gate log: outcome and rule ID.
+- Filters are rows of toggles above the table, one per value the rows have, with its count; a row passes when it offers a toggled value, and with none on the filter is off (DEC-106). A filter over rule IDs shows what each rule did, never the ID ("Open long", "Take profit", "Event week"; `web/src/format/rule.ts`, PO, DEC-107), with the rule's condition → action on hover. Per table:
+  - Blotter: Trade (by rule, multi-select) and side.
+  - Gate log: outcome and Reason (the outcome's rule).
   - Ledger: flags.
 - The ledger and blotter use TanStack Virtual, with fixed row heights (`TABLE_ROW_HEIGHT`, 42 px: a RIC over its OCC symbol). A chart's values in a disclosure use it too when they run to every bar.
 - A blotter note is cut to one line with an ellipsis; the cell's hover shows it whole.
@@ -127,7 +127,7 @@ The baseline chart rules (DG §5–6), restated for ECharts:
 | `label` | a cell that names rather than measures |
 | stacked | a RIC with its OCC symbol underneath, spaces preserved |
 
-Rule ID cells link to `#/rules/<ID>`.
+Rule cells show what the rule did in plain words (`Open long`, `Take profit`), never its ID, and link to `#/rules/<ID>` with the rule's condition → action on hover (PO, DEC-107).
 
 **Columns:**
 
@@ -135,9 +135,9 @@ Rule ID cells link to `#/rules/<ID>`.
 | --- | --- |
 | Blotter | Time (ET) · Instrument (RIC / OCC) · Side · Qty · Limit · Fill · Cash Δ · Rule · Notes |
 | Ledger | Time · Long (RIC / K · expiry) · L qty · L mark · L δ · Short (RIC / K · expiry) · S qty · S mark · S δ · Stock · Cash · NAV · IM · MM · Avail. funds · Excess eq. · Flags |
-| Gate log | Session · Decision time · Selected (the option, with its δ and mid under it; RIC / OCC put to the PO, DEC-106) · G-1 … G-5 (for the gates the log has) · Outcome |
+| Gate log | Session · Decision time · Selected (the option, with its δ and mid under it; RIC / OCC put to the PO, DEC-106) · one column per gate the log has, headed by what it checks (No quote, Structure, Event week, Vol premium, Min premium; DEC-107) · Outcome |
 
-Each gate-log gate cell shows its status and the one value it's judged on, where it has one (a ratio, or G-5's mid), e.g. `pass 1.08`, `FIRE 1.32`, `pass $0.6950`, `n/a`, or `—` (not evaluated); hover shows every value, and the cell links to `#/rules/G-n`. The Outcome cell shows "sold" or "skipped" with a link to the rule.
+Each gate-log gate cell shows its status and the one value it's judged on, where it has one (a ratio, or G-5's mid), e.g. `pass 1.08`, `FIRE 1.32`, `pass $0.6950`, `n/a`, or `—` (not evaluated); hover shows every value, and the cell links to `#/rules/G-n`. The Outcome cell shows "sold" (linked to the rule that sold) or "skipped · <reason>", the reason in plain words and linked to its rule (DEC-107).
 
 ## 6. Pages
 
@@ -165,7 +165,7 @@ One component tree for both pages. The sections shown come from the result's `re
 | --- | --- | --- | --- |
 | 1 | Account | 10 | NAV with IM and MM, available funds pane (§4) |
 | 2 | Reg T | 5 | key/value: starting cash, NAV, IM, MM, available funds, excess equity, min available funds (and when), breach count. If any bar breached, a `WarningBanner` states the position couldn't have been held in a real Reg T account |
-| 3 | Cycle statistics | 5 | weeks traded vs skipped (skips by rule, linked); win rate; average win and loss; payoff; premium captured; weekly credit as % of long cost; exit mix |
+| 3 | Cycle statistics | 5 | weeks traded vs skipped (skips by reason, in plain words and linked to the rule, DEC-107); win rate; average win and loss; payoff; premium captured; weekly credit as % of long cost; exit mix (in plain words, linked) |
 | 4 | Leg attribution | 10 | table: net short premium (credits, buybacks; a short open at the end, at its mark, if any), X-S5's stock P&L, and long-leg P&L (intrinsic Δ, extrinsic Δ); cumulative two-line chart (DEC-63) |
 | 5 | Blotter | 10 | §5 |
 | 6 | Gate log | 10 | quant only, via `report.sections`; §5 |

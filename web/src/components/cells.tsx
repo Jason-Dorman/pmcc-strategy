@@ -5,10 +5,14 @@ import { Link } from "react-router-dom";
 
 import type { InstrumentOut } from "../types/generated/run_result";
 
-/** A rule ID, mono, linked to `#/rules/<ID>` (UI-SPEC §7). */
-export function RuleLink({ id, children }: { id: string; children?: ReactNode }) {
+/** A rule, linked to `#/rules/<ID>` (UI-SPEC §7): its ID in mono, or what the caller shows. */
+export function RuleLink({ id, title, children }: {
+  id: string;
+  title?: string | undefined;
+  children?: ReactNode;
+}) {
   return (
-    <Link className="pm-rule" to={`/rules/${id}`}>
+    <Link className="pm-rule" to={`/rules/${id}`} title={title}>
       {children ?? id}
     </Link>
   );

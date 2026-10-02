@@ -1,7 +1,7 @@
 // The strategy page (P7-01, UI-SPEC §6.2) over the fixture runs: its readouts, each panel's
 // figures, the record tables' cells, filters and links, the Reg T banner, and the sections a
 // run's `report.sections` turns on.
-import { cleanup, fireEvent, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { clearRunCache } from "../data/loader";
@@ -100,10 +100,12 @@ describe("cycle statistics", () => {
     expect(values["Win rate, over 2 weeks a long was held"]).toBe("50.0%");
     expect(values["Payoff (average win ÷ |average loss|)"]).toBe("35.60");
     expect(values["Weekly credit, % of the long's cost"]).toBe("1.2%");
-    expect(within(table).getByRole("link", { name: "G-4" }).getAttribute("href"))
+    expect(within(table).getByRole("link", { name: "Low vol premium" }).getAttribute("href"))
       .toBe("/rules/G-4");
-    expect(within(table).getByRole("link", { name: "X-S1" }).getAttribute("href"))
+    expect(within(table).getByRole("link", { name: "Take profit" }).getAttribute("href"))
       .toBe("/rules/X-S1");
+    expect(values["Skips, by reason"]).toBe("Low vol premium 1");
+    expect(table.textContent).not.toMatch(/[EXG]-[A-Z]?\d/); // no rule IDs (PO, DEC-107)
   });
 });
 
@@ -137,7 +139,7 @@ describe("the blotter", () => {
     expect(within(buy).getByText("BUY").className).toBe("pm-up");
     expect(within(buy).getByText("−$5,630.00").className).toBe("pm-down");
     expect(within(sell).getAllByText("$0.6950", { selector: "td" })).toHaveLength(2); // limit, fill
-    expect(within(sell).getByRole("link", { name: "E-S1" }).getAttribute("href"))
+    expect(within(sell).getByRole("link", { name: "Sell short" }).getAttribute("href"))
       .toBe("/rules/E-S1");
   });
 
@@ -145,10 +147,10 @@ describe("the blotter", () => {
     renderPage("quant");
     const blotter = await panel("Blotter");
     const table = await within(blotter).findByRole("table", { name: "Blotter" });
-    const rules = within(blotter).getByRole("group", { name: "Filter by Rule" });
-    fireEvent.click(within(rules).getByRole("button", { name: /E-S1/ }));
+    const rules = within(blotter).getByRole("group", { name: "Filter by Trade" });
+    fireEvent.click(within(rules).getByRole("button", { name: /Sell short/ }));
     expect(bodyRows(table)).toHaveLength(1);
-    fireEvent.click(within(rules).getByRole("button", { name: /E-S1/ }));
+    fireEvent.click(within(rules).getByRole("button", { name: /Sell short/ }));
     const sides = within(blotter).getByRole("group", { name: "Filter by Side" });
     fireEvent.click(within(sides).getByRole("button", { name: /BUY/ }));
     expect(bodyRows(table)).toHaveLength(2);
@@ -160,8 +162,8 @@ describe("the gate log", () => {
     renderPage("quant");
     const table = await screen.findByRole("table", { name: "Gate log" });
     const headers = within(table).getAllByRole("columnheader").map((h) => h.textContent);
-    expect(headers).toEqual(["Session", "Decision time", "Selected", "G-1", "G-3", "G-4", "G-5",
-                             "Outcome"]);
+    expect(headers).toEqual(["Session", "Decision time", "Selected", "No quote", "Event week",
+                             "Vol premium", "Min premium", "Outcome"]);
     const [sold, skipped] = [rowAt(table, 0), rowAt(table, 1)];
     expect(within(sold).getByText("pass 1.11").closest("a")?.getAttribute("href"))
       .toBe("/rules/G-3");
@@ -170,7 +172,7 @@ describe("the gate log", () => {
     expect(within(skipped).getByText("n/a")).toBeDefined();
     expect(within(skipped).getByText("—")).toBeDefined();
     expect(within(skipped).getByText("skipped").className).toBe("pm-skip");
-    expect(within(skipped).getByRole("link", { name: "G-4" })).toBeDefined();
+    expect(within(skipped).getByRole("link", { name: "Low vol premium" })).toBeDefined();
   });
 
   it("filters by outcome", async () => {
@@ -206,7 +208,7 @@ describe("the ledger", () => {
     const table = await screen.findByRole("table", { name: "Ledger" });
     const nav = within(table).getByRole("columnheader", { name: "NAV" });
     fireEvent.click(within(nav).getByRole("button"));
-    expect(bodyRows(table)[0]?.textContent).toContain("$14,850.00");
+    await waitFor(() => expect(bodyRows(table)[0]?.textContent).toContain("$14,850.00"));
   });
 });
 

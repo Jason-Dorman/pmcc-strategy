@@ -768,7 +768,8 @@ web/                            P4-06 (DEC-97); Node 22 (.nvmrc, engines)
                 Methodology, Universe, Data (placeholders until their P7 item);
                 placeholder (the placeholder helpers)
     lib/        cn (shadcn/ui's class joiner)
-    format/     money (and chart ticks, signed), number (percent, ratio, IV), time (ET), hash
+    format/     money (and chart ticks, signed), number (percent, ratio, IV), time (ET), hash,
+                rule (a rule ID's plain label for the filters, DEC-107)
     test/       fixtures (an index and two full runs, typed against the schema); page (the
                 strategy page tests' helpers); setup (Vitest: jsdom's missing canvas, for ECharts)
   e2e/          smoke.spec.ts: the Playwright smoke test (P4-08, DEC-99); playwright.config.ts

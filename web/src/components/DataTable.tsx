@@ -34,6 +34,10 @@ export interface TableFilter<T> {
   name: string;
   /** The values a row offers the filter: its rule ID, its side, its flags. */
   offer: (row: T) => readonly string[];
+  /** What a value's button says, when the value itself means nothing to a reader (a rule ID). */
+  label?: (value: string) => string;
+  /** The button's hover text. */
+  hint?: (value: string) => string;
 }
 
 export interface DataTableProps<T> {
@@ -131,8 +135,9 @@ function Filters<T>({ rows, filters, chosen, onChange }: {
             {options.length === 0 && <span className="pm-filter-none">none</span>}
             {options.map(([value, n]) => (
               <button type="button" key={value} aria-pressed={on.includes(value)}
-                      className="pm-chip" onClick={() => toggle(value)}>
-                {value} <span className="pm-chip-n">{n}</span>
+                      className="pm-chip" title={f.hint?.(value) || undefined}
+                      onClick={() => toggle(value)}>
+                {f.label?.(value) ?? value} <span className="pm-chip-n">{n}</span>
               </button>
             ))}
           </div>

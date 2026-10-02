@@ -141,7 +141,7 @@ describe("cycle statistics, legs and Greeks read every field", () => {
     const values = kv(await screen.findByRole("table", { name: "Cycle statistics" }));
     expect(values["Average win / loss"]).toBe("$712.00 / −$20.00");
     expect(values["Premium captured (Σ(credit − buyback) ÷ Σ credit)"]).toBe("56.8%");
-    expect(values["Exit mix"]).toBe("X-S1 1 · X-S2 0");
+    expect(values["Exit mix"]).toBe("Take profit 1 · Defensive close 0");
   });
 
   it("subtracts a short open at the end and adds X-S5's stock, each with its sign", async () => {
@@ -202,8 +202,8 @@ describe("the record tables", () => {
     const table = await screen.findByRole("table", { name: "Gate log" });
     sortBy(table, "Selected");
     expect(column(table, 0).at(-1)).toBe("2026-04-13");
-    sortBy(table, "G-3");
-    const g3 = sortBy(table, "G-3");
+    sortBy(table, "Event week");
+    const g3 = sortBy(table, "Event week");
     expect(g3.getAttribute("aria-sort")).toBe("descending");
     expect(column(table, 0).at(-1)).toBe("2026-04-13");
   });
@@ -218,7 +218,7 @@ describe("the record tables", () => {
     };
     renderPage("quant", withQuant((r) => ({ ...r, gate_log: [...GATE_LOG, third] })));
     const table = await screen.findByRole("table", { name: "Gate log" });
-    sortBy(table, "G-4");
+    sortBy(table, "Vol premium");
     expect(column(table, 5)).toEqual(["FIRE 0.95", "pass 1.20", "pass 1.40"]);
   });
 
@@ -226,8 +226,8 @@ describe("the record tables", () => {
     renderPage("quant");
     const blotter = await panel("Blotter");
     const table = await within(blotter).findByRole("table", { name: "Blotter" });
-    const rules = within(blotter).getByRole("group", { name: "Filter by Rule" });
-    fireEvent.click(within(rules).getByRole("button", { name: /E-S1/ }));
+    const rules = within(blotter).getByRole("group", { name: "Filter by Trade" });
+    fireEvent.click(within(rules).getByRole("button", { name: /Sell short/ }));
     const sides = within(blotter).getByRole("group", { name: "Filter by Side" });
     fireEvent.click(within(sides).getByRole("button", { name: /BUY/ }));
     expect(within(table).getByText("No rows.")).toBeDefined();
@@ -243,5 +243,75 @@ describe("the record tables", () => {
     })));
     const table = await screen.findByRole("table", { name: "Ledger" });
     expect(within(table).getByText("−100 sh")).toBeDefined();
+  });
+});
+
+describe("filter buttons say what the trade was, not its rule ID (PO, DEC-107)", () => {
+  it("names each trade in the blotter's filter, the rule's text on hover", async () => {
+    renderPage("quant", withQuant((r) => ({
+      ...r,
+      rule_text: { "X-S1": { condition: "Short mid ≤ 25% of the credit", action: "Buy to close at mid",
+                             rationale: "" } },
+    })));
+    const blotter = await panel("Blotter");
+    await within(blotter).findByRole("table", { name: "Blotter" });
+    const trades = within(blotter).getByRole("group", { name: "Filter by Trade" });
+    const buttons = within(trades).getAllByRole("button").map((b) => b.textContent);
+    expect(buttons).toEqual(["Open long 1", "Sell short 1", "Take profit 1"]);
+    expect(buttons.join(" ")).not.toMatch(/[EXG]-[A-Z]?\d/);
+    expect(within(trades).getByRole("button", { name: /Take profit/ }).getAttribute("title"))
+      .toBe("Short mid ≤ 25% of the credit → Buy to close at mid");
+  });
+
+  it("names why a week was skipped in the gate log's filter", async () => {
+    renderPage("quant");
+    const gates = await panel("Gate log");
+    await within(gates).findByRole("table", { name: "Gate log" });
+    const reasons = within(gates).getByRole("group", { name: "Filter by Reason" });
+    expect(within(reasons).getAllByRole("button").map((b) => b.textContent))
+      .toEqual(["Sell short 1", "Low vol premium 1"]);
+  });
+
+  it("names each trade's rule in the blotter, linked to the rule, its text on hover", async () => {
+    renderPage("quant", withQuant((r) => ({
+      ...r,
+      rule_text: { "E-L1": { condition: "No long call is held", action: "Buy the selection",
+                             rationale: "" } },
+    })));
+    const table = await screen.findByRole("table", { name: "Blotter" });
+    const open = within(rowAt(table, 0)).getByRole("link", { name: "Open long" });
+    expect(open.getAttribute("href")).toBe("/rules/E-L1");
+    expect(open.getAttribute("title")).toBe("No long call is held → Buy the selection");
+    expect(column(table, 7)).toEqual(["Open long", "Sell short", "Take profit"]);
+  });
+
+  it("names the gate log's gates and outcomes, each still linked to its rule", async () => {
+    renderPage("quant");
+    const table = await screen.findByRole("table", { name: "Gate log" });
+    expect(column(table, 7)).toEqual(["sold", "skipped · Low vol premium"]);
+    expect(within(rowAt(table, 0)).getByRole("link", { name: "sold" }).getAttribute("href"))
+      .toBe("/rules/E-S1");
+    expect(within(rowAt(table, 1)).getByRole("link", { name: "Low vol premium" })
+      .getAttribute("href")).toBe("/rules/G-4");
+    for (const name of ["Blotter", "Gate log"]) {
+      const shown = screen.getByRole("table", { name });
+      const text = [...shown.querySelectorAll("th, td")].map((c) => c.textContent).join(" ");
+      expect(text, name).not.toMatch(/\b[EXG]-[A-Z]?\d\b/);
+    }
+  });
+
+  it("falls back to the rule's YAML name for a rule it has no plain label for", async () => {
+    renderPage("quant", withQuant((r) => ({
+      ...r,
+      blotter: (r.blotter ?? []).map((row, i) => (i === 2 ? { ...row, rule_id: "X-Z9" } : row)),
+      config: { ...r.config, strategy: { ...r.config.strategy, rules: [
+        { id: "X-Z9", name: "Some new exit", kind: "k", params: {}, condition: "", action: "",
+          rationale: "" },
+      ] } },
+    })));
+    const blotter = await panel("Blotter");
+    await within(blotter).findByRole("table", { name: "Blotter" });
+    const trades = within(blotter).getByRole("group", { name: "Filter by Trade" });
+    expect(within(trades).getByRole("button", { name: /Some new exit/ })).toBeDefined();
   });
 });

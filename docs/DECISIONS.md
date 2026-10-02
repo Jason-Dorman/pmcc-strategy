@@ -121,6 +121,7 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-104 | The suitability screen: the module, the batch's hand-back, the file | ENG | — |
 | DEC-105 | P6-09: the re-run with analytics, and what the site reads where | ENG | — |
 | DEC-106 | P7-01: the strategy page, its charts and tables | ENG · the gate log's Selected column put to the PO | handover 2026-10-01 |
+| DEC-107 | Filter buttons say what happened, not a rule ID | SETTLED (PO) | — |
 
 ---
 
@@ -2299,6 +2300,49 @@ How P4-05 builds the results contract (ARCHITECTURE §12). None of it changes wh
   - **Docs:** this entry's test count (66 claimed; 81 then), its lower-pane ticks and the place
     of each chart's values; ARCHITECTURE §13 listing Strategy as a placeholder; UI-SPEC §4's
     shade token and §9's signed money and chart ticks.
+- **After the review:** the PO's plain rule names on the page (DEC-107). The tests are now 277
+  Vitest (114 new) and 15 smoke tests: the last checks, on the built site, that a sort clicked
+  as soon as the page loads takes effect. (The unit test for the same thing failed once in four
+  full runs and never in eleven more; it now waits for the sorted rows.)
+
+### DEC-107 — Filter buttons say what happened, not a rule ID
+**Status:** SETTLED · **Basis:** PO, 2026-10-02, at P7-01's review · **Affects:** P7-01, UI-SPEC §5, §6.2; DEC-35, DEC-106
+
+- **Context:** the blotter's rule filter showed buttons such as `E-L1 3` and `X-S2 6`; the PO
+  found they "don't actually tell me anything". Asked whether to lead with each rule's YAML name
+  (DEC-35) or to rename E-L1 and E-S1 there, the PO answered: "we don't need the id at all - the
+  id is meaningless to a user they should just say what they are on the frontend - the backend
+  can remain the same", and "the id is fine on the backend - can't we just manipulate the ui so
+  those buttons say "open long" "sell short"".
+- **Outcome:** 2026-10-02 — PO. A filter over rule IDs shows a plain label per rule, with no ID;
+  the results, the YAML, the rule IDs in the Rule column (linked to the Rules page) and the
+  Rules page are unchanged. `web/src/format/rule.ts` holds the labels: E-L1 Open long, E-S1
+  Sell short, X-L1 Reset long, X-L2 Roll long, X-S1 Take profit, X-S2 Defensive close, X-S3
+  Friday close, X-S4 Expired worthless, X-S5 Assigned, X-E1 End of backtest; the gates, as why
+  a week was skipped: G-1 No quote, G-2 Structure fails, G-3 Event week, G-4 Low vol premium,
+  G-5 Premium too small. A rule without a label shows its YAML name, then its ID.
+  - **Engineering choices with it:** the blotter's filter is headed "Trade" and the gate log's
+    rule filter "Reason" (the gate log's is the same component with the same problem, so it
+    changed with the blotter's); hovering a button shows the rule's condition → action from the
+    run file; buttons keep the rules' order (entries, then exits). The wording of each label is
+    the PO's to change, in that one file.
+- **Outcome:** 2026-10-02 — PO, asked where else IDs show: "yes for Cycle statistics, which reads
+  as a summary, and keeping the ID in the Rule column, which is there for tracing a trade to its
+  rule." Cycle statistics' "Skips, by reason" and "Exit mix" read in the same plain labels
+  (`Low vol premium 11`, `Take profit 4`), each still linked to its rule, the rule's text on
+  hover. The blotter's Rule column keeps the rule ID, linked to the Rules page.
+- **Outcome:** 2026-10-02 — PO, superseding the line above: "actually i want to change the names
+  in the table columns - they can still link to the rule". Asked which, the PO chose all three:
+  - **the blotter's Rule column** shows the plain label (`Open long`, `Take profit`), linked to
+    the rule, its condition → action on hover; it sorts by the label;
+  - **the gate log's Outcome cell** reads `sold` (linked to the rule that sold) or
+    `skipped · Low vol premium` (the reason linked);
+  - **the gate log's gate columns** are headed by what each gate checks: G-1 No quote, G-2
+    Structure, G-3 Event week, G-4 Vol premium, G-5 Min premium (`gateName` in
+    `web/src/format/rule.ts`; a gate without one shows its plain label, then its YAML name).
+    Their cells keep `pass 1.11` / `FIRE 0.97`, linked to the rule.
+  No rule ID shows in the blotter or the gate log now; the links still go to `#/rules/<ID>`
+  (UI-SPEC §7), and the Rules page keeps the IDs.
 
 ## E. Analytics definitions
 

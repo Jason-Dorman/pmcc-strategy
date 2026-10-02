@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { short } from "./hash";
 import { money, moneySigned, moneyTick, price } from "./money";
 import { count, iv, orDash, pct, ratio, spreadPct } from "./number";
+import { ruleLabel } from "./rule";
 import { timeET } from "./time";
 
 describe("money", () => {
@@ -82,5 +83,25 @@ describe("percent and ratios", () => {
     expect(count(-100)).toBe("−100"); // short shares take a true minus
     expect(orDash(null, pct)).toBe("—");
     expect(orDash(0.5, pct)).toBe("50.0%");
+  });
+});
+
+describe("ruleLabel", () => {
+  it("says what a rule did, in plain words", () => {
+    expect(ruleLabel("E-L1")).toBe("Open long");
+    expect(ruleLabel("E-S1")).toBe("Sell short");
+    expect(ruleLabel("G-4")).toBe("Low vol premium");
+  });
+  it("falls back to the rule's YAML name, then its ID", () => {
+    const rules = [{ id: "X-Z9", name: "Some new exit", kind: "k", params: {}, condition: "",
+                     action: "", rationale: "" }];
+    expect(ruleLabel("X-Z9", rules)).toBe("Some new exit");
+    expect(ruleLabel("X-Z8", rules)).toBe("X-Z8");
+  });
+  it("gives every rule the blotter and gate log can carry a plain label", () => {
+    for (const id of ["E-L1", "E-S1", "X-L1", "X-L2", "X-S1", "X-S2", "X-S3", "X-S4", "X-S5",
+                      "X-E1", "G-1", "G-2", "G-3", "G-4", "G-5"]) {
+      expect(ruleLabel(id)).not.toBe(id);
+    }
   });
 });

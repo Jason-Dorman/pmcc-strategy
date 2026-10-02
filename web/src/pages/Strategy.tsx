@@ -22,9 +22,9 @@ import { Greeks } from "./strategy/Greeks";
 import { Legs } from "./strategy/Legs";
 import { RegT } from "./strategy/RegT";
 import {
-  BLOTTER_COLUMNS,
-  BLOTTER_FILTERS,
-  GATE_LOG_FILTERS,
+  blotterColumns,
+  blotterFilters,
+  gateLogFilters,
   gateLogColumns,
   LEDGER_COLUMNS,
   LEDGER_FILTERS,
@@ -41,17 +41,20 @@ function Account({ run }: { run: RunResult }) {
 }
 
 function Blotter({ run }: { run: RunResult }) {
+  const filters = useMemo(() => blotterFilters(run), [run]);
+  const columns = useMemo(() => blotterColumns(run), [run]);
   if (!run.blotter) return NO_FILE;
-  return <DataTable label="Blotter" rows={run.blotter} columns={BLOTTER_COLUMNS}
-                    filters={BLOTTER_FILTERS} rowId={(r, i) => `${r.time}/${i}`} virtual />;
+  return <DataTable label="Blotter" rows={run.blotter} columns={columns}
+                    filters={filters} rowId={(r, i) => `${r.time}/${i}`} virtual />;
 }
 
 function GateLog({ run }: { run: RunResult }) {
   const rows = run.gate_log;
-  const columns = useMemo(() => gateLogColumns(rows ?? []), [rows]);
+  const columns = useMemo(() => gateLogColumns(rows ?? [], run), [rows, run]);
+  const filters = useMemo(() => gateLogFilters(run), [run]);
   if (!rows) return NO_FILE;
   return <DataTable label="Gate log" rows={rows} columns={columns}
-                    filters={GATE_LOG_FILTERS} rowId={(r) => r.session} />;
+                    filters={filters} rowId={(r) => r.session} />;
 }
 
 function Ledger({ run }: { run: RunResult }) {

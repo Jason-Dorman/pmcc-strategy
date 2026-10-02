@@ -178,3 +178,15 @@ test("the ledger scrolls through every bar, in order, none blank", async ({ page
       Math.min(target, times.length - 1));
   }
 });
+
+test("a sort clicked as soon as the page loads takes effect", async ({ page }) => {
+  await page.goto(`./#/quant/${SYMBOL}`);
+  const ledger = page.getByRole("table", { name: "Ledger" });
+  const nav = ledger.getByRole("columnheader", { name: "NAV" });
+  await nav.getByRole("button").click();
+  await expect(nav).toHaveAttribute("aria-sort", "ascending");
+  const shown = await ledger.locator("tbody tr:not(.pm-spacer) td:nth-child(12)").allTextContents();
+  const values = shown.map((t) => Number(t.replace(/[^\d.]/g, "")));
+  expect(values.length).toBeGreaterThan(1);
+  expect(values, "NAV ascending").toEqual([...values].sort((a, b) => a - b));
+});

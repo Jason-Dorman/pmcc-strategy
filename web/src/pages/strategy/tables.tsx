@@ -6,6 +6,7 @@ import { Instrument, RuleLink, Stacked } from "../../components/cells";
 import type { TableColumn, TableFilter } from "../../components/DataTable";
 import { money, price } from "../../format/money";
 import { count, orDash, ratio } from "../../format/number";
+import { gateName, ruleHint, ruleLabel } from "../../format/rule";
 import { timeET } from "../../format/time";
 import type {
   BlotterRow,
@@ -13,6 +14,7 @@ import type {
   GateOut,
   LedgerRowOut,
   LegOut,
+  RunResult,
   StockOut,
 } from "../../types/generated/run_result";
 
@@ -25,7 +27,18 @@ const SIDE_CLASS: Record<string, string> = { BUY: "pm-up", SELL: "pm-down" };
 
 // ---- the blotter ------------------------------------------------------------------------------
 
-export const BLOTTER_COLUMNS: readonly TableColumn<BlotterRow>[] = [
+/** A rule in plain words, linked to its rule, its condition → action on hover (PO, DEC-107). */
+function Rule({ id, run, children }: { id: string; run: RunResult; children?: ReactNode }) {
+  return (
+    <RuleLink id={id} title={ruleHint(id, run.rule_text) || undefined}>
+      {children ?? ruleLabel(id, run.config.strategy.rules)}
+    </RuleLink>
+  );
+}
+
+export function blotterColumns(run: RunResult): TableColumn<BlotterRow>[] {
+  const label = (r: BlotterRow) => ruleLabel(r.rule_id, run.config.strategy.rules);
+  return [
   { id: "time", header: "Time (ET)", sort: (r) => r.time, cell: (r) => timeET(r.time) },
   { id: "instrument", header: "Instrument", sort: (r) => r.instrument.ric,
     cell: (r) => <Instrument instrument={r.instrument} /> },
@@ -38,11 +51,11 @@ export const BLOTTER_COLUMNS: readonly TableColumn<BlotterRow>[] = [
     cell: (r) => orDash(r.fill, price) },
   { id: "cash", header: "Cash Δ", num: true, sort: (r) => r.cash_delta,
     cell: (r) => <span className={signClass(r.cash_delta)}>{money(r.cash_delta)}</span> },
-  { id: "rule", header: "Rule", sort: (r) => r.rule_id,
-    cell: (r) => <RuleLink id={r.rule_id} /> },
+  { id: "rule", header: "Rule", sort: label, cell: (r) => <Rule id={r.rule_id} run={run} /> },
   { id: "notes", header: "Notes", sort: (r) => r.notes,
     cell: (r) => <div className="pm-notes" title={r.notes}>{r.notes}</div> },
-];
+  ];
+}
 
 // ---- the gate log -----------------------------------------------------------------------------
 
@@ -108,8 +121,11 @@ export function gateSortKey(gate: GateOut | undefined): number | undefined {
   return rank * RANK_BAND + (gateNumber(gate)?.value ?? 0);
 }
 
-/** The gate log's columns, one per gate the log has, in the order it has them. */
-export function gateLogColumns(rows: readonly GateLogRowOut[]): TableColumn<GateLogRowOut>[] {
+/** The gate log's columns, one per gate the log has, in the order it has them, each headed by
+ * what the gate checks (PO, DEC-107). */
+export function gateLogColumns(rows: readonly GateLogRowOut[],
+                               run: RunResult): TableColumn<GateLogRowOut>[] {
+  const rules = run.config.strategy.rules;
   const gates = [...new Set(rows.flatMap((r) => r.gates.map((g) => g.rule_id)))];
   const find = (row: GateLogRowOut, id: string) => row.gates.find((g) => g.rule_id === id);
   return [
@@ -122,21 +138,23 @@ export function gateLogColumns(rows: readonly GateLogRowOut[]): TableColumn<Gate
       cell: selected },
     ...gates.map((id): TableColumn<GateLogRowOut> => ({
       id,
-      header: id,
+      header: gateName(id, rules),
       sort: (r) => gateSortKey(find(r, id)),
       cell: (r) => <GateCell gate={find(r, id)} />,
     })),
-    { id: "outcome", header: "Outcome", sort: (r) => r.outcome.kind,
-      cell: outcomeCell },
+    { id: "outcome", header: "Outcome",
+      sort: (r) => `${r.outcome.kind} ${ruleLabel(r.outcome.rule_id, rules)}`,
+      cell: (r) => <Outcome row={r} run={run} /> },
   ];
 }
 
-function outcomeCell(row: GateLogRowOut): ReactNode {
+/** `sold`, linked to the rule that sold; or `skipped · Event week`, the reason linked. */
+function Outcome({ row, run }: { row: GateLogRowOut; run: RunResult }) {
   const { kind, rule_id: id } = row.outcome;
+  if (kind !== "skipped") return <Rule id={id} run={run}>{kind}</Rule>;
   return (
     <>
-      <span className={kind === "skipped" ? "pm-skip" : undefined}>{kind}</span>{" "}
-      <RuleLink id={id} />
+      <span className="pm-skip">{kind}</span> · <Rule id={id} run={run} />
     </>
   );
 }
@@ -204,15 +222,33 @@ export const LEDGER_COLUMNS: readonly TableColumn<LedgerRowOut>[] = [
 
 // ---- the filters UI-SPEC §5 gives each table --------------------------------------------------
 
-export const BLOTTER_FILTERS: readonly TableFilter<BlotterRow>[] = [
-  { id: "rule", name: "Rule", offer: (r) => [r.rule_id] },
-  { id: "side", name: "Side", offer: (r) => [r.side] },
-];
+/** A filter over rule IDs whose buttons say what the rule did, the rule's text on hover
+ * (PO, DEC-107): the IDs stay in the data and the Rule column. */
+function ruleFilter<T>(id: string, name: string, offer: (row: T) => string,
+                       run: RunResult): TableFilter<T> {
+  const rules = run.config.strategy.rules;
+  return {
+    id,
+    name,
+    offer: (row) => [offer(row)],
+    label: (value) => ruleLabel(value, rules),
+    hint: (value) => ruleHint(value, run.rule_text),
+  };
+}
 
-export const GATE_LOG_FILTERS: readonly TableFilter<GateLogRowOut>[] = [
-  { id: "outcome", name: "Outcome", offer: (r) => [r.outcome.kind] },
-  { id: "rule", name: "Rule", offer: (r) => [r.outcome.rule_id] },
-];
+export function blotterFilters(run: RunResult): TableFilter<BlotterRow>[] {
+  return [
+    ruleFilter("rule", "Trade", (r: BlotterRow) => r.rule_id, run),
+    { id: "side", name: "Side", offer: (r) => [r.side] },
+  ];
+}
+
+export function gateLogFilters(run: RunResult): TableFilter<GateLogRowOut>[] {
+  return [
+    { id: "outcome", name: "Outcome", offer: (r) => [r.outcome.kind] },
+    ruleFilter("rule", "Reason", (r: GateLogRowOut) => r.outcome.rule_id, run),
+  ];
+}
 
 export const LEDGER_FILTERS: readonly TableFilter<LedgerRowOut>[] = [
   { id: "flags", name: "Flags", offer: (r) => r.flags },
