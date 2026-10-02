@@ -122,6 +122,7 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-105 | P6-09: the re-run with analytics, and what the site reads where | ENG | — |
 | DEC-106 | P7-01: the strategy page, its charts and tables | ENG · the gate log's Selected column put to the PO | handover 2026-10-01 |
 | DEC-107 | Filter buttons say what happened, not a rule ID | SETTLED (PO) | — |
+| DEC-108 | The blotter's Trade P&L | SETTLED (PO) | — |
 
 ---
 
@@ -2300,8 +2301,8 @@ How P4-05 builds the results contract (ARCHITECTURE §12). None of it changes wh
   - **Docs:** this entry's test count (66 claimed; 81 then), its lower-pane ticks and the place
     of each chart's values; ARCHITECTURE §13 listing Strategy as a placeholder; UI-SPEC §4's
     shade token and §9's signed money and chart ticks.
-- **After the review:** the PO's plain rule names on the page (DEC-107). The tests are now 277
-  Vitest (114 new) and 15 smoke tests: the last checks, on the built site, that a sort clicked
+- **After the review:** the PO's plain rule names on the page (DEC-107) and the blotter's Trade
+  P&L (DEC-108). The tests are now 287 Vitest (124 new) and 15 smoke tests: the last checks, on the built site, that a sort clicked
   as soon as the page loads takes effect. (The unit test for the same thing failed once in four
   full runs and never in eleven more; it now waits for the sorted rows.)
 
@@ -2343,6 +2344,31 @@ How P4-05 builds the results contract (ARCHITECTURE §12). None of it changes wh
     Their cells keep `pass 1.11` / `FIRE 0.97`, linked to the rule.
   No rule ID shows in the blotter or the gate log now; the links still go to `#/rules/<ID>`
   (UI-SPEC §7), and the Rules page keeps the IDs.
+
+### DEC-108 — The blotter's Trade P&L
+**Status:** SETTLED · **Basis:** PO, 2026-10-02, at P7-01's review · **Affects:** P7-01, UI-SPEC §5; DEC-44, DEC-63
+
+- **Context:** the PO asked why every "Take profit" row is negative. The blotter's Cash Δ is one
+  row's cash: a take profit buys the short back, so it's cash out (−$16.50), while the profit
+  comes from the sale that opened it (+$126.00 earlier): +$109.50 on the round trip. Nothing on
+  the page showed that. Offered a Trade P&L column (recommended), the round trip in the notes,
+  or a weekly-trades table, and asked whether the column should also cover the long's rolls,
+  the PO answered "yes". Read as yes to both: the column, on the long's closes too.
+- **Outcome:** 2026-10-02 — PO. The blotter gains **Trade P&L**, after Cash Δ, on each row
+  that closes a position: its own cash plus the cash that position was opened for, fees
+  included, green for a gain and red for a loss, with "opened <time> for <cash>" on hover;
+  rows that open are blank. Cash Δ is unchanged (it is what INV-01's cash walk adds up).
+  - **How:** `web/src/pages/strategy/tradePnl.ts` walks the blotter in order, keeping each
+    instrument's position by its RIC with the engine's signs (BUY +1, SELL −1, EXPIRE and
+    ASSIGN +1, as `pmcc/accounting/book.py`). A row that shrinks a position closes that share
+    of it, at that share of its opening cash. An expiry or an assignment closes the short call
+    with no cash, so its P&L is the credit; X-S5's stock is its own position, closed by its
+    cover. Sums run in $0.0001 units (DEC-44). The site computes it; no result changes.
+  - **Checked on NVDA's committed results:** the short leg's trade P&Ls sum to the attribution's
+    net short premium to the cent (baseline −$490.00, quant −$1,651.50; no short open at the
+    end), and the long's closes plus the open long's mark to its long-leg P&L (baseline
+    $4,132.50 + $30.00 = $4,162.50; quant $3,630.00 + $1,325.00 = $4,955.00). The baseline's
+    nine take profits run +$106.50 to +$384.50; its 17 closes win 11 times, quant's 11 win 6.
 
 ## E. Analytics definitions
 

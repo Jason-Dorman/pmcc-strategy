@@ -4,9 +4,10 @@ import type { ReactNode } from "react";
 
 import { Instrument, RuleLink, Stacked } from "../../components/cells";
 import type { TableColumn, TableFilter } from "../../components/DataTable";
-import { money, price } from "../../format/money";
+import { money, moneySigned, price } from "../../format/money";
 import { count, orDash, ratio } from "../../format/number";
 import { gateName, ruleHint, ruleLabel } from "../../format/rule";
+import { tradeResults, type TradeResult } from "./tradePnl";
 import { timeET } from "../../format/time";
 import type {
   BlotterRow,
@@ -36,8 +37,16 @@ function Rule({ id, run, children }: { id: string; run: RunResult; children?: Re
   );
 }
 
+/** A closing row's round-trip P&L, with what it was opened for on hover (PO, DEC-108). */
+function TradePnl({ result }: { result: TradeResult | undefined }) {
+  if (!result) return null;
+  const hint = `opened ${timeET(result.openedAt)} for ${moneySigned(result.opened)}`;
+  return <span className={signClass(result.pnl)} title={hint}>{moneySigned(result.pnl)}</span>;
+}
+
 export function blotterColumns(run: RunResult): TableColumn<BlotterRow>[] {
   const label = (r: BlotterRow) => ruleLabel(r.rule_id, run.config.strategy.rules);
+  const trades = tradeResults(run.blotter ?? []);
   return [
   { id: "time", header: "Time (ET)", sort: (r) => r.time, cell: (r) => timeET(r.time) },
   { id: "instrument", header: "Instrument", sort: (r) => r.instrument.ric,
@@ -51,6 +60,8 @@ export function blotterColumns(run: RunResult): TableColumn<BlotterRow>[] {
     cell: (r) => orDash(r.fill, price) },
   { id: "cash", header: "Cash Δ", num: true, sort: (r) => r.cash_delta,
     cell: (r) => <span className={signClass(r.cash_delta)}>{money(r.cash_delta)}</span> },
+  { id: "trade", header: "Trade P&L", num: true, sort: (r) => trades.get(r)?.pnl,
+    cell: (r) => <TradePnl result={trades.get(r)} /> },
   { id: "rule", header: "Rule", sort: label, cell: (r) => <Rule id={r.rule_id} run={run} /> },
   { id: "notes", header: "Notes", sort: (r) => r.notes,
     cell: (r) => <div className="pm-notes" title={r.notes}>{r.notes}</div> },

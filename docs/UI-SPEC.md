@@ -133,7 +133,7 @@ Rule cells show what the rule did in plain words (`Open long`, `Take profit`), n
 
 | Table | Columns |
 | --- | --- |
-| Blotter | Time (ET) · Instrument (RIC / OCC) · Side · Qty · Limit · Fill · Cash Δ · Rule · Notes |
+| Blotter | Time (ET) · Instrument (RIC / OCC) · Side · Qty · Limit · Fill · Cash Δ · Trade P&L (a close's round trip, net of fees: its cash plus the cash its position was opened for; blank on an opening row; DEC-108) · Rule · Notes |
 | Ledger | Time · Long (RIC / K · expiry) · L qty · L mark · L δ · Short (RIC / K · expiry) · S qty · S mark · S δ · Stock · Cash · NAV · IM · MM · Avail. funds · Excess eq. · Flags |
 | Gate log | Session · Decision time · Selected (the option, with its δ and mid under it; RIC / OCC put to the PO, DEC-106) · one column per gate the log has, headed by what it checks (No quote, Structure, Event week, Vol premium, Min premium; DEC-107) · Outcome |
 

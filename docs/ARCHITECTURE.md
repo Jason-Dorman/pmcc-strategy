@@ -764,8 +764,8 @@ web/                            P4-06 (DEC-97); Node 22 (.nvmrc, engines)
                 virtualization) and cells (RuleLink, Instrument, KeyValue) at P7-01;
                 charts/: Chart, axis (trading time), tooltip, and one option builder per chart
                 (account, legs, residual) (P7-01, DEC-106)
-    pages/      Strategy (P7-01) and strategy/ (its sections and tables); Comparison, Rules,
-                Methodology, Universe, Data (placeholders until their P7 item);
+    pages/      Strategy (P7-01) and strategy/ (its sections, tables and each close's Trade P&L);
+                Comparison, Rules, Methodology, Universe, Data (placeholders until their P7 item);
                 placeholder (the placeholder helpers)
     lib/        cn (shadcn/ui's class joiner)
     format/     money (and chart ticks, signed), number (percent, ratio, IV), time (ET), hash,

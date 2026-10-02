@@ -282,7 +282,7 @@ describe("filter buttons say what the trade was, not its rule ID (PO, DEC-107)",
     const open = within(rowAt(table, 0)).getByRole("link", { name: "Open long" });
     expect(open.getAttribute("href")).toBe("/rules/E-L1");
     expect(open.getAttribute("title")).toBe("No long call is held → Buy the selection");
-    expect(column(table, 7)).toEqual(["Open long", "Sell short", "Take profit"]);
+    expect(column(table, 8)).toEqual(["Open long", "Sell short", "Take profit"]);
   });
 
   it("names the gate log's gates and outcomes, each still linked to its rule", async () => {
@@ -313,5 +313,19 @@ describe("filter buttons say what the trade was, not its rule ID (PO, DEC-107)",
     await within(blotter).findByRole("table", { name: "Blotter" });
     const trades = within(blotter).getByRole("group", { name: "Filter by Trade" });
     expect(within(trades).getByRole("button", { name: /Some new exit/ })).toBeDefined();
+  });
+});
+
+describe("the blotter's Trade P&L (PO, DEC-108)", () => {
+  it("shows a closing trade's round trip, and nothing on the rows that open", async () => {
+    renderPage("quant");
+    const table = await screen.findByRole("table", { name: "Blotter" });
+    const headers = within(table).getAllByRole("columnheader").map((h) => h.textContent);
+    expect(headers[7]).toBe("Trade P&L");
+    // sold at +$69.50, bought back for −$30.00
+    expect(column(table, 7)).toEqual(["", "", "+$39.50"]);
+    const close = within(rowAt(table, 2)).getByText("+$39.50");
+    expect(close.className).toBe("pm-up");
+    expect(close.getAttribute("title")).toBe("opened 2026-03-30 10:00 ET for +$69.50");
   });
 });
