@@ -208,7 +208,7 @@ Panels that depend on the data follow the selected symbol and show pooled figure
 
 | # | Panel | Width | Content |
 | --- | --- | --- | --- |
-| 1 | Symbol suitability | 10 | symbol · long extrinsic per delta (% of spot) · median spread % (long / short) · average weekly credit after half-spread (% of long cost) · average IV ÷ RV20 · G-3 fires |
+| 1 | Symbol suitability | 10 | symbol · long extrinsic per delta (% of spot) · median spread % (long / short) · average weekly credit after half-spread (% of long cost) · average IV ÷ RV20 · G-3 fires of the weeks it was evaluated; each measure with the weeks it's over, and a note that it's read at each week's first week-open bar from quant's picks (`universe/suitability.json`, DEC-66) |
 | 2 | Headline by symbol | 10 | symbol × strategy: P&L, return on capital, max drawdown, payoff, weekly-return CI; each row links to that symbol's comparison page |
 | 3 | Pooled universe | 10 | same content as Comparison [3] |
 

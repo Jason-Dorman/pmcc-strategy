@@ -1,7 +1,7 @@
 """`pmcc batch` (P5-03): the 24-run matrix on every universe symbol, one spawned process per symbol,
-each symbol's coverage, robustness (P6-06) and fill-check (P6-07) files, failure isolation, and the
-universe-level stage with its headline, pooled and pooled fill-check files (P6-01, P6-05, P6-07)
-(ARCHITECTURE §11).
+each symbol's coverage, robustness (P6-06) and fill-check (P6-07) files and suitability screen
+(P6-08), failure isolation, and the universe-level stage with its headline, pooled, pooled
+fill-check and suitability files (P6-01, P6-05, P6-07, P6-08) (ARCHITECTURE §11).
 
 Two synthetic symbols, SYN and TWO, are the `random_walk` market under two names, cached in a
 temporary directory. A test universe in the working directory stands in for configs/universe.yaml,
@@ -23,6 +23,13 @@ from pmcc.analytics.bootstrap import mean_ci
 from pmcc.analytics.fillcheck import fill_check, pooled_fill_check
 from pmcc.analytics.robustness import robustness
 from pmcc.analytics.scores import RunScore
+from pmcc.analytics.suitability import (
+    Screen,
+    read_week,
+    sample_bars,
+    suitability,
+    suitability_row,
+)
 from pmcc.batch import (
     BatchOutcome,
     RunOutcome,
@@ -36,8 +43,8 @@ from pmcc.batch import (
 from pmcc.cli import app
 from pmcc.config.calendar import load_calendar
 from pmcc.config.matrix import run_families, run_matrix
-from pmcc.config.strategy import CONFIGS_DIR
-from pmcc.config.universe import UNIVERSE_PATH, Underlying, Universe, read_universe_file
+from pmcc.config.strategy import CONFIGS_DIR, load_strategy
+from pmcc.config.universe import UNIVERSE_PATH, Underlying, Universe, Window, read_universe_file
 from pmcc.data import coverage as fetch_coverage
 from pmcc.data.cache import SymbolCache
 from pmcc.data.discovery import UnitKind
@@ -55,11 +62,14 @@ from pmcc.export.analytics_models import (
     Pooled,
     PooledFillCheck,
     Robustness,
+    Suitability,
+    SuitabilityRow,
 )
 from pmcc.export.manifest import GitState, Provenance
 from pmcc.export.models import DataSource, LedgerRowOut, RunResult
 from pmcc.export.verify import verify
-from pmcc.runner import Stamp
+from pmcc.runner import Market, Stamp
+from pmcc.strategy.registry import build_strategy
 from tests.fixtures.synthetic.market import generate
 from tests.fixtures.synthetic.scenarios import random_walk
 
@@ -150,15 +160,16 @@ def test_p5_03_batch_writes_every_run_and_coverage_for_each_symbol(
         assert {r.kind for r in coverage.rows} >= {"stock", "puts"}
     assert len(matrix) * len(SYMBOLS) == 48
     assert ("48 runs written for 2 symbol(s); 0 run(s) and 0 symbol(s) failed; 0 coverage, "
-            "0 robustness and 0 fill-check file(s) not written; 0 universe file(s) "
-            "failed.") in output  # fmt: skip
+            "0 robustness and 0 fill-check file(s) not written; 0 suitability screen(s) not "
+            "read; 0 universe file(s) failed.") in output  # fmt: skip
     assert ("Universe files: elsewhere/universe/headline.json, elsewhere/universe/pooled.json, "
-            "elsewhere/universe/pooled_fill_check.json") in output  # fmt: skip
+            "elsewhere/universe/pooled_fill_check.json, "
+            "elsewhere/universe/suitability.json") in output  # fmt: skip
     assert sorted(p.name for p in Path("logs").glob("batch_*_worker*.jsonl"))  # workers log apart
     verified = verify(Path("elsewhere"))  # schema, canonical bytes, a clean tree, the invariants
     assert verified.problems == ()
-    assert (verified.runs, verified.files) == (48, 57)  # + 2 each coverage, robustness and fill
-    # check, and 3 universe files
+    assert (verified.runs, verified.files) == (48, 58)  # + 2 each coverage, robustness and fill
+    # check, and 4 universe files
 
     # A run in the batch is the run `pmcc run` makes (both stamp the same clock here).
     config = (CONFIGS_DIR / "quant_pmcc.yaml").as_posix()
@@ -206,6 +217,11 @@ def test_p5_03_batch_writes_every_run_and_coverage_for_each_symbol(
         groups = fill_pairs(data, SymbolCache(market, symbol).units(), window)
         assert Path("elsewhere", symbol, "fill_check.json").read_bytes() == canonical.to_bytes(
             fill_check(symbol, groups).model_dump())  # fmt: skip
+    # The screen: a row per symbol, each read over the universe's whole window.
+    raw = Path("elsewhere/universe/suitability.json").read_bytes()
+    rows = [_screen_row(market, s, universe.window) for s in reversed(SYMBOLS)]
+    assert raw == canonical.to_bytes(suitability(rows).model_dump())
+    assert [r.symbol for r in Suitability.model_validate_json(raw).rows] == list(SYMBOLS)
 
 
 def _metrics(result: RunResult) -> Metrics:
@@ -229,6 +245,9 @@ def test_p5_03_batch_exits_non_zero_when_a_symbol_fails_and_writes_the_rest(
     assert code == 1
     assert "GONE: FAILED:" in output
     assert "48 runs written for 3 symbol(s); 0 run(s) and 1 symbol(s) failed;" in output
+    # GONE never reached its files or its screen: it is counted as failed, not again as those.
+    assert ("0 coverage, 0 robustness and 0 fill-check file(s) not written; 0 suitability "
+            "screen(s) not read;") in output  # fmt: skip
     for symbol in SYMBOLS:
         assert len(_runs(symbol)) == RUNS
     assert not Path("results/GONE").exists()
@@ -367,6 +386,72 @@ def test_p6_07_batch_summary_counts_a_fill_check_not_written() -> None:
 
     assert "robustness.json written; fill_check.json NOT written: FAILED" in text
     assert "0 coverage, 0 robustness and 1 fill-check file(s) not written" in text
+
+
+def _screen_row(market: Path, symbol: str, window: Window) -> SuitabilityRow:
+    """The screen read here, from quant's shipped config, on the symbol's market priced at r."""
+    universe = read_universe_file(Path("universe.yaml"))
+    priced = Market.prepare(load_symbol(market, symbol, load_calendar()), symbol,
+                            universe.risk_free_rate.value)  # fmt: skip
+    screen = Screen.of(build_strategy(load_strategy(CONFIGS_DIR / "quant_pmcc.yaml")))
+    bars = sample_bars(load_calendar(), window.start, window.end)
+    return suitability_row(symbol, [read_week(priced.data.view(t), screen) for t in bars], screen)
+
+
+def test_p6_08_screen_row_reads_quants_rules_each_week_of_the_window(
+    workdir: Path, market: Path
+) -> None:
+    job = _job(market, Path("out"))
+
+    outcome = run_job(job)
+
+    assert outcome.ok
+    row = outcome.suitability
+    assert row == _screen_row(market, "SYN", job.window)
+    assert row is not None
+    assert row.weeks == len(sample_bars(job.calendar, job.window.start, job.window.end)) > 1
+    assert min(row.long_weeks, row.short_weeks, row.iv_rv20_weeks, row.g3_weeks) > 0
+    assert row.g3_max_ratio == 1.20
+
+
+def test_p6_08_a_screen_that_cant_be_read_fails_the_symbol(workdir: Path, market: Path) -> None:
+    """Without quant's config there are no rules to read with: the runs and files are written,
+    but the symbol isn't ok, so the batch exits 1 and writes no universe file."""
+    job = _job(market, Path("out"))
+    job = dataclasses.replace(job, configs=tuple(c for c in job.configs
+                                                 if c.strategy.id != "quant_pmcc"))  # fmt: skip
+
+    outcome = run_job(job)
+
+    assert None not in (outcome.coverage, outcome.fill_check)
+    assert (outcome.suitability, outcome.ok) == (None, False)
+
+
+def test_p6_08_a_bug_in_the_screen_is_raised_not_reported(
+    workdir: Path, market: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Anything outside the batch's failures is a bug, and kills the worker (`_RUN_FAILURES`):
+    the screen doesn't swallow it as a screen not read."""
+
+    def broken(*_: object) -> None:
+        raise TypeError("a bug in the screen")
+
+    monkeypatch.setattr(batch, "read_week", broken)
+
+    with pytest.raises(TypeError, match="a bug in the screen"):
+        run_job(_job(market, Path("out")))
+
+
+def test_p6_08_batch_summary_counts_a_screen_not_read() -> None:
+    written = Path("out/SYN/coverage.json")
+    symbol = SymbolOutcome("SYN", (RunOutcome("baseline_pmcc", written),), written,
+                           robustness=written, fill_check=written)  # fmt: skip
+
+    text = cli.describe_batch(BatchOutcome((symbol,), ()), Path("out"), 1)
+
+    assert not symbol.ok
+    assert "fill_check.json written; suitability screen NOT read: FAILED" in text
+    assert "1 suitability screen(s) not read" in text
 
 
 def test_p6_06_a_robustness_file_that_cant_be_built_fails_the_symbol(

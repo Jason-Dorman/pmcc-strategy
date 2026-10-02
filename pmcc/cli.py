@@ -237,8 +237,9 @@ def batch(
 ) -> None:
     """Run every symbol, strategy and variant in the universe: the 24-run matrix per symbol
     (ARCHITECTURE §11), one process per symbol, then each symbol's coverage, robustness and
-    fill-check files, then the universe's headline, pooled and pooled fill-check files. Exits 1 if
-    any run, symbol file, symbol or universe file failed; the rest are still written."""
+    fill-check files and its suitability screen, then the universe's headline, pooled, pooled
+    fill-check and suitability files. Exits 1 if any run, symbol file, screen, symbol or universe
+    file failed; the rest are still written."""
     log_path = configure_logging("batch")
     if universe is not None and universe.resolve() != UNIVERSE_PATH.resolve():
         _fail(f"{universe.as_posix()}: the universe is always configs/universe.yaml, so every run "
@@ -296,9 +297,11 @@ def describe_batch(outcome: BatchOutcome, out: Path, matrix: int) -> str:
     uncovered = sum(s.error is None and s.coverage is None for s in outcome.symbols)
     untabled = sum(s.error is None and s.robustness is None for s in outcome.symbols)
     unchecked = sum(s.error is None and s.fill_check is None for s in outcome.symbols)
+    unscreened = sum(s.error is None and s.suitability is None for s in outcome.symbols)
     lines.append(f"{outcome.written} runs written for {len(outcome.symbols)} symbol(s); "
                  f"{failed} run(s) and {broken} symbol(s) failed; {uncovered} coverage, "
                  f"{untabled} robustness and {unchecked} fill-check file(s) not written; "
+                 f"{unscreened} suitability screen(s) not read; "
                  f"{len(outcome.universe_errors)} universe file(s) failed.")  # fmt: skip
     return "\n".join(lines)
 
@@ -310,9 +313,11 @@ def _describe_symbol(symbol: SymbolOutcome, out: Path, matrix: int) -> str:
     coverage, robustness, checked = (
         _written(p) for p in (symbol.coverage, symbol.robustness, symbol.fill_check)
     )
+    screen = "read" if symbol.suitability is not None else "NOT read: FAILED (see the log)"
     lines = [f"{symbol.symbol}: {written} of {matrix} runs written to "
              f"{(out / symbol.symbol).as_posix()}/; coverage.json {coverage}; "
-             f"robustness.json {robustness}; fill_check.json {checked}"]  # fmt: skip
+             f"robustness.json {robustness}; fill_check.json {checked}; "
+             f"suitability screen {screen}"]  # fmt: skip
     lines += [f"  FAILED {r.run_id}: {r.error}" for r in symbol.failed]
     return "\n".join(lines)
 

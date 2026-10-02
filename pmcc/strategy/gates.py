@@ -16,7 +16,7 @@
 """
 
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import date, timedelta
 from typing import Protocol, final, runtime_checkable
 
 from pmcc.domain.money import Price
@@ -131,7 +131,11 @@ class EventRatioGate:
     rule_id: RuleId = G_3
 
     def evaluate(self, view: MarketView, decision: ShortDecision) -> GateResult:
-        front_expiry = decision.selection.option.expiry
+        return self.check(view, decision.selection.option.expiry)
+
+    def check(self, view: MarketView, front_expiry: date) -> GateResult:
+        """The gate with `front_expiry` as the front week, whether or not a short was selected
+        (the suitability screen reads it every week, P6-08)."""
         next_expiry = view.calendar().week_final(front_expiry + timedelta(days=7)).day
         front, following = atm_reading(view, front_expiry), atm_reading(view, next_expiry)
         values: dict[str, Value] = {

@@ -326,6 +326,7 @@ Every metric is computed per symbol and strategy, plus pooled across the univers
 **Symbol suitability screen**
 
 - Per symbol, from point-in-time data: long-leg extrinsic per delta (% of spot), median spread % for long and short candidates, average weekly credit after half-spread (% of long cost), average IV ÷ RV20, and G-3 fire count.
+- Read once a week, at the first bar of each week-open session, from quant's picks on that bar (E-L3's long, E-S3's short): the credit is the short's bid ÷ the long's mid, IV ÷ RV20 is G-4's ratio, and G-3 is checked at quant's threshold every week; each measure gives the weeks it's over (PO, DEC-66).
 
 ## Site and UI
 

@@ -82,6 +82,7 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-63 | Attribution conventions | SETTLED (PO): as recommended | — |
 | DEC-64 | Fill-assumption check | SETTLED (PO): as recommended | — |
 | DEC-65 | Robustness tables: references, dispersion, columns | SETTLED (PO) | — |
+| DEC-66 | Suitability screen: the sample, the contracts, the credit, G-3 | SETTLED (PO): as recommended | — |
 | DEC-70 | Design tokens | ENG | — |
 | DEC-71 | shadcn/ui restyled | ENG | — |
 | DEC-72 | Fonts self-hosted | ENG | — |
@@ -116,6 +117,7 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-101 | The analytics: performance, cycles, bootstrap CIs, robustness tables | ENG | — |
 | DEC-102 | Attribution: what the engine records for it, the leg and Greek modules | ENG | — |
 | DEC-103 | The fill-assumption check: its sample, exact fit, files and size limit | ENG · the file's size put to the PO | handover 2026-10-01 |
+| DEC-104 | The suitability screen: the module, the batch's hand-back, the file | ENG | — |
 
 ---
 
@@ -2092,6 +2094,65 @@ How P4-05 builds the results contract (ARCHITECTURE §12). None of it changes wh
     open detail was in the models' docstrings, but the merged-unit split wasn't (now in
     `FillGroup`'s); README's status left out P6-07.
 
+### DEC-104 — The suitability screen: the module, the batch's hand-back, the file
+**Status:** ENG · **Affects:** P6-08, P6-09, P7-05; DEC-66, DEC-100, DEC-101
+
+- **`pmcc/analytics/suitability.py`** reads and summarizes the screen as the PO defined it
+  (DEC-66):
+  - `Screen.of(strategy)` takes a built strategy's long and short selectors and its G-3, and
+    refuses one without G-3. The batch builds it from the matrix's `quant_pmcc` config, so the
+    screen reads quant's rules and thresholds as they ran.
+  - `sample_bars(calendar, start, end)` is the first bar's end of each week-open session in the
+    window (Labor Day's week opens Tuesday); `read_week(view, screen)` reads one week through
+    the `MarketView` on that bar; `suitability_row` summarizes a symbol's weeks;
+    `suitability(rows)` is the universe file, symbols in order, one row each.
+  - A pick with no quote on its bar is an `EngineError`: a selector picks only an eligible
+    contract (DEC-21).
+  - Analytics now imports `pmcc.strategy` (selectors, gates, measures, ports, the built
+    `Strategy`). ARCHITECTURE §3.3 doesn't forbid it, and the engine stays out: the batch hands
+    the module each bar's view.
+- **G-3 from either side:** `EventRatioGate.check(view, front_expiry)` is the gate without a short
+  decision, and `evaluate` is now `check` on the short's expiry. The quant runs are unchanged.
+- **The batch's hand-back:** the screen needs the symbol's priced market, which only its worker
+  holds, so the worker reads its row after the fill check and hands it back in its outcome
+  (`SymbolOutcome.suitability`). It isn't written to a per-symbol file, since only the universe
+  file publishes it. A screen that can't be read is logged (`batch.suitability.abort`) and fails
+  the symbol, which stops the universe stage, as a missing symbol file does. The batch's summary
+  says, per symbol, whether its screen was read, and counts those that weren't.
+- **The file:** `universe/suitability.json` comes from a fourth universe writer,
+  `write_suitability`. `SuitabilityRow` (P4-05's shape) gains each measure's week count, the
+  weeks sampled and G-3's threshold, so a reader sees what each mean or median is over; the
+  site's types change with it (P7-05 builds the panel).
+- **Cost:** about 0.05 to 0.08 s on NVDA for its 26 weeks, on the market the runs already priced (loading and pricing the cache, which the runs do anyway, is about 2 s).
+- **Tests (24 new, 2,108 in the suite):**
+  - `tests/unit/analytics/test_suitability.py` (20): one week on a hand-made view (quant's
+    long by extrinsic ÷ delta, its short at spot + EM, the credit at the bid whatever the spread,
+    a wider EM moving the short, no long so no short, no EM so the long alone, IV ÷ RV20 needing
+    both, an RV20 of 0 left out, G-3 `n/a` without the next week, `check` equal to the gate); the screen's rules taken
+    from quant's shipped config and refused from the baseline's; the sample bars (Labor Day,
+    and a window starting mid-week); the row's means, exact medians and counts, nulls rather
+    than zeros, the same whatever the order, and on skewed weeks each measure's mean or median as
+    its name says; the file's order and a symbol given twice.
+  - `tests/unit/test_cli_batch.py` (4 new, 2 extended): the CLI's batch writes the universe file
+    as the screen read here on each symbol over the universe's whole window; a worker's row is
+    quant's rules over every week; a matrix without quant fails the symbol; a bug in the screen
+    is raised, not reported as a screen not read; the summary counts a screen not read, and not
+    a symbol that failed before it.
+- **Review:** 2026-10-01 — an adversarial review (4 reviewers, 2 skeptics per finding) found 13
+  findings, 9 unique, and verified all 9: 5 confirmed, 3 plausible, 1 refuted. None changes the
+  code's output; all 8 are fixed.
+  - **In tests:** every fixture's mean equalled its median, so swapping any measure's statistic
+    passed (the batch test rebuilds the file with the same code); an RV20 of 0, a bug in the
+    screen swallowed as a screen not read, and the summary counting a symbol that failed before
+    its screen were each untested (plausible). Each mutant now fails a test.
+  - **In docs:** this entry gave the screen's cost as about 4 s, the cost of loading and pricing
+    the cache, not of the screen; ARCHITECTURE §15's event list lacked `batch.suitability.abort`
+    (and P6-07's `batch.fill_check.abort`); DEC-66 said every build detail is in
+    `SuitabilityRow`'s docstring, but the exact fractions weren't; `analytics_models.py`'s module
+    docstring cited DEC-60 to DEC-64 for the numbers, not DEC-66 (nor DEC-65).
+  - **Refuted:** that the build log credits the PO with the E-T1 detail; the PO's answers fix the
+    bar and the contracts, and E-T1 never chooses a contract.
+
 ## E. Analytics definitions
 
 These define the reported numbers, so each goes to the PO. They're asked as one batch when P6 starts.
@@ -2301,6 +2362,49 @@ These define the reported numbers, so each goes to the PO. They're asked as one 
     −$186.45 and −$373.00. Timing: P&L from $2,788.00 (t3) to $4,332.50 (t6), a range of
     $1,544.50 and a standard deviation of $610.26 over the seven fixed bars, against the
     baseline's $3,672.50. Grid: from −$298.50 (G-4 at 0.90) to +$860.00 (G-4 at 1.10).
+
+### DEC-66 — Suitability screen: the sample, the contracts, the credit, G-3
+**Status:** SETTLED · **Basis:** PO, 2026-10-01, at P6-08 · **Affects:** P6-08, P7-05; Spec › Symbol suitability screen
+
+- **Context:** the spec names the five measures "per symbol, from point-in-time data", but not
+  which bar they're read on, which contracts the long and short measures read, how the credit and
+  the long's cost are priced, or where the G-3 count comes from. P6-08 had no **Ask first**, but
+  each changes a published number, so the questions went to the PO when the item started.
+- **PO answers, each as recommended:**
+  - **Sample:** one snapshot a week, at the first bar of each week-open session in the window:
+    the bar both strategies decide on in most weeks, the same for every symbol, and independent
+    of any run. (Alternatives: every session's close; quant's decision bars.)
+  - **Contracts:** quant's picks on that bar. The long is E-L3's cheapest replacement (lowest
+    extrinsic ÷ delta over E-L2's 120–270 DTE monthlies, delta 0.70–0.90), whose own score the
+    first measure is. The short is E-S3's lowest strike at or above spot + 1.0 × EM. The spread
+    medians are over the weekly picks. (Alternatives: the baseline's picks; quant's whole long
+    candidate band for the long spread.)
+  - **Credit after half-spread:** the short's bid (mid − half-spread) ÷ the long's mid, the long
+    priced as E-L4 and DEC-62 price it. (Alternative: the long at its ask.)
+  - **G-3 fires:** the screen's own check each sampled week, at quant's threshold (1.20),
+    counted out of the weeks it could be evaluated, `n/a` weeks apart. It works on any symbol
+    before a run. (Alternative: the quant run's gate log.)
+- **Stated to the PO with the questions:** "average" is the mean over the weeks; IV ÷ RV20 is the
+  mean of each week's ratio, its IV the front week's ATM IV (G-4's input); a week missing an
+  input is left out of that measure alone, and each measure publishes its count.
+- **Outcome:** 2026-10-01 — built at P6-08 (`pmcc/analytics/suitability.py`, DEC-104). Where the
+  answers leave a detail open, the build does this; each is in `SuitabilityRow`'s docstring,
+  and any is the PO's to change:
+  - **the picks needn't pass E-T1:** the screen measures what quant would trade, not whether
+    that bar's spread lets it;
+  - **a week without a long reads no short**, since a short is sold against a long (E-S1); IV ÷
+    RV20 and G-3 are read whatever the picks;
+  - **a spread is (ASK − BID) ÷ mid** exactly as E-T1 tests it, and the medians and the credit's
+    mean are exact fractions, so no figure depends on the weeks' order;
+  - **a week whose RV20 is 0** has no IV ÷ RV20 and is left out of that mean (G-4 instead passes
+    such a week, its ratio unbounded); it doesn't arise on NVDA.
+  - **NVDA, from the uncommitted tree** (written at P6-09): every measure read in all 26 weeks.
+    The long's extrinsic per delta averages 3.05% of spot (2.56% to 3.39% by week); the median
+    spread is 2.48% for the long, under E-T1's 3%, and 2.07% for the short; the short's bid
+    averages 1.65% of the long's mid a week (quant's realized credit is 1.7% of its long's cost,
+    DEC-62); IV ÷ RV20 averages 1.12, and is under 1.00 in 13 weeks, the 13 in which G-4 fired
+    in quant's gate log; G-3 fires in 2 of 26 weeks, May 18 and Aug 24, the two in which it fired
+    there.
 
 ## F. Frontend
 

@@ -140,7 +140,7 @@ Every row points to its source. "Verified by" names the invariant test (INV-nn),
 | FR-M4 | 95% bootstrap CI (10,000 resamples) on mean weekly return per symbol and strategy; the pooled CI uses a week-block bootstrap | Spec › Uncertainty; DEC-61 | `tests/unit/analytics/test_bootstrap.py`, `test_pooled_headline.py`; `universe/pooled.json` in `tests/unit/test_cli_batch.py` (P6-05) |
 | FR-M5 | Robustness tables: ablations, friction, entry-timing dispersion, and the full parameter grid, each run against the strategy it varies | Spec › Robustness tables; DEC-65 | `tests/unit/analytics/test_robustness.py`; `{SYM}/robustness.json` in `tests/unit/test_cli_batch.py` (P6-06) |
 | FR-M6 | Fill-assumption check: TRDPRC_1 vs mid scatter with fitted line and R², shorts and longs shown separately | Spec › Fill-assumption check; DEC-64 | `tests/unit/analytics/test_fillcheck.py`, `tests/unit/data/test_fill_pairs.py`; `{SYM}/fill_check.json` and `universe/pooled_fill_check.json` in `tests/unit/test_cli_batch.py` (P6-07, DEC-103) |
-| FR-M7 | Symbol suitability screen with the spec's five point-in-time measures | Spec › Symbol suitability screen | P6-08 |
+| FR-M7 | Symbol suitability screen with the spec's five point-in-time measures | Spec › Symbol suitability screen; DEC-66 | `tests/unit/analytics/test_suitability.py`; `universe/suitability.json` in `tests/unit/test_cli_batch.py` (P6-08, DEC-104) |
 | FR-M8 | Every metric computed per symbol × strategy, and pooled across the universe | Spec › Analytics | `pmcc verify` schema |
 
 ### 6.8 Export

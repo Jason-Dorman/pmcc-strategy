@@ -7,12 +7,14 @@ of the matrix on it, and writes each result (`{out}/{SYM}/{run_id}.json`), then 
 - `{SYM}/robustness.json`: the ablation, friction, timing and grid tables from the runs' summaries
   (P6-06), written only when every run succeeded, since a table missing a row would mislead;
 - `{SYM}/fill_check.json`: every trade print against its bar's mid, with the fits (P6-07, DEC-64),
-  from the cache the runs loaded.
+  from the cache the runs loaded;
+- the symbol's suitability-screen row (P6-08, DEC-66): quant's picks and G-3 read at each week's
+  first week-open bar on the market the runs priced, handed back in its outcome, not written.
 
 - **Failure isolation:** a run that fails writes nothing and is reported; the symbol's other runs
   go on. A symbol whose cache doesn't load, whose coverage or robustness file can't be written,
   or whose worker raises or dies, is reported without stopping the others (a fill check that
-  can't be written too); so is a universe file
+  can't be written, or a screen that can't be read, too); so is a universe file
   that fails. The caller exits non-zero if anything failed.
 - **Processes:** each symbol has its own single-worker executor, so a worker that dies (an
   out-of-memory kill) breaks only its own symbol; at most one per CPU run at once. Workers are
@@ -24,8 +26,8 @@ of the matrix on it, and writes each result (`{out}/{SYM}/{run_id}.json`), then 
 - **Universe-level outputs** are computed last, from every symbol's strategy runs, and only when
   nothing failed: a pooled figure over part of the universe would be wrong. `UNIVERSE_WRITERS`
   writes `universe/headline.json` (P6-01), `universe/pooled.json` (P6-05, its bootstrap seeded as
-  every run's is) and `universe/pooled_fill_check.json` (P6-07); the suitability screen joins at
-  P6-08 (PO, 2026-09-30). A writer that fails is reported, and fails the batch.
+  every run's is), `universe/pooled_fill_check.json` (P6-07) and `universe/suitability.json`
+  from each symbol's screen row (P6-08). A writer that fails is reported, and fails the batch.
 """
 
 import multiprocessing
@@ -43,7 +45,14 @@ from pydantic import BaseModel
 from pmcc.analytics.fillcheck import fill_check, pooled_fill_check
 from pmcc.analytics.robustness import robustness
 from pmcc.analytics.scores import RunScore
-from pmcc.analytics.universe import headline, pooled
+from pmcc.analytics.suitability import (
+    Screen,
+    read_week,
+    sample_bars,
+    suitability,
+    suitability_row,
+)
+from pmcc.analytics.universe import QUANT, headline, pooled
 from pmcc.config.matrix import Family
 from pmcc.config.strategy import Detail, RunConfig
 from pmcc.config.universe import Underlying, Window
@@ -58,18 +67,19 @@ from pmcc.domain.calendar import SessionCalendar
 from pmcc.domain.errors import EngineError
 from pmcc.domain.money import Money
 from pmcc.export import canonical
-from pmcc.export.analytics_models import Coverage, CoverageRow, FillCheck
+from pmcc.export.analytics_models import Coverage, CoverageRow, FillCheck, SuitabilityRow
 from pmcc.export.models import RunResult
 from pmcc.export.results import write_result
 from pmcc.export.verify import UNIVERSE_DIR
 from pmcc.runner import Market, Stamp, run_market
+from pmcc.strategy.registry import build_strategy
 
 log = structlog.get_logger()
 
 COVERAGE_FILE, ROBUSTNESS_FILE = "coverage.json", "robustness.json"
 FILL_CHECK_FILE = "fill_check.json"
 HEADLINE_FILE, POOLED_FILE = "headline.json", "pooled.json"
-POOLED_FILL_CHECK_FILE = "pooled_fill_check.json"
+POOLED_FILL_CHECK_FILE, SUITABILITY_FILE = "pooled_fill_check.json", "suitability.json"
 
 # The failures a run or a symbol is reported for; anything else is a bug, and kills the worker.
 _RUN_FAILURES = (CacheError, EngineError, ValueError, OSError)
@@ -111,6 +121,7 @@ class SymbolOutcome:
     error: str | None = None  # the symbol itself failed: its cache didn't load, or its worker died
     robustness: Path | None = None  # None if any run failed, or it couldn't be written
     fill_check: Path | None = None  # None if it couldn't be written
+    suitability: SuitabilityRow | None = None  # None if the screen couldn't be read
 
     @property
     def failed(self) -> tuple[RunOutcome, ...]:
@@ -119,7 +130,8 @@ class SymbolOutcome:
     @property
     def ok(self) -> bool:
         files = (self.coverage, self.robustness, self.fill_check)
-        return self.error is None and not self.failed and None not in files
+        screened = self.suitability is not None
+        return self.error is None and not self.failed and None not in files and screened
 
 
 @final
@@ -142,6 +154,10 @@ class UniverseStage:
         return [FillCheck.model_validate_json(o.fill_check.read_bytes())
                 for o in self.outcomes if o.fill_check is not None]  # fmt: skip
 
+    def suitability_rows(self) -> list[SuitabilityRow]:
+        """Each symbol's screen row, as its worker read it."""
+        return [o.suitability for o in self.outcomes if o.suitability is not None]
+
 
 type UniverseWriter = Callable[[UniverseStage], Path]
 
@@ -163,10 +179,17 @@ def write_pooled_fill_check(stage: UniverseStage) -> Path:
     return _write(path, pooled_fill_check(stage.fill_checks()))
 
 
+def write_suitability(stage: UniverseStage) -> Path:
+    """`universe/suitability.json`: each symbol's screen row (P6-08, DEC-66)."""
+    path = stage.out / UNIVERSE_DIR / SUITABILITY_FILE
+    return _write(path, suitability(stage.suitability_rows()))
+
+
 UNIVERSE_WRITERS: tuple[UniverseWriter, ...] = (write_headline, write_pooled,
-                                                write_pooled_fill_check)  # fmt: skip
-"""Each writes one universe file and returns its path. Suitability (P6-08) needs each symbol's
-cache, which `UniverseStage` doesn't carry: P6-08 widens it or the workers' outcomes."""
+                                                write_pooled_fill_check,
+                                                write_suitability)  # fmt: skip
+"""Each writes one universe file and returns its path. The screen reads each symbol's priced
+market, which only its worker holds, so the worker hands its row back in its outcome (DEC-104)."""
 
 
 @final
@@ -245,7 +268,7 @@ def _outcome(job: SymbolJob, future: "Future[SymbolOutcome]") -> SymbolOutcome:
 
 def run_job(job: SymbolJob) -> SymbolOutcome:
     """Every config of `job` on its symbol, then the symbol's coverage, robustness and fill-check
-    files."""
+    files and its suitability-screen row."""
     symbol = job.underlying.symbol
     try:
         loaded = load_symbol(job.cache, symbol, job.calendar)
@@ -259,9 +282,11 @@ def run_job(job: SymbolJob) -> SymbolOutcome:
     covered = _write_coverage(job, results)
     robust = _write_robustness(job, results) if len(results) == len(runs) else None
     checked = _write_fill_check(job, loaded)
+    screened = _screen(job, market)
     log.info("batch.symbol.done", symbol=symbol, runs=len(runs), failed=sum(
         r.error is not None for r in runs))  # fmt: skip
-    return SymbolOutcome(symbol, runs, covered, robustness=robust, fill_check=checked)
+    return SymbolOutcome(symbol, runs, covered, robustness=robust, fill_check=checked,
+                         suitability=screened)  # fmt: skip
 
 
 def _run(market: Market, config: RunConfig, job: SymbolJob) -> tuple[RunOutcome, RunResult | None]:
@@ -306,6 +331,23 @@ def _write_fill_check(job: SymbolJob, loaded: SymbolData) -> Path | None:
         return _write(job.out / symbol / FILL_CHECK_FILE, fill_check(symbol, groups))
     except _SYMBOL_FAILURES:
         log.exception("batch.fill_check.abort", symbol=symbol)
+        return None
+
+
+def _screen(job: SymbolJob, market: Market) -> SuitabilityRow | None:
+    """The symbol's suitability-screen row from quant's rules (P6-08, DEC-66), or None (logged)
+    if it can't be read."""
+    symbol = job.underlying.symbol
+    try:
+        quant = next((c for c in job.configs if c.strategy.id == QUANT), None)
+        if quant is None:
+            raise ValueError(f"the suitability screen reads {QUANT}'s rules; the matrix lacks it")
+        screen = Screen.of(build_strategy(quant.strategy))
+        bars = sample_bars(job.calendar, job.window.start, job.window.end)
+        readings = [read_week(market.data.view(end), screen) for end in bars]
+        return suitability_row(symbol, readings, screen)
+    except (*_RUN_FAILURES, CalendarMismatchError):
+        log.exception("batch.suitability.abort", symbol=symbol)
         return None
 
 

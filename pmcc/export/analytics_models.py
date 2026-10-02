@@ -3,12 +3,11 @@ and the universe files.
 
 These are the shapes the site reads, fixed at P4-05 so the frontend is typed against every output
 it will load (INV-14). Their fields follow Spec › Analytics and metrics and the panels of UI-SPEC
-§6, and `pmcc.analytics` computes them as the PO defined each number (DEC-60 to DEC-64, DEC-76):
+§6, and `pmcc.analytics` computes them as the PO defined each number (DEC-60 to DEC-66, DEC-76):
 the performance metrics, cycles and bootstrap CIs at P6-01, P6-02 and P6-05, the attribution at
-P6-03 and P6-04, the robustness tables at P6-06, the fill-assumption check at P6-07; the rest stay
-null until their P6 item. A P6 item
-may reshape a model when it builds it, regenerating the schema, and `tsc` then shows the site what
-changed (ARCHITECTURE §16).
+P6-03 and P6-04, the robustness tables at P6-06, the fill-assumption check at P6-07 and the
+suitability screen at P6-08. A P6 item may reshape a model when it builds it, regenerating the
+schema, and `tsc` then shows the site what changed (ARCHITECTURE §16).
 
 Every ratio is a fraction, whatever its name says (0.25 is 25%); the site formats it.
 """
@@ -357,17 +356,42 @@ class Pooled(Model):
 
 
 class SuitabilityRow(Model):
+    """One symbol's screen (P6-08; PO, DEC-66), read once a week at the first bar of each
+    week-open session in the window, from what quant's rules see there: its E-L3 long (lowest
+    extrinsic ÷ delta) and its E-S3 short (lowest strike at or above spot + k × EM), picked
+    whether or not they would pass E-T1. A week without a long has no short, since a short is
+    sold against a long. Each measure is over the weeks it could be read, which its count gives:
+    - long extrinsic per delta: the mean of extrinsic ÷ (delta × spot), over `long_weeks`;
+    - median spread: (ASK − BID) ÷ mid of the picks, exactly as E-T1 tests it, the long's over
+      `long_weeks`, the short's over `short_weeks`;
+    - weekly credit after half-spread: the mean of the short's bid (mid − half-spread) ÷ the
+      long's mid, over `short_weeks`;
+    - IV ÷ RV20: the mean of the front week's ATM IV ÷ RV20 (G-4's inputs), over `iv_rv20_weeks`;
+    - G-3 fires: the weeks G-3 fired at quant's `g3_max_ratio`, out of `g3_weeks`, the weeks it
+      could be evaluated (not `n/a`).
+
+    The spreads' medians and the credit's mean are taken over exact fractions of the integer BID
+    and ASK, so no figure depends on the weeks' order. A week whose RV20 is 0 has no IV ÷ RV20
+    and is left out of that mean."""
+
     symbol: str
+    weeks: int  # week-open sessions sampled
+    long_weeks: int
     long_extrinsic_per_delta_pct_spot: float | None
     median_spread_long_pct: float | None
+    short_weeks: int
     median_spread_short_pct: float | None
     weekly_credit_after_half_spread_pct_long_cost: float | None
+    iv_rv20_weeks: int
     iv_over_rv20: float | None
+    g3_weeks: int
     g3_fires: int
+    g3_max_ratio: float
 
 
 class Suitability(Model):
-    """`universe/suitability.json`: the symbol screen (P6-08)."""
+    """`universe/suitability.json`: the symbol screen (P6-08; PO, DEC-66), a row per symbol in
+    alphabetical order."""
 
     schema_version: SchemaVersion = SCHEMA_VERSION
     rows: tuple[SuitabilityRow, ...]
