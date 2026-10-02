@@ -40,7 +40,7 @@ class Index(Model):
     risk_free_rate: RiskFreeRate
     starting_cash: Dollars
     symbols: tuple[IndexSymbol, ...]
-    universe: Mapping[str, str]  # pooled, headline, suitability → path, once written
+    universe: Mapping[str, str]  # pooled, headline, pooled_fill_check, suitability → path
 
 
 # ---- rules.json ---------------------------------------------------------------------------------

@@ -3,8 +3,9 @@
 
 Every file under the results directory must be one the pipeline writes, where it writes it:
 `{SYM}/{run_id}.json`, `{SYM}/{robustness,fill_check,coverage}.json` or
-`universe/{pooled,headline,suitability}.json`. Each must validate against its model, which is the
-JSON Schema `pmcc export` publishes, since both come from the same pydantic model.
+`universe/{pooled,headline,pooled_fill_check,suitability}.json`. Each must validate against its
+model, which is the JSON Schema `pmcc export` publishes, since both come from the same pydantic
+model.
 
 A run's file must also:
 - be canonical JSON, byte for byte as `pmcc run` writes it (DEC-50);

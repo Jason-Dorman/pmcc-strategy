@@ -139,7 +139,7 @@ Every row points to its source. "Verified by" names the invariant test (INV-nn),
 | FR-M3 | Attribution by leg (net short premium vs long-leg P&L, split into intrinsic and extrinsic) and by Greek (bar by bar, with the residual) | Spec › Attribution; DEC-63, DEC-76 | `tests/unit/analytics/test_attribution.py`, `test_greek_attribution.py`; `tests/scenario/test_scenario_greeks.py`, `test_export.py` (P6-03, P6-04) |
 | FR-M4 | 95% bootstrap CI (10,000 resamples) on mean weekly return per symbol and strategy; the pooled CI uses a week-block bootstrap | Spec › Uncertainty; DEC-61 | `tests/unit/analytics/test_bootstrap.py`, `test_pooled_headline.py`; `universe/pooled.json` in `tests/unit/test_cli_batch.py` (P6-05) |
 | FR-M5 | Robustness tables: ablations, friction, entry-timing dispersion, and the full parameter grid, each run against the strategy it varies | Spec › Robustness tables; DEC-65 | `tests/unit/analytics/test_robustness.py`; `{SYM}/robustness.json` in `tests/unit/test_cli_batch.py` (P6-06) |
-| FR-M6 | Fill-assumption check: TRDPRC_1 vs mid scatter with fitted line and R², shorts and longs shown separately | Spec › Fill-assumption check; DEC-64 | P6-07 |
+| FR-M6 | Fill-assumption check: TRDPRC_1 vs mid scatter with fitted line and R², shorts and longs shown separately | Spec › Fill-assumption check; DEC-64 | `tests/unit/analytics/test_fillcheck.py`, `tests/unit/data/test_fill_pairs.py`; `{SYM}/fill_check.json` and `universe/pooled_fill_check.json` in `tests/unit/test_cli_batch.py` (P6-07, DEC-103) |
 | FR-M7 | Symbol suitability screen with the spec's five point-in-time measures | Spec › Symbol suitability screen | P6-08 |
 | FR-M8 | Every metric computed per symbol × strategy, and pooled across the universe | Spec › Analytics | `pmcc verify` schema |
 
@@ -187,7 +187,7 @@ Every row points to its source. "Verified by" names the invariant test (INV-nn),
 | HR-4 | Negative available funds are flagged per bar, with the statement that the position couldn't have been held in a real Reg T account | ledger flags; UI state |
 | HR-5 | Small-sample statistics are shown with bootstrap CIs, never as standalone headlines. Sharpe and Sortino are unannualized, or labelled. | every run's weekly-return CI and the pooled CI (P6-05, DEC-61); no annualized figure is computed (DEC-60) |
 | HR-6 | Every sensitivity result is published in full; no best-cell picks | `{SYM}/robustness.json` holds every run (P6-06, DEC-65) |
-| HR-7 | The fill-assumption fit is published even where it's weak (the long leg) | P6-07 |
+| HR-7 | The fill-assumption fit is published even where it's weak (the long leg) | both groups' fits and every pair in `{SYM}/fill_check.json`, whatever they show (P6-07, DEC-64) |
 | HR-8 | Data coverage is disclosed: unanswered contracts, IV failures, stale-mark rates, unavailable fields | `coverage.json`, written by `pmcc batch` (P5-03, DEC-100); Methodology |
 | HR-9 | Stated assumptions: r (value and source); q = 0; no early assignment; dividends out of scope; Black-Scholes on American calls; the bar's final quotes aren't proven to be the NBBO (LDG §4.14) | Methodology |
 | HR-10 | Synthetic data can never pass for real | banner (DEC-74) |

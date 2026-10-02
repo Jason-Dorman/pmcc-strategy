@@ -236,9 +236,9 @@ def batch(
     out: Annotated[Path, typer.Option(help="Results directory.")] = Path("results"),
 ) -> None:
     """Run every symbol, strategy and variant in the universe: the 24-run matrix per symbol
-    (ARCHITECTURE §11), one process per symbol, then each symbol's coverage and robustness files,
-    then the universe's headline and pooled files. Exits 1 if any run, symbol file, symbol or
-    universe file failed; the rest are still written."""
+    (ARCHITECTURE §11), one process per symbol, then each symbol's coverage, robustness and
+    fill-check files, then the universe's headline, pooled and pooled fill-check files. Exits 1 if
+    any run, symbol file, symbol or universe file failed; the rest are still written."""
     log_path = configure_logging("batch")
     if universe is not None and universe.resolve() != UNIVERSE_PATH.resolve():
         _fail(f"{universe.as_posix()}: the universe is always configs/universe.yaml, so every run "
@@ -251,11 +251,12 @@ def batch(
     configs, families = _matrix(settings)
     stamp, seed = _stamp(), settings.bootstrap.seed
     jobs = [SymbolJob(cache, u, calendar, settings.risk_free_rate.value, configs, cash.value,
-                      stamp, out, families, seed) for u in settings.symbols]  # fmt: skip
+                      stamp, out, families, seed, settings.window)
+            for u in settings.symbols]  # fmt: skip
     outcome = run_batch(jobs, out, seed=seed, initializer=worker_logging)
     log.info("batch.done", symbols=len(outcome.symbols), runs=outcome.written,
              ok=outcome.ok, universe=len(outcome.universe))  # fmt: skip
-    _say(_describe_batch(outcome, out, len(configs)))
+    _say(describe_batch(outcome, out, len(configs)))
     if stamp.provenance.git.dirty:
         _say("git_dirty: true (uncommitted changes outside results/). Commit the code before a "
              "publishable batch: pmcc verify rejects dirty results (DEC-50).")  # fmt: skip
@@ -285,7 +286,7 @@ def worker_logging() -> None:
     configure_logging("batch", suffix=f"_worker{os.getpid()}")
 
 
-def _describe_batch(outcome: BatchOutcome, out: Path, matrix: int) -> str:
+def describe_batch(outcome: BatchOutcome, out: Path, matrix: int) -> str:
     lines = [_describe_symbol(s, out, matrix) for s in outcome.symbols]
     universe = ", ".join(p.as_posix() for p in outcome.universe) or "none"
     lines.append(f"Universe files: {universe}")
@@ -294,10 +295,11 @@ def _describe_batch(outcome: BatchOutcome, out: Path, matrix: int) -> str:
     broken = sum(s.error is not None for s in outcome.symbols)
     uncovered = sum(s.error is None and s.coverage is None for s in outcome.symbols)
     untabled = sum(s.error is None and s.robustness is None for s in outcome.symbols)
+    unchecked = sum(s.error is None and s.fill_check is None for s in outcome.symbols)
     lines.append(f"{outcome.written} runs written for {len(outcome.symbols)} symbol(s); "
-                 f"{failed} run(s) and {broken} symbol(s) failed; {uncovered} coverage and "
-                 f"{untabled} robustness file(s) not written; {len(outcome.universe_errors)} "
-                 "universe file(s) failed.")  # fmt: skip
+                 f"{failed} run(s) and {broken} symbol(s) failed; {uncovered} coverage, "
+                 f"{untabled} robustness and {unchecked} fill-check file(s) not written; "
+                 f"{len(outcome.universe_errors)} universe file(s) failed.")  # fmt: skip
     return "\n".join(lines)
 
 
@@ -305,10 +307,12 @@ def _describe_symbol(symbol: SymbolOutcome, out: Path, matrix: int) -> str:
     if symbol.error is not None:
         return f"{symbol.symbol}: FAILED: {symbol.error}"
     written = len(symbol.runs) - len(symbol.failed)
-    coverage, robustness = (_written(p) for p in (symbol.coverage, symbol.robustness))
+    coverage, robustness, checked = (
+        _written(p) for p in (symbol.coverage, symbol.robustness, symbol.fill_check)
+    )
     lines = [f"{symbol.symbol}: {written} of {matrix} runs written to "
              f"{(out / symbol.symbol).as_posix()}/; coverage.json {coverage}; "
-             f"robustness.json {robustness}"]  # fmt: skip
+             f"robustness.json {robustness}; fill_check.json {checked}"]  # fmt: skip
     lines += [f"  FAILED {r.run_id}: {r.error}" for r in symbol.failed]
     return "\n".join(lines)
 

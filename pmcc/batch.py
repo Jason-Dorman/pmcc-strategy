@@ -5,11 +5,14 @@ of the matrix on it, and writes each result (`{out}/{SYM}/{run_id}.json`), then 
 - `{SYM}/coverage.json`: the fetch summary's counts (DEC-16), which load and price the cache a
   second time as `pmcc fetch` does, and the strategies' stale-mark rate (HR-8);
 - `{SYM}/robustness.json`: the ablation, friction, timing and grid tables from the runs' summaries
-  (P6-06), written only when every run succeeded, since a table missing a row would mislead.
+  (P6-06), written only when every run succeeded, since a table missing a row would mislead;
+- `{SYM}/fill_check.json`: every trade print against its bar's mid, with the fits (P6-07, DEC-64),
+  from the cache the runs loaded.
 
 - **Failure isolation:** a run that fails writes nothing and is reported; the symbol's other runs
   go on. A symbol whose cache doesn't load, whose coverage or robustness file can't be written,
-  or whose worker raises or dies, is reported without stopping the others; so is a universe file
+  or whose worker raises or dies, is reported without stopping the others (a fill check that
+  can't be written too); so is a universe file
   that fails. The caller exits non-zero if anything failed.
 - **Processes:** each symbol has its own single-worker executor, so a worker that dies (an
   out-of-memory kill) breaks only its own symbol; at most one per CPU run at once. Workers are
@@ -20,9 +23,9 @@ of the matrix on it, and writes each result (`{out}/{SYM}/{run_id}.json`), then 
   (INV-13).
 - **Universe-level outputs** are computed last, from every symbol's strategy runs, and only when
   nothing failed: a pooled figure over part of the universe would be wrong. `UNIVERSE_WRITERS`
-  writes `universe/headline.json` (P6-01) and `universe/pooled.json` (P6-05, its bootstrap seeded
-  as every run's is); the suitability screen joins at P6-08 (PO, 2026-09-30). A writer that fails
-  is reported, and fails the batch.
+  writes `universe/headline.json` (P6-01), `universe/pooled.json` (P6-05, its bootstrap seeded as
+  every run's is) and `universe/pooled_fill_check.json` (P6-07); the suitability screen joins at
+  P6-08 (PO, 2026-09-30). A writer that fails is reported, and fails the batch.
 """
 
 import multiprocessing
@@ -37,23 +40,25 @@ from typing import final
 import structlog
 from pydantic import BaseModel
 
+from pmcc.analytics.fillcheck import fill_check, pooled_fill_check
 from pmcc.analytics.robustness import robustness
 from pmcc.analytics.scores import RunScore
 from pmcc.analytics.universe import headline, pooled
 from pmcc.config.matrix import Family
 from pmcc.config.strategy import Detail, RunConfig
-from pmcc.config.universe import Underlying
+from pmcc.config.universe import Underlying, Window
 from pmcc.data import coverage as fetch_coverage
-from pmcc.data.cache import CacheError
+from pmcc.data.cache import CacheError, SymbolCache
 from pmcc.data.calendar import CalendarMismatchError
 from pmcc.data.discovery import UnitKind
 from pmcc.data.files import replace_file
-from pmcc.data.load import load_symbol
+from pmcc.data.fillcheck import fill_pairs
+from pmcc.data.load import SymbolData, load_symbol
 from pmcc.domain.calendar import SessionCalendar
 from pmcc.domain.errors import EngineError
 from pmcc.domain.money import Money
 from pmcc.export import canonical
-from pmcc.export.analytics_models import Coverage, CoverageRow
+from pmcc.export.analytics_models import Coverage, CoverageRow, FillCheck
 from pmcc.export.models import RunResult
 from pmcc.export.results import write_result
 from pmcc.export.verify import UNIVERSE_DIR
@@ -62,7 +67,9 @@ from pmcc.runner import Market, Stamp, run_market
 log = structlog.get_logger()
 
 COVERAGE_FILE, ROBUSTNESS_FILE = "coverage.json", "robustness.json"
+FILL_CHECK_FILE = "fill_check.json"
 HEADLINE_FILE, POOLED_FILE = "headline.json", "pooled.json"
+POOLED_FILL_CHECK_FILE = "pooled_fill_check.json"
 
 # The failures a run or a symbol is reported for; anything else is a bug, and kills the worker.
 _RUN_FAILURES = (CacheError, EngineError, ValueError, OSError)
@@ -84,6 +91,7 @@ class SymbolJob:
     out: Path
     families: Mapping[str, Family]  # each run ID's robustness table (P6-06)
     seed: int  # the bootstrap's (DEC-61)
+    window: Window  # every config's, which the fill check's pairs lie in (P6-07)
 
 
 @final
@@ -102,6 +110,7 @@ class SymbolOutcome:
     coverage: Path | None  # None if it wasn't written: a failure too
     error: str | None = None  # the symbol itself failed: its cache didn't load, or its worker died
     robustness: Path | None = None  # None if any run failed, or it couldn't be written
+    fill_check: Path | None = None  # None if it couldn't be written
 
     @property
     def failed(self) -> tuple[RunOutcome, ...]:
@@ -109,8 +118,8 @@ class SymbolOutcome:
 
     @property
     def ok(self) -> bool:
-        written = self.coverage is not None and self.robustness is not None
-        return self.error is None and not self.failed and written
+        files = (self.coverage, self.robustness, self.fill_check)
+        return self.error is None and not self.failed and None not in files
 
 
 @final
@@ -128,6 +137,11 @@ class UniverseStage:
                            for r in o.runs if r.path is not None and "--" not in r.run_id]
                 for o in self.outcomes}  # fmt: skip
 
+    def fill_checks(self) -> list[FillCheck]:
+        """Each symbol's fill check, read back from its file."""
+        return [FillCheck.model_validate_json(o.fill_check.read_bytes())
+                for o in self.outcomes if o.fill_check is not None]  # fmt: skip
+
 
 type UniverseWriter = Callable[[UniverseStage], Path]
 
@@ -143,7 +157,14 @@ def write_pooled(stage: UniverseStage) -> Path:
     return _write(path, pooled(stage.strategy_scores(), stage.seed))
 
 
-UNIVERSE_WRITERS: tuple[UniverseWriter, ...] = (write_headline, write_pooled)
+def write_pooled_fill_check(stage: UniverseStage) -> Path:
+    """`universe/pooled_fill_check.json`: each group's fit over every symbol (P6-07, DEC-64)."""
+    path = stage.out / UNIVERSE_DIR / POOLED_FILL_CHECK_FILE
+    return _write(path, pooled_fill_check(stage.fill_checks()))
+
+
+UNIVERSE_WRITERS: tuple[UniverseWriter, ...] = (write_headline, write_pooled,
+                                                write_pooled_fill_check)  # fmt: skip
 """Each writes one universe file and returns its path. Suitability (P6-08) needs each symbol's
 cache, which `UniverseStage` doesn't carry: P6-08 widens it or the workers' outcomes."""
 
@@ -223,7 +244,8 @@ def _outcome(job: SymbolJob, future: "Future[SymbolOutcome]") -> SymbolOutcome:
 
 
 def run_job(job: SymbolJob) -> SymbolOutcome:
-    """Every config of `job` on its symbol, then the symbol's coverage and robustness files."""
+    """Every config of `job` on its symbol, then the symbol's coverage, robustness and fill-check
+    files."""
     symbol = job.underlying.symbol
     try:
         loaded = load_symbol(job.cache, symbol, job.calendar)
@@ -236,9 +258,10 @@ def run_job(job: SymbolJob) -> SymbolOutcome:
     results = [result for _, result in ran if result is not None]
     covered = _write_coverage(job, results)
     robust = _write_robustness(job, results) if len(results) == len(runs) else None
+    checked = _write_fill_check(job, loaded)
     log.info("batch.symbol.done", symbol=symbol, runs=len(runs), failed=sum(
         r.error is not None for r in runs))  # fmt: skip
-    return SymbolOutcome(symbol, runs, covered, robustness=robust)
+    return SymbolOutcome(symbol, runs, covered, robustness=robust, fill_check=checked)
 
 
 def _run(market: Market, config: RunConfig, job: SymbolJob) -> tuple[RunOutcome, RunResult | None]:
@@ -271,6 +294,18 @@ def _write_robustness(job: SymbolJob, results: Sequence[RunResult]) -> Path | No
         return _write(job.out / symbol / ROBUSTNESS_FILE, tables)
     except (ValueError, OSError):
         log.exception("batch.robustness.abort", symbol=symbol)
+        return None
+
+
+def _write_fill_check(job: SymbolJob, loaded: SymbolData) -> Path | None:
+    """`{SYM}/fill_check.json` from the loaded cache, or None (logged) if it can't be written."""
+    symbol = job.underlying.symbol
+    try:
+        units = SymbolCache(job.cache, symbol).units()
+        groups = fill_pairs(loaded, units, (job.window.start, job.window.end))
+        return _write(job.out / symbol / FILL_CHECK_FILE, fill_check(symbol, groups))
+    except _SYMBOL_FAILURES:
+        log.exception("batch.fill_check.abort", symbol=symbol)
         return None
 
 

@@ -91,6 +91,8 @@ pmcc/
                  measure_step (DEC-14) (DEC-88)
     estimate.py  the estimate printed before any option request: steps from the probe report
     coverage.py  the coverage summary printed after a fetch, from the cache (DEC-16)
+    fillcheck.py fill_pairs: each call's prints paired with their bar's mid, shorts and longs,
+                 from the loaded cache and its sidecars' bands (P6-07; DEC-64, DEC-103)
     probe/       the P1-04 probes over the HistoryProvider port, one module per DEC check;
                  one report per symbol (§6.2, DEC-85)
     files.py     write_new (whole or not at all, never over a file), replace_file (DEC-87)
@@ -119,7 +121,8 @@ pmcc/
                  Greek, bar by bar; DEC-63, DEC-76), run.py (analyze: one run's analytics;
                  attribute: a full run's attribution), scores.py (RunScore: a finished run's
                  summary), robustness.py (the four tables; DEC-65), universe.py (headline, pooled)
-                 (DEC-101, DEC-102); fillcheck.py, suitability.py join at P6-07, P6-08
+                 (DEC-101, DEC-102), fillcheck.py (the fill-assumption fits, per symbol and pooled;
+                 DEC-64, DEC-103); suitability.py joins at P6-08
   export/        canonical.py (canonical JSON, INV-13's timestamp drop), manifest.py (git SHA and
                  dirtiness, lockfile hash, version), results.py (write_result) (P3-08, DEC-92);
                  base.py (the strict model, dollars, schema version), models.py (a run's file),
@@ -129,9 +132,9 @@ pmcc/
   runner.py      run_symbol: load a cache, run the engine and the run's analytics, build the
                  RunResult (DEC-92, DEC-101)
   calibration.py calibrate: measure each run's first long entry, verify the value (DEC-93)
-  batch.py       pmcc batch: the run matrix on each symbol in a spawned process, coverage.json
-                 and robustness.json, the universe-level stage: headline.json, pooled.json
-                 (DEC-100, DEC-101)
+  batch.py       pmcc batch: the run matrix on each symbol in a spawned process, coverage.json,
+                 robustness.json and fill_check.json, the universe-level stage: headline.json,
+                 pooled.json, pooled_fill_check.json (DEC-100, DEC-101, DEC-103)
   log.py         structlog JSON setup: stderr + logs/{command}_{timestamp}.jsonl (DEC-80)
   cli.py         typer: fetch, probe, run, batch, calibrate, export, verify, serve
 configs/         _shared.yaml, baseline_pmcc.yaml, quant_pmcc.yaml, ablations/a1…a5.yaml,
@@ -642,10 +645,10 @@ The run matrix per symbol has 24 runs:
 
 `pmcc batch [--universe configs/universe.yaml] [--cache data_cache] [--out results]` (`pmcc/batch.py`, P5-03, DEC-100) works as follows:
 
-1. Per symbol: load once, price chains once, then run the matrix, writing each result as `pmcc run` would, byte for byte. Then write `{SYM}/coverage.json`, which loads and prices the cache a second time, as the fetch summary does, and `{SYM}/robustness.json` from the runs' summaries, only when every run succeeded (P6-06, DEC-101).
+1. Per symbol: load once, price chains once, then run the matrix, writing each result as `pmcc run` would, byte for byte. Then write `{SYM}/coverage.json`, which loads and prices the cache a second time, as the fetch summary does, and `{SYM}/robustness.json` from the runs' summaries, only when every run succeeded (P6-06, DEC-101). Last, `{SYM}/fill_check.json` from the cache the runs loaded: `pmcc.data.fillcheck` pairs each print with its mid, and `pmcc.analytics.fillcheck` fits them (P6-07, DEC-64, DEC-103).
 2. Each symbol runs in its own spawned single-worker process pool, at most one per CPU at once (never forked, so Windows and Linux run alike, DEC-58), so a worker that dies breaks only its own symbol. A job carries everything its worker needs; each worker logs to its own file.
-3. A failed run writes nothing and is reported, and the symbol's other runs go on; a symbol whose cache won't load, whose coverage or robustness file can't be written, or whose worker raises or dies, is reported without stopping the others, and so is a universe file that fails (DEC-101). The batch exits non-zero if anything failed, and its summary line counts each kind.
-4. Universe-level outputs are computed last, in the parent, and only when nothing failed, from each symbol's two strategy runs read back from their files: `universe/headline.json` (P6-01) and `universe/pooled.json` (P6-05, seeded as every run's CI is); suitability joins at P6-08 (PO, DEC-100). A writer that fails is reported and fails the batch; the others still write (DEC-101).
+3. A failed run writes nothing and is reported, and the symbol's other runs go on; a symbol whose cache won't load, whose coverage, robustness or fill-check file can't be written, or whose worker raises or dies, is reported without stopping the others, and so is a universe file that fails (DEC-101). The batch exits non-zero if anything failed, and its summary line counts each kind.
+4. Universe-level outputs are computed last, in the parent, and only when nothing failed, from each symbol's two strategy runs read back from their files: `universe/headline.json` (P6-01) and `universe/pooled.json` (P6-05, seeded as every run's CI is), then `universe/pooled_fill_check.json` from each symbol's fill check read back (P6-07, DEC-103); suitability joins at P6-08 (PO, DEC-100). A writer that fails is reported and fails the batch; the others still write (DEC-101).
 5. `--universe` may only name `configs/universe.yaml`, so every run's starting cash comes from there (DEC-30).
 
 Determinism controls (INV-13):
@@ -655,7 +658,7 @@ Determinism controls (INV-13):
 | Float accumulation in cash/NAV | Integer money (DEC-44) |
 | Aggregation and row order | Explicit sorts; polars `maintain_order=True` |
 | Randomness (bootstrap) | A fresh PCG64 per CI, seeded from `universe.yaml`'s `bootstrap.seed`; seed recorded in every CI (DEC-61) |
-| Float sums (analytics) | the metrics' `statistics.fmean` and `stdev` sum exactly; the bootstrap's numpy means are fixed by the weeks and their order; the Greek attribution sums each float term as an exact `Fraction`, so its totals and residual line don't depend on order; ratios come from integer money (DEC-101, DEC-102) |
+| Float sums (analytics) | the metrics' `statistics.fmean` and `stdev` sum exactly; the bootstrap's numpy means are fixed by the weeks and their order; the Greek attribution sums each float term as an exact `Fraction`, so its totals and residual line don't depend on order; the fill check's OLS sums whole $0.0001 units and its median gap is exact; ratios come from integer money (DEC-101, DEC-102, DEC-103) |
 | Parallelism | Runs are independent; one file each; content never depends on completion order |
 | Serialization | Canonical JSON (DEC-50) |
 | Clock | `run_timestamp` only in the manifest, excluded from INV-13 with `git_sha` (DEC-50) |
@@ -668,10 +671,14 @@ Determinism controls (INV-13):
 results/                            committed; every file here is one the pipeline writes (verify)
   universe/pooled.json              pooled metrics + week-block bootstrap CIs
   universe/headline.json            per-symbol headline table
+  universe/pooled_fill_check.json   the fill check's fits over every symbol's pairs (DEC-103)
   universe/suitability.json         symbol suitability screen
   {SYM}/{run_id}.json               RunResult, full or summary
   {SYM}/robustness.json             ablation, friction, timing and grid tables
-  {SYM}/fill_check.json             scatter points (raw pairs, DEC-05) + fit
+  {SYM}/fill_check.json             shorts and longs: every print/mid pair as columns of mid,
+                                    trade and spread (DEC-05), and the fit: slope, intercept,
+                                    R², N, median |trade − mid| ÷ spread, locked quotes (DEC-64,
+                                    DEC-103); NVDA's is 3.9 MB, under its own 8 MB guard
   {SYM}/coverage.json               derived data-coverage counts: per unit kind, contracts and
                                     valid-mid share; IV failures of iv_priced bars; the strategies'
                                     stale-mark rate; unavailable fields (pmcc batch, DEC-100)
@@ -800,7 +807,7 @@ CI (`.github/workflows/ci.yml`, on push and PR; DEC-79):
 | `deploy` | `main` pushes only; needs `python` and `web`; the only job with `pages: write` and `id-token: write`; `actions/deploy-pages` to the `github-pages` environment |
 
 - **Dist guard** (`web/scripts/dist-guard.mjs`, DEC-98): fails if any file in `web/dist` references `localhost:9000`, an `lseg`/`refinitiv` URL, or `fonts.googleapis.com`/`fonts.gstatic.com`, or if the build is empty. It matches hosts, not words: the results say `"data_source":"lseg"`, and the footer's github.com links and r's FRED source are expected. The smoke test also fails on any cross-origin request (P4-08, DEC-99).
-- **Pre-commit:** ruff, ruff-format, pyright, check-yaml, end-of-file-fixer (never on `data_cache/`, DEC-05), check-added-large-files (500 KB; 2 MB under `results/` and `data_cache/`, DEC-92, DEC-05), detect-private-key, and a local hook that rejects a staged `lseg-data.config.json`.
+- **Pre-commit:** ruff, ruff-format, pyright, check-yaml, end-of-file-fixer (never on `data_cache/`, DEC-05), check-added-large-files (500 KB; 2 MB under `results/` and `data_cache/`, DEC-92, DEC-05; 8 MB for `results/*/fill_check.json`, DEC-103), detect-private-key, and a local hook that rejects a staged `lseg-data.config.json`.
   - ruff and pyright run through `uv run --frozen`, at the `uv.lock` versions. The reference files are excluded from every hook (DEC-57, DEC-77).
   - The CI pytest step sets `HYPOTHESIS_PROFILE=ci`.
 

@@ -1,6 +1,7 @@
 """`pmcc batch` (P5-03): the 24-run matrix on every universe symbol, one spawned process per symbol,
-each symbol's coverage and robustness files (P6-06), failure isolation, and the universe-level
-stage with its headline and pooled files (P6-01, P6-05) (ARCHITECTURE §11).
+each symbol's coverage, robustness (P6-06) and fill-check (P6-07) files, failure isolation, and the
+universe-level stage with its headline, pooled and pooled fill-check files (P6-01, P6-05, P6-07)
+(ARCHITECTURE §11).
 
 Two synthetic symbols, SYN and TWO, are the `random_walk` market under two names, cached in a
 temporary directory. A test universe in the working directory stands in for configs/universe.yaml,
@@ -19,10 +20,14 @@ from typer.testing import CliRunner
 
 from pmcc import batch, cli
 from pmcc.analytics.bootstrap import mean_ci
+from pmcc.analytics.fillcheck import fill_check, pooled_fill_check
 from pmcc.analytics.robustness import robustness
 from pmcc.analytics.scores import RunScore
 from pmcc.batch import (
+    BatchOutcome,
+    RunOutcome,
     SymbolJob,
+    SymbolOutcome,
     UniverseStage,
     run_batch,
     run_job,
@@ -34,12 +39,23 @@ from pmcc.config.matrix import run_families, run_matrix
 from pmcc.config.strategy import CONFIGS_DIR
 from pmcc.config.universe import UNIVERSE_PATH, Underlying, Universe, read_universe_file
 from pmcc.data import coverage as fetch_coverage
+from pmcc.data.cache import SymbolCache
 from pmcc.data.discovery import UnitKind
+from pmcc.data.fillcheck import fill_pairs
+from pmcc.data.load import load_symbol
 from pmcc.domain.calendar import SessionCalendar
 from pmcc.domain.clock import ET
 from pmcc.domain.money import Money
 from pmcc.export import canonical
-from pmcc.export.analytics_models import Coverage, Headline, Metrics, Pooled, Robustness
+from pmcc.export.analytics_models import (
+    Coverage,
+    FillCheck,
+    Headline,
+    Metrics,
+    Pooled,
+    PooledFillCheck,
+    Robustness,
+)
 from pmcc.export.manifest import GitState, Provenance
 from pmcc.export.models import DataSource, LedgerRowOut, RunResult
 from pmcc.export.verify import verify
@@ -108,7 +124,7 @@ def _batch(cache: Path, *extra: str) -> tuple[int, str]:
 
 def _runs(symbol: str, out: str = "results") -> list[str]:
     return sorted(p.stem for p in Path(out, symbol).glob("*.json")
-                  if p.stem not in ("coverage", "robustness"))  # fmt: skip
+                  if p.stem not in ("coverage", "robustness", "fill_check"))  # fmt: skip
 
 
 # ---- the CLI, through the process pool --------------------------------------------------------
@@ -133,14 +149,16 @@ def test_p5_03_batch_writes_every_run_and_coverage_for_each_symbol(
         assert coverage.symbol == symbol
         assert {r.kind for r in coverage.rows} >= {"stock", "puts"}
     assert len(matrix) * len(SYMBOLS) == 48
-    assert ("48 runs written for 2 symbol(s); 0 run(s) and 0 symbol(s) failed; 0 coverage and "
-            "0 robustness file(s) not written; 0 universe file(s) failed.") in output  # fmt: skip
-    assert ("Universe files: elsewhere/universe/headline.json, "
-            "elsewhere/universe/pooled.json") in output  # fmt: skip
+    assert ("48 runs written for 2 symbol(s); 0 run(s) and 0 symbol(s) failed; 0 coverage, "
+            "0 robustness and 0 fill-check file(s) not written; 0 universe file(s) "
+            "failed.") in output  # fmt: skip
+    assert ("Universe files: elsewhere/universe/headline.json, elsewhere/universe/pooled.json, "
+            "elsewhere/universe/pooled_fill_check.json") in output  # fmt: skip
     assert sorted(p.name for p in Path("logs").glob("batch_*_worker*.jsonl"))  # workers log apart
     verified = verify(Path("elsewhere"))  # schema, canonical bytes, a clean tree, the invariants
     assert verified.problems == ()
-    assert (verified.runs, verified.files) == (48, 54)  # + 2 coverage, 2 robustness, 2 universe
+    assert (verified.runs, verified.files) == (48, 57)  # + 2 each coverage, robustness and fill
+    # check, and 3 universe files
 
     # A run in the batch is the run `pmcc run` makes (both stamp the same clock here).
     config = (CONFIGS_DIR / "quant_pmcc.yaml").as_posix()
@@ -175,6 +193,19 @@ def test_p5_03_batch_writes_every_run_and_coverage_for_each_symbol(
     assert {s.weekly_return.seed for s in pool.strategies if s.weekly_return} == {SEED}
     assert pool.strategies[0].total_pnl == sum(
         _metrics(results[s]["baseline_pmcc"]).pnl for s in SYMBOLS)  # fmt: skip
+    # The pooled fill check fits both symbols' files' pairs together.
+    checks = [FillCheck.model_validate_json(Path("elsewhere", s, "fill_check.json").read_bytes())
+              for s in SYMBOLS]  # fmt: skip
+    raw = Path("elsewhere/universe/pooled_fill_check.json").read_bytes()
+    assert raw == canonical.to_bytes(pooled_fill_check(checks).model_dump())
+    assert PooledFillCheck.model_validate_json(raw).symbols == SYMBOLS
+    # Each symbol's pairs span the universe's whole window, as the CLI hands it to its job.
+    window = (universe.window.start, universe.window.end)
+    for symbol in SYMBOLS:
+        data = load_symbol(market, symbol, load_calendar())
+        groups = fill_pairs(data, SymbolCache(market, symbol).units(), window)
+        assert Path("elsewhere", symbol, "fill_check.json").read_bytes() == canonical.to_bytes(
+            fill_check(symbol, groups).model_dump())  # fmt: skip
 
 
 def _metrics(result: RunResult) -> Metrics:
@@ -231,7 +262,7 @@ def _job(market: Path, out: Path, symbol: str = "SYN", rate: float | None = None
     underlying = Underlying(symbol=symbol, stock_ric=f"{symbol}.O", option_root=symbol)
     return SymbolJob(market, underlying, load_calendar(), rate or universe.risk_free_rate.value,
                      configs, Money.from_dollars(15_000), stamp, out, run_families(),
-                     universe.bootstrap.seed)  # fmt: skip
+                     universe.bootstrap.seed, universe.window)  # fmt: skip
 
 
 def test_p5_03_a_failed_run_writes_nothing_and_the_rest_go_on(workdir: Path, market: Path) -> None:
@@ -294,6 +325,48 @@ def test_p6_06_robustness_file_tables_every_family_from_the_runs_summaries(
     assert tables.timing_dispersion is not None
     assert tables.timing_dispersion.runs == 7
     assert verify(Path("out")).problems == ()
+
+
+def test_p6_07_fill_check_file_pairs_every_print_in_the_window_from_the_cache(
+    workdir: Path, market: Path
+) -> None:
+    """The file is the cache's pairs over the universe's window, fitted, as canonical JSON."""
+    job = _job(market, Path("out"))
+
+    outcome = run_job(job)
+
+    assert outcome.ok
+    assert outcome.fill_check == Path("out/SYN/fill_check.json")
+    raw = Path("out/SYN/fill_check.json").read_bytes()
+    data = load_symbol(market, "SYN", job.calendar)
+    groups = fill_pairs(data, SymbolCache(market, "SYN").units(),
+                        (job.window.start, job.window.end))  # fmt: skip
+    assert raw == canonical.to_bytes(fill_check("SYN", groups).model_dump())
+    check = FillCheck.model_validate_json(raw)
+    assert [(g.group, g.fit is not None) for g in check.groups] == [("shorts", True),
+                                                                    ("longs", True)]  # fmt: skip
+    assert verify(Path("out")).problems == ()
+
+
+def test_p6_07_a_fill_check_not_written_fails_the_symbol(workdir: Path, market: Path) -> None:
+    Path("out/SYN/fill_check.json").mkdir(parents=True)
+
+    outcome = run_job(_job(market, Path("out")))
+
+    assert outcome.coverage is not None
+    assert outcome.robustness is not None
+    assert (outcome.fill_check, outcome.ok) == (None, False)
+
+
+def test_p6_07_batch_summary_counts_a_fill_check_not_written() -> None:
+    written = Path("out/SYN/coverage.json")
+    symbol = SymbolOutcome("SYN", (RunOutcome("baseline_pmcc", written),), written,
+                           robustness=written, fill_check=None)  # fmt: skip
+
+    text = cli.describe_batch(BatchOutcome((symbol,), ()), Path("out"), 1)
+
+    assert "robustness.json written; fill_check.json NOT written: FAILED" in text
+    assert "0 coverage, 0 robustness and 1 fill-check file(s) not written" in text
 
 
 def test_p6_06_a_robustness_file_that_cant_be_built_fails_the_symbol(

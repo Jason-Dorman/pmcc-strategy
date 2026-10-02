@@ -196,8 +196,8 @@ Panels that depend on the data follow the selected symbol and show pooled figure
 | 1 | Data coverage | 5 | contracts requested / answered / unanswered, mid availability, IV failures, stale-mark rate, unavailable fields |
 | — | Bar timing and look-ahead guard | 10 | Prose: the verified convention (DEC-06), decision time = bar end, MarketView's structural guarantee; the session close is the close bar's last trade, not the official closing auction (DEC-23) |
 | — | Fill model | 10 | Prose + key/value: mid fills, no quote → no fill, `spread_capture`, fees |
-| 2 | Mid vs print — weekly shorts | 5 | scatter + fit + R² |
-| 3 | Mid vs print — long-dated longs | 5 | scatter + fit + R² (expected to fit worse, and reported as such) |
+| 2 | Mid vs print — weekly shorts | 5 | scatter of every pair + fitted line; slope, intercept, R², N, median \|print − mid\| as % of spread, the pooled fit beside them (`fill_check.json`, `pooled_fill_check.json`; DEC-64); the caveat that a print can be up to an hour older than the end-of-bar quote |
+| 3 | Mid vs print — long-dated longs | 5 | as [2], for the longs (expected to fit worse, and reported whatever it shows, HR-7) |
 | — | Reg T treatment | 10 | Prose with exact citations (DEC-10) |
 | 4 | Friction | 5 | each strategy at `spread_capture` 0, then 0.25 and 0.50 against it: P&L, Δ, max drawdown, payoff, CI (DEC-65) |
 | 5 | Entry timing | 5 | the E-T1 baseline, then each fixed Monday bar against it: P&L, Δ, max drawdown, payoff, CI; range and sample standard deviation over the fixed bars alone; large dispersion flagged as fragility (DEC-65) |

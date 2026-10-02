@@ -5,7 +5,8 @@ These are the shapes the site reads, fixed at P4-05 so the frontend is typed aga
 it will load (INV-14). Their fields follow Spec › Analytics and metrics and the panels of UI-SPEC
 §6, and `pmcc.analytics` computes them as the PO defined each number (DEC-60 to DEC-64, DEC-76):
 the performance metrics, cycles and bootstrap CIs at P6-01, P6-02 and P6-05, the attribution at
-P6-03 and P6-04, the robustness tables at P6-06; the rest stay null until their P6 item. A P6 item
+P6-03 and P6-04, the robustness tables at P6-06, the fill-assumption check at P6-07; the rest stay
+null until their P6 item. A P6 item
 may reshape a model when it builds it, regenerating the schema, and `tsc` then shows the site what
 changed (ARCHITECTURE §16).
 
@@ -14,6 +15,9 @@ Every ratio is a fraction, whatever its name says (0.25 is 25%); the site format
 
 from collections.abc import Mapping
 from datetime import date, datetime
+from typing import Self
+
+from pydantic import model_validator
 
 from pmcc.export.base import SCHEMA_VERSION, Dollars, Model, SchemaVersion
 
@@ -225,31 +229,70 @@ class Robustness(Model):
     grid: tuple[RobustnessRow, ...]
 
 
-class FillPoint(Model):
-    mid: Dollars
-    trade: Dollars  # TRDPRC_1
+class FillPoints(Model):
+    """Every pair, not bins (PO, DEC-05), as three columns of one length: the i-th of each is one
+    contract's session bar. `mid` is (BID + ASK) ÷ 2 at the bar's end, rounded half-even to
+    $0.0001 as a fill at mid is; `trade` is the bar's TRDPRC_1, its last trade, which can be up to
+    an hour older than the quote; `spread` is ASK − BID. Ordered by bar, expiry and strike."""
+
+    mid: tuple[Dollars, ...]
+    trade: tuple[Dollars, ...]
+    spread: tuple[Dollars, ...]
+
+    @model_validator(mode="after")
+    def _one_length(self) -> Self:
+        if not len(self.mid) == len(self.trade) == len(self.spread):
+            raise ValueError("mid, trade and spread must be one length")
+        return self
 
 
 class Fit(Model):
+    """OLS of trade on mid (DEC-64), computed exactly from the $0.0001 units: `trade ≈ slope × mid
+    + intercept`, the intercept in dollars. `r2` is null when every trade is the same. The median
+    gap is |trade − mid| ÷ spread, so 0.5 is a print at the bid or the ask; a locked quote (BID =
+    ASK) has no spread and is left out of it, and counted in `locked`."""
+
     slope: float
     intercept: float
-    r2: float
+    r2: float | None
     n: int
-    median_abs_gap_pct_spread: float | None
+    median_abs_gap_pct_spread: float | None  # a fraction of the spread; null if every quote locked
+    locked: int
 
 
 class FillGroup(Model):
+    """`shorts`: weekly calls over the weekly's dates (the prior week's first session to its
+    expiry). `longs`: the long candidates, monthly calls before those dates (DEC-64). A monthly
+    that is also a weekly expiry is split by the bands it was fetched with: its shorts are the
+    strikes from its near-money band's padded floor up, its longs those up to its deep bands'
+    padded top. `fit` is null under 2 pairs, or when every mid is the same."""
+
     group: str  # "shorts" or "longs"
-    points: tuple[FillPoint, ...]  # every pair, not bins (PO, DEC-05)
+    points: FillPoints
     fit: Fit | None
 
 
 class FillCheck(Model):
-    """`{SYM}/fill_check.json`: TRDPRC_1 against mid (P6-07, DEC-64)."""
+    """`{SYM}/fill_check.json`: TRDPRC_1 against mid on session bars of the window with a trade
+    and a valid quote (P6-07; PO, DEC-64), shorts then longs."""
 
     schema_version: SchemaVersion = SCHEMA_VERSION
     symbol: str
     groups: tuple[FillGroup, ...]
+
+
+class PooledFillGroup(Model):
+    group: str  # "shorts" or "longs"
+    fit: Fit | None  # over every symbol's points in the group
+
+
+class PooledFillCheck(Model):
+    """`universe/pooled_fill_check.json` (P6-07; PO, DEC-64): each group's fit over every symbol's
+    pairs together. The points are each symbol's own file's."""
+
+    schema_version: SchemaVersion = SCHEMA_VERSION
+    symbols: tuple[str, ...]
+    groups: tuple[PooledFillGroup, ...]
 
 
 class CoverageRow(Model):
@@ -338,5 +381,6 @@ SYMBOL_FILES: Mapping[str, type[Model]] = {
 UNIVERSE_FILES: Mapping[str, type[Model]] = {
     "pooled": Pooled,
     "headline": Headline,
+    "pooled_fill_check": PooledFillCheck,
     "suitability": Suitability,
 }

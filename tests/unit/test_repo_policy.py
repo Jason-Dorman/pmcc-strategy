@@ -72,6 +72,16 @@ def test_dec_05_no_hook_rewrites_the_cache() -> None:
     assert _applies(fixer, "docs/DECISIONS.md")
 
 
+@pytest.mark.parametrize(
+    ("path", "limit"),
+    [("results/NVDA/fill_check.json", "--maxkb=8192"), ("results/NVDA/quant_pmcc.json",
+     "--maxkb=2048"), ("results/universe/pooled_fill_check.json", "--maxkb=2048")],
+)  # fmt: skip
+def test_dec_103_a_fill_check_alone_has_a_larger_results_limit(path: str, limit: str) -> None:
+    applying = [hook for hook in _hooks("check-added-large-files") if _applies(hook, path)]
+    assert [hook["args"] for hook in applying] == [[limit]]
+
+
 def test_dec_05_the_cache_has_its_own_large_file_limit() -> None:
     manifest = "data_cache/NVDA/manifest.json"
     applying = [hook for hook in _hooks("check-added-large-files") if _applies(hook, manifest)]

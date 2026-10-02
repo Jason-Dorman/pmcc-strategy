@@ -21,7 +21,15 @@ def _defs(name: str) -> dict[str, Schema]:
 
 def test_schema_every_file_the_site_reads_has_one() -> None:
     site = ["index", "rules", "run_result"]
-    analytics = ["robustness", "fill_check", "coverage", "pooled", "headline", "suitability"]
+    analytics = [
+        "robustness",
+        "fill_check",
+        "coverage",
+        "pooled",
+        "headline",
+        "pooled_fill_check",
+        "suitability",
+    ]
 
     assert sorted(SCHEMAS) == sorted(site + analytics)
 

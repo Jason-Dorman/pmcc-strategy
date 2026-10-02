@@ -115,6 +115,7 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-100 | Sensitivity variants, the run matrix and `pmcc batch` | ENG · universe files at P6, coverage at P5-03 (PO, 2026-09-30); full batch run at P5-04 (2026-10-01) | — |
 | DEC-101 | The analytics: performance, cycles, bootstrap CIs, robustness tables | ENG | — |
 | DEC-102 | Attribution: what the engine records for it, the leg and Greek modules | ENG | — |
+| DEC-103 | The fill-assumption check: its sample, exact fit, files and size limit | ENG · the file's size put to the PO | handover 2026-10-01 |
 
 ---
 
@@ -2024,6 +2025,73 @@ How P4-05 builds the results contract (ARCHITECTURE §12). None of it changes wh
     found the below-floor reading is DEC-63's own wording ("a failed IV") read with DEC-27, and
     the rest don't arise in the published runs; all are listed for the PO to change.
 
+### DEC-103 — The fill-assumption check: its sample, exact fit, files and size limit
+**Status:** ENG · the file's size put to the PO at handover · **Affects:** P6-07, P6-09, P7-04; DEC-05, DEC-16, DEC-64, DEC-92, DEC-100
+
+- **Two halves, by the import rules** (ARCHITECTURE §3.3 rule 5: analytics never imports data):
+  - `pmcc/data/fillcheck.py` (`fill_pairs`) reads the loaded cache and its sidecars' bands, and
+    returns each group's pairs as columns of $0.0001 units, ordered by bar, expiry and strike;
+  - `pmcc/analytics/fillcheck.py` fits them (`fit`) and builds the symbol's file (`fill_check`)
+    and the pooled one (`pooled_fill_check`). It reads pairs through a protocol (`FillPairs`), so
+    it never sees the data package.
+- **The fit is exact:** the OLS sums are taken over whole $0.0001 units and the slope, intercept
+  and R² as `Fraction`s; the median gap is a median of exact fractions. So no figure depends on
+  the order of the points (INV-13), and the pooled fit is the fit of every pair at once. There is
+  no fit under 2 pairs or when every mid is the same; R² is null when every trade is.
+- **Files** (`pmcc batch`, DEC-100):
+  - `{SYM}/fill_check.json`, written by the symbol's worker from the cache the runs loaded,
+    whether or not every run succeeded, since it doesn't depend on them. A file that can't be
+    written fails the symbol, as coverage does. `SymbolJob` now carries the universe's window.
+  - `universe/pooled_fill_check.json`, from a new universe writer, from each symbol's file read
+    back. It holds the fits alone; the points are each symbol's. It isn't
+    `universe/fill_check.json` because the JSON Schemas are keyed by file stem, and the two
+    would collide.
+- **Model reshapes** (`pmcc/export/analytics_models.py`, P4-05's shapes):
+  - `FillPoint` rows become `FillPoints`, three columns of one length (`mid`, `trade`, `spread`).
+    One object per pair would be 5.4 MB for NVDA; the columns are 3.9 MB. `spread` is new: it
+    lets the pooled fit and the median gap be rebuilt from the published files.
+  - `Fit` gains `locked`, and its `r2` may be null.
+  - `PooledFillGroup` and `PooledFillCheck` are new, in `UNIVERSE_FILES`, so `pmcc verify`
+    checks the file and `pmcc export` lists it in `index.json`.
+- **Size:** NVDA's file is 3,880,258 bytes, 0.83 MB gzipped (GitHub Pages serves it gzipped).
+  DEC-92's 2 MB guard on `results/` would refuse it at P6-09, so `.pre-commit-config.yaml` gives
+  `results/*/fill_check.json` its own 8 MB limit and keeps 2 MB for every other result file;
+  `tests/unit/test_repo_policy.py` pins both. **Put to the PO at handover:** publishing every
+  pair (DEC-05) costs a 3.9 MB file per symbol, and about 170,000 points across the Methodology
+  page's two scatters (P7-04).
+- **Tests (27 new, 2,084 in the suite, 1 of them from the review):**
+  - `tests/unit/analytics/test_fillcheck.py` (12): the fit worked by hand (slope 1, intercept
+    $0.025, R² 400/401), the same whatever the order, the median gap with a locked quote, every
+    quote locked, no fit without two distinct mids, R² null, the file's groups and dollars, a
+    refused set of groups, points back to their pairs, and the pooled fit equal to one over every
+    pair.
+  - `tests/unit/data/test_fill_pairs.py` (8): which bars pair, half-even mids, shorts and longs
+    split at the weekly's first date, a merged unit's strikes split by band (two near-money bands
+    and three deep ones, as fetched, so the lowest floor and the highest top are the limits), puts
+    left out, the order, and a plain-Python oracle over the `random_walk` cache.
+  - `tests/unit/test_cli_batch.py` (3 new, 1 extended): the file is the cache's pairs, fitted, as
+    canonical JSON; one that can't be written fails the symbol, and the batch's summary counts it;
+    the CLI's batch writes both files, each symbol's pairs over the universe's whole window, the
+    pooled one fitting both symbols' files together, and `pmcc verify` passes on all of it.
+  - `tests/unit/test_repo_policy.py` (3), and `tests/unit/export/test_schema.py`'s per-schema test for the new file.
+- **Review:** 2026-10-01 — an adversarial review (4 reviewers, 2 skeptics per finding) found 18
+  findings, 10 unique, and verified all 10: 9 confirmed, 1 plausible, none refuted. None changes
+  the code's output; all 10 are fixed.
+  - **A wrong number in DEC-64's outcome:** "48.9% of the shorts' prints lie outside the quote"
+    came from comparing the dollar columns as floats, which counted most prints at the bid or ask
+    as outside. In exact units it is 21.7%, against 32.2% for the longs, which reverses the
+    sentence's point. Corrected, with the at-the-touch shares; DEC-64 also now counts its 188,963
+    prints as the calls' (the puts' 2,436 hold the same).
+  - **In tests:** the merged-unit test had one band of each region, so taking the lowest deep top
+    or the highest near-money floor passed (on NVDA, the min would cut the longs to 96,961 pairs);
+    nothing checked the window the CLI hands each job (a one-day window passed); and the batch
+    summary's fill-check count and status were only asserted at zero (plausible). Each mutant now
+    fails a test.
+  - **In docs:** ARCHITECTURE §3.1's tree lacked `pmcc/data/fillcheck.py` and §14 the 8 MB guard;
+    `verify.py`'s docstring and `Index.universe`'s comment lacked the pooled file; DEC-64 said every
+    open detail was in the models' docstrings, but the merged-unit split wasn't (now in
+    `FillGroup`'s); README's status left out P6-07.
+
 ## E. Analytics definitions
 
 These define the reported numbers, so each goes to the PO. They're asked as one batch when P6 starts.
@@ -2163,13 +2231,54 @@ These define the reported numbers, so each goes to the PO. They're asked as one 
       open at the end.
 
 ### DEC-64 — Fill-assumption check
-**Status:** SETTLED · **Basis:** PO, 2026-10-01, at P6 start · **Affects:** P6-07
+**Status:** SETTLED · **Basis:** PO, 2026-10-01, at P6 start · **Affects:** P6-07, P7-04
 
 - **Recommendation:**
   - **Sample:** session bars with a TRDPRC_1 print and a valid end-of-bar BID/ASK. Weekly call bands are the "shorts" group and monthly long candidates the "longs" group. Computed per symbol and pooled.
   - **Fit:** OLS of TRDPRC_1 on mid, reporting slope, intercept, R² and N. Also report the median |print − mid| as a % of the spread.
   - **Caveat stated on the page:** a print can be up to an hour older than the end-of-bar quote.
-- **Outcome:** 2026-10-01 — PO, at P6 start: **as recommended.** To be built at P6-07.
+- **Outcome:** 2026-10-01 — PO, at P6 start: **as recommended.** Built at P6-07
+  (`pmcc/data/fillcheck.py`, `pmcc/analytics/fillcheck.py`, DEC-103). Where the recommendation
+  leaves a detail open, the build does this; each is in the models' docstrings, and any is the
+  PO's to change:
+  - **a print is a real trade in that bar:** on NVDA's cache TRDPRC_1 is present on exactly the
+    bars with trades (none of its 188,963 call prints lacks NUM_MOVES or ACVOL_UNS, and no bar
+    with a trade lacks a print; the puts' 2,436 prints too), so a bar without a trade is never paired with an old print;
+  - **inside the window only:** the Apr 2 weekly's bands start Mar 23, for G-3's next-week IV,
+    and those bars are left out;
+  - **the groups are split by date:** a chain's bars over its weekly's dates (the prior week's
+    first session to the expiry, as fetched, DEC-16) are shorts, so the prior week's bars, which
+    G-3 reads but no short trades on, are in; the bars before those dates are longs, which only a
+    long-candidate monthly has, so a monthly's bars after it stops being a candidate (a long can
+    be held down to X-L2's DTE) are in too;
+  - **a monthly that is also a weekly expiry** (Aug 21 and Sep 18 on NVDA) keeps its near-money
+    strikes as shorts (from its band's floor, padded 4 steps as fetched) and its deep strikes as
+    longs (to their padded top): 1,462 bars of deep calls two weeks from expiry stay out of
+    the shorts, and 9,827 of out-of-the-money monthlies out of the longs;
+  - **the mid** is (BID + ASK) ÷ 2 rounded half-even to $0.0001, as a fill at mid is;
+  - **a locked quote** (BID = ASK) stays in the fit and out of the median, since it has no
+    spread; its count is published;
+  - **pooled** is one fit over every symbol's pairs together (`universe/pooled_fill_check.json`);
+    with NVDA alone it equals NVDA's.
+  - **NVDA, from the uncommitted tree** (results are regenerated at P6-09):
+
+    | group | N | slope | intercept | R² | median \|print − mid\| ÷ spread | locked |
+    | --- | --- | --- | --- | --- | --- | --- |
+    | shorts | 46,874 | 0.999837 | +$0.002265 | 0.999227 | 0.500 | 39 |
+    | longs | 124,723 | 1.000335 | −$0.003417 | 0.999690 | 0.318 | 33 |
+
+    The spec expects the long leg to fit worse. By R² it doesn't, but R² is near 1 for both only
+    because the mids span $0.01 to $71 and $0.21 to $184, so it says little. The other measures,
+    counted in exact $0.0001 units, split:
+    - a short's median print is half a spread from the mid: 44.5% of the shorts' prints sit
+      exactly at the bid or the ask, and 21.7% lie outside the end-of-bar quote;
+    - a long's median print is a third of a spread from the mid, but 32.2% of the longs' prints
+      lie outside the quote (7.7% at the bid or the ask), and the spread is wider: median $0.40
+      against $0.04, median gap $0.15 against $0.01.
+
+    Both are published as they are (HR-7); the write-up's reading of them is P7-04's. (A first
+    draft of this outcome said 48.9% of the shorts' prints lay outside the quote: comparing the
+    dollar columns as floats counted most prints at the bid or ask as outside. The review found it.)
 
 ### DEC-65 — Robustness tables: references, dispersion, columns
 **Status:** SETTLED · **Basis:** PO, 2026-10-01, at P6 start · **Affects:** P6-06, P7-02, P7-04; Spec › Robustness tables
