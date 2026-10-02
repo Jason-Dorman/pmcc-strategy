@@ -83,6 +83,7 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-64 | Fill-assumption check | SETTLED (PO): as recommended | — |
 | DEC-65 | Robustness tables: references, dispersion, columns | SETTLED (PO) | — |
 | DEC-66 | Suitability screen: the sample, the contracts, the credit, G-3 | SETTLED (PO): as recommended | — |
+| DEC-67 | Entry timing: when dispersion is "fragility" | ASK | P7-04 |
 | DEC-70 | Design tokens | ENG | — |
 | DEC-71 | shadcn/ui restyled | ENG | — |
 | DEC-72 | Fonts self-hosted | ENG | — |
@@ -118,6 +119,7 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-102 | Attribution: what the engine records for it, the leg and Greek modules | ENG | — |
 | DEC-103 | The fill-assumption check: its sample, exact fit, files and size limit | ENG · the file's size put to the PO | handover 2026-10-01 |
 | DEC-104 | The suitability screen: the module, the batch's hand-back, the file | ENG | — |
+| DEC-105 | P6-09: the re-run with analytics, and what the site reads where | ENG | — |
 
 ---
 
@@ -2153,6 +2155,44 @@ How P4-05 builds the results contract (ARCHITECTURE §12). None of it changes wh
   - **Refuted:** that the build log credits the PO with the E-T1 detail; the PO's answers fix the
     bar and the contracts, and E-T1 never chooses a contract.
 
+### DEC-105 — P6-09: the re-run with analytics, and what the site reads where
+**Status:** ENG · **Affects:** P6-09, P7-01, P7-02, P7-04, P7-05; DEC-05, DEC-65, DEC-67, DEC-100 to DEC-104
+
+- **The run:** `just batch` from a clean tree at `217f676`, 2026-10-01: NVDA's 24 runs,
+  `coverage.json`, `robustness.json` and `fill_check.json`, and the universe's `headline.json`,
+  `pooled.json`, `pooled_fill_check.json` and `suitability.json`, in 39 s; every run
+  `git_dirty: false`. `just verify` passed all 31 files.
+- **Nothing the engine had written moved.** Against P5-04's committed runs, every value is the
+  same but `git_sha` and `run_timestamp`; what changed is new: each summary's analytics (null
+  until now, DEC-54), the full runs' `cycles` and `attribution`, and each option fill's
+  `audit.fill_iv` (DEC-102). Every NVDA figure DEC-60 and DEC-62 to DEC-66 quoted from the
+  uncommitted tree is the committed one. The data hash is unchanged, so the committed cache
+  stands (DEC-05).
+- **What the site reads where** (UI-SPEC §6, checked panel by panel):
+  - **Comparison:** readouts and [2] from each strategy's `summary` (or `universe/headline.json`);
+    [1] from the two full runs' ledgers, one NAV per bar; [3] `universe/pooled.json`, whose
+    `quant_beat_baseline` is empty on NVDA (quant $3,303.50, the baseline $3,672.50); [4]
+    `robustness.json`'s `ablations`.
+  - **Strategy:** [1] and [7] the ledger; [3] `summary.cycle_stats`, `exit_mix` and
+    `skips_by_rule`; [4] `attribution.leg`, its table and session series; [5] the blotter; [6] the
+    gate log; [8] `attribution.greek`, its rows, residual series and each leg's bars. The
+    readouts' **ending NAV** is the ledger's last row, and **min available funds (and when)** the
+    ledger's lowest `available_funds` and its time: P7-01 reads them from the rows rather than
+    the summary carrying a second copy. [2]'s breach count is `summary.flag_counts`'
+    `funds_negative`, absent when no bar breached (NVDA: none, either strategy).
+  - **Methodology:** [1] `coverage.json`; [2] and [3] `fill_check.json` (every pair, as columns)
+    with `universe/pooled_fill_check.json`; [4] to [6] `robustness.json`'s `friction`, `timing`
+    with `timing_dispersion`, and `grid`; [7] `config.risk_free_rate`. When the timing panel
+    calls dispersion fragile is undefined, put to the PO for P7-04 (DEC-67); the recommended rule
+    needs nothing that isn't in `robustness.json`.
+  - **Universe:** [1] `universe/suitability.json`, [2] `universe/headline.json`, [3]
+    `universe/pooled.json`.
+  - **Trade rules** read `rules.json`, and the local Data page the cache through `pmcc serve`;
+    neither is a results file.
+- **Export:** `just export` wrote the 31 files with `index.json` (each symbol's runs and its
+  coverage, robustness and fill-check files; the universe's four) and `rules.json`; none is
+  committed (DEC-96).
+
 ## E. Analytics definitions
 
 These define the reported numbers, so each goes to the PO. They're asked as one batch when P6 starts.
@@ -2184,7 +2224,7 @@ These define the reported numbers, so each goes to the PO. They're asked as one 
   - Sharpe and Sortino are null when their divisor is 0 (no variation, no losing day), and no
     annualized figure is published;
   - the peak long-leg cost is the dearest long entry, fees included, as E-L4's cost is.
-  - **NVDA, from the uncommitted tree** (results are regenerated at P6-09): baseline P&L
+  - **NVDA, from the uncommitted tree** (committed unchanged at P6-09, DEC-105): baseline P&L
     $3,672.50, 24.5% on $15,000, 71.7% on its dearest long ($5,125.00); max drawdown $4,211.50
     (20.6%); 92 sessions underwater, from the May 14 peak to the end; daily Sharpe 0.084 and
     Sortino 0.131. Quant $3,303.50, 22.0%, 53.5% on $6,177.50; $4,261.50 (20.8%); 92 sessions;
@@ -2278,7 +2318,7 @@ These define the reported numbers, so each goes to the PO. They're asked as one 
     Γ = ν = 0): it has no IV, so Δσ is unknown and its bars are residual whole;
   - **the unattributed bars are counted per leg,** beside the bars the leg was held, their
     denominator.
-  - **NVDA, from the uncommitted tree** (results are regenerated at P6-09):
+  - **NVDA, from the uncommitted tree** (committed unchanged at P6-09, DEC-105):
     - **Baseline:** long +$4,162.50 (intrinsic +$5,877.28, extrinsic −$1,714.78); short credits
       $2,742.00 less buybacks $3,232.00, −$490.00; P&L $3,672.50.
     - **Quant:** long +$4,955.00 (intrinsic +$5,964.77, extrinsic −$1,009.77); short $803.50 less
@@ -2321,7 +2361,7 @@ These define the reported numbers, so each goes to the PO. They're asked as one 
     spread; its count is published;
   - **pooled** is one fit over every symbol's pairs together (`universe/pooled_fill_check.json`);
     with NVDA alone it equals NVDA's.
-  - **NVDA, from the uncommitted tree** (results are regenerated at P6-09):
+  - **NVDA, from the uncommitted tree** (committed unchanged at P6-09, DEC-105):
 
     | group | N | slope | intercept | R² | median \|print − mid\| ÷ spread | locked |
     | --- | --- | --- | --- | --- | --- | --- |
@@ -2398,13 +2438,33 @@ These define the reported numbers, so each goes to the PO. They're asked as one 
     mean are exact fractions, so no figure depends on the weeks' order;
   - **a week whose RV20 is 0** has no IV ÷ RV20 and is left out of that mean (G-4 instead passes
     such a week, its ratio unbounded); it doesn't arise on NVDA.
-  - **NVDA, from the uncommitted tree** (written at P6-09): every measure read in all 26 weeks.
+  - **NVDA, from the uncommitted tree** (committed unchanged at P6-09, DEC-105): every measure read in all 26 weeks.
     The long's extrinsic per delta averages 3.05% of spot (2.56% to 3.39% by week); the median
     spread is 2.48% for the long, under E-T1's 3%, and 2.07% for the short; the short's bid
     averages 1.65% of the long's mid a week (quant's realized credit is 1.7% of its long's cost,
     DEC-62); IV ÷ RV20 averages 1.12, and is under 1.00 in 13 weeks, the 13 in which G-4 fired
     in quant's gate log; G-3 fires in 2 of 26 weeks, May 18 and Aug 24, the two in which it fired
     there.
+
+### DEC-67 — Entry timing: when dispersion is "fragility"
+**Status:** ASK · **Ask at:** P7-04 · **Affects:** P7-04, UI-SPEC §6.4 [5]; Spec › Robustness tables; DEC-65
+
+- **Context:** the spec says "large dispersion is reported as fragility", and UI-SPEC §6.4 [5]
+  flags it, but nothing says how large. DEC-65 settled what the dispersion is (the range and
+  sample standard deviation of P&L over the fixed-bar runs), not when it counts as large. Found at
+  P6-09's audit of what the site needs; DEC-101's review had set it aside as older than P6.
+- **Recommendation:** flag fragility when any fixed-bar run's mean weekly return falls outside the
+  E-T1 baseline's 95% weekly-return CI. It sets no new threshold, since it reads the CI the page
+  already shows, and every number it needs is in `{SYM}/robustness.json`, so the results don't
+  change. On NVDA the fixed bars' means run from 0.77% (t3) to 1.08% (t6) a week, inside the
+  baseline's −0.89% to 2.76%: not flagged. With 26 weeks the CI is wide, so the flag will rarely
+  fire; what it says is whether timing moves the result more than the sample's own noise.
+- **Alternatives:**
+  - a fixed threshold, e.g. the range above 25% of the baseline's P&L (NVDA: $1,544.50 is 42% of
+    $3,672.50, so flagged). It needs a number with no basis in the spec, which would live in
+    `configs/sensitivity.yaml`;
+  - no flag: show the range and standard deviation, with the range as a share of the baseline's
+    P&L, and leave the reading to the write-up.
 
 ## F. Frontend
 

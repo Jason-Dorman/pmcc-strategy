@@ -200,7 +200,7 @@ Panels that depend on the data follow the selected symbol and show pooled figure
 | 3 | Mid vs print — long-dated longs | 5 | as [2], for the longs (expected to fit worse, and reported whatever it shows, HR-7) |
 | — | Reg T treatment | 10 | Prose with exact citations (DEC-10) |
 | 4 | Friction | 5 | each strategy at `spread_capture` 0, then 0.25 and 0.50 against it: P&L, Δ, max drawdown, payoff, CI (DEC-65) |
-| 5 | Entry timing | 5 | the E-T1 baseline, then each fixed Monday bar against it: P&L, Δ, max drawdown, payoff, CI; range and sample standard deviation over the fixed bars alone; large dispersion flagged as fragility (DEC-65) |
+| 5 | Entry timing | 5 | the E-T1 baseline, then each fixed Monday bar against it: P&L, Δ, max drawdown, payoff, CI; range and sample standard deviation over the fixed bars alone; large dispersion flagged as fragility (DEC-65; what counts as large is DEC-67, asked at P7-04) |
 | 6 | Parameter grid | 10 | quant at its defaults, then every grid run against it: P&L, Δ, max drawdown, payoff, CI; published in full (no best cell; DEC-65) |
 | 7 | Stated assumptions | 10 | key/value: r (value, source, date), q = 0, no early assignment, dividends out of scope (DEC-55), Black-Scholes on American calls, quotes not proven NBBO |
 

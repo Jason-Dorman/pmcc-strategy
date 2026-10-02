@@ -1,0 +1,1 @@
+{"groups":[{"fit":{"intercept":0.002265,"locked":39,"median_abs_gap_pct_spread":0.5,"n":46874,"r2":0.999227,"slope":0.999837},"group":"shorts"},{"fit":{"intercept":-0.003417,"locked":33,"median_abs_gap_pct_spread":0.318182,"n":124723,"r2":0.99969,"slope":1.000335},"group":"longs"}],"schema_version":2,"symbols":["NVDA"]}
