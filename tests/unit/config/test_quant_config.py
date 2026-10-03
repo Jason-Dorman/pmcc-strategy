@@ -95,7 +95,7 @@ def test_config_quant_gate_condition_is_the_spec_condition(rule_id: str) -> None
     ("rule_id", "field", "rendered"),
     [
         ("E-L2", "action", "from 120 to 270 days to expiry"),
-        ("E-L3", "condition", "delta from 0.70 to 0.90 across the E-L2 expiries"),
+        ("E-L3", "condition", "delta from 0.70 to 0.90 across the long leg's expiries"),
         (
             "E-L3",
             "action",
@@ -111,21 +111,21 @@ def test_config_quant_rule_text_renders_the_spec_rule(rule_id: str, field: str,
 
 
 def test_config_g_3_rationale_is_the_spec_paragraph() -> None:
-    spec = re.search(r"^(G-3 detects events .+)$", SPEC, flags=re.MULTILINE)
+    spec = re.search(r"^(The event-week gate detects events .+)$", SPEC, flags=re.MULTILINE)
     assert spec
     assert rule(QUANT, "G-3").text().rationale == spec[1]
 
 
 def test_config_g_5_rationale_locked_quote_claim_holds_at_e_t1s_threshold() -> None:
-    """The rationale names E-T1's 10% (PO, DEC-95): a one-cent spread is exactly E-T1's short
-    limit at G-5's threshold, so below it only a locked quote passes E-T1. Changing either
-    threshold breaks the claim, and this test."""
+    """The rationale names the entry trigger's 10% (PO, DEC-95; worded by DEC-113): a one-cent
+    spread is exactly E-T1's short limit at G-5's threshold, so below it only a locked quote
+    passes E-T1. Changing either threshold breaks the claim, and this test."""
     e_t1, g_5 = rule(QUANT, "E-T1"), rule(QUANT, "G-5")
     assert isinstance(e_t1.params, SpreadTrigger)
     assert isinstance(g_5.params, MinPremium)
     short_max = e_t1.params.short_max_spread
     assert g_5.params.min_mid.to_dollars() * Decimal(str(short_max)) == Decimal("0.01")
-    assert f"E-T1's {short_max:.0%} of mid" in g_5.text().rationale
+    assert f"the entry trigger's {short_max:.0%} of mid" in g_5.text().rationale
     assert "locked quote" in g_5.text().rationale
 
 

@@ -107,7 +107,7 @@ def test_dec_31_timing_variant_replaces_only_e_t1_with_its_bar(bar: int) -> None
     assert rule.text().action == (
         "Enter the long on the first bar of the session where the condition holds. Decide the "
         f"short only on session bar {bar} of the week-open session (bar 1 ends at 10:00): sell "
-        "it if the condition holds there, or else G-1 skips the week"
+        "it if the condition holds there, or else the no-quote gate skips the week"
     )
 
 

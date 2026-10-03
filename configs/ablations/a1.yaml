@@ -23,7 +23,7 @@ overrides:
       name: Long leg strike
       kind: nearest_delta_long
       params: {target_delta: 0.80}
-      condition: Eligible calls on the E-L2 expiry
+      condition: Eligible calls on the long leg's expiry
       action: Choose the strike with delta nearest {target_delta:.2f}
       rationale: >-
         The long call is the stock substitute: a deep in-the-money, long-dated call, here at the

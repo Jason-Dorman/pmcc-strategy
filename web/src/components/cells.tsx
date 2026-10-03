@@ -5,14 +5,17 @@ import { Link } from "react-router-dom";
 
 import type { InstrumentOut } from "../types/generated/run_result";
 
-/** A rule, linked to `#/rules/<ID>` (UI-SPEC §7): its ID in mono, or what the caller shows. */
-export function RuleLink({ id, title, children }: {
+/** A rule, linked to `#/rules/<ID>` (UI-SPEC §7): its ID in mono, or what the caller shows. A
+ * rule named in prose takes the prose's type (`prose`). */
+export function RuleLink({ id, title, children, prose = false }: {
   id: string;
   title?: string | undefined;
   children?: ReactNode;
+  prose?: boolean;
 }) {
   return (
-    <Link className="pm-rule" to={`/rules/${id}`} title={title}>
+    <Link className={prose ? "pm-rule pm-rule-prose" : "pm-rule"} to={`/rules/${id}`}
+          title={title}>
       {children ?? id}
     </Link>
   );

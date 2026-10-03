@@ -215,7 +215,8 @@ def test_config_e_s5_rationale_uses_the_long_entry_fill() -> None:
 
 
 def test_config_g_1_rationale_says_it_replaces_the_spread_gate() -> None:
-    assert "E-T1" in BASELINE.rule(RuleId("G-1")).text().rationale
+    rationale = BASELINE.rule(RuleId("G-1")).text().rationale
+    assert "since the entry trigger's spread threshold already covers it" in rationale
 
 
 def test_config_baseline_run_config_carries_the_universe_window_and_r() -> None:

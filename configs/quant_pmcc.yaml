@@ -20,11 +20,11 @@ rules:
     params: {min_dte: 120, max_dte: 270}
     condition: Monthly expiries listed at the decision bar
     action: >-
-      Keep every monthly expiry from {min_dte} to {max_dte} days to expiry; E-L3 chooses across
-      them
+      Keep every monthly expiry from {min_dte} to {max_dte} days to expiry; the strike rule
+      chooses across them
     rationale: >-
-      The long can be any monthly in the range, so E-L3 looks for the cheapest replacement across
-      all of them. A listed option with 9 months or less to expiry has no loan value under Reg T;
+      The long can be any monthly in the range, so the strike rule looks for the cheapest
+      replacement across all of them. A listed option with 9 months or less to expiry has no loan value under Reg T;
       capping the range at {max_dte} days keeps the long always fully paid.
 
   - id: E-L3
@@ -32,7 +32,8 @@ rules:
     kind: cheapest_replacement
     params: {min_delta: 0.70, max_delta: 0.90}
     condition: >-
-      Eligible calls with delta from {min_delta:.2f} to {max_delta:.2f} across the E-L2 expiries
+      Eligible calls with delta from {min_delta:.2f} to {max_delta:.2f} across the long leg's
+      expiries
     action: >-
       Choose the lowest extrinsic ÷ delta, where extrinsic = mid − max(0, spot − strike). Ties go
       to the lower spread % of mid, then the earlier expiry, then the lower strike
@@ -45,13 +46,14 @@ rules:
     kind: expected_move_strike
     params: {k: 1.0}
     condition: >-
-      Eligible calls on the E-S2 expiry. EM is that week's at-the-money straddle mid: the ATM call
-      mid + the ATM put mid
+      Eligible calls on the short leg's expiry. EM is that week's at-the-money straddle mid: the
+      ATM call mid + the ATM put mid
     action: Choose the lowest listed strike ≥ spot + {k} × EM
     rationale: >-
       The expected-move short strike: the short is sold at least {k} × the week's expected move
       above spot, the expected move being the at-the-money straddle's mid. If the selected strike
-      fails E-T1 or E-S5, the skip-week gates decide; no other strike is substituted.
+      fails the entry trigger or the structural constraint, the skip-week gates decide; no other
+      strike is substituted.
 
   # ── The quant layer's skip-week gates, evaluated after G-1 and G-2 ─────────────────────────
   - id: G-3
@@ -61,10 +63,10 @@ rules:
     condition: Front-week ATM IV ÷ next-week ATM IV > {max_ratio:.2f}
     action: Skip the week; keep the long
     rationale: >-
-      G-3 detects events (usually earnings) from the chain itself, with no external calendar: an
-      event priced into the front week lifts its IV above the following week's. A ratio is used
-      instead of a vol-point difference so the threshold scales across low- and high-volatility
-      symbols.
+      The event-week gate detects events (usually earnings) from the chain itself, with no
+      external calendar: an event priced into the front week lifts its IV above the following
+      week's. A ratio is used instead of a vol-point difference so the threshold scales across low-
+      and high-volatility symbols.
 
   - id: G-4
     name: Volatility risk premium
@@ -85,5 +87,6 @@ rules:
     rationale: >-
       A short that would collect less than ${min_mid:.2f} a share isn't sold, and no other strike
       is tried in its place. Quotes are in whole cents, so below ${min_mid:.2f} a short's spread
-      is wider than E-T1's 10% of mid unless its bid equals its ask. This gate therefore fires only
-      on such a locked quote; otherwise G-1 skips the week first.
+      is wider than the entry trigger's 10% of mid unless its bid equals its ask. This gate
+      therefore fires only on such a locked quote; otherwise the no-quote gate skips the week
+      first.

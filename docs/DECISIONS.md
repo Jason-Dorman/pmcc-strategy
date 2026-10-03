@@ -126,7 +126,8 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-109 | The backtest's limits, stated on the site; a long-only run and another regime later | SETTLED (PO) · the two additions deferred | P7-02, P7-04; later if time allows |
 | DEC-110 | P7-02: the comparison page | ENG · the limit sentence's wording where a run doesn't bear it out put to the PO | handover 2026-10-02 |
 | DEC-111 | The headline return and an annualized Sharpe, for an institutional reader | SETTLED (PO) | P7-02 |
-| DEC-112 | P7-03: the Trade rules page and its traceability links | ENG · the rule tables' height SETTLED (PO) | P7-03 |
+| DEC-112 | P7-03: the Trade rules page and its traceability links | ENG · the rule tables' height SETTLED (PO); its copy amended by DEC-113 | P7-03 |
+| DEC-113 | No rule IDs in the copy: rules named by what they are | SETTLED (PO) | P7-03 |
 
 ---
 
@@ -2549,11 +2550,12 @@ export and never committed, so it gains two fields without a schema version.
     putting one run in different tables abort the export.
 - **The page** (`web/src/pages/Rules.tsx`, `rules/model.ts`, `rules/sections.tsx`), from
   `rules.json` alone (`useRules`), the baseline and quant set side by side:
-  - **How rules work:** the order of operations, the differences and the ID grammar. Every ID
-    in it is read from the rules (`X-S1 to X-S5`, linked), and the sentence on how the strategies
-    differ lists the rules that do: entry rules both run differently ("which select the
-    contracts"), gates one runs alone, and anything else apart, in which case it no longer
-    claims every other rule is shared. On NVDA: E-L2, E-L3 and E-S3, and G-3 to G-5.
+  - **How rules work:** the order of operations, the differences and what the ID column is
+    (as amended by DEC-113: rules named, never by ID). The sentence on how the strategies differ
+    lists the rules that do, by name and linked: entry rules both run differently ("which select
+    the contracts"), gates one runs alone, and anything else apart, in which case it no longer
+    claims every other rule is shared. On NVDA: the long leg expiry, long leg strike and short
+    leg strike rules, and the event week, volatility risk premium and minimum premium gates.
   - **[1] Entry rules:** ID · Rule · Baseline · Quant, each the condition with "→ action" under
     it; Quant reads "Same" where its rule's name, condition and action are the baseline's.
   - **[2] Skip-week gates:** ID · Gate · Condition (→ action) · Baseline · Quant, a strategy's
@@ -2564,11 +2566,12 @@ export and never committed, so it gains two fields without a schema version.
     paragraph per line of the YAML's text (the short exits' shared no-roll paragraph first), each
     strategy's labelled where they differ.
   - **[4] Ablations:** one row per rule an ablation changed: Ablation · Layer removed (the ID,
-    linked, and quant's rule name; its condition → action on hover) · Replaced by (the variant's
+    rule's name, linked; its condition → action on hover) · Replaced by (the variant's
     action, or "nothing" for a rule removed).
   - **[5] Sensitivity:** Check · Run (its YAML name) · Change, read from the variant against its
-    strategy: the fill model ("spread capture 0.00 → 0.25"), a replaced rule ("E-T1 → Entry
-    trigger, fixed bar · bar 1"), a param ("G-3 max ratio 1.20 → 1.10"); filtered by check.
+    strategy: the fill model ("spread capture 0.00 → 0.25"), a replaced rule ("Entry trigger:
+    replaced by Entry trigger, fixed bar · bar 1"), a param ("Event week: max ratio 1.20 →
+    1.10"); filtered by check.
 - **Traceability** (UI-SPEC §7): the blotter, gate log and cycle statistics already link to
   `#/rules/<ID>` (P7-01). `DataTable` now takes a `target` row: arriving at `#/rules/X-S3`
   outlines that row in `--accent` and scrolls it into view, within the table's own scroller
@@ -2582,13 +2585,52 @@ export and never committed, so it gains two fields without a schema version.
 - **Outcome:** 2026-10-03 — PO: **as recommended**. The entry, gate and exit tables are as tall
   as their rows (`DataTable`'s `grow`, `.pm-table-grow`); every other table, the ablations and
   sensitivity runs included, keeps the 420 px cap (UI-SPEC §5).
-- **Tests:** `web/src/pages/Rules.test.tsx` (16: panel order and numbering, each table's cells,
+- **Tests:** `web/src/pages/Rules.test.tsx` (18: panel order and numbering, each table's cells,
   the rationale, the target row, a missing rule, the differences sentence, ablations, sensitivity
-  and its filter, a missing `rules.json`, which tables grow), `rules/model.test.ts` (12), the
+  and its filter, a missing `rules.json`, which tables grow), `rules/model.test.ts` (10), the
   `DataTable` detail, target and height (6); `tests/scenario/test_export.py` (`shown`, `family` from the tables, a variant no
   table holds, two symbols disagreeing) and `shown` itself (`test_rule_text.py`,
   `test_quant_config.py`). The smoke test follows a gate-log link to its outlined row, in view,
   and checks the page's tables on the built site (18 pass).
+
+### DEC-113 — No rule IDs in the copy: rules named by what they are
+**Status:** SETTLED · **Basis:** PO, 2026-10-03, reading P7-03's Rules page · **Affects:** P7-03; Spec › Trade rules (G-1, G-2, X-L1, X-L2 and the event-week paragraph), Spec › Rule write-up source; UI-SPEC §6.3; ARCHITECTURE §10; `configs/`; the results (re-run); amends DEC-112
+
+- **Context:** the PO, on the Rules page: "we cannot use the rule ID in the copy - it has to use
+  its Rule name - reading a bunch of IDs is incoherent for a human reader - the ids can stay in
+  the tables in the id columns but they need to be replaced by the rule names in all of the
+  copy". The page's own copy listed IDs (`X-S1 to X-S5`, the ID grammar, `E-L2 Long leg expiry`,
+  `G-3 max ratio …`), and about 20 sentences of the rule text in the YAML named rules by ID
+  ("otherwise G-2 skips the week", "Same as X-L1", "re-enter per E-L1 to E-L4"), as did four
+  grid runs' names ("Grid: quant with G-4 at 0.90").
+- **Asked:** whether to reword the YAML (recommended; config hashes change, so every run is
+  re-run), swap names in as the page renders (mechanical: "Eligible calls on the Long leg expiry
+  expiry", and E-S5 and G-2 share the name "Structural constraint"), or leave the rule text.
+- **Outcome:** 2026-10-03 — PO: **reword the YAML**, as recommended.
+  - **The page's copy** names each rule by its YAML name, linked to its row and set in the
+    prose's type: How rules work (the order of operations in words; the differences by name; the
+    ID column described, the ID grammar dropped), the ablations' Layer removed, the sensitivity
+    runs' changes ("Short leg strike: k 1.0 → 0.75"). A link to a rule the results lack says so
+    without echoing the ID. IDs stay in the three rule tables' ID columns, the links' targets and
+    the results.
+  - **The rule text** (`configs/_shared.yaml`, `baseline_pmcc.yaml`, `quant_pmcc.yaml`,
+    `ablations/a1.yaml`, `a2.yaml`, `sensitivity.yaml`) names a rule by what it is: "the entry
+    trigger", "the structural constraint", "a long reset or long roll", "the long leg's expiry",
+    "the no-quote gate", "the missed-assignment rule", "the long leg's entry rules". The four
+    grid runs are "Grid: quant with the event gate at 1.10" and so on. Nothing a rule does
+    changes: no kind, param or threshold moves.
+  - **The spec** gets the same wording where the YAML is pinned to it: G-1's and G-2's
+    conditions, X-L1's and X-L2's actions, the event-week paragraph; and Rule write-up source
+    states the rule. Its other prose keeps IDs, for an engineer reading the spec.
+  - **Enforced** by `tests/unit/config/test_rule_copy.py` (no rule ID in any run's name or any
+    rule's rendered text across the 24-run matrix) and the Rules page test that no ID appears in
+    its prose, notes, captions, ablations or sensitivity rows.
+- **The results:** every config hash moves, so the batch is re-run. A preview batch from the
+  uncommitted tree (into the scratchpad, compared field by field with the committed results)
+  moved only the configs' rule text and four run names, `rule_text`, the grid table's four
+  labels in `robustness.json`, `config_hash` and the provenance fields: no figure, row or CI.
+  The publishable re-run follows the code commit: `just batch` from the clean tree, `just
+  verify`, a results commit, both pushed together (as DEC-111).
 
 ## E. Analytics definitions
 

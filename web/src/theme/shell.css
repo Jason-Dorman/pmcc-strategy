@@ -456,6 +456,9 @@ th[aria-sort="descending"] .pm-sort-mark::after {
   text-underline-offset: 2px;
   white-space: nowrap; /* an ID never breaks at its hyphen */
 }
+.pm-rule-prose {
+  font-family: inherit; /* a rule named in a sentence reads as the sentence does */
+}
 .pm-rule:hover {
   color: var(--accent);
   text-decoration-color: var(--accent);

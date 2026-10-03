@@ -132,19 +132,19 @@ describe("arriving for a rule", () => {
   it("says so when the results have no such rule", async () => {
     renderRules("/rules/Z-9");
     expect(await within(await panel("How rules work"))
-      .findByText("There is no rule Z-9 in these results.")).toBeTruthy();
+      .findByText("The rule this link names isn't in these results.")).toBeTruthy();
     expect(document.querySelectorAll(".pm-target")).toHaveLength(0);
   });
 });
 
 describe("how rules work", () => {
-  it("names the order of operations by the rules' own IDs", async () => {
+  it("gives the order of operations in words", async () => {
     renderRules();
     const how = await panel("How rules work");
     await within(how).findByText(/Every decision is made/);
-    expect(how.textContent).toContain("the long leg's exits and resets (X-L1 and X-L2)");
-    expect(how.textContent).toContain("the short's exits (X-S1 and X-S3)");
-    expect(how.textContent).toContain("sold only if no skip-week gate fires (G-1 to G-5)");
+    expect(how.textContent).toContain("first the long leg's exits and resets, then the short's " +
+      "exits, then, in the week-open session only, the week's new short, sold only if no " +
+      "skip-week gate fires");
   });
 
   it("reads how the strategies differ from the rules", async () => {
@@ -152,11 +152,12 @@ describe("how rules work", () => {
     const how = await panel("How rules work");
     await within(how).findByText(/differ only in/);
     expect(how.textContent).toContain(
-      "Baseline PMCC and Quant PMCC differ only in E-L2, E-L3 and E-S3, which select the " +
-      "contracts, and in G-3 to G-5, gates only Quant PMCC runs. Every other rule, every exit " +
-      "included, is the same in both");
-    const links = within(how).getAllByRole("link", { name: "G-5" });
-    expect(links.map((l) => l.getAttribute("href"))).toEqual(["/rules/G-5", "/rules/G-5"]);
+      "Baseline PMCC and Quant PMCC differ only in their Long leg expiry, Long leg strike and " +
+      "Short leg strike rules, which select the contracts, and in the Event week, Volatility " +
+      "risk premium and Minimum premium gates, which only Quant PMCC runs. Every other rule, " +
+      "every exit included, is the same in both");
+    const link = within(how).getByRole("link", { name: "Minimum premium" });
+    expect(link.getAttribute("href")).toBe("/rules/G-5");
   });
 });
 
@@ -165,12 +166,14 @@ describe("ablations", () => {
     renderRules();
     const t = await table("Ablations");
     expect(bodyRows(t).map(cells)).toEqual([
-      ["A1: quant with the baseline long leg", "E-L2 Long leg expiry",
+      ["A1: quant with the baseline long leg", "Long leg expiry",
        "Choose the monthly expiry nearest 180 days to expiry"],
-      ["A1: quant with the baseline long leg", "E-L3 Long leg strike",
+      ["A1: quant with the baseline long leg", "Long leg strike",
        "Choose the strike with delta nearest 0.80"],
-      ["A3: quant without the event gate", "G-3 Event week", "nothing"],
+      ["A3: quant without the event gate", "Event week", "nothing"],
     ]);
+    const removed = within(t).getByRole("link", { name: "Event week" });
+    expect(removed.getAttribute("href")).toBe("/rules/G-3");
   });
 });
 
@@ -181,8 +184,8 @@ describe("sensitivity", () => {
     expect(bodyRows(t).map(cells)).toEqual([
       ["Friction", "Friction: baseline at spread capture 0.25", "spread capture 0.00 → 0.25"],
       ["Timing", "Timing: baseline, short decided on bar 1 (10:00)",
-       "E-T1 → Entry trigger, fixed bar · bar 1"],
-      ["Grid", "Grid: quant with k = 0.75", "E-S3 k 1.0 → 0.75"],
+       "Entry trigger: replaced by Entry trigger, fixed bar · bar 1"],
+      ["Grid", "Grid: quant with k = 0.75", "Short leg strike: k 1.0 → 0.75"],
     ]);
   });
 
@@ -203,5 +206,26 @@ describe("table height (PO, DEC-112)", () => {
       ?.classList.contains("pm-table-grow");
     expect(["Entry rules", "Skip-week gates", "Exit rules", "Ablations", "Sensitivity"].map(grows))
       .toEqual([true, true, true, false, false]);
+  });
+});
+
+describe("the page's copy (PO, DEC-113)", () => {
+  const ID = /\b[EGX]-[A-Z]?\d\b/;
+
+  it("names every rule by its name, never its ID, outside the ID columns", async () => {
+    renderRules("/rules/Z-9");
+    await table("Sensitivity");
+    const copy = [
+      (await panel("How rules work")).textContent,
+      ...[...document.querySelectorAll(".pm-caption, .pm-panel-note")].map((e) => e.textContent),
+      ...bodyRows(await table("Ablations")).map((r) => r.textContent),
+      ...bodyRows(await table("Sensitivity")).map((r) => r.textContent),
+    ];
+    expect(copy.filter((text) => ID.test(text ?? ""))).toEqual([]);
+  });
+
+  it("keeps the ID in each rule table's ID column", async () => {
+    renderRules();
+    expect(column(await table("Skip-week gates"), 1)).toEqual(["G-1", "G-2", "G-3", "G-4", "G-5"]);
   });
 });

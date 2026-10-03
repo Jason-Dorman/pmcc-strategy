@@ -597,11 +597,13 @@ A rule entry (DEC-52):
   condition: Front-week ATM IV ÷ next-week ATM IV > {max_ratio:.2f}
   action: Skip the week; keep the long
   rationale: >-
-    G-3 detects events (usually earnings) from the chain itself, with no external calendar: an
-    event priced into the front week lifts its IV above the following week's. A ratio is used
-    instead of a vol-point difference so the threshold scales across low- and high-volatility
-    symbols.
+    The event-week gate detects events (usually earnings) from the chain itself, with no
+    external calendar: an event priced into the front week lifts its IV above the following
+    week's. A ratio is used instead of a vol-point difference so the threshold scales across low-
+    and high-volatility symbols.
 ```
+
+Rule text and run names name a rule by what it is ("the entry trigger", "the long reset"), never by its ID (PO, DEC-113; `tests/unit/config/test_rule_copy.py`).
 
 An ablation (DEC-53):
 

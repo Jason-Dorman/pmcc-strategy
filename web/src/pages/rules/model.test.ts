@@ -8,7 +8,6 @@ import type { RuleOut } from "../../types/generated/rules";
 import {
   differences,
   fillChanges,
-  idSpan,
   pairOf,
   paramChanges,
   ruleRows,
@@ -75,17 +74,6 @@ describe("how the strategies differ", () => {
     const changedExit = quant.rules.map((r) => (r.id === "X-S1" ? { ...r, action: "Hold" } : r));
     expect(differences({ baseline, quant: { ...quant, rules: changedExit } }).other)
       .toEqual(["X-S1"]);
-  });
-});
-
-describe("ID spans", () => {
-  it("reads a run of three or more consecutive IDs as its ends", () => {
-    expect(idSpan(["G-1", "G-2", "G-3", "G-4", "G-5"])).toEqual({ run: true, ids: ["G-1", "G-5"] });
-  });
-
-  it("lists two IDs, or IDs with a gap, one by one", () => {
-    expect(idSpan(["X-L1", "X-L2"])).toEqual({ run: false, ids: ["X-L1", "X-L2"] });
-    expect(idSpan(["X-S1", "X-S3", "X-S4"])).toEqual({ run: false, ids: ["X-S1", "X-S3", "X-S4"] });
   });
 });
 

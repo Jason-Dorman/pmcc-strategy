@@ -34,13 +34,14 @@ rules:
     kind: first_session_retry
     params: {}
     condition: >-
-      No long call is held: the window's first session, or a session in which X-L1 or X-L2 sold it
+      No long call is held: the window's first session, or a session in which a long reset or
+      long roll sold it
     action: >-
-      Buy the E-L2 and E-L3 selection when E-T1 passes. If it doesn't pass this session, retry each
-      following session until it does
+      Buy the long the expiry and strike rules select once the entry trigger passes. If it doesn't
+      pass this session, retry each following session until it does
     rationale: >-
-      The long call is bought on the first day of the backtest. If no bar in a session passes
-      E-T1, the entry is retried the next session.
+      The long call is bought on the first day of the backtest. If no bar in a session passes the
+      entry trigger, the entry is retried the next session.
 
   - id: E-L4
     name: Sizing
@@ -64,7 +65,7 @@ rules:
     condition: >-
       Each Monday (the first session of the week if Monday is a holiday), while a long call is held
       and no short is open
-    action: Sell a new short call; E-T1 decides which bar
+    action: Sell a new short call; the entry trigger decides which bar
     rationale: >-
       One short call a week, sold as the week opens. A short closed early isn't replaced until the
       next Monday, so every new short passes the skip-week gates.
@@ -95,7 +96,8 @@ rules:
     kind: strike_covers_debit
     params: {}
     condition: Short strike − long strike > long entry fill − short mid, per share
-    action: Sell the short only if this holds; otherwise G-2 skips the week
+    action: Sell the short only if this holds; otherwise the structural-constraint gate skips the
+      week
     rationale: >-
       The gap between the strikes has to be bigger than the net debit paid. Then, if the short
       finishes deep in the money, the long leg's intrinsic gain covers the short's loss plus the
@@ -107,18 +109,18 @@ rules:
     name: No quote / liquidity
     kind: no_quote_gate
     params: {}
-    condition: Selected short never passes E-T1 on any Monday bar
+    condition: Selected short never passes the entry trigger on any Monday bar
     action: Skip the week; keep the long
     rationale: >-
       No tradable quote, no trade: the backtest never invents a fill and never swaps in a different
-      strike. G-1 replaces a separate short-leg spread gate, since E-T1's spread threshold already
-      covers it.
+      strike. This gate replaces a separate short-leg spread gate, since the entry trigger's spread
+      threshold already covers it.
 
   - id: G-2
     name: Structural constraint
     kind: structural_gate
     params: {}
-    condition: Selected short fails E-S5
+    condition: Selected short fails the structural constraint
     action: Skip the week; keep the long
     rationale: >-
       A short that could turn the position into a net loss isn't sold, and no other strike is tried
@@ -172,8 +174,9 @@ rules:
       the next week starts fresh.
 
       The stock can move into the money in the final hour after the check. Treating "within
-      {em_buffer:.2f} × EM of the strike" as in the money reduces missed assignments; X-S5 handles
-      any that still occur, honestly recorded rather than assumed away.
+      {em_buffer:.2f} × EM of the strike" as in the money reduces missed assignments; the
+      missed-assignment rule handles any that still occur, honestly recorded rather than assumed
+      away.
 
   - id: X-S4
     name: Expires out of the money
@@ -218,8 +221,8 @@ rules:
     params: {min_delta: 0.50}
     condition: Long delta < {min_delta:.2f} at the Monday decision bar
     action: >-
-      Sell long at mid, then re-enter per E-L1 to E-L4 in the same session if E-T1 passes; then
-      apply short-leg entry rules
+      Sell long at mid, then re-enter by the long leg's entry rules in the same session if the
+      entry trigger passes; then apply the short leg's entry rules
     rationale: >-
       The long call is the stock substitute, and it's sold and re-bought if its delta falls below
       {min_delta:.2f}. It's checked on Mondays, before the week's short is sold, so a new short is
@@ -230,11 +233,11 @@ rules:
     kind: long_dte_roll
     params: {min_dte: 90}
     condition: Long DTE < {min_dte} at the Monday decision bar
-    action: Same as X-L1
+    action: Same as the long reset
     rationale: >-
       The long is sold and re-bought once it has fewer than {min_dte} days left, so it stays a
-      long-dated stock substitute. Like X-L1, it's checked on Mondays, before the week's short is
-      sold.
+      long-dated stock substitute. Like the long reset, it's checked on Mondays, before the week's
+      short is sold.
 
   - id: X-E1
     name: End of backtest

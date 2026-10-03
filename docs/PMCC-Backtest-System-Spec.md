@@ -170,13 +170,13 @@ When any gate fires, the long leg stays on and no short call is sold that week. 
 
 | ID | Gate | Condition that skips the week | Baseline PMCC | Quant PMCC |
 | --- | --- | --- | --- | --- |
-| G-1 | No quote / liquidity | Selected short never passes E-T1 on any Monday bar | On | On |
-| G-2 | Structural constraint | Selected short fails E-S5 | On | On |
+| G-1 | No quote / liquidity | Selected short never passes the entry trigger on any Monday bar | On | On |
+| G-2 | Structural constraint | Selected short fails the structural constraint | On | On |
 | G-3 | Event week | Front-week ATM IV ÷ next-week ATM IV > 1.20 | Off | On |
 | G-4 | Volatility risk premium | Front-week ATM IV ÷ RV20 < 1.00 | Off | On |
 | G-5 | Minimum premium | Selected short mid < $0.10 per share | Off | On |
 
-G-3 detects events (usually earnings) from the chain itself, with no external calendar: an event priced into the front week lifts its IV above the following week's. A ratio is used instead of a vol-point difference so the threshold scales across low- and high-volatility symbols.
+The event-week gate detects events (usually earnings) from the chain itself, with no external calendar: an event priced into the front week lifts its IV above the following week's. A ratio is used instead of a vol-point difference so the threshold scales across low- and high-volatility symbols.
 
 G-1 replaces the separate short-leg spread gate discussed earlier; the E-T1 spread threshold already covers it.
 
@@ -193,8 +193,8 @@ Both strategies use identical exit rules, so any difference in results comes fro
 | X-S3 | Friday check (bar ending at or before 15:00 ET): spot ≥ short strike − 0.25 × EM, with EM measured at short entry | Buy to close at mid |
 | X-S4 | Short still open at expiry and OTM at the close | `EXPIRE` at $0 |
 | X-S5 | Missed assignment: short still open and ITM at the close | `ASSIGN` the call; open short stock at the strike (Reg T short-stock margin applies); buy to cover at the first valid bar of the next session |
-| X-L1 | Long reset: long delta < 0.50 at the Monday decision bar | Sell long at mid, then re-enter per E-L1 to E-L4 in the same session if E-T1 passes; then apply short-leg entry rules |
-| X-L2 | Long roll: long DTE < 90 at the Monday decision bar | Same as X-L1 |
+| X-L1 | Long reset: long delta < 0.50 at the Monday decision bar | Sell long at mid, then re-enter by the long leg's entry rules in the same session if the entry trigger passes; then apply the short leg's entry rules |
+| X-L2 | Long roll: long DTE < 90 at the Monday decision bar | Same as the long reset |
 | X-E1 | End of backtest | Mark all positions to the final bar's mid; no forced liquidation |
 
 **Why the short is never exercised.** Buying back an ITM short at expiry costs its intrinsic value plus almost no extrinsic, which is economically equal to assignment and covering. Assignment only adds weekend gap risk on short stock, short-stock margin that can push available funds negative, or the loss of the long leg's extrinsic if it's exercised to deliver.
@@ -344,7 +344,7 @@ A static React app on GitHub Pages with a global symbol selector; the comparison
 
 **Traceability.** Every blotter row's rule ID links to that rule on the Trade rules page, and every gate-log entry links to its gate. A reader can go from any trade to the exact rule and values that caused it.
 
-**Rule write-up source.** Each rule in the YAML carries `id`, `name`, `condition`, `action`, and `rationale` fields. The Trade rules page and the write-up text are generated from these, so the published rules always match the code that ran.
+**Rule write-up source.** Each rule in the YAML carries `id`, `name`, `condition`, `action`, and `rationale` fields. The Trade rules page and the write-up text are generated from these, so the published rules always match the code that ran. Written for a human reader, the text and the site's copy name a rule by what it is ("the entry trigger", "the long reset"), never by its ID; IDs appear only in the results and the site's ID columns (PO, DEC-113).
 
 **Frontend constraints**
 

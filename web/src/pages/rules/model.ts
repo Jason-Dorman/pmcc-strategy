@@ -99,22 +99,6 @@ export function differences(pair: Pair): Differences {
   return found;
 }
 
-/** The IDs `prefix` starts (`X-S` → X-S1 … X-S5), across both strategies, in order. */
-export function idsStarting(pair: Pair, prefix: string): string[] {
-  return ruleRows(pair).map((r) => r.id).filter((id) => id.startsWith(prefix));
-}
-
-/** IDs as a reader would list them: a run of consecutive numbers as its ends (`X-S1`, `X-S5`,
- * read "X-S1 to X-S5"), else each one. */
-export function idSpan(ids: readonly string[]): { run: boolean; ids: string[] } {
-  const parts = ids.map((id) => /^(.*?)(\d+)$/.exec(id));
-  const consecutive = ids.length >= 3 && parts.every((m, i) =>
-    m !== null && m[1] === parts[0]?.[1] && Number(m[2]) === Number(parts[0]?.[2]) + i);
-  const first = ids[0];
-  const last = ids.at(-1);
-  return consecutive && first && last ? { run: true, ids: [first, last] } : { run: false, ids: [...ids] };
-}
-
 // ---- the variants: ablations and sensitivity runs ---------------------------------------------
 
 export interface VariantRow {

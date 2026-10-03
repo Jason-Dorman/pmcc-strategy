@@ -13,8 +13,6 @@ import {
   CHECK_NAMES,
   differences,
   fillChanges,
-  idsStarting,
-  idSpan,
   paramChanges,
   paramWords,
   ruleRows,
@@ -38,19 +36,26 @@ function Id({ row }: { row: RuleRow }) {
   return <RuleLink id={row.id} title={hint(row.quant ?? row.baseline)} />;
 }
 
-/** IDs as a reader lists them, each linked: `X-S1 to X-S5`, `X-L1 and X-L2`. */
-export function Ids({ ids }: { ids: readonly string[] }) {
-  const span = idSpan(ids);
-  const joint = (i: number) =>
-    span.run ? " to " : i === span.ids.length - 1 ? " and " : ", ";
+/** A rule by its name, linked to its row: the page's copy never names a rule by its ID (PO,
+ * DEC-113). */
+function Named({ id, rule }: { id: string; rule: RuleOut | undefined }) {
+  return <RuleLink id={id} title={hint(rule)} prose>{rule?.name ?? id}</RuleLink>;
+}
+
+/** Rules by name, each linked, listed as a sentence lists them: `A, B and C`. */
+function Names({ pair, ids }: { pair: Pair; ids: readonly string[] }) {
+  const rows = ruleRows(pair);
   return (
     <>
-      {span.ids.map((id, i) => (
-        <Fragment key={id}>
-          {i > 0 && joint(i)}
-          <RuleLink id={id} />
-        </Fragment>
-      ))}
+      {ids.map((id, i) => {
+        const row = rows.find((r) => r.id === id);
+        return (
+          <Fragment key={id}>
+            {i > 0 && (i === ids.length - 1 ? " and " : ", ")}
+            <Named id={id} rule={row?.quant ?? row?.baseline} />
+          </Fragment>
+        );
+      })}
     </>
   );
 }
@@ -60,23 +65,28 @@ export function Ids({ ids }: { ids: readonly string[] }) {
 function Differ({ pair }: { pair: Pair }) {
   const d = differences(pair);
   const [quant, baseline] = [pair.quant.name, pair.baseline.name];
+  const names = (ids: readonly string[]) => <Names pair={pair} ids={ids} />;
   const clauses: ReactNode[] = [];
   if (d.selection.length > 0) {
-    clauses.push(<Fragment key="s"><Ids ids={d.selection} />, which select the contracts</Fragment>);
+    clauses.push(<Fragment key="s">their {names(d.selection)} rules, which select the
+      contracts</Fragment>);
   }
   if (d.quantGates.length > 0) {
-    clauses.push(<Fragment key="q"><Ids ids={d.quantGates} />, gates only {quant} runs</Fragment>);
+    clauses.push(<Fragment key="q">the {names(d.quantGates)} gates, which only{" "}
+      {quant} runs</Fragment>);
   }
   if (d.baselineGates.length > 0) {
-    clauses.push(
-      <Fragment key="b"><Ids ids={d.baselineGates} />, gates only {baseline} runs</Fragment>);
+    clauses.push(<Fragment key="b">the {names(d.baselineGates)} gates, which only{" "}
+      {baseline} runs</Fragment>);
   }
-  if (d.other.length > 0) clauses.push(<Fragment key="o"><Ids ids={d.other} /></Fragment>);
+  if (d.other.length > 0) clauses.push(<Fragment key="o">their {names(d.other)} rules</Fragment>);
   if (clauses.length === 0) return <p>{baseline} and {quant} run the same rules.</p>;
   return (
     <p>
       <b>{baseline} and {quant} differ only in</b>{" "}
-      {clauses.map((c, i) => <Fragment key={i}>{i > 0 && (i === clauses.length - 1 ? ", and in " : ", in ")}{c}</Fragment>)}.
+      {clauses.map((c, i) => (
+        <Fragment key={i}>{i > 0 && (i === clauses.length - 1 ? ", and in " : ", in ")}{c}</Fragment>
+      ))}.
       {d.other.length === 0 && (
         <> Every other rule, every exit included, is the same in both, so a difference in their
           results comes from selection and gates, not from how the positions are managed.</>
@@ -86,25 +96,23 @@ function Differ({ pair }: { pair: Pair }) {
 }
 
 export function HowRulesWork({ pair, ruleId }: { pair: Pair; ruleId: string | undefined }) {
-  const ids = (prefix: string) => <Ids ids={idsStarting(pair, prefix)} />;
   const known = ruleRows(pair).some((r) => r.id === ruleId);
   return (
     <Note>
-      {ruleId !== undefined && !known && <p><b>There is no rule {ruleId} in these results.</b></p>}
+      {ruleId !== undefined && !known && (
+        <p><b>The rule this link names isn&apos;t in these results.</b></p>
+      )}
       <p>
         Every decision is made at the end of an hourly bar, in the same order each session: first
-        the long leg&apos;s exits and resets ({ids("X-L")}), then the short&apos;s exits
-        ({ids("X-S")}), then, in the week-open session only, the week&apos;s new short
-        ({ids("E-S")}), sold only if no skip-week gate fires ({ids("G-")}). The gates are checked
-        in order, and the first to fire is logged with the values that fired it.
+        the long leg&apos;s exits and resets, then the short&apos;s exits, then, in the week-open
+        session only, the week&apos;s new short, sold only if no skip-week gate fires. The gates
+        are checked in order, and the first to fire is logged with the values that fired it.
       </p>
       <Differ pair={pair} />
       <p>
-        A rule&apos;s ID says what it governs: <b>E</b> an entry (E-L the long leg, E-S the short,
-        E-T the trigger both legs use), <b>G</b> a skip-week gate, <b>X</b> an exit (X-L the long,
-        X-S the short, X-E the end of the backtest). Every blotter row and gate-log entry links
-        here to the rule behind it. Each rule reads with the values the runs used, from the configs
-        they ran with; ▸ opens its rationale.
+        Every blotter row and gate-log entry links here to the rule behind it, and the ID column
+        gives each rule&apos;s reference in the results. Each rule reads with the values the runs
+        used, from the configs they ran with; ▸ opens its rationale.
       </p>
     </Note>
   );
@@ -262,10 +270,10 @@ function ReplacedBy({ c }: { c: Changed }) {
 const ablationColumns: TableColumn<AblationRow>[] = [
   { id: "ablation", header: "Ablation", sort: (r) => r.row.variant.name,
     cell: (r) => <div className="pm-prose">{r.row.variant.name}</div> },
-  { id: "removed", header: "Layer removed", sort: (r) => r.change.rule_id,
+  { id: "removed", header: "Layer removed", sort: (r) => r.before?.name,
     cell: (r) => (
       <div className="pm-prose">
-        <RuleLink id={r.change.rule_id} title={hint(r.before)} /> {r.before?.name ?? "(none)"}
+        {r.before ? <Named id={r.change.rule_id} rule={r.before} /> : "—"}
       </div>
     ) },
   { id: "replaced", header: "Replaced by", sort: (r) => r.after?.action ?? "",
@@ -283,20 +291,20 @@ export function Ablations({ rules }: { rules: Rules }) {
 
 // ---- the sensitivity runs ---------------------------------------------------------------------
 
-/** One rule a variant changed, in words: `E-S3 k 1.0 → 0.75`, `E-T1 → Entry trigger, fixed bar
- * · bar 1`, `G-3 removed`. */
+/** One rule a variant changed, by the rule's name: `Short leg strike: k 1.0 → 0.75`, `Entry
+ * trigger: replaced by Entry trigger, fixed bar · bar 1`, `Event week: removed`. */
 function RuleChangeText({ c }: { c: Changed }) {
   const values = paramChanges(c.before, c.after);
   const words: Record<string, string[]> = {
     params: values,
-    replaced: [`→ ${c.after?.name ?? ""}`, ...values],
+    replaced: [`replaced by ${c.after?.name ?? ""}`, ...values],
     removed: ["removed"],
     added: ["added", ...values],
-    text: ["text only"],
+    text: ["reworded"],
   };
   return (
     <>
-      <RuleLink id={c.change.rule_id} title={hint(c.after ?? c.before)} />{" "}
+      <Named id={c.change.rule_id} rule={c.before ?? c.after} />:{" "}
       {(words[c.change.change] ?? [c.change.change]).join(" · ")}
     </>
   );
@@ -319,7 +327,7 @@ function Change({ row }: { row: VariantRow }) {
 }
 
 const changeText = (row: VariantRow) =>
-  [...fillChanges(row, money), ...changed(row).map((c) => c.change.rule_id)].join(" ");
+  [...fillChanges(row, money), ...changed(row).map((c) => (c.before ?? c.after)?.name)].join(" ");
 
 const sensitivityColumns: TableColumn<VariantRow>[] = [
   { id: "check", header: "Check", sort: (r) => CHECK_NAMES[r.family],

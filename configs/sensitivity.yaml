@@ -57,10 +57,10 @@ timing:
           action: &timing_action >-
             Enter the long on the first bar of the session where the condition holds. Decide the
             short only on session bar {bar} of the week-open session (bar 1 ends at 10:00): sell
-            it if the condition holds there, or else G-1 skips the week
+            it if the condition holds there, or else the no-quote gate skips the week
           rationale: &timing_rationale >-
-            The entry-timing check: the baseline with E-T1's liquidity trigger replaced by a fixed
-            bar of the week-open session, run once for each of its bars. Large dispersion in
+            The entry-timing check: the baseline with its liquidity-based entry trigger replaced
+            by a fixed bar of the week-open session, run once for each of its bars. Large dispersion in
             results across the bars is reported as fragility.
 
   - id: baseline_pmcc--t2
@@ -165,28 +165,28 @@ grid:
       E-S3: {params: {k: 1.25}}
 
   - id: quant_pmcc--g4r090
-    name: "Grid: quant with G-4 at 0.90"
+    name: "Grid: quant with the VRP gate at 0.90"
     extends: quant_pmcc.yaml
     report: {detail: summary}
     overrides:
       G-4: {params: {min_ratio: 0.90}}
 
   - id: quant_pmcc--g4r110
-    name: "Grid: quant with G-4 at 1.10"
+    name: "Grid: quant with the VRP gate at 1.10"
     extends: quant_pmcc.yaml
     report: {detail: summary}
     overrides:
       G-4: {params: {min_ratio: 1.10}}
 
   - id: quant_pmcc--g3r110
-    name: "Grid: quant with G-3 at 1.10"
+    name: "Grid: quant with the event gate at 1.10"
     extends: quant_pmcc.yaml
     report: {detail: summary}
     overrides:
       G-3: {params: {max_ratio: 1.10}}
 
   - id: quant_pmcc--g3r130
-    name: "Grid: quant with G-3 at 1.30"
+    name: "Grid: quant with the event gate at 1.30"
     extends: quant_pmcc.yaml
     report: {detail: summary}
     overrides:

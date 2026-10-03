@@ -181,14 +181,14 @@ The page is rendered from `rules.json` (DEC-52). Nothing on it is hand-typed.
 
 | # | Panel | Width | Content |
 | --- | --- | --- | --- |
-| — | How rules work | 10 | Prose: order of operations; the strategies differ only in selection and gates; how to read rule IDs |
+| — | How rules work | 10 | Prose: order of operations; the strategies differ only in selection and gates, the rules that differ named and linked; what the ID column is |
 | 1 | Entry rules | 10 | ID · Rule · Baseline · Quant (rendered conditions with live values, each condition with "→ action" under it; Quant reads "Same" where it runs the baseline's rule); rationale expands per row |
 | 2 | Skip-week gates | 10 | ID · Gate · Condition (→ action) · Baseline (On/Off) · Quant (On/Off + threshold: "On · 1.20", the value as the rule's text shows it, `shown`); rationale |
 | 3 | Exit rules | 10 | ID · Trigger (name: condition) · Action; rationale (includes the spec's "why the short is never exercised / no rolls / Friday buffer") |
-| 4 | Ablations | 5 | A1–A5, one row per rule changed: Ablation · Layer removed (ID, linked, and quant's rule name) · Replaced by (the ablation's action, or "nothing") |
-| 5 | Sensitivity | 5 | friction, timing and grid runs: Check · Run · Change against its strategy ("spread capture 0.00 → 0.25", "E-T1 → Entry trigger, fixed bar · bar 1", "G-3 max ratio 1.20 → 1.10"); filtered by check |
+| 4 | Ablations | 5 | A1–A5, one row per rule changed: Ablation · Layer removed (quant's rule, by name, linked) · Replaced by (the ablation's action, or "nothing") |
+| 5 | Sensitivity | 5 | friction, timing and grid runs: Check · Run · Change against its strategy ("spread capture 0.00 → 0.25", "Entry trigger: replaced by Entry trigger, fixed bar · bar 1", "Event week: max ratio 1.20 → 1.10"); filtered by check |
 
-The two strategies and each variant's family come from `rules.json` (DEC-112). How rules work reads every rule ID it names, and how the strategies differ, from the rules; a text the strategies don't share shows each one's, labelled.
+The two strategies and each variant's family come from `rules.json` (DEC-112). The page's copy names a rule by its name, linked to its row, never by its ID; IDs appear only in the ID columns (PO, DEC-113). How rules work reads every rule ID it names, and how the strategies differ, from the rules; a text the strategies don't share shows each one's, labelled.
 
 Arriving at `#/rules/X-S3` scrolls to that row and outlines it in `--accent`. The outline is chrome, not data. An ID the results lack says so in How rules work.
 
