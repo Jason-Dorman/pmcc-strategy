@@ -7,7 +7,7 @@ nothing. `{{` and `}}` are literal braces.
 """
 
 import string
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 
 _FORMATTER = string.Formatter()
 
@@ -37,3 +37,14 @@ def render(template: str, values: Mapping[str, object]) -> str:
         return template.format_map(values)
     except (ValueError, TypeError) as e:
         raise ValueError(f"can't render {template!r}: {e}") from None
+
+
+def shown(templates: Sequence[str], values: Mapping[str, object]) -> dict[str, str]:
+    """Each value as the first placeholder naming it formats it (`{max_ratio:.2f}` → "1.20"), or
+    as `str` when none does: a threshold on the Trade rules page reads as the rule's text does."""
+    specs: dict[str, str] = {}
+    for template in templates:
+        for _, field, spec, _ in _FORMATTER.parse(template):
+            if field is not None:
+                specs.setdefault(field, spec or "")
+    return {name: format(value, specs.get(name, "")) for name, value in values.items()}

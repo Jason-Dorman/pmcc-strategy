@@ -126,6 +126,7 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-109 | The backtest's limits, stated on the site; a long-only run and another regime later | SETTLED (PO) · the two additions deferred | P7-02, P7-04; later if time allows |
 | DEC-110 | P7-02: the comparison page | ENG · the limit sentence's wording where a run doesn't bear it out put to the PO | handover 2026-10-02 |
 | DEC-111 | The headline return and an annualized Sharpe, for an institutional reader | SETTLED (PO) | P7-02 |
+| DEC-112 | P7-03: the Trade rules page and its traceability links | ENG · the rule tables' height SETTLED (PO) | P7-03 |
 
 ---
 
@@ -2528,6 +2529,66 @@ How P7-02 builds UI-SPEC §6.1. Nothing here changes a result.
   the schema version, `git_sha`, `run_timestamp` and the metrics this entry changes: every P&L,
   row and CI is as committed at P6-09. The code commit and the results commit are pushed
   together, since the code alone doesn't validate the v2 results.
+
+### DEC-112 — P7-03: the Trade rules page and its traceability links
+**Status:** ENG · the rule tables' height SETTLED · **Basis:** PO, 2026-10-03, at P7-03's handover (the height) · **Affects:** P7-03; UI-SPEC §5, §6.3; ARCHITECTURE §12, §13; DEC-52, DEC-65, DEC-107
+
+How P7-03 builds UI-SPEC §6.3. Nothing here changes a result; `rules.json` is rebuilt by every
+export and never committed, so it gains two fields without a schema version.
+
+- **`rules.json` gains** (`pmcc/export/site_models.py`, `site.py`):
+  - each rule's **`shown`**: every param as the rule's own text formats it, from the first
+    placeholder naming it (`{max_ratio:.2f}` → "1.20", `{long_max_spread:.0%}` → "3%"), a dollar
+    param with its `$` ("$0.10", "$5,000"), else `str` (`pmcc.config.rule_text.shown`,
+    `Rule.shown_params`). The page shows a threshold exactly as the condition beside it reads; a
+    browser can't tell 1.0 from 1 once JSON is parsed.
+  - each run's **`family`**: `strategy` for a strategy; for a variant, the robustness table that
+    holds it (`ablations`, `friction`, `timing`, `grid` in any `{SYM}/robustness.json`, its
+    reference's own row aside); null for a variant no table holds (a single `pmcc run`). It is
+    read from the results, not the configs, so it can't disagree with the runs; two symbols
+    putting one run in different tables abort the export.
+- **The page** (`web/src/pages/Rules.tsx`, `rules/model.ts`, `rules/sections.tsx`), from
+  `rules.json` alone (`useRules`), the baseline and quant set side by side:
+  - **How rules work:** the order of operations, the differences and the ID grammar. Every ID
+    in it is read from the rules (`X-S1 to X-S5`, linked), and the sentence on how the strategies
+    differ lists the rules that do: entry rules both run differently ("which select the
+    contracts"), gates one runs alone, and anything else apart, in which case it no longer
+    claims every other rule is shared. On NVDA: E-L2, E-L3 and E-S3, and G-3 to G-5.
+  - **[1] Entry rules:** ID · Rule · Baseline · Quant, each the condition with "→ action" under
+    it; Quant reads "Same" where its rule's name, condition and action are the baseline's.
+  - **[2] Skip-week gates:** ID · Gate · Condition (→ action) · Baseline · Quant, a strategy's
+    cell "Off", or "On" with its `shown` values ("On · 1.20"; the param names on hover).
+  - **[3] Exit rules:** ID · Trigger (name: condition) · Action. A text the strategies don't
+    share shows each one's, labelled.
+  - **The rationale** opens under a rule's row from a leading toggle column (Why), one
+    paragraph per line of the YAML's text (the short exits' shared no-roll paragraph first), each
+    strategy's labelled where they differ.
+  - **[4] Ablations:** one row per rule an ablation changed: Ablation · Layer removed (the ID,
+    linked, and quant's rule name; its condition → action on hover) · Replaced by (the variant's
+    action, or "nothing" for a rule removed).
+  - **[5] Sensitivity:** Check · Run (its YAML name) · Change, read from the variant against its
+    strategy: the fill model ("spread capture 0.00 → 0.25"), a replaced rule ("E-T1 → Entry
+    trigger, fixed bar · bar 1"), a param ("G-3 max ratio 1.20 → 1.10"); filtered by check.
+- **Traceability** (UI-SPEC §7): the blotter, gate log and cycle statistics already link to
+  `#/rules/<ID>` (P7-01). `DataTable` now takes a `target` row: arriving at `#/rules/X-S3`
+  outlines that row in `--accent` and scrolls it into view, within the table's own scroller
+  too; an ID the results lack says so in How rules work. `DataTable` also takes a `detail` (the
+  rationale toggle) and `wrap` (prose cells wrap, top-aligned), neither with `virtual`.
+- **Look:** rule IDs no longer break at their hyphen anywhere (`.pm-rule`), and a prose panel's
+  paragraphs are spaced (`.pm-note p + p`), which the comparison page's purpose shares.
+- **Put to the PO:** UI-SPEC §5 caps every table at 420 px with its own scroll. The entry table's
+  ten rules run past it at 1600 px (E-S3 to E-S5 sit below the fold of their table), so a reader
+  scrolls inside it; the recommendation is to let the three rule tables grow to their rows.
+- **Outcome:** 2026-10-03 — PO: **as recommended**. The entry, gate and exit tables are as tall
+  as their rows (`DataTable`'s `grow`, `.pm-table-grow`); every other table, the ablations and
+  sensitivity runs included, keeps the 420 px cap (UI-SPEC §5).
+- **Tests:** `web/src/pages/Rules.test.tsx` (16: panel order and numbering, each table's cells,
+  the rationale, the target row, a missing rule, the differences sentence, ablations, sensitivity
+  and its filter, a missing `rules.json`, which tables grow), `rules/model.test.ts` (12), the
+  `DataTable` detail, target and height (6); `tests/scenario/test_export.py` (`shown`, `family` from the tables, a variant no
+  table holds, two symbols disagreeing) and `shown` itself (`test_rule_text.py`,
+  `test_quant_config.py`). The smoke test follows a gate-log link to its outlined row, in view,
+  and checks the page's tables on the built site (18 pass).
 
 ## E. Analytics definitions
 

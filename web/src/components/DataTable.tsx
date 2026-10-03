@@ -1,8 +1,9 @@
 // A data table (UI-SPEC §5): TanStack Table for sorting, TanStack Virtual for the long ones (the
 // ledger, the blotter), at a fixed row height. Every column sorts. Each filter is a row of
 // toggles above the table, one per value the rows have; a row passes when it offers a value
-// toggled on, and with none on the filter is off. The look is shell.css's: hairlines, a sticky
-// header, mono numbers right-aligned.
+// toggled on, and with none on the filter is off. A row can open a detail under it (a rule's
+// rationale), and the row a reader arrived for is scrolled to and outlined (the Trade rules page).
+// The look is shell.css's: hairlines, a sticky header, mono numbers right-aligned.
 import {
   createColumnHelper,
   createSortedRowModel,
@@ -13,7 +14,7 @@ import {
   type SortFn,
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { useMemo, useRef, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { TABLE_OVERSCAN, TABLE_ROW_HEIGHT } from "../theme/tokens";
 
@@ -40,6 +41,15 @@ export interface TableFilter<T> {
   hint?: (value: string) => string;
 }
 
+export interface TableDetail<T> {
+  /** The toggle column's header. */
+  header: string;
+  /** The toggle's accessible name for a row: `Rationale for E-T1`. */
+  label: (row: T) => string;
+  /** What opens under a row; `undefined` for a row with nothing to open, which gets no toggle. */
+  render: (row: T) => ReactNode;
+}
+
 export interface DataTableProps<T> {
   /** The table's accessible name. */
   label: string;
@@ -49,6 +59,15 @@ export interface DataTableProps<T> {
   filters?: readonly TableFilter<T>[];
   /** Render only the rows in view, each TABLE_ROW_HEIGHT tall. */
   virtual?: boolean;
+  /** A detail each row can open under it, toggled from a leading column (not with `virtual`). */
+  detail?: TableDetail<T> | undefined;
+  /** The row ID a reader arrived for (`#/rules/X-S3`): scrolled into view and outlined, in
+   * `--accent` (chrome, not data). Not with `virtual`, which may not render it. */
+  target?: string | undefined;
+  /** Cells wrap, top-aligned: a table of prose (the rules). */
+  wrap?: boolean;
+  /** As tall as its rows, without TABLE_MAX_HEIGHT's cap: the rule tables (PO, DEC-112). */
+  grow?: boolean;
 }
 
 const features = tableFeatures({
@@ -187,8 +206,33 @@ function useWindow<R>(rows: readonly R[], virtual: boolean) {
   return { scroller, shown, above, below };
 }
 
+/** A row's detail toggle. */
+function Toggle({ open, label, controls, onClick }: {
+  open: boolean;
+  label: string;
+  controls: string;
+  onClick: () => void;
+}) {
+  return (
+    <button type="button" className="pm-toggle" aria-expanded={open} aria-label={label}
+            aria-controls={open ? controls : undefined} onClick={onClick}>
+      {open ? "▾" : "▸"}
+    </button>
+  );
+}
+
+/** Scrolls the target row into view once it renders; the ref goes on that row. */
+function useTarget(target: string | undefined, present: boolean) {
+  const ref = useRef<HTMLTableRowElement>(null);
+  useEffect(() => {
+    if (present) ref.current?.scrollIntoView({ block: "center" });
+  }, [target, present]);
+  return ref;
+}
+
 export function DataTable<T extends RowData>({
-  label, rows, columns, rowId, filters = NO_FILTERS, virtual = false,
+  label, rows, columns, rowId, filters = NO_FILTERS, virtual = false, detail, target,
+  wrap = false, grow = false,
 }: DataTableProps<T>) {
   const defs = useColumns(columns);
   const [chosen, setChosen] = useState<Chosen>({});
@@ -202,7 +246,15 @@ export function DataTable<T extends RowData>({
   });
   const visible = table.getRowModel().rows;
   const { scroller, shown, above, below } = useWindow(visible, virtual);
-  const span = columns.length;
+  const [open, setOpen] = useState<ReadonlySet<string>>(new Set());
+  const targetRef = useTarget(target, visible.some((r) => r.id === target));
+  const span = columns.length + (detail ? 1 : 0);
+  const flip = (id: string) => setOpen((o) => {
+    const next = new Set(o);
+    if (!next.delete(id)) next.add(id);
+    return next;
+  });
+  const classes = ["pm-table", virtual && "pm-table-fixed", wrap && "pm-table-wrap"];
   const numeric = new Set(columns.filter((c) => c.num).map((c) => c.id));
   const align = (id: string) => (numeric.has(id) ? "pm-num" : undefined);
 
@@ -210,11 +262,12 @@ export function DataTable<T extends RowData>({
     <>
       <Filters rows={rows} filters={filters} chosen={chosen}
                onChange={(id, values) => setChosen((c) => ({ ...c, [id]: values }))} />
-      <div className="pm-table-scroll" ref={scroller}>
-        <table className={virtual ? "pm-table pm-table-fixed" : "pm-table"} aria-label={label}>
+      <div className={grow ? "pm-table-scroll pm-table-grow" : "pm-table-scroll"} ref={scroller}>
+        <table className={classes.filter(Boolean).join(" ")} aria-label={label}>
           <thead>
             {table.getHeaderGroups().map((group) => (
               <tr key={group.id}>
+                {detail && <th className="pm-toggle-col">{detail.header}</th>}
                 {group.headers.map((header) => (
                   <th key={header.id} className={align(header.column.id)}
                       aria-sort={ariaSort(header.column.getIsSorted())}>
@@ -230,15 +283,37 @@ export function DataTable<T extends RowData>({
           </thead>
           <tbody>
             <Spacer height={above} span={span} />
-            {shown.map((row) => (
-              <tr key={row.id}>
-                {row.getAllCells().map((cell) => (
-                  <td key={cell.id} className={align(cell.column.id)}>
-                    <table.FlexRender cell={cell} />
-                  </td>
-                ))}
-              </tr>
-            ))}
+            {shown.map((row) => {
+              const more = detail?.render(row.original);
+              const isOpen = more !== undefined && open.has(row.id);
+              const detailId = `pm-detail-${label}-${row.id}`.replace(/[^\w-]+/g, "-");
+              const isTarget = row.id === target;
+              return (
+                <Fragment key={row.id}>
+                  <tr className={isTarget ? "pm-target" : undefined}
+                      ref={isTarget ? targetRef : undefined}>
+                    {detail && (
+                      <td className="pm-toggle-col">
+                        {more !== undefined && (
+                          <Toggle open={isOpen} label={detail.label(row.original)}
+                                  controls={detailId} onClick={() => flip(row.id)} />
+                        )}
+                      </td>
+                    )}
+                    {row.getAllCells().map((cell) => (
+                      <td key={cell.id} className={align(cell.column.id)}>
+                        <table.FlexRender cell={cell} />
+                      </td>
+                    ))}
+                  </tr>
+                  {isOpen && (
+                    <tr className="pm-detail-row" id={detailId}>
+                      <td colSpan={span}>{more}</td>
+                    </tr>
+                  )}
+                </Fragment>
+              );
+            })}
             <Spacer height={below} span={span} />
             {visible.length === 0 && (
               <tr><td colSpan={span} className="pm-label">No rows.</td></tr>

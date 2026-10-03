@@ -278,6 +278,9 @@ body {
   color: var(--accent);
   font-weight: 600;
 }
+.pm-note p + p {
+  margin-top: 8px;
+}
 .pm-empty {
   color: var(--text-muted);
   font-family: var(--font-mono);
@@ -319,6 +322,10 @@ body {
   max-height: 420px; /* TABLE_MAX_HEIGHT */
   overflow: auto;
   border: 1px solid var(--border);
+}
+/* a table as tall as its rows: the rule tables (PO, DEC-112) */
+.pm-table-scroll.pm-table-grow {
+  max-height: none;
 }
 .pm-table {
   width: 100%;
@@ -447,10 +454,62 @@ th[aria-sort="descending"] .pm-sort-mark::after {
   text-decoration: underline;
   text-decoration-color: var(--border);
   text-underline-offset: 2px;
+  white-space: nowrap; /* an ID never breaks at its hyphen */
 }
 .pm-rule:hover {
   color: var(--accent);
   text-decoration-color: var(--accent);
+}
+
+/* ---- a table of prose (the Trade rules page): cells wrap, top-aligned; rule text in body type ---- */
+.pm-table-wrap td {
+  white-space: normal;
+  vertical-align: top;
+}
+.pm-table .pm-prose {
+  font-family: var(--font-body);
+  font-size: 12px;
+  line-height: 1.45;
+  min-width: 220px;
+}
+.pm-table .pm-prose + .pm-prose {
+  margin-top: 4px;
+}
+.pm-table .pm-then {
+  color: var(--text-muted);
+}
+/* a row's detail toggle and what it opens under the row */
+.pm-table .pm-toggle-col {
+  width: 1%;
+}
+.pm-toggle {
+  all: unset;
+  cursor: pointer;
+  color: var(--accent);
+  padding: 0 4px;
+}
+.pm-toggle:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 1px;
+}
+.pm-table .pm-detail-row td {
+  border-top: 0;
+  white-space: normal;
+  font-family: var(--font-body);
+  font-size: 12px;
+  line-height: 1.5;
+  padding: 2px 10px 10px 34px;
+}
+.pm-detail-row p {
+  max-width: 110ch;
+}
+.pm-detail-row p + p {
+  margin-top: 6px;
+}
+/* the row a reader arrived for (#/rules/X-S3): an outline, which is chrome, not data */
+.pm-table tr.pm-target {
+  outline: 1px solid var(--accent);
+  outline-offset: -1px;
 }
 
 /* ---- a table's filters: a row of toggles each; none on is no filter ---- */

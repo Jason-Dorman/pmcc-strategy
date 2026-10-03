@@ -277,6 +277,80 @@ def test_export_rules_publish_params_as_the_config_holds_them(exported: Path) ->
     assert by_id["G-5"].params == {"min_mid": "0.1000"}
 
 
+def test_p7_03_export_rules_show_each_param_as_the_rules_text_does(exported: Path) -> None:
+    rules = Rules.model_validate_json((exported / "rules.json").read_bytes())
+    quant = next(s for s in rules.strategies if s.id == "quant_pmcc")
+    by_id = {r.id: r for r in quant.rules}
+
+    assert by_id["G-3"].shown == {"max_ratio": "1.20"}
+    assert by_id["G-5"].shown == {"min_mid": "$0.10"}
+    assert by_id["E-T1"].shown == {"long_max_spread": "3%", "short_max_spread": "10%"}
+
+
+def _robustness(symbol: str, **tables: list[tuple[str, str]]) -> Doc:
+    """A robustness file whose tables hold the given (run ID, reference) rows."""
+
+    def row(run_id: str, reference: str) -> Doc:
+        return {"run_id": run_id, "label": run_id, "reference": reference, "pnl": 0,
+                "max_drawdown": 0, "payoff_ratio": None, "weekly_return": None,
+                "pnl_vs_reference": 0}  # fmt: skip
+
+    doc: Doc = {"schema_version": SCHEMA_VERSION, "symbol": symbol, "timing_dispersion": None}
+    for table in ("ablations", "friction", "timing", "grid"):
+        doc[table] = [row(*r) for r in tables.get(table, [])]
+    return doc
+
+
+def _with_robustness(runs: Runs, tmp: Path, doc: Doc, symbol: str = "SYN") -> Path:
+    results = tmp / "results"
+    if not results.exists():
+        shutil.copytree(runs[0], results)
+    (results / symbol / "robustness.json").write_bytes(canonical.to_bytes(doc))
+    return results
+
+
+def test_p7_03_export_rules_name_each_runs_family_from_the_robustness_tables(
+    runs: Runs, tmp_path: Path
+) -> None:
+    ablations = [("quant_pmcc", "quant_pmcc"), ("quant_pmcc--a3", "quant_pmcc")]
+    results = _with_robustness(runs, tmp_path, _robustness("SYN", ablations=ablations))
+
+    export_site(results, tmp_path / "site")
+
+    rules = Rules.model_validate_json((tmp_path / "site" / "rules.json").read_bytes())
+    families = {s.id: s.family for s in rules.strategies}
+    assert families == {
+        "baseline_pmcc": "strategy",
+        "quant_pmcc": "strategy",
+        "quant_pmcc--a3": "ablation",
+    }
+
+
+def test_p7_03_export_rules_leave_a_variant_no_table_holds_without_a_family(
+    exported: Path,
+) -> None:
+    rules = Rules.model_validate_json((exported / "rules.json").read_bytes())
+
+    families = {s.id: s.family for s in rules.strategies}
+    assert families == {
+        "baseline_pmcc": "strategy",
+        "quant_pmcc": "strategy",
+        "quant_pmcc--a3": None,
+    }
+
+
+def test_p7_03_export_refuses_a_run_two_symbols_put_in_different_tables(
+    runs: Runs, tmp_path: Path
+) -> None:
+    results = _moved(runs, tmp_path, "AAA")
+    _with_robustness(runs, tmp_path, _robustness("SYN", grid=[("quant_pmcc--a3", "quant_pmcc")]))
+    as_ablation = _robustness("AAA", ablations=[("quant_pmcc--a3", "quant_pmcc")])
+    _with_robustness(runs, tmp_path, as_ablation, symbol="AAA")
+
+    with pytest.raises(ExportError, match="quant_pmcc--a3"):
+        export_site(results, tmp_path / "site")
+
+
 def test_export_rules_list_a_variants_changes_against_its_strategy(exported: Path) -> None:
     rules = Rules.model_validate_json((exported / "rules.json").read_bytes())
     by_id = {s.id: s for s in rules.strategies}

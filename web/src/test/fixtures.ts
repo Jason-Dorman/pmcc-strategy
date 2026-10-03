@@ -1,9 +1,10 @@
-// A small index, two full runs, and NVDA's robustness and the pooled universe files, shaped as
-// `pmcc export` writes them, for the page, route and loader tests. Each is typed against the
+// A small index, two full runs, NVDA's robustness and the pooled universe files, and rules.json,
+// shaped as `pmcc export` writes them, for the page, route and loader tests. Each is typed against the
 // generated schema, so a schema change shows here.
 import type { Index } from "../types/generated/index";
 import type { Pooled } from "../types/generated/pooled";
 import type { Robustness, RobustnessRow } from "../types/generated/robustness";
+import type { RuleChange, RuleOut, Rules, StrategyRules } from "../types/generated/rules";
 import type {
   BlotterRow,
   GateLogRowOut,
@@ -283,12 +284,128 @@ export const POOLED: Pooled = {
   ],
 };
 
+// ---- rules.json --------------------------------------------------------------------------------
+
+function rule(id: string, name: string, condition: string, action: string, rationale: string,
+              shown: Record<string, string> = {}): RuleOut {
+  return { id, name, kind: id.toLowerCase(), params: {}, shown, condition, action, rationale };
+}
+
+const NO_ROLLS = "There are no rolls.";
+
+/** The rules both strategies share, as the shared YAML writes them. */
+const SHARED: Record<string, RuleOut> = {
+  "E-T1": rule("E-T1", "Entry trigger", "Spread at most 3% of mid for the long, 10% for the short",
+               "Enter on the first bar where the condition holds", "Liquidity decides.",
+               { long_max_spread: "3%", short_max_spread: "10%" }),
+  "E-S5": rule("E-S5", "Structural constraint", "Short strike − long strike > net debit",
+               "Sell the short only if this holds", "The strikes cover the debit."),
+  "G-1": rule("G-1", "No quote / liquidity", "Selected short never passes E-T1",
+              "Skip the week; keep the long", "No quote, no trade."),
+  "G-2": rule("G-2", "Structural constraint", "Selected short fails E-S5",
+              "Skip the week; keep the long", "No losing structure."),
+  "X-L1": rule("X-L1", "Long reset", "Long delta < 0.50 at the Monday decision bar",
+               "Sell long at mid, then re-enter", "Keep the stock substitute.",
+               { min_delta: "0.50" }),
+  "X-L2": rule("X-L2", "Long roll", "Long DTE < 90 at the Monday decision bar", "Same as X-L1",
+               "Stay long-dated.", { min_dte: "90" }),
+  "X-S1": rule("X-S1", "Take profit", "Short mid ≤ 25% of the credit received",
+               "Buy to close at mid", `${NO_ROLLS}\nBuy the short back once it is cheap.`,
+               { max_credit_fraction: "25%" }),
+  "X-S3": rule("X-S3", "Friday check", "Spot ≥ short strike − 0.25 × EM by 15:00 ET",
+               "Buy to close at mid", `${NO_ROLLS}\nThe Friday buffer.`,
+               { check_by: "15:00", em_buffer: "0.25" }),
+  "X-E1": rule("X-E1", "End of backtest", "The window's final bar", "Mark all positions",
+               "Nothing is force-closed."),
+};
+
+const BASELINE_PICKS: Record<string, RuleOut> = {
+  "E-L2": rule("E-L2", "Long leg expiry", "Monthly expiries listed",
+               "Choose the monthly expiry nearest 180 days to expiry", "The textbook long.",
+               { target_dte: "180" }),
+  "E-L3": rule("E-L3", "Long leg strike", "Eligible calls on the E-L2 expiry",
+               "Choose the strike with delta nearest 0.80", "A deep ITM long.",
+               { target_delta: "0.80" }),
+  "E-S3": rule("E-S3", "Short leg strike", "Eligible OTM calls on the E-S2 expiry",
+               "Choose the strike with delta nearest 0.30", "The textbook short.",
+               { target_delta: "0.30" }),
+};
+
+const QUANT_PICKS: Record<string, RuleOut> = {
+  "E-L2": rule("E-L2", "Long leg expiry", "Monthly expiries listed",
+               "Keep every monthly expiry from 120 to 270 days to expiry", "A range of longs.",
+               { max_dte: "270", min_dte: "120" }),
+  "E-L3": rule("E-L3", "Long leg strike", "Eligible calls with delta from 0.70 to 0.90",
+               "Choose the lowest extrinsic ÷ delta", "The cheapest replacement.",
+               { max_delta: "0.90", min_delta: "0.70" }),
+  "E-S3": rule("E-S3", "Short leg strike", "Eligible calls on the E-S2 expiry",
+               "Choose the lowest listed strike ≥ spot + 1.0 × EM", "The expected-move short.",
+               { k: "1.0" }),
+};
+
+const QUANT_GATES: Record<string, RuleOut> = {
+  "G-3": rule("G-3", "Event week", "Front-week ATM IV ÷ next-week ATM IV > 1.20",
+              "Skip the week; keep the long", "Events from the chain.", { max_ratio: "1.20" }),
+  "G-4": rule("G-4", "Volatility risk premium", "Front-week ATM IV ÷ RV20 < 1.00",
+              "Skip the week; keep the long", "The VRP gate.", { min_ratio: "1.00" }),
+  "G-5": rule("G-5", "Minimum premium", "Selected short mid < $0.10 per share",
+              "Skip the week; keep the long", "Too small a premium.", { min_mid: "$0.10" }),
+};
+
+const ORDER = ["E-T1", "E-L2", "E-L3", "E-S3", "E-S5", "G-1", "G-2", "G-3", "G-4", "G-5", "X-S1",
+               "X-S3", "X-L1", "X-L2", "X-E1"];
+
+function rulesOf(...sets: Record<string, RuleOut>[]): RuleOut[] {
+  const all: Record<string, RuleOut> = Object.assign({}, ...sets);
+  return ORDER.flatMap((id) => all[id] ?? []);
+}
+
+function strategy(id: string, name: string, rules: RuleOut[], family: StrategyRules["family"],
+                  changes: RuleChange[] = [], spread_capture = 0): StrategyRules {
+  const strategy_id = id.split("--")[0] ?? id;
+  return { id, name, strategy_id, family, detail: family === "strategy" ? "full" : "summary",
+           spread_capture, fee_per_contract: 0, rules, changes };
+}
+
+const QUANT_RULES = rulesOf(SHARED, QUANT_PICKS, QUANT_GATES);
+
+/** rules.json: the two strategies, two ablations and one run of each sensitivity check. */
+export const RULES: Rules = {
+  schema_version: SCHEMA_VERSION,
+  strategies: [
+    strategy("baseline_pmcc", "Baseline PMCC", rulesOf(SHARED, BASELINE_PICKS), "strategy"),
+    strategy("baseline_pmcc--sc025", "Friction: baseline at spread capture 0.25",
+             rulesOf(SHARED, BASELINE_PICKS), "friction", [], 0.25),
+    strategy("baseline_pmcc--t1", "Timing: baseline, short decided on bar 1 (10:00)",
+             rulesOf(SHARED, BASELINE_PICKS, {
+               "E-T1": rule("E-T1", "Entry trigger, fixed bar", "Spread at most 3% / 10%",
+                            "Decide the short on session bar 1", "The timing check.",
+                            { bar: "1", long_max_spread: "3%", short_max_spread: "10%" }),
+             }), "timing", [{ rule_id: "E-T1", change: "replaced" }]),
+    strategy("quant_pmcc", "Quant PMCC", QUANT_RULES, "strategy"),
+    strategy("quant_pmcc--a1", "A1: quant with the baseline long leg",
+             rulesOf(SHARED, QUANT_PICKS, QUANT_GATES, BASELINE_PICKS, { "E-S3": QUANT_PICKS["E-S3"] as RuleOut }),
+             "ablation",
+             [{ rule_id: "E-L2", change: "replaced" }, { rule_id: "E-L3", change: "replaced" }]),
+    strategy("quant_pmcc--a3", "A3: quant without the event gate",
+             QUANT_RULES.filter((r) => r.id !== "G-3"), "ablation",
+             [{ rule_id: "G-3", change: "removed" }]),
+    strategy("quant_pmcc--k075", "Grid: quant with k = 0.75",
+             rulesOf(SHARED, QUANT_PICKS, QUANT_GATES, {
+               "E-S3": rule("E-S3", "Short leg strike", "Eligible calls on the E-S2 expiry",
+                            "Choose the lowest listed strike ≥ spot + 0.75 × EM",
+                            "The expected-move short.", { k: "0.75" }),
+             }), "grid", [{ rule_id: "E-S3", change: "params" }]),
+  ],
+};
+
 export const FILES: Record<string, unknown> = {
   "data/index.json": INDEX,
   "data/NVDA/baseline_pmcc.json": run("baseline_pmcc", []),
   "data/NVDA/quant_pmcc.json": run("quant_pmcc", ["gate_log", "greek_attribution"]),
   "data/NVDA/robustness.json": ROBUSTNESS,
   "data/universe/pooled.json": POOLED,
+  "data/rules.json": RULES,
 };
 
 /** A fetch over `files`, answering 404 for anything else. */

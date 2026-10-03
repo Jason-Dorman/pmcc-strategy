@@ -5,6 +5,7 @@ from collections.abc import Mapping
 
 from pydantic import Field
 
+from pmcc.config.matrix import Family
 from pmcc.config.strategy import Detail, Section
 from pmcc.config.universe import RiskFreeRate, Window
 from pmcc.export.base import SCHEMA_VERSION, Dollars, Model, SchemaVersion
@@ -53,6 +54,7 @@ class RuleOut(Model):
     name: str
     kind: str
     params: Mapping[str, float | int | str]  # dollars "0.1000", clock times "15:00"
+    shown: Mapping[str, str]  # each param as its text shows it: "1.20", "$0.10", "3%" (P7-03)
     condition: str
     action: str
     rationale: str
@@ -69,6 +71,9 @@ class StrategyRules(Model):
     id: str  # the run ID
     name: str
     strategy_id: str
+    # Its part of the run matrix, read from the robustness tables that hold it; null for a variant
+    # none does (P7-03: the Trade rules page's ablations and sensitivity panels)
+    family: Family | None
     detail: Detail
     spread_capture: float
     fee_per_contract: Dollars

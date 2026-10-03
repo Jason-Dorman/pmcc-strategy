@@ -7,8 +7,9 @@ The export directory is rebuilt whole on every export:
 - every results file, copied byte for byte, once it passes `pmcc verify` (a dirty tree is allowed
   here, so a local preview works; CI's verify step keeps dirty results off the published site);
 - `index.json`: what exists, per symbol, with the window, r and starting cash every run shares;
-- `rules.json`: each strategy's and variant's rules, rendered from the config it ran with, and each
-  variant's changes against its strategy (the Trade rules page; DEC-52).
+- `rules.json`: each strategy's and variant's rules, rendered from the config it ran with, each
+  variant's changes against its strategy, and each run's family, from the robustness tables that
+  hold it (the Trade rules page; DEC-52, P7-03).
 
 Both are derived from the results at export time rather than committed, so neither can disagree
 with the runs it describes.
@@ -22,9 +23,10 @@ from pathlib import Path
 from typing import final
 
 from pmcc.config.kinds import SPEC_RULE_IDS
+from pmcc.config.matrix import Family
 from pmcc.config.strategy import Rule
 from pmcc.export import canonical
-from pmcc.export.analytics_models import SYMBOL_FILES, UNIVERSE_FILES
+from pmcc.export.analytics_models import SYMBOL_FILES, UNIVERSE_FILES, Robustness
 from pmcc.export.models import RunResult
 from pmcc.export.schema import SCHEMA_DIR, write_schemas
 from pmcc.export.site_models import (
@@ -76,7 +78,8 @@ def export_site(results: Path, out: Path) -> Exported:
     runs = _runs(results)
     if not runs:
         raise ExportError(f"{results} holds no runs to export")
-    index, rules = build_index(runs, _extras(results)), build_rules(runs)
+    extras = _extras(results)
+    index, rules = build_index(runs, extras), build_rules(runs, families(results, extras))
     _clear(out)
     write_schemas(out)
     copied = _copy(results, out)
@@ -141,7 +144,7 @@ def _index_run(run: _Loaded) -> IndexRun:
     )
 
 
-def build_rules(runs: Sequence[_Loaded]) -> Rules:
+def build_rules(runs: Sequence[_Loaded], families: Mapping[str, Family]) -> Rules:
     """One entry per run ID. Every symbol runs a run ID on one config, so one serves them all."""
     by_id: dict[str, RunResult] = {}
     for run in runs:
@@ -151,10 +154,33 @@ def build_rules(runs: Sequence[_Loaded]) -> Rules:
                 f"{run.path} ran {seen.manifest.run_id} on another config than "
                 f"{seen.manifest.symbol}'s; re-run every result together"
             )
-    return Rules(strategies=tuple(_strategy_rules(by_id[i], by_id) for i in sorted(by_id)))
+    return Rules(
+        strategies=tuple(_strategy_rules(by_id[i], by_id, families) for i in sorted(by_id))
+    )
 
 
-def _strategy_rules(result: RunResult, by_id: Mapping[str, RunResult]) -> StrategyRules:
+_TABLES = {Family.ABLATION: "ablations", Family.FRICTION: "friction", Family.TIMING: "timing",
+           Family.GRID: "grid"}  # fmt: skip
+
+
+def families(results: Path, extras: Sequence[str]) -> dict[str, Family]:
+    """Each variant's family, from the robustness tables that hold it, its reference's own row
+    aside. Raises `ExportError` if two symbols' tables put one run in different families."""
+    found: dict[str, Family] = {}
+    for path in (p for p in extras if Path(p).stem == "robustness"):
+        robustness = Robustness.model_validate_json((results / path).read_bytes())
+        for family, table in _TABLES.items():
+            for row in getattr(robustness, table):
+                if row.run_id != row.reference and found.setdefault(row.run_id, family) != family:
+                    raise ExportError(
+                        f"{path} puts {row.run_id} in the {family} table, another symbol's in "
+                        f"its {found[row.run_id]} table; re-run every result together"
+                    )
+    return found
+
+
+def _strategy_rules(result: RunResult, by_id: Mapping[str, RunResult],
+                    families: Mapping[str, Family]) -> StrategyRules:  # fmt: skip
     strategy, manifest = result.config.strategy, result.manifest
     base = by_id.get(manifest.strategy_id)
     if base is None:
@@ -167,6 +193,7 @@ def _strategy_rules(result: RunResult, by_id: Mapping[str, RunResult]) -> Strate
         id=strategy.id,
         name=strategy.name,
         strategy_id=manifest.strategy_id,
+        family=Family.STRATEGY if base is result else families.get(strategy.id),
         detail=strategy.report.detail,
         spread_capture=strategy.fill_model.spread_capture,
         fee_per_contract=strategy.fill_model.fee_per_contract.to_dollars(),
@@ -180,7 +207,7 @@ def _strategy_rules(result: RunResult, by_id: Mapping[str, RunResult]) -> Strate
 def _rule(rule: Rule, params: Mapping[str, float | int | str]) -> RuleOut:
     text = rule.text()
     return RuleOut(id=str(rule.id), name=rule.name, kind=rule.kind, params=dict(params),
-                   condition=text.condition, action=text.action,
+                   shown=rule.shown_params(), condition=text.condition, action=text.action,
                    rationale=text.rationale)  # fmt: skip
 
 

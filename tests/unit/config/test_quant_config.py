@@ -138,6 +138,24 @@ def test_config_quant_every_param_is_referenced_and_rendered(rule_id: str) -> No
     assert not any("{" in s or "}" in s for s in (text.condition, text.action, text.rationale))
 
 
+@pytest.mark.parametrize(
+    ("rule_id", "shown"),
+    [
+        ("G-3", {"max_ratio": "1.20"}),
+        ("G-4", {"min_ratio": "1.00"}),
+        ("G-5", {"min_mid": "$0.10"}),
+        ("E-T1", {"long_max_spread": "3%", "short_max_spread": "10%"}),
+        ("E-L4", {"contracts": "1", "cash_multiple": "2", "cash_round_to": "$5,000"}),
+        ("X-S3", {"check_by": "15:00", "em_buffer": "0.25"}),
+        ("E-S5", {}),
+    ],
+)
+def test_p7_03_each_param_is_shown_as_the_rules_text_shows_it(
+    rule_id: str, shown: dict[str, str]
+) -> None:
+    assert rule(QUANT, rule_id).shown_params() == shown
+
+
 # ---- the ablations (config-diff) -------------------------------------------------------------
 
 LAYERS = {

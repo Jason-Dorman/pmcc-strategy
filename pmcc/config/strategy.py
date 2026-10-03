@@ -31,7 +31,7 @@ from pydantic import (
 from pmcc.config.extends import Resolved, StrategyFile, resolve, resolve_inline
 from pmcc.config.fields import DollarMoney, RuleIdField
 from pmcc.config.kinds import KINDS, OPTIONAL_RULE_IDS, SPEC_RULE_IDS, Params
-from pmcc.config.rule_text import placeholders, render
+from pmcc.config.rule_text import placeholders, render, shown
 from pmcc.config.universe import RiskFreeRate, Universe, Window
 from pmcc.domain import Money, Price, RuleId
 
@@ -111,15 +111,26 @@ class Rule(BaseModel):
     def text(self) -> RuleText:
         """The write-up rendered from this rule's params: a `Price` or `Money` as `Decimal`
         dollars."""
-        values = {
-            name: _display(getattr(self.params, name)) for name in type(self.params).model_fields
-        }
         try:
-            return RuleText(
-                *(render(t, values) for t in (self.condition, self.action, self.rationale))
-            )
+            return RuleText(*(render(t, self._values()) for t in self._templates()))
         except ValueError as e:
             raise ValueError(f"{self.id}: {e}") from None
+
+    def shown_params(self) -> dict[str, str]:
+        """Each param as the rule's text shows it, a dollar amount with its `$` (`"$0.10"`)."""
+        params = {name: getattr(self.params, name) for name in type(self.params).model_fields}
+        return {
+            name: f"${text}" if isinstance(params[name], Price | Money) else text
+            for name, text in shown(self._templates(), self._values()).items()
+        }
+
+    def _templates(self) -> tuple[str, str, str]:
+        return self.condition, self.action, self.rationale
+
+    def _values(self) -> dict[str, object]:
+        return {
+            name: _display(getattr(self.params, name)) for name in type(self.params).model_fields
+        }
 
 
 def _describe(error: ValidationError) -> str:

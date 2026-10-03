@@ -1,4 +1,4 @@
-// Helpers for the page tests (strategy, comparison): render a page over a fake fetch, and read its
+// Helpers for the page tests (strategy, comparison, rules): render a page over a fake fetch, and read its
 // readouts, panels and tables the way a reader sees them.
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
@@ -6,6 +6,7 @@ import { expect, vi } from "vitest";
 
 import { IndexProvider } from "../data/IndexContext";
 import { Comparison } from "../pages/Comparison";
+import { Rules } from "../pages/Rules";
 import { Strategy } from "../pages/Strategy";
 import type { RunResult, Section } from "../types/generated/run_result";
 import { fakeFetch, FILES, run } from "./fixtures";
@@ -30,6 +31,19 @@ export function renderComparison(files: Record<string, unknown> = FILES) {
       <IndexProvider>
         <Routes>
           <Route path="/compare/:symbol" element={<Comparison />} />
+        </Routes>
+      </IndexProvider>
+    </MemoryRouter>,
+  );
+}
+
+export function renderRules(path = "/rules", files: Record<string, unknown> = FILES) {
+  vi.stubGlobal("fetch", vi.fn(fakeFetch(files)));
+  return render(
+    <MemoryRouter initialEntries={[path]}>
+      <IndexProvider>
+        <Routes>
+          <Route path="/rules/:ruleId?" element={<Rules />} />
         </Routes>
       </IndexProvider>
     </MemoryRouter>,

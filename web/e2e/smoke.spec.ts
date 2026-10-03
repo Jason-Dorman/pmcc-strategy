@@ -123,6 +123,35 @@ test("the comparison page shows both runs, the pooled universe and the ablations
   await expect(page.getByRole("region", { name: "Purpose" })).toContainText("the long leg made");
 });
 
+test("a trade's rule link lands on that rule's row, outlined and in view", async ({ page }) => {
+  await page.goto(`./#/quant/${SYMBOL}`);
+  await settled(page);
+  const link = page.getByRole("table", { name: "Gate log" }).getByRole("link").first();
+  await link.click();
+  await expect(page).toHaveURL(/#\/rules\/[A-Z]-[A-Z0-9]+$/);
+  const id = page.url().split("/").at(-1) ?? "";
+  const target = page.locator("tr.pm-target");
+  await expect(target).toHaveCount(1);
+  await expect(target.getByRole("link", { name: id, exact: true })).toBeVisible();
+  await expect(target).toBeInViewport();
+});
+
+test("the rules page sets both strategies' rules side by side, from rules.json", async ({ page }) => {
+  await page.goto("./#/rules");
+  await settled(page);
+  const rows = (name: string) =>
+    page.getByRole("table", { name, exact: true }).locator("tbody tr:not(.pm-spacer)");
+  await expect(rows("Entry rules")).toHaveCount(10);
+  await expect(rows("Skip-week gates")).toHaveCount(5);
+  await expect(rows("Exit rules")).toHaveCount(8);
+  await expect(rows("Ablations").first()).toBeVisible();
+  await expect(rows("Sensitivity").first()).toBeVisible();
+  const gates = page.getByRole("table", { name: "Skip-week gates" });
+  await expect(gates.locator("tr", { hasText: "G-3" })).toContainText("On · 1.20");
+  await page.getByRole("button", { name: "Rationale for X-S5" }).click();
+  await expect(page.getByText(/never exercised on purpose/)).toBeVisible();
+});
+
 // ---- the adversarial review's regressions (P7-01 review, DEC-106) ------------------------------
 
 /** Each chart's week labels (`Mar 30`), left to right, with their horizontal extents. */

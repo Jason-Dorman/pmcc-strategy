@@ -103,7 +103,7 @@ The baseline chart rules (DG §5–6), restated for ECharts:
 - Hairline rules, no zebra striping; the row under the mouse lifts to `--surface-alt`.
 - Sticky header, drawn with an inset shadow rather than a border.
 - Mono text at 11.5px. Numbers are right-aligned with tabular figures.
-- Minimum width 720px; key/value tables are exempt. Maximum height 420px, with internal scroll.
+- Minimum width 720px; key/value tables are exempt. Maximum height 420px, with internal scroll; the Trade rules page's entry, gate and exit tables are exempt and grow to their rows (PO, DEC-112).
 
 **Behaviour:**
 
@@ -115,6 +115,7 @@ The baseline chart rules (DG §5–6), restated for ECharts:
   - Ledger: flags.
 - The ledger and blotter use TanStack Virtual, with fixed row heights (`TABLE_ROW_HEIGHT`, 42 px: a RIC over its OCC symbol). A chart's values in a disclosure use it too when they run to every bar.
 - A blotter note is cut to one line with an ellipsis; the cell's hover shows it whole.
+- A table of prose (the Trade rules page) wraps its cells, top-aligned, and a row can open a detail under it from a leading Why column (▸, a rule's rationale); the toggle column doesn't sort. A rule ID never breaks at its hyphen (DEC-112).
 
 **Cell classes:**
 
@@ -181,13 +182,15 @@ The page is rendered from `rules.json` (DEC-52). Nothing on it is hand-typed.
 | # | Panel | Width | Content |
 | --- | --- | --- | --- |
 | — | How rules work | 10 | Prose: order of operations; the strategies differ only in selection and gates; how to read rule IDs |
-| 1 | Entry rules | 10 | ID · Rule · Baseline · Quant (rendered conditions with live values); rationale expands per row |
-| 2 | Skip-week gates | 10 | ID · Gate · Condition · Baseline (On/Off) · Quant (On/Off + threshold); rationale |
-| 3 | Exit rules | 10 | ID · Trigger · Action; rationale (includes the spec's "why the short is never exercised / no rolls / Friday buffer") |
-| 4 | Ablations | 5 | A1–A5: layer removed → replaced by |
-| 5 | Sensitivity | 5 | friction, timing and grid definitions |
+| 1 | Entry rules | 10 | ID · Rule · Baseline · Quant (rendered conditions with live values, each condition with "→ action" under it; Quant reads "Same" where it runs the baseline's rule); rationale expands per row |
+| 2 | Skip-week gates | 10 | ID · Gate · Condition (→ action) · Baseline (On/Off) · Quant (On/Off + threshold: "On · 1.20", the value as the rule's text shows it, `shown`); rationale |
+| 3 | Exit rules | 10 | ID · Trigger (name: condition) · Action; rationale (includes the spec's "why the short is never exercised / no rolls / Friday buffer") |
+| 4 | Ablations | 5 | A1–A5, one row per rule changed: Ablation · Layer removed (ID, linked, and quant's rule name) · Replaced by (the ablation's action, or "nothing") |
+| 5 | Sensitivity | 5 | friction, timing and grid runs: Check · Run · Change against its strategy ("spread capture 0.00 → 0.25", "E-T1 → Entry trigger, fixed bar · bar 1", "G-3 max ratio 1.20 → 1.10"); filtered by check |
 
-Arriving at `#/rules/X-S3` scrolls to that row and outlines it in `--accent`. The outline is chrome, not data.
+The two strategies and each variant's family come from `rules.json` (DEC-112). How rules work reads every rule ID it names, and how the strategies differ, from the rules; a text the strategies don't share shows each one's, labelled.
+
+Arriving at `#/rules/X-S3` scrolls to that row and outlines it in `--accent`. The outline is chrome, not data. An ID the results lack says so in How rules work.
 
 ### 6.4 Methodology — `#/methodology/:symbol?`
 

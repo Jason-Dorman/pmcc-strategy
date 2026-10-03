@@ -198,3 +198,84 @@ describe("virtualization", () => {
     expect(ids()).toHaveLength(500);
   });
 });
+
+// ---- a row's detail and the row a reader arrived for (the Trade rules page, P7-03) -----------
+
+describe("a row's detail", () => {
+  const detail = {
+    header: "Why",
+    label: (r: Row) => `Why ${r.id}`,
+    render: (r: Row) => (r.id === "c" ? undefined : `because ${r.rule}`),
+  };
+
+  function table() {
+    return render(<DataTable label="T" rows={ROWS} columns={COLUMNS} rowId={(r) => r.id}
+                             detail={detail} />);
+  }
+
+  it("opens under its row on its toggle, and closes again", () => {
+    table();
+    const toggle = screen.getByRole("button", { name: "Why a" });
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    expect(screen.queryByText("because E-L1")).toBeNull();
+
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    const opened = screen.getByText("because E-L1").closest("tr");
+    expect(opened?.previousElementSibling?.textContent).toContain("a");
+    expect(opened?.querySelector("td")?.colSpan).toBe(COLUMNS.length + 1);
+
+    fireEvent.click(toggle);
+    expect(screen.queryByText("because E-L1")).toBeNull();
+  });
+
+  it("gives a row with nothing to open no toggle", () => {
+    table();
+    expect(screen.queryByRole("button", { name: "Why c" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Why b" })).toBeTruthy();
+  });
+
+  it("travels with its row when the table sorts", () => {
+    table();
+    fireEvent.click(screen.getByRole("button", { name: "Why b" }));
+    fireEvent.click(within(screen.getByRole("columnheader", { name: "Cash" })).getByRole("button"));
+    const opened = screen.getByText("because E-S1").closest("tr");
+    expect(opened?.previousElementSibling?.textContent).toContain("b");
+  });
+});
+
+describe("the row a reader arrived for", () => {
+  it("is outlined and scrolled into view", () => {
+    const scrolled: Element[] = [];
+    const original = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = function (this: Element) {
+      scrolled.push(this);
+    };
+    try {
+      render(<DataTable label="T" rows={ROWS} columns={COLUMNS} rowId={(r) => r.id}
+                        target="b" />);
+      const rows = screen.getAllByRole("row").slice(1);
+      expect(rows.map((r) => r.classList.contains("pm-target"))).toEqual([false, true, false]);
+      expect(scrolled).toEqual([rows[1]]);
+    } finally {
+      Element.prototype.scrollIntoView = original;
+    }
+  });
+
+  it("outlines nothing when the target isn't a row", () => {
+    const { container } = render(
+      <DataTable label="T" rows={ROWS} columns={COLUMNS} rowId={(r) => r.id} target="zz" />);
+    expect(container.querySelector(".pm-target")).toBeNull();
+  });
+});
+
+describe("height", () => {
+  it("caps a table at TABLE_MAX_HEIGHT unless it grows to its rows (PO, DEC-112)", () => {
+    const { container, rerender } = render(
+      <DataTable label="T" rows={ROWS} columns={COLUMNS} rowId={(r) => r.id} />);
+    const scroller = () => container.querySelector(".pm-table-scroll");
+    expect(scroller()?.classList.contains("pm-table-grow")).toBe(false);
+    rerender(<DataTable label="T" rows={ROWS} columns={COLUMNS} rowId={(r) => r.id} grow />);
+    expect(scroller()?.classList.contains("pm-table-grow")).toBe(true);
+  });
+});

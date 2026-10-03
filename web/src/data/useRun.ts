@@ -1,9 +1,10 @@
-// A page's results files: a run found through the index by symbol and run ID, or a symbol's or
-// the universe's file by its key in the index, each loaded on demand and cached (ARCHITECTURE
-// §13). A file the index lacks is "missing", never an error.
+// A page's results files: a run found through the index by symbol and run ID, a symbol's or the
+// universe's file by its key in the index, or `rules.json`, each loaded on demand and cached
+// (ARCHITECTURE §13). A file the index lacks is "missing", never an error.
 import { useEffect, useState } from "react";
 
 import type { Index, IndexRun } from "../types/generated/index";
+import type { Rules } from "../types/generated/rules";
 import type { RunResult } from "../types/generated/run_result";
 import { failure, useIndex } from "./IndexContext";
 import { loadFile, loadRun } from "./loader";
@@ -56,4 +57,10 @@ export function useSymbolFile<T>(symbol: string, file: string): Loaded<T> {
 /** One of the universe's files (`pooled`, `headline`, `suitability`, `pooled_fill_check`). */
 export function useUniverseFile<T>(file: string): Loaded<T> {
   return useLoaded((index) => index.universe[file], `the universe / ${file}`, loadFile<T>);
+}
+
+/** `rules.json`, the Trade rules page's source (DEC-52), which every export writes beside the
+ * index. */
+export function useRules(): Loaded<Rules> {
+  return useLoaded(() => "rules.json", "the rules", loadFile<Rules>);
 }
