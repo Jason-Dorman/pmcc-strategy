@@ -3,7 +3,7 @@
 // attribution, which the purpose panel's sentence on the result's main limit reads (DEC-109).
 import type { Readout } from "../../components/Readouts";
 import { moneySigned } from "../../format/money";
-import { count, orDash, pct } from "../../format/number";
+import { orDash } from "../../format/number";
 import type { CycleStats, MeanCI, Metrics, RunResult } from "../../types/generated/run_result";
 import { RETURN_HINT, returnShown, SHARPE_HINT, sharpeShown } from "../strategy/figures";
 
@@ -11,23 +11,22 @@ export const READOUT_HINTS = [
   ["Quant P&L", "Ending NAV − starting cash"],
   ["Baseline P&L", "Ending NAV − starting cash"],
   ["Quant − Baseline", "The quant layer's P&L over the baseline"],
-  ["Quant return on starting NAV", RETURN_HINT],
-  ["Quant Sharpe (annualized)", SHARPE_HINT],
-  ["Quant weekly-return 95% CI", "Bootstrap of whole weeks"],
+  ["Return on starting NAV (Q / B)", RETURN_HINT],
+  ["Sharpe, annualized (Q / B)", SHARPE_HINT],
   ["Weeks traded (Q / B)", "Weeks a short was sold"],
 ] as const;
 
 type Shown = readonly [value: string, extra?: string | undefined];
 
-function ciShown(ci: MeanCI | null | undefined): Shown {
-  if (!ci) return ["—"];
-  return [`${pct(ci.low)} to ${pct(ci.high)}`,
-          `: mean ${pct(ci.mean)}, ${ci.weeks} weeks, ${count(ci.resamples)} resamples`];
-}
-
 function pnlShown(q: Metrics | null, b: Metrics | null): Shown[] {
   if (!q || !b) return [[orDash(q?.pnl, moneySigned)], [orDash(b?.pnl, moneySigned)], ["—"]];
   return [[moneySigned(q.pnl)], [moneySigned(b.pnl)], [moneySigned(q.pnl - b.pnl)]];
+}
+
+/** Quant's figure / the baseline's, as Weeks traded shows them; the hint's detail is quant's
+ * (both runs share the window, so the weeks and daily returns are the same). */
+function paired(q: Shown, b: Shown): Shown {
+  return [`${q[0]} / ${b[0]}`, q[1] ?? b[1]];
 }
 
 function weeksShown(q: CycleStats | null, b: CycleStats | null): Shown {
@@ -36,11 +35,11 @@ function weeksShown(q: CycleStats | null, b: CycleStats | null): Shown {
 
 export function readouts(quant: RunResult, baseline: RunResult): Readout[] {
   const q = quant.summary.metrics;
+  const b = baseline.summary.metrics;
   const shown: Shown[] = [
-    ...pnlShown(q, baseline.summary.metrics),
-    returnShown(q),
-    sharpeShown(q),
-    ciShown(q?.weekly_return),
+    ...pnlShown(q, b),
+    paired(returnShown(q), returnShown(b)),
+    paired(sharpeShown(q), sharpeShown(b)),
     weeksShown(quant.summary.cycle_stats, baseline.summary.cycle_stats),
   ];
   return READOUT_HINTS.map(([label, hint], i) => {

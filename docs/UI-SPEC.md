@@ -145,7 +145,7 @@ Readouts come first on every page, then panels in the order listed. Widths are g
 
 ### 6.1 Comparison (landing) — `#/compare/:symbol`
 
-**Readouts:** Quant P&L · Baseline P&L · Quant − Baseline · Quant return on starting NAV (not annualized, over N weeks) · Quant Sharpe (annualized, from N daily returns) · Quant weekly-return 95% CI · Weeks traded (Q / B) (DEC-111)
+**Readouts:** Quant P&L · Baseline P&L · Quant − Baseline · Return on starting NAV (Q / B; not annualized, over N weeks) · Sharpe, annualized (Q / B; from N daily returns) · Weeks traded (Q / B). The weekly-return CI isn't a readout: the headline and pooled tables show both strategies' (DEC-111)
 
 | # | Panel | Width | Content |
 | --- | --- | --- | --- |

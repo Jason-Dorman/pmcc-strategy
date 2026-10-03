@@ -2499,9 +2499,14 @@ How P7-02 builds UI-SPEC §6.1. Nothing here changes a result.
   - **Sortino** gets the same treatment (excess over r, × √252) and isn't shown (NVDA: 1.92,
     1.70). Like Sharpe, it
     needs two daily returns: one flat day is below the rate but no sample.
-  - **Where they show:** the Comparison readouts (Quant return on starting NAV, Quant Sharpe
-    (annualized)) and headline table (P&L · return on starting NAV · max drawdown · Sharpe
-    (annualized) · payoff · mean weekly return (95% CI)); the strategy page's readouts, where
+  - **Where they show:** the Comparison readouts, each strategy's beside the other as Weeks
+    traded shows them: Return on starting NAV (Q / B) and Sharpe, annualized (Q / B) (PO,
+    2026-10-02: "it's awkward to compare the baseline and quant metrics on some metrics but not
+    on starting nav and sharpe"). The quant-only weekly-return CI readout is dropped (PO: "i
+    dont think its a headline and it only shows quant - and that information is in another
+    table"): the headline and pooled tables give both strategies'. Both figures also show in
+    the headline table (P&L · return on starting NAV · max drawdown · Sharpe (annualized) ·
+    payoff · mean weekly return (95% CI)); the strategy page's readouts, where
     Sharpe (annualized) replaces return on capital deployed; `universe/headline.json`, so the
     Universe page's headline by symbol (P7-05). The ablation table is unchanged: adding Sharpe
     would change `robustness.json`.

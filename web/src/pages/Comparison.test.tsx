@@ -66,30 +66,31 @@ describe("readouts", () => {
     expect(readout("Quant − Baseline").value).toBe("−$300.00");
   });
 
-  it("shows quant's return on starting NAV, its annualized Sharpe and the weeks traded", async () => {
-    renderComparison({ ...FILES, [QUANT]: quant(withPnl(712, CI)) });
+  it("pairs each strategy's return on starting NAV, Sharpe and weeks traded, quant first",
+     async () => {
+    const lower = (r: RunResult): RunResult => {
+      const metrics = r.summary.metrics;
+      if (!metrics) throw new Error("fixture has no metrics");
+      return { ...r, summary: { ...r.summary, metrics: {
+        ...metrics, return_on_starting_nav: 0.0312, sharpe_annualized: 0.874 } } };
+    };
+    renderComparison({ ...FILES, [QUANT]: quant(withPnl(712, CI)), [BASELINE]: baseline(lower) });
     await loaded();
-    expect(readout("Quant return on starting NAV").value).toBe("4.7%");
-    expect(readout("Quant return on starting NAV").hint).toContain("not annualized; over 2 weeks");
-    expect(readout("Quant Sharpe (annualized)").value).toBe("1.23");
-    expect(readout("Quant Sharpe (annualized)").hint).toContain("from 2 daily returns");
+    expect(readout("Return on starting NAV (Q / B)").value).toBe("4.7% / 3.1%");
+    expect(readout("Return on starting NAV (Q / B)").hint).toContain("not annualized; over 2 weeks");
+    expect(readout("Sharpe, annualized (Q / B)").value).toBe("1.23 / 0.87");
+    expect(readout("Sharpe, annualized (Q / B)").hint).toContain("from 2 daily returns");
     expect(readout("Weeks traded (Q / B)").value).toBe("1 / 1");
     expect(readout("Weeks traded (Q / B)").hint).toContain("of 2");
   });
 
-  it("shows quant's weekly-return CI, with its mean, weeks and resamples in the hint", async () => {
-    renderComparison({ ...FILES, [QUANT]: quant(withPnl(712, CI)) });
-    await loaded();
-    expect(readout("Quant weekly-return 95% CI").value).toBe("−1.0% to 2.7%");
-    const hint = readout("Quant weekly-return 95% CI").hint;
-    expect(hint).toContain("mean 0.9%");
-    expect(hint).toContain("2 weeks, 10,000 resamples");
-  });
-
-  it("shows a dash where a run has no CI", async () => {
+  it("shows six readouts, the weekly-return CI left to the tables (PO, DEC-111)", async () => {
     renderComparison();
     await loaded();
-    expect(readout("Quant weekly-return 95% CI").value).toBe("—");
+    const labels = [...document.querySelectorAll(".pm-readout-label")].map((l) => l.textContent);
+    expect(labels).toEqual(["Quant P&L", "Baseline P&L", "Quant − Baseline",
+                            "Return on starting NAV (Q / B)", "Sharpe, annualized (Q / B)",
+                            "Weeks traded (Q / B)"]);
   });
 });
 
