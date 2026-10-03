@@ -2631,6 +2631,10 @@ export and never committed, so it gains two fields without a schema version.
   labels in `robustness.json`, `config_hash` and the provenance fields: no figure, row or CI.
   The publishable re-run follows the code commit: `just batch` from the clean tree, `just
   verify`, a results commit, both pushed together (as DEC-111).
+- **Re-run:** 2026-10-03, `just batch` from a clean tree at `f1d5855`, every run
+  `git_dirty: false`; `just verify` passed all 31 files. The 24 runs and `robustness.json` moved,
+  as the preview had; the coverage, fill-check and universe files didn't. The exported
+  `rules.json` holds no rule ID in any rule's text or run's name.
 
 ## E. Analytics definitions
 
