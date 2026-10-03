@@ -200,10 +200,10 @@ describe("the record tables", () => {
   it("sorts a gate not evaluated, and no option selected, last either way", async () => {
     renderPage("quant", withQuant((r) => ({ ...r, gate_log: [...GATE_LOG, G1_FIRED] })));
     const table = await screen.findByRole("table", { name: "Gate log" });
-    sortBy(table, "Selected");
+    await sortBy(table, "Selected");
     expect(column(table, 0).at(-1)).toBe("2026-04-13");
-    sortBy(table, "Event week");
-    const g3 = sortBy(table, "Event week");
+    await sortBy(table, "Event week");
+    const g3 = await sortBy(table, "Event week");
     expect(g3.getAttribute("aria-sort")).toBe("descending");
     expect(column(table, 0).at(-1)).toBe("2026-04-13");
   });
@@ -218,7 +218,7 @@ describe("the record tables", () => {
     };
     renderPage("quant", withQuant((r) => ({ ...r, gate_log: [...GATE_LOG, third] })));
     const table = await screen.findByRole("table", { name: "Gate log" });
-    sortBy(table, "Vol premium");
+    await sortBy(table, "Vol premium");
     expect(column(table, 5)).toEqual(["FIRE 0.95", "pass 1.20", "pass 1.40"]);
   });
 

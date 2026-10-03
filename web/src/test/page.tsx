@@ -1,8 +1,8 @@
 // Helpers for the page tests (strategy, comparison): render a page over a fake fetch, and read its
 // readouts, panels and tables the way a reader sees them.
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { vi } from "vitest";
+import { expect, vi } from "vitest";
 
 import { IndexProvider } from "../data/IndexContext";
 import { Comparison } from "../pages/Comparison";
@@ -82,9 +82,16 @@ export function column(table: HTMLElement, index: number): string[] {
   return bodyRows(table).map((r) => r.querySelectorAll("td")[index]?.textContent ?? "");
 }
 
-/** Click a column's header to sort it; returns the header. */
-export function sortBy(table: HTMLElement, name: string | RegExp): HTMLElement {
+/**
+ * Click a column's header to sort it, and wait until the sort shows; returns the header.
+ * TanStack Table (v9) subscribes to its state in an effect after the table first renders, so a
+ * click that lands straight after the table appears is rendered a beat later. Asserting at once
+ * then reads the unsorted rows: this failed in CI after P7-02 (DEC-106 saw it once in four runs).
+ */
+export async function sortBy(table: HTMLElement, name: string | RegExp): Promise<HTMLElement> {
   const header = within(table).getByRole("columnheader", { name });
+  const before = header.getAttribute("aria-sort");
   fireEvent.click(within(header).getByRole("button"));
+  await waitFor(() => expect(header.getAttribute("aria-sort")).not.toBe(before));
   return header;
 }

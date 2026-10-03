@@ -2465,6 +2465,13 @@ How P7-02 builds UI-SPEC §6.1. Nothing here changes a result.
   (`charts.test.ts`), `loadFile` and `both()` (`loader.test.ts`), `meanCI`; the fixtures gain
   NVDA's robustness file and the pooled universe. The smoke test checks the page on the built
   site.
+- **A sort test's flake, fixed:** CI's first run after P7-02 failed one P7-01 test, "sorts a
+  gate by status, then by the value it shows": it read the rows unsorted. TanStack Table (v9)
+  subscribes to its state in an effect after the table first renders, so a click that lands
+  as the table appears is rendered a beat later, and the test asserted at once. DEC-106 had seen
+  it once in four runs and made one test wait; the page tests' `sortBy` helper now waits for the
+  header's `aria-sort` to change, so every sort test does. On the site the sort shows on that
+  next render (the smoke test's early sort, P7-01).
 
 ### DEC-111 — The headline return and an annualized Sharpe, for an institutional reader
 **Status:** SETTLED · **Basis:** PO, 2026-10-02, at P7-02 · **Affects:** P7-02, P7-05; Spec › Performance, Spec › Site and UI (Comparison); PRD FR-M1, HR-5; UI-SPEC §6.1, §6.2, §6.5; ARCHITECTURE §12; amends DEC-60, DEC-110
