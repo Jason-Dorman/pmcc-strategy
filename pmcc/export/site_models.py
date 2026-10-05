@@ -28,6 +28,8 @@ class IndexRun(Model):
 
 class IndexSymbol(Model):
     symbol: str
+    # Every run on the symbol shares its own (PO, DEC-30); null for a symbol with no runs
+    starting_cash: Dollars | None
     runs: tuple[IndexRun, ...]
     files: Mapping[str, str]  # robustness, fill_check, coverage → path, once written
 
@@ -39,7 +41,6 @@ class Index(Model):
     pmcc_version: str  # the exporter's
     window: Window
     risk_free_rate: RiskFreeRate
-    starting_cash: Dollars
     symbols: tuple[IndexSymbol, ...]
     universe: Mapping[str, str]  # pooled, headline, pooled_fill_check, suitability → path
 

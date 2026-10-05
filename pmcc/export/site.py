@@ -6,7 +6,8 @@ The export directory is rebuilt whole on every export:
   `gen:types` turns into TypeScript (INV-14);
 - every results file, copied byte for byte, once it passes `pmcc verify` (a dirty tree is allowed
   here, so a local preview works; CI's verify step keeps dirty results off the published site);
-- `index.json`: what exists, per symbol, with the window, r and starting cash every run shares;
+- `index.json`: what exists, per symbol with the starting cash its runs share, and the window
+  and r every run shares;
 - `rules.json`: each strategy's and variant's rules, rendered from the config it ran with, each
   variant's changes against its strategy, and each run's family, from the robustness tables that
   hold it (the Trade rules page; DEC-52, P7-03).
@@ -69,8 +70,8 @@ class _Loaded:
 
 def export_site(results: Path, out: Path) -> Exported:
     """Rebuild `out` from `results`. Raises `ExportError`, before touching `out`, if a results
-    file fails verification (a dirty tree aside) or the runs don't share one window, r and
-    starting cash."""
+    file fails verification (a dirty tree aside), the runs don't share one window and r, or a
+    symbol's runs don't share one starting cash."""
     verified = verify(results)
     refused = [p for p in verified.problems if p.check != PUBLISHABLE_ONLY]
     if refused:
@@ -101,7 +102,6 @@ def build_index(runs: Sequence[_Loaded], extras: Sequence[str]) -> Index:
         pmcc_version=version("pmcc"),
         window=first.config.window,
         risk_free_rate=first.config.risk_free_rate,
-        starting_cash=first.starting_cash,
         symbols=tuple(_symbol(s, runs, extras) for s in symbols),
         universe=_files_in(UNIVERSE_DIR, extras),
     )
@@ -113,11 +113,11 @@ def _files_in(folder: str, extras: Sequence[str]) -> dict[str, str]:
 
 
 def _check_shared(first: RunResult, run: _Loaded) -> None:
-    shared = (first.config.window, first.config.risk_free_rate, first.starting_cash)
-    mine = (run.result.config.window, run.result.config.risk_free_rate, run.result.starting_cash)
+    shared = (first.config.window, first.config.risk_free_rate)
+    mine = (run.result.config.window, run.result.config.risk_free_rate)
     if mine != shared:
         raise ExportError(
-            f"{run.path} ran over another window, r or starting cash than "
+            f"{run.path} ran over another window or r than "
             f"{first.manifest.symbol}/{first.manifest.run_id}; re-run every result together"
         )
 
@@ -125,7 +125,12 @@ def _check_shared(first: RunResult, run: _Loaded) -> None:
 def _symbol(symbol: str, runs: Sequence[_Loaded], extras: Sequence[str]) -> IndexSymbol:
     mine = sorted((r for r in runs if r.result.manifest.symbol == symbol),
                   key=lambda r: r.result.manifest.run_id)  # fmt: skip
-    return IndexSymbol(symbol=symbol, runs=tuple(_index_run(r) for r in mine),
+    cash = {r.result.starting_cash for r in mine}
+    if len(cash) > 1:
+        raise ExportError(f"{symbol}'s runs started from different cash, "
+                          f"{sorted(cash)}; re-run the symbol's results together")  # fmt: skip
+    return IndexSymbol(symbol=symbol, starting_cash=next(iter(cash), None),
+                       runs=tuple(_index_run(r) for r in mine),
                        files=_files_in(symbol, extras))  # fmt: skip
 
 

@@ -153,7 +153,7 @@ Both strategies share entry timing, sizing, and the structural constraint; they 
 | E-L1 | Long leg timing | First session of the window; retry each following session until E-T1 passes | Same |
 | E-L2 | Long leg expiry | Monthly expiry nearest 180 DTE | Any monthly expiry 120–270 DTE |
 | E-L3 | Long leg strike | Strike with delta nearest 0.80 | Among eligible strikes with delta 0.70–0.90 across E-L2 expiries: lowest extrinsic ÷ delta, where extrinsic = mid − max(0, spot − strike). Tiebreak: lower spread % of mid |
-| E-L4 | Sizing | Fixed 1 contract. Every symbol's account starts with the same cash balance, used for NAV and Reg T tracking: 2× the most expensive first long-leg cost in the universe, rounded up to the nearest $5,000 and fixed before the first run. If available funds would go negative, no entry (logged) | Same |
+| E-L4 | Sizing | Fixed 1 contract. Each symbol's account starts with its own cash balance, used for NAV and Reg T tracking: 2× that symbol's most expensive first long-leg cost, rounded up to the nearest $5,000 and fixed before the symbol's first run (PO, DEC-30). If available funds would go negative, no entry (logged) | Same |
 | E-S1 | Short leg timing | Each Monday (first session of the week if Monday is a holiday), once a long leg is held and no short is open; E-T1 governs which bar | Same |
 | E-S2 | Short leg expiry | That week's final trading session | Same |
 | E-S3 | Short leg strike | OTM strike with delta nearest 0.30 | Lowest listed strike ≥ spot + 1.0 × EM |
@@ -251,7 +251,7 @@ With only the diagonal open, available funds reduce to cash − short call MV. N
 
 ## Strategies, ablations, and universe
 
-Two strategies, five ablations, and three sensitivity checks, run independently on each symbol with the same starting capital for every symbol and run (see E-L4).
+Two strategies, five ablations, and three sensitivity checks, run independently on each symbol, every run on a symbol from that symbol's own starting capital (see E-L4; PO, DEC-30).
 
 **Strategies**
 
@@ -278,7 +278,7 @@ Two strategies, five ablations, and three sensitivity checks, run independently 
 
 **Universe** (`configs/universe.yaml`)
 
-NVDA, for now (PO, 2026-09-30, DEC-15): QQQ and TSLA are set aside, commented out in the file, and come back at the end if time allows, with the starting cash recalibrated (E-L4). The PO's universe was QQQ, NVDA, TSLA (DEC-15): an equity index ETF and two single names across a wide volatility range (roughly 20%, 40% and 55% realized), chosen from the probed twelve for the tightest long-leg spreads. The first plan's twelve (SPY, QQQ, IWM, AAPL, NVDA, AMD, META, TSLA, COIN, JPM, TLT, XLE) added financials, long-duration Treasuries and energy; the PO cut it for time (DEC-15). The probes had also found most of the dropped symbols' long legs wider than E-T1's 3%. All symbols use the same window: Mon Mar 30 2026 to Fri Sep 25 2026, 26 weeks of hourly bars, set by the PO from the probed history (DEC-07). A window must lie within LSEG's hourly option history and be at least 10 weeks. Any symbol can also be run alone via `pmcc run --symbol`.
+NVDA, for now (PO, 2026-09-30, DEC-15): QQQ and TSLA are set aside, commented out in the file, and come back at the end if time allows, each calibrating its own starting cash (E-L4), which leaves NVDA's unchanged. The PO's universe was QQQ, NVDA, TSLA (DEC-15): an equity index ETF and two single names across a wide volatility range (roughly 20%, 40% and 55% realized), chosen from the probed twelve for the tightest long-leg spreads. The first plan's twelve (SPY, QQQ, IWM, AAPL, NVDA, AMD, META, TSLA, COIN, JPM, TLT, XLE) added financials, long-duration Treasuries and energy; the PO cut it for time (DEC-15). The probes had also found most of the dropped symbols' long legs wider than E-T1's 3%. All symbols use the same window: Mon Mar 30 2026 to Fri Sep 25 2026, 26 weeks of hourly bars, set by the PO from the probed history (DEC-07). A window must lie within LSEG's hourly option history and be at least 10 weeks. Any symbol can also be run alone via `pmcc run --symbol`.
 
 ## Analytics and metrics
 

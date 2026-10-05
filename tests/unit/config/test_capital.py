@@ -1,5 +1,6 @@
-"""The starting cash and its basis (Spec › E-L4; P3-09, DEC-30): the rule, the validated block, and
-how `pmcc calibrate` writes it into a universe file without touching the rest."""
+"""The starting cash and its basis (Spec › E-L4; P3-09, DEC-30): the rule, the validated block of
+each symbol's own value (PO, 2026-10-05), and how `pmcc calibrate` writes it into a universe file
+without touching the rest."""
 
 from datetime import datetime
 from typing import Any
@@ -10,7 +11,6 @@ from pydantic import ValidationError
 from pmcc.config.capital import (
     MARKER,
     StartingCash,
-    missing_pairs,
     render_block,
     starting_cash_for,
     with_block,
@@ -48,63 +48,119 @@ def test_e_l4_starting_cash_follows_e_l4s_params_not_constants() -> None:
     assert starting_cash_for([_d("4142.50")], 1, _d("0.0001")) == _d("4142.50")
 
 
-def _entry(
-    symbol: str = "NVDA", strategy: str = "baseline_pmcc", cost: float = 4142.5
-) -> dict[str, Any]:
-    return {"symbol": symbol, "strategy": strategy, "time": T, "contract": "NVDAI182613500.U",
-            "cost": cost}  # fmt: skip
+def _entry(strategy: str = "baseline_pmcc", cost: float = 4142.5) -> dict[str, Any]:
+    return {"strategy": strategy, "time": T, "contract": "NVDAI182613500.U", "cost": cost}
+
+
+def _symbol(symbol: str = "NVDA", *entries: dict[str, Any], value: int = 10_000,
+            provisional: bool = True) -> dict[str, Any]:  # fmt: skip
+    return {"symbol": symbol, "value": value, "provisional": provisional,
+            "entries": list(entries) or [_entry()]}  # fmt: skip
 
 
 RULE = {"cash_multiple": 2, "cash_round_to": 5_000, "calibration_cash": 1_000_000}
 
 
-def _cash(*entries: dict[str, Any], value: int = 10_000, provisional: bool = True) -> StartingCash:
-    return StartingCash.model_validate(
-        {"value": value, "provisional": provisional, **RULE, "entries": list(entries) or [_entry()]}
-    )
+def _cash(*symbols: dict[str, Any], **rule: Any) -> StartingCash:
+    return StartingCash.model_validate({**RULE, **rule, "symbols": list(symbols) or [_symbol()]})
+
+
+BOTH = (_entry(), _entry("quant_pmcc", 5630))
 
 
 def test_dec_30_starting_cash_reads_its_basis_as_exact_money() -> None:
     cash = _cash()
-    assert cash.value == _d("10000")
-    assert cash.entries[0].cost == Money(41_425_000)
-    assert cash.entries[0].pair == ("NVDA", "baseline_pmcc")
+    nvda = cash.of("NVDA")
+    assert nvda is not None
+    assert nvda.value == _d("10000")
+    assert nvda.entries[0].cost == Money(41_425_000)
+    assert cash.of("QQQ") is None  # not calibrated yet
+
+
+def test_dec_30_starting_cash_is_each_symbols_own() -> None:
+    """PO, 2026-10-05: a dear QQQ long doesn't raise NVDA's cash."""
+    cash = _cash(_symbol("NVDA", *BOTH, value=15_000, provisional=False),
+                 _symbol("QQQ", _entry(cost=13_000), value=30_000))  # fmt: skip
+    values = {c.symbol: c.value for c in cash.symbols}
+    assert values == {"NVDA": _d("15000"), "QQQ": _d("30000")}
+
+
+def test_dec_30_a_symbol_is_final_once_both_strategies_are_in() -> None:
+    final = _cash(_symbol("NVDA", *BOTH, value=15_000, provisional=False)).of("NVDA")
+    assert final is not None
+    assert final.missing() == []
+    provisional = _cash().of("NVDA")
+    assert provisional is not None
+    assert provisional.missing() == ["quant_pmcc"]
 
 
 REFUSED: dict[str, tuple[dict[str, Any], list[dict[str, Any]]]] = {
-    "value-not-the-rule": ({"value": 15_000}, [_entry()]),
-    "value-not-rounded": ({"value": 8285}, [_entry()]),
-    "pair-twice": ({}, [_entry(), _entry(cost=4000)]),
-    "variant-strategy": ({}, [_entry(strategy="quant_pmcc--a1")]),
-    "free-entry": ({"value": 0}, [_entry(cost=0)]),
-    "sub-unit-cost": ({}, [_entry(cost=4142.50005)]),
-    "no-entries": ({}, []),
-    "value-off-a-3x-rule": ({"cash_multiple": 3}, [_entry()]),  # 3 × 4,142.50 → 15,000
-    "no-rounding-step": ({"cash_round_to": 0}, [_entry()]),
-    "no-multiple": ({"cash_multiple": 0}, [_entry()]),
+    "value-not-the-rule": ({}, [_symbol(value=15_000)]),
+    "value-not-rounded": ({}, [_symbol(value=8285)]),
+    "value-from-another-symbols-entry": (  # one value across symbols is no longer the rule
+        {},
+        [_symbol("NVDA", value=30_000), _symbol("QQQ", _entry(cost=13_000), value=30_000)],
+    ),
+    "symbol-twice": ({}, [_symbol(), _symbol()]),
+    "strategy-twice": ({}, [_symbol("NVDA", _entry(), _entry(cost=4000))]),
+    "variant-strategy": ({}, [_symbol("NVDA", _entry("quant_pmcc--a1"))]),
+    "free-entry": ({}, [_symbol("NVDA", _entry(cost=0), value=0)]),
+    "sub-unit-cost": ({}, [_symbol("NVDA", _entry(cost=4142.50005))]),
+    "no-entries": ({}, [{**_symbol(), "entries": []}]),
+    "no-symbols": ({}, []),
+    "final-but-missing-quant": ({}, [_symbol(provisional=False)]),
+    "provisional-but-complete": ({}, [_symbol("NVDA", *BOTH, value=15_000)]),
+    "value-off-a-3x-rule": ({"cash_multiple": 3}, [_symbol()]),  # 3 × 4,142.50 → 15,000
+    "no-rounding-step": ({"cash_round_to": 0}, [_symbol()]),
+    "no-multiple": ({"cash_multiple": 0}, [_symbol()]),
 }
 
 
-@pytest.mark.parametrize(("changes", "entries"), REFUSED.values(), ids=REFUSED.keys())
+@pytest.mark.parametrize(("rule", "symbols"), REFUSED.values(), ids=REFUSED.keys())
 def test_dec_30_starting_cash_refuses_a_value_off_its_basis(
-    changes: dict[str, Any], entries: list[dict[str, Any]]
+    rule: dict[str, Any], symbols: list[dict[str, Any]]
 ) -> None:
-    body = {"value": 10_000, "provisional": True, **RULE, "entries": entries}
     with pytest.raises(ValidationError):
-        StartingCash.model_validate({**body, **changes})
+        StartingCash.model_validate({**RULE, **rule, "symbols": symbols})
 
 
-def test_dec_30_starting_cash_refuses_an_unknown_key() -> None:
+@pytest.mark.parametrize("where", ["block", "symbol", "entry"])
+def test_dec_30_starting_cash_refuses_an_unknown_key(where: str) -> None:
+    doc = _cash().model_dump(mode="json")
+    target = {"block": doc, "symbol": doc["symbols"][0], "entry": doc["symbols"][0]["entries"][0]}
+    target[where]["note"] = "x"
     with pytest.raises(ValidationError):
-        StartingCash.model_validate({**_cash().model_dump(mode="json"), "note": "x"})
+        StartingCash.model_validate(doc)
 
 
-def test_dec_30_missing_pairs_are_each_symbol_under_both_strategies() -> None:
-    cash = _cash()
-    assert cash.missing(["NVDA", "TSLA"]) == [
-        ("NVDA", "quant_pmcc"), ("TSLA", "baseline_pmcc"), ("TSLA", "quant_pmcc")]  # fmt: skip
-    both = _cash(_entry(), _entry(strategy="quant_pmcc"))
-    assert missing_pairs(both.entries, ["NVDA"]) == []
+# --- Merging a calibration into the block --------------------------------------------------------
+
+ORDER = ["QQQ", "NVDA", "TSLA"]
+
+
+def test_dec_30_merged_adds_a_symbol_and_keeps_the_others() -> None:
+    nvda = _symbol("NVDA", *BOTH, value=15_000, provisional=False)
+    qqq = _symbol("QQQ", _entry(cost=13_000), value=30_000)
+
+    merged = _cash(nvda).merged(_cash(qqq), ORDER)
+
+    assert merged == _cash(qqq, nvda)  # the universe's order, NVDA's value untouched
+
+
+def test_dec_30_merged_replaces_a_symbol_it_recalibrated() -> None:
+    old, new = _symbol("NVDA"), _symbol("NVDA", *BOTH, value=15_000, provisional=False)
+    assert _cash(old).merged(_cash(new), ORDER) == _cash(new)
+
+
+def test_dec_30_merged_puts_symbols_outside_the_order_last() -> None:
+    merged = _cash(_symbol("SPY")).merged(_cash(_symbol("NVDA")), ORDER)
+    assert [c.symbol for c in merged.symbols] == ["NVDA", "SPY"]
+
+
+def test_dec_30_merged_refuses_another_rule() -> None:
+    """Values set by different E-L4 rules can't share a block."""
+    with pytest.raises(ValueError, match="calibrated under E-L4"):
+        _cash().merged(_cash(_symbol("QQQ", value=15_000), cash_multiple=3), ORDER)
 
 
 # --- The block in the file ---------------------------------------------------------------------
@@ -133,7 +189,7 @@ def test_dec_30_with_block_appends_after_the_file_untouched() -> None:
 
 def test_dec_30_with_block_replaces_only_its_own_block() -> None:
     first = with_block(HEAD, render_block(_cash()))
-    bigger = _cash(_entry(cost=7600), value=20_000)
+    bigger = _cash(_symbol("NVDA", _entry(cost=7600), value=20_000))
 
     second = with_block(first, render_block(bigger))
 

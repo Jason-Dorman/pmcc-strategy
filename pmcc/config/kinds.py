@@ -91,8 +91,8 @@ class DeltaBand(Params):  # E-L3 quant
 
 
 class FixedContracts(Params):  # E-L4
-    """The long's size, and the starting cash every account gets: `cash_multiple` × the most
-    expensive first long-leg cost in the universe, rounded up to `cash_round_to` (PO, DEC-30)."""
+    """The long's size, and the starting cash each symbol's account gets: `cash_multiple` × that
+    symbol's most expensive first long-leg cost, rounded up to `cash_round_to` (PO, DEC-30)."""
 
     contracts: int = Field(ge=1)
     cash_multiple: int = Field(ge=1)

@@ -5,11 +5,11 @@ Two passes over the same prepared markets (PO, DEC-30):
 1. **Measure.** Each symbol runs under each config with `CALIBRATION_CASH`, enough that E-L4 never
    blocks; the run's first long-leg entry (E-L1) gives its cost, fill × 100 × qty + fees. Nothing
    from this pass is kept but those entries, and its cash is never a run's starting cash.
-2. **Verify.** The value is E-L4's `cash_multiple` × the most expensive cost, rounded up to its
-   `cash_round_to` (`starting_cash_for`; 2× and $5,000). Each run is repeated at that value, and
-   calibration fails if E-L4 blocks any entry, long or short, so the value covers every entry the
-   runs make. Each run's lowest available funds, and its bars below zero, are reported, not
-   refused (PO, DEC-30).
+2. **Verify.** Each symbol's value is E-L4's `cash_multiple` × that symbol's most expensive cost,
+   rounded up to its `cash_round_to` (`starting_cash_for`; 2× and $5,000; per symbol, PO,
+   2026-10-05). Each run is repeated at its symbol's value, and calibration fails if E-L4 blocks
+   any entry, long or short, so the value covers every entry the symbol's runs make. Each run's
+   lowest available funds, and its bars below zero, are reported, not refused (PO, DEC-30).
 
 Calibration runs at `spread_capture` 0 only, and writes no results.
 """
@@ -26,7 +26,8 @@ from pmcc.config.capital import (
     CALIBRATED_STRATEGIES,
     CalibrationEntry,
     StartingCash,
-    missing_pairs,
+    SymbolCash,
+    in_order,
     starting_cash_for,
 )
 from pmcc.config.kinds import FixedContracts
@@ -64,7 +65,7 @@ class RunFunds:
 @final
 @dataclass(frozen=True, slots=True)
 class Calibration:
-    """The starting cash, and each run's funds at it."""
+    """Each calibrated symbol's starting cash, and each run's funds at its symbol's."""
 
     cash: StartingCash
     funds: tuple[RunFunds, ...]
@@ -72,36 +73,41 @@ class Calibration:
 
 def calibrate(markets: Mapping[str, Market], configs: Sequence[RunConfig],
               universe: Sequence[str]) -> Calibration:  # fmt: skip
-    """The starting cash for `configs` on `markets` (keyed by symbol), provisional unless they
-    cover every symbol in `universe` under both strategies. Entries follow the universe's symbol
-    order, then the strategy's ID, whatever order the arguments came in, so equal calibrations
-    write equal blocks."""
-
-    def order(run: tuple[str, Market, RunConfig]) -> tuple[int, str]:
-        symbol, _, config = run
-        rank = universe.index(symbol) if symbol in universe else len(universe)
-        return rank, config.strategy.id
-
+    """Each symbol's starting cash for `configs` on `markets` (keyed by symbol), provisional unless
+    `configs` hold both strategies. Symbols follow the universe's order, entries the strategy's
+    ID, whatever order the arguments came in, so equal calibrations write equal blocks."""
     others = sorted({c.strategy.id for c in configs} - set(CALIBRATED_STRATEGIES))
     if others:
         raise CalibrationError(f"calibration runs {CALIBRATED_STRATEGIES} only, not {others}")
+    if not markets:
+        raise CalibrationError("no symbol to calibrate")
     multiple, round_to = cash_rule(configs)
-    pairs = [(symbol, market, config) for symbol, market in markets.items() for config in configs]
-    runs = sorted(pairs, key=order)
-    entries = tuple(measure(symbol, market, config) for symbol, market, config in runs)
-    value = starting_cash_for((e.cost for e in entries), multiple, round_to)
-    funds = tuple(verify(symbol, market, config, value) for symbol, market, config in runs)
+    ordered = sorted(configs, key=lambda c: c.strategy.id)
+    results = {symbol: _symbol_cash(symbol, market, ordered, multiple, round_to)
+               for symbol, market in markets.items()}  # fmt: skip
     cash = StartingCash(
-        value=value,
-        provisional=bool(missing_pairs(entries, universe)),
         cash_multiple=multiple,
         cash_round_to=round_to,
         calibration_cash=CALIBRATION_CASH,
-        entries=entries,
+        symbols=in_order((c for c, _ in results.values()), universe),
     )
-    log.info("calibrate.done", value=str(value.to_dollars()), provisional=cash.provisional,
-             runs=len(entries))  # fmt: skip
+    funds = tuple(f for c in cash.symbols for f in results[c.symbol][1])
+    log.info("calibrate.done", symbols=len(cash.symbols), runs=len(funds))
     return Calibration(cash, funds)
+
+
+def _symbol_cash(symbol: str, market: Market, configs: Sequence[RunConfig], multiple: int,
+                 round_to: Money) -> tuple[SymbolCash, tuple[RunFunds, ...]]:  # fmt: skip
+    """One symbol's value from its own runs' first entries, and each run's funds at it."""
+    entries = tuple(measure(symbol, market, config) for config in configs)
+    value = starting_cash_for((e.cost for e in entries), multiple, round_to)
+    funds = tuple(verify(symbol, market, config, value) for config in configs)
+    done = {e.strategy for e in entries}
+    cash = SymbolCash(symbol=symbol, value=value, entries=entries,
+                      provisional=any(t not in done for t in CALIBRATED_STRATEGIES))  # fmt: skip
+    log.info("calibrate.symbol", symbol=symbol, value=str(value.to_dollars()),
+             provisional=cash.provisional)  # fmt: skip
+    return cash, funds
 
 
 def cash_rule(configs: Sequence[RunConfig]) -> tuple[int, Money]:
@@ -138,7 +144,6 @@ def measure(symbol: str, market: Market, config: RunConfig) -> CalibrationEntry:
         raise CalibrationError(f"{symbol} {run_id}: no long-leg entry (E-L1) in the window, so "
                                "no cost to calibrate from")  # fmt: skip
     entry = CalibrationEntry(
-        symbol=symbol,
         strategy=run_id,
         time=first.time,
         contract=market.names.instrument(first.instrument).ric,

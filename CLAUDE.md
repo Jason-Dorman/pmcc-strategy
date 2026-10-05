@@ -94,7 +94,7 @@ These exist once P0 is done.
 | `just check` | lint, format check, pyright, pytest, and web lint/typecheck/tests |
 | `just test [ARGS]` | pytest only |
 | `just probe SYM` / `just fetch SYM START END [--plan-only]` | LSEG spikes / pull (local, Workspace signed in) |
-| `just run SYM CONFIG` / `just batch` / `just calibrate [ARGS]` | backtests; `calibrate --check` recomputes the starting cash without writing |
+| `just run SYM CONFIG` / `just batch` / `just calibrate [ARGS]` | backtests; `calibrate` sets each symbol's own starting cash, skipping final ones; `calibrate --check` recomputes it without writing |
 | `just export` / `just verify` | site data / results validation |
 | `just web-dev` / `just web-build` / `just e2e` / `just serve` | frontend (`web-dev` and `web-build` export first) |
 | `just reproduce` | cached data → all runs → verify → export → built site |

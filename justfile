@@ -44,7 +44,7 @@ run SYM CONFIG:
 batch:
     {{uv}} pmcc batch --universe configs/universe.yaml
 
-# Calibrate the starting cash into configs/universe.yaml. Add --symbol/--config to narrow it, --check to compare
+# Calibrate each symbol's starting cash into configs/universe.yaml (default: every symbol without a final value). Add --symbol/--config to narrow it, --check to compare
 calibrate *ARGS:
     {{uv}} pmcc calibrate {{ARGS}}
 

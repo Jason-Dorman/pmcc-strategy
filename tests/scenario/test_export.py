@@ -245,13 +245,15 @@ def test_export_index_lists_every_run_with_its_detail_and_sections(exported: Pat
     assert all(r.data_source is DataSource.SYNTHETIC for r in runs.values())
 
 
-def test_export_index_states_the_window_r_and_starting_cash(runs: Runs, exported: Path) -> None:
+def test_export_index_states_the_window_r_and_each_symbols_starting_cash(
+    runs: Runs, exported: Path
+) -> None:
     index = Index.model_validate_json((exported / "index.json").read_bytes())
     any_run = runs[1]["baseline_pmcc"]
 
     assert index.window == any_run.config.window
     assert index.risk_free_rate == any_run.config.risk_free_rate
-    assert index.starting_cash == any_run.starting_cash
+    assert index.symbols[0].starting_cash == any_run.starting_cash
     assert (index.symbols[0].files, index.universe) == ({}, {})
 
 
@@ -444,7 +446,8 @@ def test_export_refuses_a_variant_without_its_strategy(
         export_site(tmp_path / "results", tmp_path / "site")
 
 
-def test_export_refuses_runs_over_different_starting_cash(runs: Runs, tmp_path: Path) -> None:
+def test_dec_30_export_states_each_symbols_own_starting_cash(runs: Runs, tmp_path: Path) -> None:
+    """PO, 2026-10-05: each symbol's own value, so another symbol at another cash exports."""
     results = tmp_path / "results"
     shutil.copytree(runs[0], results)
     (results / "ABC").mkdir()
@@ -454,7 +457,22 @@ def test_export_refuses_runs_over_different_starting_cash(runs: Runs, tmp_path: 
     moved = other.model_copy(update={"manifest": manifest, "starting_cash": CASH.to_dollars() * 2})
     write_result(moved, results)
 
-    with pytest.raises(ExportError, match="another window, r or starting cash"):
+    export_site(results, tmp_path / "site")
+
+    index = Index.model_validate_json((tmp_path / "site" / "index.json").read_bytes())
+    cash = {s.symbol: s.starting_cash for s in index.symbols}
+    assert cash == {"ABC": CASH.to_dollars() * 2, "SYN": CASH.to_dollars()}
+
+
+def test_dec_30_export_refuses_one_symbols_runs_over_different_cash(
+    runs: Runs, tmp_path: Path
+) -> None:
+    results = tmp_path / "results"
+    shutil.copytree(runs[0], results)
+    other = runs[1]["quant_pmcc--a3"]
+    write_result(other.model_copy(update={"starting_cash": CASH.to_dollars() * 2}), results)
+
+    with pytest.raises(ExportError, match="SYN's runs started from different cash"):
         export_site(results, tmp_path / "site")
 
 
@@ -583,7 +601,7 @@ def test_export_refuses_runs_over_another_window(runs: Runs, tmp_path: Path) -> 
 
     results = _elsewhere(runs, tmp_path, config.model_copy(update={"window": window}))
 
-    with pytest.raises(ExportError, match="another window, r or starting cash"):
+    with pytest.raises(ExportError, match="another window or r"):
         export_site(results, tmp_path / "site")
 
 
@@ -609,6 +627,7 @@ def test_export_lists_symbols_in_order_and_one_with_only_analytics(
         (),
         {"coverage": "QQQ/coverage.json"},
     )
+    assert index.symbols[1].starting_cash is None  # no runs, so no cash to state
 
 
 def test_export_copies_the_universe_files(runs: Runs, tmp_path: Path) -> None:

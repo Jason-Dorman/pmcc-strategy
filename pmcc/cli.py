@@ -13,7 +13,13 @@ from pmcc.batch import BatchOutcome, SymbolJob, SymbolOutcome, run_batch
 from pmcc.calibration import Calibration, CalibrationError
 from pmcc.calibration import calibrate as calibrate_cash
 from pmcc.config.calendar import load_calendar
-from pmcc.config.capital import CALIBRATED_STRATEGIES, StartingCash, render_block, with_block
+from pmcc.config.capital import (
+    CALIBRATED_STRATEGIES,
+    StartingCash,
+    SymbolCash,
+    render_block,
+    with_block,
+)
 from pmcc.config.matrix import Family, run_families, run_matrix
 from pmcc.config.strategy import CONFIGS_DIR, RunConfig, load_run_config
 from pmcc.config.universe import UNIVERSE_PATH, Underlying, load_universe
@@ -156,15 +162,16 @@ def run(
     cache: Cache = Path("data_cache"),
     out: Annotated[Path, typer.Option(help="Results directory.")] = Path("results"),
 ) -> None:
-    """Backtest one strategy config on one symbol, from the cache only. The window, r and
-    starting cash come only from configs/universe.yaml (PO, DEC-30)."""
+    """Backtest one strategy config on one symbol, from the cache only. The window, r and the
+    symbol's starting cash come only from configs/universe.yaml (PO, DEC-30)."""
     log_path = configure_logging("run")
     sym, calendar = symbol.upper(), load_calendar()
     settings = _universe(calendar)
     underlying = _underlying(sym, settings)
-    cash = settings.starting_cash
+    cash = settings.cash_of(sym)
     if cash is None:
-        _fail("configs/universe.yaml has no starting_cash yet: run pmcc calibrate (DEC-30)")
+        _fail(f"configs/universe.yaml has no starting cash for {sym} yet: run pmcc calibrate "
+              f"--symbol {sym} (DEC-30)")  # fmt: skip
     result = _backtest(
         cache,
         underlying,
@@ -176,8 +183,8 @@ def run(
     path = write_result(result, out)
     _say(_describe_run(result, path))
     if cash.provisional:
-        _say(f"Starting cash {cash.value.to_dollars()} is provisional (DEC-30): calibrate every "
-             "universe symbol for the final value, then repeat every run with it.")  # fmt: skip
+        _say(f"{sym}'s starting cash {cash.value.to_dollars()} is provisional (DEC-30): calibrate "
+             f"it under both strategies for the final value, then repeat its runs.")  # fmt: skip
     _say(f"Log: {log_path.as_posix()}")
 
 
@@ -246,13 +253,11 @@ def batch(
               "takes its starting cash from there (DEC-30)")  # fmt: skip
     calendar = load_calendar()
     settings = _universe(calendar)
-    cash = settings.starting_cash
-    if cash is None:
-        _fail("configs/universe.yaml has no starting_cash yet: run pmcc calibrate (DEC-30)")
+    cash = _every_symbols_cash(settings)
     configs, families = _matrix(settings)
     stamp, seed = _stamp(), settings.bootstrap.seed
-    jobs = [SymbolJob(cache, u, calendar, settings.risk_free_rate.value, configs, cash.value,
-                      stamp, out, families, seed, settings.window)
+    jobs = [SymbolJob(cache, u, calendar, settings.risk_free_rate.value, configs,
+                      cash[u.symbol].value, stamp, out, families, seed, settings.window)
             for u in settings.symbols]  # fmt: skip
     outcome = run_batch(jobs, out, seed=seed, initializer=worker_logging)
     log.info("batch.done", symbols=len(outcome.symbols), runs=outcome.written,
@@ -261,11 +266,22 @@ def batch(
     if stamp.provenance.git.dirty:
         _say("git_dirty: true (uncommitted changes outside results/). Commit the code before a "
              "publishable batch: pmcc verify rejects dirty results (DEC-50).")  # fmt: skip
-    if cash.provisional:
-        _say(f"Starting cash {cash.value.to_dollars()} is provisional (DEC-30).")
+    for c in cash.values():
+        if c.provisional:
+            _say(f"{c.symbol}'s starting cash {c.value.to_dollars()} is provisional (DEC-30).")
     _say(f"Log: {log_path.as_posix()} (each worker logs beside it)")
     if not outcome.ok:
         raise typer.Exit(code=1)
+
+
+def _every_symbols_cash(settings: UniverseConfig) -> dict[str, SymbolCash]:
+    """Each universe symbol's starting cash; exit 1 if any isn't calibrated yet (DEC-30)."""
+    cash = {u.symbol: settings.cash_of(u.symbol) for u in settings.symbols}
+    uncalibrated = [s for s, c in cash.items() if c is None]
+    if uncalibrated:
+        _fail(f"configs/universe.yaml has no starting cash for {', '.join(uncalibrated)} yet: "
+              "run pmcc calibrate (DEC-30)")  # fmt: skip
+    return {s: c for s, c in cash.items() if c is not None}
 
 
 def _matrix(settings: UniverseConfig) -> tuple[tuple[RunConfig, ...], dict[str, Family]]:
@@ -326,10 +342,9 @@ def _written(path: Path | None) -> str:
     return "written" if path is not None else "NOT written: FAILED (see the log)"
 
 
-Symbols = Annotated[
-    list[str] | None,
-    typer.Option("--symbol", help="A symbol to calibrate on; repeat for more. Default: all."),
-]
+_SYMBOLS_HELP = ("A symbol to calibrate; repeat for more. Default: every symbol without a final "
+                 "value (with --check: every calibrated symbol).")  # fmt: skip
+Symbols = Annotated[list[str] | None, typer.Option("--symbol", help=_SYMBOLS_HELP)]
 Configs = Annotated[
     list[Path] | None,
     typer.Option("--config", help="A strategy config; repeat for more. Default: both strategies."),
@@ -345,32 +360,60 @@ def calibrate(
     ] = False,
     cache: Cache = Path("data_cache"),
 ) -> None:
-    """Calibrate the starting cash (Spec › E-L4) and write it, with its basis, into
-    configs/universe.yaml. It stays provisional until every symbol is calibrated under both
-    strategies (DEC-30)."""
+    """Calibrate each symbol's starting cash (Spec › E-L4) and write it, with its basis, into
+    configs/universe.yaml. A symbol's value is provisional until it is calibrated under both
+    strategies; a final one is never replaced, and other symbols' values are kept (DEC-30)."""
     log_path = configure_logging("calibrate")
     calendar = load_calendar()
     settings = _universe(calendar)
-    if not check:
-        _check_replaceable(settings.starting_cash)
-    symbols = [s.upper() for s in symbol] if symbol else [u.symbol for u in settings.symbols]
+    symbols = _to_calibrate([s.upper() for s in symbol or []], settings, check=check)
     paths = config or [CONFIGS_DIR / f"{s}.yaml" for s in CALIBRATED_STRATEGIES]
     configs = [_run_config(p, settings) for p in paths]
     markets = {s: _market(cache, _underlying(s, settings), calendar, settings) for s in symbols}
     calibration = _calibrated(markets, configs, settings)
-    cash = calibration.cash
     _say(_describe_cash(calibration))
     if check:
-        _check_matches(cash)
+        _check_matches(settings, calibration.cash)
     else:
-        _write_cash(cash, calendar)
+        _write_cash(_merged(settings, calibration.cash), calendar)
     _say(f"Log: {log_path.as_posix()}")
 
 
-def _check_replaceable(current: StartingCash | None) -> None:
-    if current is not None and not current.provisional:
-        _fail("configs/universe.yaml holds a final starting_cash; pmcc calibrate never replaces "
-              "it. Remove its block by hand to calibrate again (DEC-30).")  # fmt: skip
+def _to_calibrate(asked: list[str], settings: UniverseConfig, *, check: bool) -> list[str]:
+    """The symbols to calibrate: those asked for, or by default every symbol without a final
+    value (to write) or every calibrated one (to check). A final value is never rewritten."""
+    current = settings.starting_cash
+    if check:
+        symbols = asked or ([] if current is None else [c.symbol for c in current.symbols])
+        if not symbols:
+            _fail("configs/universe.yaml has no starting cash to check: run pmcc calibrate")
+        return symbols
+    final = [u.symbol for u in settings.symbols if _is_final(settings.cash_of(u.symbol))]
+    symbols = asked or [u.symbol for u in settings.symbols if u.symbol not in final]
+    refused = [s for s in symbols if s in final]
+    if refused or not symbols:
+        _fail(f"{', '.join(refused or final)}: a final starting cash is never replaced. Remove "
+              "its entry from configs/universe.yaml by hand to calibrate it again "
+              "(DEC-30).")  # fmt: skip
+    return symbols
+
+
+def _is_final(cash: SymbolCash | None) -> bool:
+    return cash is not None and not cash.provisional
+
+
+def _merged(settings: UniverseConfig, new: StartingCash) -> StartingCash:
+    """`new`'s symbols written over the file's, every other symbol's value kept."""
+    try:
+        return _over(settings, new)
+    except ValueError as exc:
+        _fail(f"{exc}; configs/universe.yaml is unchanged")
+
+
+def _over(settings: UniverseConfig, new: StartingCash) -> StartingCash:
+    """Raises `ValueError` if the file's block was calibrated under another E-L4 rule."""
+    current = settings.starting_cash
+    return new if current is None else current.merged(new, [u.symbol for u in settings.symbols])
 
 
 def _market(cache: Path, underlying: Underlying, calendar: SessionCalendar,
@@ -392,14 +435,15 @@ def _calibrated(markets: dict[str, Market], configs: list[RunConfig],
 
 
 def _describe_cash(calibration: Calibration) -> str:
-    cash = calibration.cash
-    state = "provisional" if cash.provisional else "final"
-    lines = [f"Starting cash {cash.value.to_dollars()} ({state}), from:"]
-    lines += [
-        f"  {e.symbol} {e.strategy}: {e.contract} at {e.time.isoformat()}, {e.cost.to_dollars()}"
-        for e in cash.entries
-    ]
-    lines.append(f"Available funds at {cash.value.to_dollars()} (reported, not refused; DEC-30):")
+    lines: list[str] = []
+    for cash in calibration.cash.symbols:
+        state = "provisional" if cash.provisional else "final"
+        lines.append(f"{cash.symbol}: starting cash {cash.value.to_dollars()} ({state}), from:")
+        lines += [
+            f"  {e.strategy}: {e.contract} at {e.time.isoformat()}, {e.cost.to_dollars()}"
+            for e in cash.entries
+        ]
+    lines.append("Available funds at each symbol's starting cash (reported, not refused; DEC-30):")
     lines += [
         f"  {f.symbol} {f.strategy}: lowest {f.lowest.to_dollars()} at {f.lowest_at.isoformat()}; "
         f"{f.negative_bars} bar(s) below zero"
@@ -408,12 +452,12 @@ def _describe_cash(calibration: Calibration) -> str:
     return "\n".join(lines)
 
 
-def _check_matches(cash: StartingCash) -> None:
+def _check_matches(settings: UniverseConfig, new: StartingCash) -> None:
     """Byte for byte: the file must be exactly what `pmcc calibrate` would write (DEC-93)."""
     try:
         text = UNIVERSE_PATH.read_text(encoding="utf-8")
-        same = with_block(text, render_block(cash)) == text
-    except (OSError, ValueError, yaml.YAMLError):  # unreadable, or a block set by hand
+        same = with_block(text, render_block(_over(settings, new))) == text
+    except (OSError, ValueError, yaml.YAMLError):  # unreadable, set by hand, or another rule
         same = False
     if not same:
         _fail("configs/universe.yaml's starting_cash doesn't match this calibration; run pmcc "

@@ -105,11 +105,12 @@ def test_config_baseline_holds_the_spec_threshold(rule_id: str, name: str, value
 
 
 def test_dec_30_config_e_l4_text_states_the_starting_cash_rule() -> None:
-    """The published E-L4 says how the starting cash is set, from the params calibrate reads."""
+    """The published E-L4 says how the starting cash is set, from the params calibrate reads:
+    each symbol's own (PO, 2026-10-05)."""
     e_l4 = next(r for r in BASELINE.rules if r.id == "E-L4")
     assert e_l4.text().action.endswith(
-        "Every account starts with 2× the most expensive first long-leg cost in the universe, "
-        "rounded up to the nearest $5,000"
+        "Each symbol's account starts with 2× its most expensive first long-leg cost, rounded up "
+        "to the nearest $5,000"
     )
 
 

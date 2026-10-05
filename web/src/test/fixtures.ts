@@ -33,13 +33,13 @@ export const INDEX: Index = {
     as_of: "2026-03-27",
     source: "FRED",
   },
-  starting_cash: 15000,
   universe: { headline: "universe/headline.json", pooled: "universe/pooled.json",
               pooled_fill_check: "universe/pooled_fill_check.json",
               suitability: "universe/suitability.json" },
   symbols: [
     {
       symbol: "NVDA",
+      starting_cash: 15000,
       files: { robustness: "NVDA/robustness.json", fill_check: "NVDA/fill_check.json" },
       runs: [
         {
@@ -66,7 +66,7 @@ export const INDEX: Index = {
         },
       ],
     },
-    { symbol: "QQQ", files: {}, runs: [] },
+    { symbol: "QQQ", starting_cash: null, files: {}, runs: [] },
   ],
 };
 

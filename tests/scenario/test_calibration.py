@@ -1,5 +1,6 @@
 """Calibrating the starting cash on synthetic markets (Spec › E-L4; P3-09, DEC-30): measure each
-run's first long-leg entry with ample cash, then check the value covers every entry the runs make.
+run's first long-leg entry with ample cash, then check each symbol's value covers every entry its
+runs make. Each symbol's value is its own (PO, 2026-10-05).
 """
 
 from collections.abc import Callable
@@ -12,6 +13,7 @@ from pmcc import calibration
 from pmcc.accounting.events import Event
 from pmcc.calibration import (
     CALIBRATION_CASH,
+    Calibration,
     CalibrationError,
     blocked_entries,
     calibrate,
@@ -20,7 +22,7 @@ from pmcc.calibration import (
     run_funds,
     verify,
 )
-from pmcc.config.capital import starting_cash_for
+from pmcc.config.capital import SymbolCash, starting_cash_for
 from pmcc.config.strategy import RunConfig
 from pmcc.domain.instruments import OptionId, Right, Side
 from pmcc.domain.money import Money, Price
@@ -46,6 +48,12 @@ def _config(tmp: Path, overrides: str = "", fill_model: str = "",
     return config(tmp, overrides, spec.window_start, spec.window_end, fill_model)
 
 
+def _syn(result: Calibration) -> SymbolCash:
+    cash = result.cash.of("SYN")
+    assert cash is not None
+    return cash
+
+
 def _as(cfg: RunConfig, run_id: str) -> RunConfig:
     """`cfg` under another run ID: a second strategy whose entries the test controls,
     standing in for the quant strategy."""
@@ -62,7 +70,7 @@ def test_dec_30_measure_takes_the_first_long_entry_at_calibration_cash(
 
     out = run_backtest(market.data, cfg, build_strategy(cfg.strategy), CALIBRATION_CASH)
     long = only(out, "E-L1", Side.BUY)
-    assert (entry.symbol, entry.strategy, entry.time) == ("SYN", "baseline_pmcc", at(sc.MON, 10))
+    assert (entry.strategy, entry.time) == ("baseline_pmcc", at(sc.MON, 10))
     assert entry.cost == -long.cash_delta  # fill × 100 × qty + fees
     assert entry.contract == market.names.instrument(long.instrument).ric  # the cache's RIC
 
@@ -72,13 +80,14 @@ def test_dec_30_calibrate_sets_the_value_by_e_l4s_rule_provisionally(
 ) -> None:
     cfg = _config(tmp_path)
 
-    cash = calibrate({"SYN": _market(synthetic)}, [cfg], ["SYN"]).cash
+    result = calibrate({"SYN": _market(synthetic)}, [cfg], ["SYN"])
 
+    cash = _syn(result)
     (entry,) = cash.entries
     assert cash.value == starting_cash_for([entry.cost], 2, Money.from_dollars(5_000))
     assert cash.value.units % Money.from_dollars(5_000).units == 0
     assert cash.provisional  # quant_pmcc isn't calibrated
-    assert cash.calibration_cash == CALIBRATION_CASH
+    assert result.cash.calibration_cash == CALIBRATION_CASH
 
 
 def test_dec_30_calibrate_is_reproducible(synthetic: SyntheticMarkets, tmp_path: Path) -> None:
@@ -87,27 +96,55 @@ def test_dec_30_calibrate_is_reproducible(synthetic: SyntheticMarkets, tmp_path:
     assert calibrate({"SYN": market}, [cfg], ["SYN"]) == calibrate({"SYN": market}, [cfg], ["SYN"])
 
 
-def test_dec_30_calibrate_final_once_every_symbol_and_strategy_is_in(
+def test_dec_30_calibrate_final_once_both_strategies_are_in(
     synthetic: SyntheticMarkets, tmp_path: Path
 ) -> None:
     base = _config(tmp_path)
 
-    cash = calibrate({"SYN": _market(synthetic)}, [base, _as(base, "quant_pmcc")], ["SYN"]).cash
+    cash = _syn(calibrate({"SYN": _market(synthetic)}, [base, _as(base, "quant_pmcc")], ["SYN"]))
 
     assert not cash.provisional
     assert [e.strategy for e in cash.entries] == ["baseline_pmcc", "quant_pmcc"]
 
 
-def test_dec_30_calibrate_provisional_on_part_of_a_larger_universe(
+def test_dec_30_calibrate_final_on_one_symbol_of_a_larger_universe(
     synthetic: SyntheticMarkets, tmp_path: Path
 ) -> None:
-    """P3-09's own case: one symbol of three. Both strategies on it don't make the value final."""
+    """PO, 2026-10-05: each symbol's own value, so both strategies on SYN make SYN's final while
+    QQQ and TSLA wait (it was provisional at P3-09, when one value served the universe)."""
     base = _config(tmp_path)
 
-    cash = calibrate({"SYN": _market(synthetic)}, [base, _as(base, "quant_pmcc")],
-                     ["QQQ", "SYN", "TSLA"]).cash  # fmt: skip
+    result = calibrate({"SYN": _market(synthetic)}, [base, _as(base, "quant_pmcc")],
+                       ["QQQ", "SYN", "TSLA"])  # fmt: skip
 
-    assert cash.provisional
+    assert not _syn(result).provisional
+    assert [c.symbol for c in result.cash.symbols] == ["SYN"]
+
+
+def test_dec_30_calibrate_gives_each_symbol_its_own_value(
+    synthetic: SyntheticMarkets, tmp_path: Path
+) -> None:
+    """Each symbol's value is the rule over its own entries, never another symbol's, and each run
+    is verified at its own symbol's value (PO, 2026-10-05). Two random walks on different seeds,
+    so their first longs cost different amounts; E-L4's step at $1 keeps the values apart."""
+    rule = "E-L4: {params: {cash_round_to: 1}}"
+    cfg = _as(_config(tmp_path, overrides=rule, build=sc.random_walk), "baseline_pmcc")
+    seven = _market(synthetic, "random_walk", sc.random_walk)
+    eleven = _market(synthetic, "random_walk_11", lambda: sc.random_walk(seed=11))
+
+    result = calibrate({"AAA": seven, "BBB": eleven}, [cfg], ["AAA", "BBB"])
+
+    params = (result.cash.cash_multiple, result.cash.cash_round_to)
+    values: dict[str, Money] = {}
+    for cash in result.cash.symbols:
+        assert cash.value == starting_cash_for((e.cost for e in cash.entries), *params)
+        values[cash.symbol] = cash.value
+    assert values["AAA"] != values["BBB"]
+    for funds, (symbol, market) in zip(
+        result.funds, [("AAA", seven), ("BBB", eleven)], strict=True
+    ):
+        out = run_backtest(market.data, cfg, build_strategy(cfg.strategy), values[symbol])
+        assert (funds.symbol, funds.lowest) == (symbol, min(r.available_funds for r in out.ledger))
 
 
 def test_dec_30_calibrate_orders_entries_whatever_the_argument_order(
@@ -125,7 +162,11 @@ def test_dec_30_calibrate_orders_entries_whatever_the_argument_order(
     two = calibrate({"AAA": drop, "BBB": quiet}, [base, quant], universe)
 
     assert one == two
-    assert [e.pair for e in one.cash.entries] == [
+    assert [(c.symbol, e.strategy) for c in one.cash.symbols for e in c.entries] == [
+        ("AAA", "baseline_pmcc"), ("AAA", "quant_pmcc"),
+        ("BBB", "baseline_pmcc"), ("BBB", "quant_pmcc"),
+    ]  # fmt: skip
+    assert [(f.symbol, f.strategy) for f in one.funds] == [
         ("AAA", "baseline_pmcc"), ("AAA", "quant_pmcc"),
         ("BBB", "baseline_pmcc"), ("BBB", "quant_pmcc"),
     ]  # fmt: skip
@@ -280,11 +321,11 @@ def test_dec_30_calibrate_takes_the_rule_from_e_l4s_params(
     rule = "E-L4: {params: {cash_multiple: 3, cash_round_to: 1000}}"
     cfg = _as(_config(tmp_path, overrides=rule), "baseline_pmcc")
 
-    cash = calibrate({"SYN": _market(synthetic)}, [cfg], ["SYN"]).cash
+    result = calibrate({"SYN": _market(synthetic)}, [cfg], ["SYN"])
 
-    (entry,) = cash.entries
-    assert (cash.cash_multiple, cash.cash_round_to) == (3, Money.from_dollars(1_000))
-    assert cash.value == starting_cash_for([entry.cost], 3, Money.from_dollars(1_000))
+    (entry,) = _syn(result).entries
+    assert (result.cash.cash_multiple, result.cash.cash_round_to) == (3, Money.from_dollars(1_000))
+    assert _syn(result).value == starting_cash_for([entry.cost], 3, Money.from_dollars(1_000))
 
 
 def test_dec_30_calibrate_refuses_configs_that_disagree_on_the_rule(
@@ -320,7 +361,7 @@ def test_dec_30_calibrate_reports_each_runs_funds_at_the_value(
 
     result = calibrate({"SYN": market}, [cfg], ["SYN"])
 
-    out = run_backtest(market.data, cfg, build_strategy(cfg.strategy), result.cash.value)
+    out = run_backtest(market.data, cfg, build_strategy(cfg.strategy), _syn(result).value)
     low = min(r.available_funds for r in out.ledger)
     (funds,) = result.funds
     assert (funds.symbol, funds.strategy, funds.lowest) == ("SYN", "baseline_pmcc", low)
@@ -342,7 +383,7 @@ def test_dec_30_calibrate_reports_funds_below_zero_and_still_calibrates(
     result = calibrate({"SYN": market}, [_as(cfg, "baseline_pmcc")], ["SYN"])
 
     (funds,) = result.funds
-    assert result.cash.value == Money.from_dollars(1_300)
+    assert _syn(result).value == Money.from_dollars(1_300)
     assert (funds.negative_bars, funds.lowest) == (1, Money.from_dollars("-93.50"))
     assert funds.lowest_at == at(sc.FRI, 16)
 

@@ -85,23 +85,33 @@ def _provenance() -> Provenance:
     return Provenance(GitState("a" * 40, False), "b" * 64, "0.0.0")
 
 
-def _universe(symbols: Sequence[str] = SYMBOLS) -> str:
-    """A final starting cash of $15,000 on every symbol: 2 × $5,000 rounds up to $10,000 (DEC-30),
-    so the entries say $7,500."""
+CASH = {"SYN": 15_000, "TWO": 25_000, "GONE": 15_000}  # each symbol's own (PO, DEC-30)
+COSTS = {"SYN": 7_500, "TWO": 12_000, "GONE": 7_500}  # 2× each, rounded up to $5,000
+
+
+def _universe(symbols: Sequence[str] = SYMBOLS, calibrated: Sequence[str] | None = None) -> str:
+    """Each `calibrated` symbol's own final starting cash (default: every symbol): SYN's $7,500
+    entries give $15,000 and TWO's $12,000 give $25,000 (2× each, rounded up to $5,000; DEC-30)."""
+    calibrated = symbols if calibrated is None else calibrated
     spec = random_walk()
     shipped = UNIVERSE_PATH.read_text(encoding="utf-8")
     rate = shipped[shipped.index("risk_free_rate:") : shipped.index("# The universe")]
     assert "seed: 535" in rate
     rate = rate.replace("seed: 535", f"seed: {SEED}")
     listed = "".join(f"  - {{symbol: {s}, stock_ric: {s}.O, option_root: {s}}}\n" for s in symbols)
-    entries = ", ".join(
-        f"{{symbol: {s}, strategy: {t}, time: '{NOW.isoformat()}', contract: X, cost: 7500}}"
-        for s in symbols for t in ("baseline_pmcc", "quant_pmcc")
-    )  # fmt: skip
+
+    def cash(s: str) -> str:
+        entries = ", ".join(
+            f"{{strategy: {t}, time: '{NOW.isoformat()}', contract: X, cost: {COSTS[s]}}}"
+            for t in ("baseline_pmcc", "quant_pmcc")
+        )
+        return f"{{symbol: {s}, value: {CASH[s]}, provisional: false, entries: [{entries}]}}"
+
+    block = ", ".join(cash(s) for s in symbols if s in calibrated)
     return (
         f"window: {{start: {spec.window_start}, end: {spec.window_end}}}\n{rate}symbols:\n{listed}"
-        "starting_cash: {value: 15000, provisional: false, cash_multiple: 2, cash_round_to: 5000, "
-        f"calibration_cash: 1000000, entries: [{entries}]}}\n"
+        "starting_cash: {cash_multiple: 2, cash_round_to: 5000, calibration_cash: 1000000, "
+        f"symbols: [{block}]}}\n"
     )
 
 
@@ -158,6 +168,8 @@ def test_p5_03_batch_writes_every_run_and_coverage_for_each_symbol(
         )
         assert coverage.symbol == symbol
         assert {r.kind for r in coverage.rows} >= {"stock", "puts"}
+        for run in Path("elsewhere", symbol).glob("*_pmcc*.json"):  # each symbol's own cash
+            assert RunResult.model_validate_json(run.read_bytes()).starting_cash == CASH[symbol]
     assert len(matrix) * len(SYMBOLS) == 48
     assert ("48 runs written for 2 symbol(s); 0 run(s) and 0 symbol(s) failed; 0 coverage, "
             "0 robustness and 0 fill-check file(s) not written; 0 suitability screen(s) not "
@@ -269,6 +281,19 @@ def test_p5_03_batch_refuses_a_universe_without_starting_cash(workdir: Path, mar
 
     assert code == 1
     assert "run pmcc calibrate" in output
+
+
+def test_dec_30_batch_refuses_a_symbol_without_its_starting_cash(
+    workdir: Path, market: Path
+) -> None:
+    """Each symbol's own value (PO, 2026-10-05): SYN's doesn't stand in for TWO's."""
+    Path("universe.yaml").write_text(_universe(calibrated=["SYN"]), encoding="utf-8")
+
+    code, output = _batch(market)
+
+    assert code == 1
+    assert "no starting cash for TWO yet: run pmcc calibrate" in output
+    assert not Path("results").exists()
 
 
 # ---- one symbol's job, in this process ----------------------------------------------------------

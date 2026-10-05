@@ -38,7 +38,7 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-12 | Per-symbol identifiers, splits, max strike | SETTLED (PO) | — |
 | DEC-13 | Hourly field availability | SETTLED (spec, probed) | — |
 | DEC-14 | Strike increments | ENG method · values probed · unmeasured anchor SETTLED (PO) | — |
-| DEC-15 | Universe size | SETTLED (PO): NVDA only for now; QQQ and TSLA commented out | — |
+| DEC-15 | Universe size | SETTLED (PO): NVDA only for now; QQQ and TSLA commented out; one comes back without touching NVDA's cash (DEC-30) | — |
 | DEC-16 | Fetch coverage summary | SETTLED (PO) | — |
 | DEC-20 | Week-open session and order of operations | SETTLED (PO) | — |
 | DEC-21 | Selection freeze and E-T1 | SETTLED (PO) | — |
@@ -50,7 +50,7 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-27 | Greeks for held contracts; fresh quotes only | SETTLED (PO) | — |
 | DEC-28 | Exits without a valid quote; when the long is checked | SETTLED (PO) | — |
 | DEC-29 | Tie-breaks | SETTLED (PO) | — |
-| DEC-30 | Starting capital (E-L4) | SETTLED (PO): $15,000, final (P5-01) | recalibrate if QQQ or TSLA return |
+| DEC-30 | Starting capital (E-L4) | SETTLED (PO): each symbol's own (2026-10-05); NVDA's $15,000, final (P5-01) | a symbol that returns calibrates its own (L-03, DEC-118) |
 | DEC-31 | Entry-timing sensitivity | SETTLED (PO) | — |
 | DEC-32 | Point-in-time listing | SETTLED (PO) | — |
 | DEC-33 | Expiry calendar | SETTLED (PO) | — |
@@ -132,6 +132,7 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-115 | P7-04: the Methodology page | ENG · amended by DEC-116 · the half-width robustness tables put to the PO | handover 2026-10-04 |
 | DEC-116 | Methodology: the limits first, three panels dropped | SETTLED (PO) | P7-04 |
 | DEC-117 | P7-05: the Universe page | ENG | P7-05 |
+| DEC-118 | L-03: each symbol's own starting cash | ENG · E-L4's reworded text put to the PO | handover 2026-10-05 |
 
 ---
 
@@ -488,6 +489,7 @@ The results are reported to the PO at P1-05. A result that contradicts the spec 
   - `configs/universe.yaml` lists NVDA; the QQQ and TSLA lines stay in place as comments, with a note on what bringing one back takes. Spec › Universe is amended to cite this outcome.
   - **Bringing one back means recalibrating** (the PO asked to be reminded), in this order: delete the final `starting_cash` block, its header comment included (the file refuses a final block that lacks a listed symbol, and `pmcc fetch` reads this file, so it would stop); uncomment the symbol; finish its fetch (P1-10: show the PO the estimate first); run `just calibrate`; then re-run every result (`just batch`), since the value may change; then repeat P5-05's band-edge check on the new symbol's runs before committing them (DEC-48). `pmcc calibrate` never replaces a final block (DEC-30). A symbol commented out is refused by `pmcc fetch` too, so the reminder applies to resuming P1-10 as well. DEC-93's partial-cache question comes back with it: a symbol cached in part runs some strategies and fails others.
   - Pooled statistics (DEC-61), the Universe page and the suitability screen run over one symbol until then.
+- **Update:** 2026-10-05 — PO, asked to pull QQQ's data: each symbol now has its own starting cash (DEC-30), so **bringing one back no longer recalibrates the others.** The order is now: uncomment the symbol (no block to delete first: the file lets a listed symbol wait for its cash); finish its fetch (P1-10: show the PO the estimate first); `just calibrate`, which calibrates only the symbols without a final value; `just batch`; then P5-05's band-edge check on the new symbol's runs before committing them (DEC-48). NVDA's $15,000 and its results' numbers stay as they are. DEC-93's partial-cache question still comes back with it (DEC-118).
 
 ### DEC-16 — Fetch coverage summary
 **Status:** SETTLED · **Basis:** PO, 2026-09-28 (asked at P1-08, and after its review; IV failures built at P2-04) · **Affects:** P1-08, P1-09, P1-10, P2-04, ARCHITECTURE §6.1
@@ -669,7 +671,13 @@ Distances are compared in integer price units, so float noise can't create or br
 - **Outcome:** 2026-09-30 — PO, at P4-04, as recommended: **recalibrate to $15,000 with quant built** (put to the PO at P4-03's handover, DEC-95). `pmcc calibrate --symbol NVDA` ran both strategies: quant's first long, the Aug 21 2026 $115 call (`NVDAH212611500.U^H26`) on Mar 30 at 10:00, costs $5,630.00 against the baseline's $4,142.50, so 2 × $5,630 = $11,260, rounded up to $15,000. The value stays provisional until QQQ and TSLA are calibrated (P5-01). At $15,000 no entry is blocked; the lowest available funds are $9,978.50 for the baseline (Jun 8, 14:00) and $8,330.00 for quant (May 14, 10:00), none below zero. The baseline's trades are the same as at $10,000 (E-L4 blocked none there), so only its cash and NAV move up by $5,000. `results/NVDA/baseline_pmcc.json` is re-run at the new value with the quant runs (P4-04), from a tree where this block is committed. The $10,000 figures above are P3-09's and P3-10's record.
 - **Outcome:** 2026-09-30 — **final, at P5-01** (PO, DEC-15: the universe is NVDA alone for now). With QQQ and TSLA commented out, nothing is missing, so `just calibrate` wrote the block with `provisional: false`: still $15,000, from the same two first entries (baseline $4,142.50, quant $5,630.00, both Mar 30 at 10:00), and the same lowest available funds ($9,978.50 baseline, $8,330.00 quant; none below zero). `just calibrate --check` reproduces it byte for byte. The committed results were run at $15,000 and their format doesn't record whether the value was provisional, so they stand; P5-04 re-runs everything anyway.
   - **How:** the provisional block was deleted by hand first, its header comment with it. The universe file refuses a provisional block once nothing is missing, so calibrate couldn't load it, and `with_block` refuses a header with no block after it (DEC-93). The block calibrate then appended is the old one with `provisional` flipped.
-  - **If QQQ or TSLA come back,** the final block is deleted by hand and the whole universe recalibrated (DEC-15).
+  - **If QQQ or TSLA come back,** the final block is deleted by hand and the whole universe recalibrated (DEC-15). *(Superseded by the 2026-10-05 outcome below.)*
+- **Outcome:** 2026-10-05 — **PO: each symbol calibrates its own starting cash** (asked when the PO picked QQQ back up). The PO's point: the backtests are each symbol's own account, not a portfolio, so one value across the universe isn't needed.
+  - **The case put to the PO:** E-L4 trades 1 contract and cash earns nothing, so one value set by the dearest symbol (QQQ's first long, perhaps $13k, would set about $30k) would leave NVDA's account about 80% idle. Its return on starting NAV would shrink, and its Sharpe and Sortino would fall against r, from the cash setting rather than the strategy. Sized to its own long, each account starts with about the same share of its cash in the position, so percentage returns compare across symbols and the pooled CI (DEC-61), an equal-weight mean of weekly returns, means more. Adding a symbol also stops restating NVDA's results. One value bought nothing: no shared margin, no portfolio NAV, and dollar P&L doesn't compare across symbols at 1 contract anyway. The $5,000 rounding still leaves some unevenness (NVDA's $11,260 rounds up to $15,000, about 37% deployed at entry).
+  - **The rule, approved as recommended:** each symbol's starting cash is 2 × **that symbol's** most expensive first long-leg cost across both strategies, rounded up to the nearest $5,000: the same rule, per symbol. A symbol's value is provisional until it is calibrated under both strategies, final after, and a final one is still only ever removed by hand.
+  - **When, as recommended:** built first, as the first step of bringing QQQ back (L-03), so pulling QQQ means calibrating QQQ alone.
+  - **Spec amended:** Spec › E-L4 ("Each symbol's account starts with its own cash balance … 2× that symbol's most expensive first long-leg cost"), the strategies line ("every run on a symbol from that symbol's own starting capital") and Spec › Universe. E-L4's rule text in `configs/_shared.yaml` says the same, so the Trade rules page publishes it.
+  - **NVDA is unchanged:** its value was set by NVDA alone, so it stays $15,000, final, from the same two entries (baseline $4,142.50, quant $5,630.00, both Mar 30 at 10:00) with the same lowest available funds ($9,978.50 and $8,330.00; none below zero). The old block was removed by hand, as this entry requires of a final one, and `just calibrate` wrote NVDA's in the new shape; `just calibrate --check` reproduces it byte for byte. How it is built: DEC-118.
 
 ### DEC-31 — Entry-timing sensitivity
 **Status:** SETTLED · **Basis:** PO, 2026-09-30 (asked at P5-02) · **Affects:** P5-02, P6-06; DEC-100
@@ -2832,6 +2840,23 @@ How P7-05 builds UI-SPEC §6.5. Nothing here changes a result.
   baseline +$3,672.50, as on the comparison page.
 - **Tests:** `web/src/pages/Universe.test.tsx` (12); the fixtures gain `headline.json` and
   `suitability.json`. The smoke test checks the page on the built site (20 pass).
+
+### DEC-118 — L-03: each symbol's own starting cash
+**Status:** ENG · E-L4's reworded text put to the PO at the handover · **Affects:** L-03, L-02, P1-10; `pmcc.config.capital`, `pmcc.config.universe`, `pmcc.calibration`, `pmcc calibrate`, `pmcc run`, `pmcc batch`, `pmcc export`; ARCHITECTURE §10, §12; DEC-15, DEC-30, DEC-93
+
+How L-03 builds the PO's 2026-10-05 answer to DEC-30. No result's numbers change: NVDA's value is what it was.
+
+- **The block** (`configs/universe.yaml`, still the file's last key, still written only by `pmcc calibrate`): E-L4's `cash_multiple` and `cash_round_to` and the `calibration_cash` once at the top, then `symbols:`, one entry per calibrated symbol in the universe's order: its `value`, `provisional` and `entries`. An entry no longer repeats its symbol. Each symbol's value is checked against the rule over its own entries, and `provisional` is true exactly while it lacks a strategy, so a symbol is final on its own, whatever else the universe lists.
+- **The loader** refuses a calibrated symbol outside the universe, or symbols out of the universe's order (calibrate never writes them so), but lets a listed symbol have no value yet. `pmcc fetch` reads the file, so a symbol can be uncommented and fetched with nothing else touched. The old one-value shape is refused.
+- **`pmcc calibrate`:**
+  - With no `--symbol`, it calibrates every universe symbol without a final value, and refuses if there is none. A final symbol, named or not, is never rewritten: it is refused before anything runs, with the message to remove its entry by hand.
+  - It merges what it calibrated into the block (`StartingCash.merged`): every other symbol's entry is kept as it was. A block calibrated under another E-L4 rule is refused; remove it by hand to recalibrate every symbol.
+  - `--check` recomputes every calibrated symbol by default (or those named), merges them the same way and compares the whole file byte for byte (DEC-93). A listed symbol not yet calibrated is skipped, and a block under another rule is a mismatch.
+  - It prints each symbol's value with its entries, then each run's lowest funds at its own symbol's value.
+- **`pmcc run`** takes the symbol's own value and refuses a symbol without one, naming `pmcc calibrate --symbol SYM`. **`pmcc batch`** refuses, before running anything, if any universe symbol has no value, naming them; each symbol's job carries its own value (it already did), and a provisional symbol is noted by name.
+- **`index.json`:** the starting cash moves from the index to each symbol (`IndexSymbol.starting_cash`; null for a symbol with only analytics files). The export still refuses runs over another window or r, and now refuses a symbol whose runs started from different cash. The site reads each run's own `starting_cash`, so no page changes. Since `index.json`'s shape changed, `SCHEMA_VERSION` is 5.
+- **E-L4's text** (`configs/_shared.yaml`, shown on the Trade rules page): the summary and action now say each symbol's account starts with 2× its most expensive first long-leg cost, and the rationale says why (each symbol is its own account, so returns compare). The wording is the agent's, put to the PO at the handover. It is part of the config, so every run's `config_hash` changes.
+- **Re-run:** the new hash and schema version mean every committed result is stale. After the PO commits this, `just batch` from a clean tree re-writes `results/` (24 NVDA runs and the symbol and universe files); their numbers are expected to stay as they are, since NVDA's cash didn't move.
 
 ## E. Analytics definitions
 

@@ -1,10 +1,12 @@
-"""`pmcc calibrate` (P3-09, DEC-30): measure, verify, and write the starting cash with its basis
-into the universe file, or with `--check`, recompute it and compare.
+"""`pmcc calibrate` (P3-09, DEC-30): measure, verify, and write each symbol's starting cash with
+its basis into the universe file, or with `--check`, recompute it and compare. Each symbol's value
+is its own (PO, 2026-10-05): calibrating one keeps the others'.
 
 The market is the synthetic `random_walk`, cached in a temporary directory. A test universe in the
 working directory stands in for configs/universe.yaml, both as the file read and the file written.
 """
 
+import dataclasses
 from collections.abc import Callable
 from datetime import UTC
 from pathlib import Path
@@ -14,7 +16,7 @@ from typer.testing import CliRunner
 
 from pmcc import calibration, cli
 from pmcc.cli import app
-from pmcc.config.capital import MARKER, StartingCash
+from pmcc.config.capital import MARKER, SymbolCash
 from pmcc.config.strategy import CONFIGS_DIR
 from pmcc.config.universe import UNIVERSE_PATH, Universe, read_universe_file
 from pmcc.config.yaml_file import parse_yaml
@@ -30,21 +32,31 @@ BASELINE = (CONFIGS_DIR / "baseline_pmcc.yaml").as_posix()
 runner = CliRunner()
 
 
-def _universe() -> str:
+def _universe(*others: str) -> str:
     spec = random_walk()
     shipped = UNIVERSE_PATH.read_text(encoding="utf-8")
     rate = shipped[shipped.index("risk_free_rate:") : shipped.index("# The universe")]
+    listed = "".join(f"  - {{symbol: {s}, stock_ric: {s}.O, option_root: {s}}}\n" for s in others)
     return (
         f"# a test universe\nwindow: {{start: {spec.window_start}, end: {spec.window_end}}}\n"
         f"{rate}symbols:\n  - {{symbol: SYN, stock_ric: SYN.O, option_root: SYN}}  # kept\n"
+        f"{listed}"
     )
 
 
 @pytest.fixture(scope="module")
 def market(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """SYN's random walk, and TWO's on another seed, so another price and first long."""
     cache = tmp_path_factory.mktemp("market")
     generate(random_walk(), cache)
+    generate(dataclasses.replace(random_walk(seed=11), symbol="TWO"), cache)
     return cache
+
+
+def _syn(path: Path) -> SymbolCash:
+    cash = read_universe_file(path).cash_of("SYN")
+    assert cash is not None
+    return cash
 
 
 @pytest.fixture
@@ -81,17 +93,14 @@ def test_dec_30_calibrate_writes_a_provisional_block_after_the_file(
     assert code == 0, output
     text = universe.read_text(encoding="utf-8")
     assert text.startswith(_universe() + "\n" + MARKER)
-    cash = read_universe_file(universe).starting_cash
-    assert cash is not None
+    cash = _syn(universe)
     assert cash.provisional  # quant_pmcc isn't calibrated
     (entry,) = cash.entries
-    assert (entry.symbol, entry.strategy) == ("SYN", "baseline_pmcc")
+    assert entry.strategy == "baseline_pmcc"
     assert cash.value.units % Money.from_dollars(5_000).units == 0
-    assert f"Starting cash {cash.value.to_dollars()} (provisional), from:" in output
-    assert f"SYN baseline_pmcc: {entry.contract}" in output
-    assert (
-        f"Available funds at {cash.value.to_dollars()} (reported, not refused; DEC-30):" in output
-    )
+    assert f"SYN: starting cash {cash.value.to_dollars()} (provisional), from:" in output
+    assert f"  baseline_pmcc: {entry.contract}" in output
+    assert "Available funds at each symbol's starting cash (reported, not refused" in output
     assert "SYN baseline_pmcc: lowest " in output
     assert "bar(s) below zero" in output
     assert "Written to configs/universe.yaml." in output
@@ -114,7 +123,7 @@ def test_dec_30_calibrate_is_reproducible_and_check_confirms_it(
     assert universe.read_bytes() == first
 
 
-def _edits(cash: StartingCash) -> dict[str, tuple[str, str]]:
+def _edits(cash: SymbolCash) -> dict[str, tuple[str, str]]:
     """Edits that keep the file loadable but aren't what calibrate writes."""
     entry = cash.entries[0]
     cost, value = entry.cost.to_dollars(), cash.value.to_dollars()
@@ -135,9 +144,7 @@ def test_dec_93_calibrate_check_fails_on_any_byte_that_differs(
     """--check is byte for byte: the file must be exactly what calibrate would write."""
     _calibrate(market)
     text = universe.read_text(encoding="utf-8")
-    cash = read_universe_file(universe).starting_cash
-    assert cash is not None
-    old, new = _edits(cash)[edit]
+    old, new = _edits(_syn(universe))[edit]
     assert old in text
     changed = text.replace(old, new)
     universe.write_text(changed, encoding="utf-8", newline="\n")
@@ -152,9 +159,7 @@ def test_dec_93_calibrate_check_fails_on_any_byte_that_differs(
 
 def test_dec_93_calibrate_writes_entry_times_in_new_york(universe: Path, market: Path) -> None:
     _calibrate(market)
-    cash = read_universe_file(universe).starting_cash
-    assert cash is not None
-    time = cash.entries[0].time
+    time = _syn(universe).entries[0].time
     assert time.utcoffset() == ET.utcoffset(time.replace(tzinfo=None))
     assert f"time: '{time.isoformat()}'" in universe.read_text(encoding="utf-8")
 
@@ -198,22 +203,78 @@ def test_dec_30_calibrate_check_fails_without_a_block(universe: Path, market: Pa
     assert universe.read_text(encoding="utf-8") == _universe()
 
 
-def test_dec_30_calibrate_never_replaces_a_final_value(universe: Path, market: Path) -> None:
-    final = (
-        "starting_cash: {value: 5000, provisional: false, cash_multiple: 2, cash_round_to: 5000, "
-        "calibration_cash: 1000000, entries: ["
-        "{symbol: SYN, strategy: baseline_pmcc, time: '2026-07-06T10:00:00-04:00', contract: X, "
-        "cost: 900}, {symbol: SYN, strategy: quant_pmcc, time: '2026-07-06T10:00:00-04:00', "
-        "contract: X, cost: 900}]}\n"
-    )
-    universe.write_text(_universe() + final, encoding="utf-8", newline="\n")
+def test_dec_30_calibrate_check_by_default_needs_a_calibrated_symbol(
+    universe: Path, market: Path
+) -> None:
+    result = runner.invoke(app, ["calibrate", "--check", "--cache", str(market)])
 
-    code, output = _calibrate(market)
+    assert result.exit_code == 1
+    assert "no starting cash to check" in result.output
 
-    assert code == 1
-    assert "holds a final starting_cash" in output
-    assert "Remove its block by hand" in output
-    assert universe.read_text(encoding="utf-8") == _universe() + final
+
+FINAL_SYN = (
+    "starting_cash: {cash_multiple: 2, cash_round_to: 5000, calibration_cash: 1000000, symbols: ["
+    "{symbol: SYN, value: 5000, provisional: false, entries: ["
+    "{strategy: baseline_pmcc, time: '2026-07-06T10:00:00-04:00', contract: X, cost: 900}, "
+    "{strategy: quant_pmcc, time: '2026-07-06T10:00:00-04:00', contract: X, cost: 900}]}]}\n"
+)
+
+
+@pytest.mark.parametrize("asked", [["--symbol", "SYN"], []], ids=["named", "by-default"])
+def test_dec_30_calibrate_never_replaces_a_final_value(
+    universe: Path, market: Path, asked: list[str]
+) -> None:
+    universe.write_text(_universe() + FINAL_SYN, encoding="utf-8", newline="\n")
+
+    result = runner.invoke(app, ["calibrate", *asked, "--cache", str(market)])
+
+    assert result.exit_code == 1
+    assert "SYN: a final starting cash is never replaced" in result.output
+    assert "Remove its entry from configs/universe.yaml by hand" in result.output
+    assert universe.read_text(encoding="utf-8") == _universe() + FINAL_SYN
+
+
+def test_dec_30_calibrate_adds_a_symbol_and_keeps_the_others_values(
+    universe: Path, market: Path
+) -> None:
+    """PO, 2026-10-05: bringing a symbol back calibrates it alone, by default, and leaves every
+    other symbol's value as it was."""
+    universe.write_text(_universe("TWO"), encoding="utf-8", newline="\n")
+    first = runner.invoke(app, ["calibrate", "--symbol", "SYN", "--cache", str(market)])
+    assert first.exit_code == 0, first.output
+    syn = _syn(universe)
+    assert not syn.provisional
+    assert read_universe_file(universe).cash_of("TWO") is None
+
+    result = runner.invoke(app, ["calibrate", "--cache", str(market)])
+
+    assert result.exit_code == 0, result.output
+    assert "TWO: starting cash" in result.output
+    assert "SYN: starting cash" not in result.output  # SYN's final value isn't run again
+    after = read_universe_file(universe)
+    assert after.cash_of("SYN") == syn
+    two = after.cash_of("TWO")
+    assert two is not None
+    assert not two.provisional
+    assert two.entries != syn.entries  # its own runs' entries, from its own market
+    check = runner.invoke(app, ["calibrate", "--check", "--cache", str(market)])
+    assert check.exit_code == 0, check.output  # both symbols recomputed, byte for byte
+    assert "SYN: starting cash" in check.output
+    assert "TWO: starting cash" in check.output
+
+
+def test_dec_30_calibrate_check_skips_a_symbol_not_calibrated_yet(
+    universe: Path, market: Path
+) -> None:
+    """A listed symbol waiting for its fetch doesn't stop the others' check."""
+    universe.write_text(_universe("TWO"), encoding="utf-8", newline="\n")
+    _calibrate(market)
+
+    result = runner.invoke(app, ["calibrate", "--check", "--config", BASELINE,
+                                 "--cache", str(market)])  # fmt: skip
+
+    assert result.exit_code == 0, result.output
+    assert "TWO" not in result.output
 
 
 def test_dec_30_calibrate_refuses_a_provisional_value_written_by_hand(
@@ -221,10 +282,9 @@ def test_dec_30_calibrate_refuses_a_provisional_value_written_by_hand(
 ) -> None:
     """A valid block without calibrate's marker: replacing it could lose what was around it."""
     by_hand = (
-        "starting_cash: {value: 5000, provisional: true, cash_multiple: 2, cash_round_to: 5000, "
-        "calibration_cash: 1000000, entries: ["
-        "{symbol: SYN, strategy: baseline_pmcc, time: '2026-07-06T10:00:00-04:00', contract: X, "
-        "cost: 900}]}\n"
+        "starting_cash: {cash_multiple: 2, cash_round_to: 5000, calibration_cash: 1000000, "
+        "symbols: [{symbol: SYN, value: 5000, provisional: true, entries: [{strategy: "
+        "baseline_pmcc, time: '2026-07-06T10:00:00-04:00', contract: X, cost: 900}]}]}\n"
     )
     universe.write_text(_universe() + by_hand, encoding="utf-8", newline="\n")
 
@@ -237,16 +297,13 @@ def test_dec_30_calibrate_refuses_a_provisional_value_written_by_hand(
 
 
 def test_dec_30_calibrate_defaults_to_both_strategies(universe: Path, market: Path) -> None:
-    """With no --config, both shipped strategies are calibrated (P4-03 wrote the quant one), and
-    with every universe symbol under both, the value is final."""
+    """With no --config, both shipped strategies are calibrated (P4-03 wrote the quant one), so
+    the symbol's value is final."""
     result = runner.invoke(app, ["calibrate", "--symbol", "SYN", "--cache", str(market)])
 
     assert result.exit_code == 0, result.output
-    cash = read_universe_file(universe).starting_cash
-    assert cash is not None
-    assert [(e.symbol, e.strategy) for e in cash.entries] == [
-        ("SYN", "baseline_pmcc"), ("SYN", "quant_pmcc")
-    ]  # fmt: skip
+    cash = _syn(universe)
+    assert [e.strategy for e in cash.entries] == ["baseline_pmcc", "quant_pmcc"]
     assert not cash.provisional
 
 

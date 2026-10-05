@@ -138,23 +138,27 @@ def test_universe_file_reads_a_minimal_file(tmp_path: Path) -> None:
     assert [u.symbol for u in universe.symbols] == ["SPY"]
 
 
-def test_dec_30_universe_file_starting_cash_is_nvda_both_strategies_final() -> None:
-    """P5-01: calibrated on NVDA, the whole universe for now, under both strategies, so final
-    (PO, DEC-15, DEC-30). Quant's first long sets it: 2 × $5,630 rounds up to $15,000 (DEC-95)."""
+def test_dec_30_universe_file_starting_cash_is_nvdas_own_both_strategies_final() -> None:
+    """P5-01: NVDA calibrated under both strategies, so final (PO, DEC-15, DEC-30), and each
+    symbol's own since 2026-10-05 (PO). Quant's first long sets it: 2 × $5,630 rounds up to
+    $15,000 (DEC-95)."""
     cash = UNIVERSE.starting_cash
     assert cash is not None
-    assert cash.value == Money.from_dollars(15_000)
-    assert not cash.provisional
+    assert [c.symbol for c in cash.symbols] == ["NVDA"]
     assert cash.calibration_cash == Money.from_dollars(1_000_000)
     assert (cash.cash_multiple, cash.cash_round_to) == (2, Money.from_dollars(5_000))  # E-L4's
-    baseline, quant = cash.entries
-    assert (baseline.symbol, baseline.strategy) == ("NVDA", "baseline_pmcc")
+    nvda = UNIVERSE.cash_of("NVDA")
+    assert nvda is not None
+    assert nvda.value == Money.from_dollars(15_000)
+    assert not nvda.provisional
+    baseline, quant = nvda.entries
+    assert baseline.strategy == "baseline_pmcc"
     assert baseline.contract == "NVDAI182613500.U^I26"  # Sep 18 2026 $135 call, as cached
     assert baseline.cost == Money.from_dollars("4142.50")
-    assert (quant.symbol, quant.strategy) == ("NVDA", "quant_pmcc")
+    assert quant.strategy == "quant_pmcc"
     assert quant.contract == "NVDAH212611500.U^H26"  # Aug 21 2026 $115 call, as cached
     assert quant.cost == Money.from_dollars("5630.00")
-    for entry in cash.entries:
+    for entry in nvda.entries:
         assert entry.time == datetime(2026, 3, 30, 10, tzinfo=ET)
     assert "time: '2026-03-30T10:00:00-04:00'" in UNIVERSE_PATH.read_text(encoding="utf-8")
 
@@ -188,30 +192,44 @@ def test_dec_61_universe_file_refuses_a_missing_or_bad_seed(tmp_path: Path, boot
 RULE = "cash_multiple: 2, cash_round_to: 5000, calibration_cash: 1000000"  # E-L4's, and $1M
 
 
-def _cash_block(symbol: str = "SPY", provisional: str = "true", *, quant: bool = False) -> str:
-    """A calibrated block: $900 entries, so $5,000 (DEC-30)."""
-    entry = (
-        "{{symbol: {s}, strategy: {t}, time: '2026-03-30T10:00:00-04:00', contract: X, cost: 900}}"
-    )
+def _symbol_cash(symbol: str, provisional: str = "true", *, quant: bool = False) -> str:
+    """One symbol's calibrated value: $900 entries, so $5,000 (DEC-30)."""
+    entry = "{{strategy: {t}, time: '2026-03-30T10:00:00-04:00', contract: X, cost: 900}}"
     strategies = ["baseline_pmcc", "quant_pmcc"] if quant else ["baseline_pmcc"]
-    entries = ", ".join(entry.format(s=symbol, t=t) for t in strategies)
-    head = f"value: 5000, provisional: {provisional}, {RULE}"
-    return f"starting_cash: {{{head}, entries: [{entries}]}}\n"
+    entries = ", ".join(entry.format(t=t) for t in strategies)
+    return f"{{symbol: {symbol}, value: 5000, provisional: {provisional}, entries: [{entries}]}}"
+
+
+def _cash_block(*symbols: str) -> str:
+    return f"starting_cash: {{{RULE}, symbols: [{', '.join(symbols)}]}}\n"
+
+
+TWO = ("[{symbol: SPY, stock_ric: SPY.P, option_root: SPY},"
+       " {symbol: QQQ, stock_ric: QQQ.O, option_root: QQQ}]")  # fmt: skip
 
 
 def test_dec_30_universe_file_reads_a_calibrated_starting_cash(tmp_path: Path) -> None:
-    universe = read_universe_file(_write(tmp_path, _body(extra=_cash_block())))
-    assert universe.starting_cash is not None
-    assert universe.starting_cash.value == Money(50_000_000)
+    universe = read_universe_file(_write(tmp_path, _body(extra=_cash_block(_symbol_cash("SPY")))))
+    spy = universe.cash_of("SPY")
+    assert spy is not None
+    assert spy.value == Money(50_000_000)
+    assert spy.provisional
 
 
-def test_dec_30_universe_file_final_once_both_strategies_cover_every_symbol(
-    tmp_path: Path,
-) -> None:
-    body = _body(extra=_cash_block(provisional="false", quant=True))
-    cash = read_universe_file(_write(tmp_path, body)).starting_cash
-    assert cash is not None
-    assert not cash.provisional
+def test_dec_30_universe_file_final_once_a_symbol_has_both_strategies(tmp_path: Path) -> None:
+    body = _body(extra=_cash_block(_symbol_cash("SPY", "false", quant=True)))
+    spy = read_universe_file(_write(tmp_path, body)).cash_of("SPY")
+    assert spy is not None
+    assert not spy.provisional
+
+
+def test_dec_30_universe_file_lets_a_listed_symbol_wait_for_its_cash(tmp_path: Path) -> None:
+    """PO, 2026-10-05: each symbol's own value, so a symbol brought back needs nothing from the
+    others' (QQQ listed, uncalibrated, beside SPY's final value)."""
+    body = _body(symbols=TWO, extra=_cash_block(_symbol_cash("SPY", "false", quant=True)))
+    universe = read_universe_file(_write(tmp_path, body))
+    assert universe.cash_of("QQQ") is None
+    assert universe.cash_of("SPY") is not None
 
 
 MALFORMED = {
@@ -221,13 +239,16 @@ MALFORMED = {
     # universe's symbols; provisional exactly while a symbol or strategy is missing.
     "cash-bare-figure": _body(extra="starting_cash: 10000\n"),
     "cash-bare-text": _body(extra="starting_cash: '10000.0000'\n"),
-    "cash-stranger-symbol": _body(extra=_cash_block(symbol="QQQ")),
-    "cash-final-but-missing-quant": _body(extra=_cash_block(provisional="false")),
-    "cash-provisional-but-complete": _body(extra=_cash_block(quant=True)),
-    "cash-final-but-missing-a-symbol": _body(
-        symbols="[{symbol: SPY, stock_ric: SPY.P, option_root: SPY},"
-        " {symbol: QQQ, stock_ric: QQQ.O, option_root: QQQ}]",
-        extra=_cash_block(provisional="false", quant=True),
+    "cash-stranger-symbol": _body(extra=_cash_block(_symbol_cash("QQQ"))),
+    "cash-final-but-missing-quant": _body(extra=_cash_block(_symbol_cash("SPY", "false"))),
+    "cash-provisional-but-complete": _body(extra=_cash_block(_symbol_cash("SPY", quant=True))),
+    "cash-out-of-the-universes-order": _body(  # calibrate writes the universe's order
+        symbols=TWO, extra=_cash_block(_symbol_cash("QQQ"), _symbol_cash("SPY"))
+    ),
+    "cash-one-value-for-every-symbol": _body(  # the old shape (DEC-30, before 2026-10-05)
+        extra="starting_cash: {value: 5000, provisional: true, " + RULE + ", entries: [{symbol: "
+        "SPY, strategy: baseline_pmcc, time: '2026-03-30T10:00:00-04:00', contract: X, "
+        "cost: 900}]}\n"
     ),
     "unknown-window-key": _body().replace("end: 2026-09-25}", "end: 2026-09-25, warmup: 45}"),
     "unknown-rate-key": _body(rate=_rate(source=", source: x, basis: discount")),

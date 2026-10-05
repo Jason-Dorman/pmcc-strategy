@@ -40,31 +40,34 @@ def _provenance(dirty: bool = False) -> Provenance:
 RULE = "cash_multiple: 2, cash_round_to: 5000, calibration_cash: 1000000"  # E-L4's, and $1M
 
 
-def cash_block(cost: int = 5_000, *, final: bool = False) -> str:
-    """A calibrated starting cash for SYN: 2 × `cost` rounded up to $5,000 (DEC-30). Provisional
+def symbol_cash(symbol: str = "SYN", cost: int = 5_000, *, final: bool = False) -> str:
+    """A symbol's calibrated starting cash: 2 × `cost` rounded up to $5,000 (DEC-30). Provisional
     on the baseline alone; final with the quant strategy too."""
     value = -(-2 * cost // 5_000) * 5_000
     strategies = ("baseline_pmcc", "quant_pmcc") if final else ("baseline_pmcc",)
     when = NOW.isoformat()
     entries = ", ".join(
-        f"{{symbol: SYN, strategy: {s}, time: '{when}', contract: X, cost: {cost}}}"
-        for s in strategies
+        f"{{strategy: {s}, time: '{when}', contract: X, cost: {cost}}}" for s in strategies
     )
-    head = f"value: {value}, provisional: {str(not final).lower()}, {RULE}"
-    return f"starting_cash: {{{head}, entries: [{entries}]}}\n"
+    return (f"{{symbol: {symbol}, value: {value}, provisional: {str(not final).lower()}, "
+            f"entries: [{entries}]}}")  # fmt: skip
 
 
-def _universe(cash: str | None = None, window: str = "") -> str:
+def cash_block(cost: int = 5_000, *, final: bool = False) -> str:
+    """The block, with SYN's starting cash alone."""
+    return f"starting_cash: {{{RULE}, symbols: [{symbol_cash(cost=cost, final=final)}]}}\n"
+
+
+def _universe(
+    cash: str | None = None, window: str = "", symbols: tuple[str, ...] = ("SYN",)
+) -> str:
     cash = cash_block() if cash is None else cash
     spec = random_walk()
     shipped = UNIVERSE_PATH.read_text(encoding="utf-8")
     rate = shipped[shipped.index("risk_free_rate:") : shipped.index("# The universe")]
     window = window or f"{{start: {spec.window_start}, end: {spec.window_end}}}"
-    return (
-        f"window: {window}\n{rate}"
-        "symbols:\n  - {symbol: SYN, stock_ric: SYN.O, option_root: SYN}\n"
-        f"{cash}"
-    )
+    listed = "".join(f"  - {{symbol: {s}, stock_ric: {s}.O, option_root: {s}}}\n" for s in symbols)
+    return f"window: {window}\n{rate}symbols:\n{listed}{cash}"
 
 
 @pytest.fixture(scope="module")
@@ -153,8 +156,26 @@ def test_dec_30_cli_run_without_starting_cash_stops_naming_calibrate(
     code, output = _run(market)
 
     assert code == 1
-    assert "configs/universe.yaml has no starting_cash yet: run pmcc calibrate" in output
+    assert "no starting cash for SYN yet: run pmcc calibrate --symbol SYN" in output
     assert not Path("results").exists()
+
+
+def test_dec_30_cli_run_takes_the_symbols_own_cash_not_anothers(
+    workdir: Path, market: Path
+) -> None:
+    """PO, 2026-10-05: each symbol's own value. A dearer symbol listed beside SYN doesn't move SYN's
+    cash, and a symbol with none is refused even while SYN has one."""
+    block = f"starting_cash: {{{RULE}, symbols: [{symbol_cash('QQQ', 13_000)}, {symbol_cash()}]}}\n"
+    universe = _universe(block, symbols=("QQQ", "SYN", "TSLA"))
+    Path("universe.yaml").write_text(universe, encoding="utf-8")
+
+    code, output = _run(market)
+
+    assert code == 0, output
+    assert b'"starting_cash":10000.0000' in RESULT.read_bytes()  # SYN's, not QQQ's $30,000
+    code, output = _run(market, symbol="TSLA")
+    assert code == 1
+    assert "no starting cash for TSLA yet" in output
 
 
 def test_dec_30_cli_run_says_when_the_starting_cash_is_provisional(
@@ -163,7 +184,7 @@ def test_dec_30_cli_run_says_when_the_starting_cash_is_provisional(
     code, output = _run(market)
 
     assert code == 0, output
-    assert "Starting cash 10000.0000 is provisional (DEC-30)" in output
+    assert "SYN's starting cash 10000.0000 is provisional (DEC-30)" in output
 
 
 def test_dec_30_cli_run_is_silent_about_a_final_starting_cash(workdir: Path, market: Path) -> None:

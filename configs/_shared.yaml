@@ -67,17 +67,18 @@ rules:
     title: How large is the position?
     summary: >-
       Buy {contracts} long call, but never if it would push available funds below zero. Each
-      account starts with {cash_multiple}× the most expensive first long call in the universe,
-      rounded up to the nearest ${cash_round_to:,.0f}.
+      symbol's account starts with {cash_multiple}× the most expensive first long call on that
+      symbol, rounded up to the nearest ${cash_round_to:,.0f}.
     condition: Every long entry
     action: >-
       Buy a fixed quantity of {contracts}. No entry, logged, if it would make available funds
-      negative. Every account starts with {cash_multiple}× the most expensive first long-leg cost
-      in the universe, rounded up to the nearest ${cash_round_to:,.0f}
+      negative. Each symbol's account starts with {cash_multiple}× its most expensive first
+      long-leg cost, rounded up to the nearest ${cash_round_to:,.0f}
     rationale: >-
-      One long call and one short call. Every symbol starts with the same cash, which is tracked
-      for NAV and Reg T. An entry that would leave available funds negative isn't made; it's logged
-      instead.
+      One long call and one short call. Each symbol is its own account, so its cash is sized to
+      its own long call: every symbol starts with about the same share of its cash in the
+      position, which keeps returns comparable across symbols. The cash is tracked for NAV and
+      Reg T. An entry that would leave available funds negative isn't made; it's logged instead.
 
   - id: E-S1
     name: Short leg timing
