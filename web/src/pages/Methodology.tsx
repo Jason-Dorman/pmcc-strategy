@@ -1,25 +1,133 @@
-// Methodology (UI-SPEC §6.4), built at P7-04.
+// Methodology (UI-SPEC §6.4): how the backtest gets its data and fills, what it assumes, how
+// robust its result is, and where it stops. The data panels follow the symbol (the index's first
+// when the route names none): coverage, the fill check with the pooled fit beside it, and the
+// friction, timing and grid tables (DEC-105); r is the index's. The prose's figures are read
+// from both full runs, `robustness.json` and `rules.json` as the page renders (DEC-109).
+import { useParams } from "react-router-dom";
+
+import { STRATEGY_PAGES } from "../app/pages";
+import { Empty } from "../components/Note";
 import { PageFrame } from "../components/PageFrame";
+import { RobustnessTable } from "../components/RobustnessTable";
+import { useIndex } from "../data/IndexContext";
+import { both, type Loaded } from "../data/state";
+import { useRules, useRun, useSymbolFile, useUniverseFile } from "../data/useRun";
 import { W_FULL, W_HALF } from "../theme/tokens";
-import { panel, toCome } from "./placeholder";
+import type { Coverage } from "../types/generated/coverage";
+import type { FillCheck } from "../types/generated/fill_check";
+import type { PooledFillCheck } from "../types/generated/pooled_fill_check";
+import type { Robustness } from "../types/generated/robustness";
+import {
+  BarTiming,
+  DataScheme,
+  FillModel,
+  Limits,
+  RegTTreatment,
+  ruleNames,
+} from "./methodology/prose";
+import {
+  Assumptions,
+  CoveragePanel,
+  MidVsPrint,
+  scatterCaption,
+  TimingPanel,
+} from "./methodology/sections";
+import { panel, whenLoaded } from "./placeholder";
+
+function value<T>(state: Loaded<T>): T | null {
+  return state.kind === "ready" ? state.value : null;
+}
+
+function fillPanel(key: string, name: string, group: string, what: string,
+                   fill: Loaded<FillCheck>, pooled: PooledFillCheck | null) {
+  return {
+    ...panel(key, name, W_HALF, whenLoaded(fill, (f) => {
+      const found = f.groups.find((g) => g.group === group);
+      return found
+        ? <MidVsPrint symbol={f.symbol} group={found} label={name}
+                      pooled={pooled?.groups.find((g) => g.group === group)} />
+        : <Empty>No results for {f.symbol} / {group}.</Empty>;
+    })),
+    note: "every pair",
+    caption: scatterCaption(what),
+  };
+}
+
+/** The symbols with runs, and the one the page shows: the route's, else the index's first. */
+function useSymbols(): { symbol: string; symbols: string[] } {
+  const index = value(useIndex());
+  const symbols = index?.symbols.filter((s) => s.runs.length > 0).map((s) => s.symbol) ?? [];
+  const { symbol = symbols[0] ?? "" } = useParams();
+  return { symbol, symbols };
+}
 
 export function Methodology() {
-  const later = toCome("P7-04");
+  const index = useIndex();
+  const { symbol, symbols } = useSymbols();
+  const runs = both(useRun(symbol, STRATEGY_PAGES.quant), useRun(symbol, STRATEGY_PAGES.baseline));
+  const coverage = useSymbolFile<Coverage>(symbol, "coverage");
+  const fill = useSymbolFile<FillCheck>(symbol, "fill_check");
+  const robustness = useSymbolFile<Robustness>(symbol, "robustness");
+  const pooledFill = value(useUniverseFile<PooledFillCheck>("pooled_fill_check"));
+  const rules = value(useRules());
+  const pair = value(runs);
+  const name = ruleNames(pair ?? []);
+  const example = pair?.[0].blotter?.find((b) => b.rule_id === "E-L1")?.instrument;
+  const cash = value(index)?.starting_cash;
   return (
     <PageFrame
       panels={[
-        panel("ric", "Data and RIC scheme", W_HALF, later, false),
-        panel("coverage", "Data coverage", W_HALF, later),
-        panel("timing", "Bar timing and look-ahead guard", W_FULL, later, false),
-        panel("fills", "Fill model", W_FULL, later, false),
-        panel("shorts", "Mid vs print — weekly shorts", W_HALF, later),
-        panel("longs", "Mid vs print — long-dated longs", W_HALF, later),
-        panel("regt", "Reg T treatment", W_FULL, later, false),
-        panel("friction", "Friction", W_HALF, later),
-        panel("entry", "Entry timing", W_HALF, later),
-        panel("grid", "Parameter grid", W_FULL, later),
-        panel("assumptions", "Stated assumptions", W_FULL, later),
+        panel("ric", "Data and RIC scheme", W_HALF, <DataScheme example={example} />, false),
+        { ...panel("coverage", "Data coverage", W_HALF,
+                   whenLoaded(coverage, (c) => <CoveragePanel coverage={c} />)),
+          note: symbol,
+          caption: <>Contracts asked of LSEG and answered, by kind. Mid availability is the
+            share of the calendar&apos;s session bars, over each answered contract&apos;s dates,
+            with a valid quote (BID and ASK above zero, ASK at or above BID). An IV failure is a
+            bar with a valid quote whose mid no volatility prices; the contract can&apos;t be
+            picked on it.</> },
+        panel("timing", "Bar timing and look-ahead guard", W_FULL, <BarTiming name={name} />,
+              false),
+        panel("fills", "Fill model", W_FULL, <FillModel rules={rules} />, false),
+        fillPanel("shorts", "Mid vs print — weekly shorts", "shorts", "weekly call", fill,
+                  pooledFill),
+        fillPanel("longs", "Mid vs print — long-dated longs", "longs", "long-dated call", fill,
+                  pooledFill),
+        panel("regt", "Reg T treatment", W_FULL,
+              <RegTTreatment runs={pair} symbol={symbol} startingCash={cash}
+                             name={name} />, false),
+        { ...panel("friction", "Friction", W_HALF,
+                   whenLoaded(robustness, (r) => (
+                     <RobustnessTable label="Friction" rows={r.friction} against="its own at 0" />
+                   ))),
+          note: "each strategy against itself",
+          caption: <>Each strategy at <code>spread_capture</code> 0, then each capture against
+            it: Δ is the run&apos;s P&amp;L less the same strategy&apos;s at the mid.</> },
+        { ...panel("entry", "Entry timing", W_HALF,
+                   whenLoaded(robustness, (r) => <TimingPanel robustness={r} />)),
+          note: "the baseline against itself",
+          caption: <>The baseline with its entry trigger replaced by one fixed Monday bar, once per
+            bar. The range and standard deviation are over the fixed bars alone. Timing is called
+            fragile when any fixed bar&apos;s mean weekly return falls outside the
+            baseline&apos;s 95% CI: then it moved the result more than the sample&apos;s own
+            noise.</> },
+        { ...panel("grid", "Parameter grid", W_FULL,
+                   whenLoaded(robustness, (r) => (
+                     <RobustnessTable label="Parameter grid" rows={r.grid} against="quant" />))),
+          note: "one parameter at a time",
+          caption: <>Quant at its defaults, then one parameter moved at a time. Every run is
+            published and none is picked as best; the defaults were fixed before the first
+            run.</> },
+        { ...panel("assumptions", "Stated assumptions", W_FULL,
+                   whenLoaded(index, (i) => <Assumptions rate={i.risk_free_rate} />)),
+          caption: <>The rate&apos;s full source is on its hover.</> },
+        panel("limits", "Limits of this backtest", W_FULL,
+              whenLoaded(runs, (rs) => (
+                <Limits runs={rs} robustness={value(robustness)} rules={rules}
+                        symbols={symbols} />)),
+              false),
       ]}
+      manifests={pair ? pair.map((r) => r.manifest) : []}
     />
   );
 }

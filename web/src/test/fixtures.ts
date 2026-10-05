@@ -1,8 +1,12 @@
-// A small index, two full runs, NVDA's robustness and the pooled universe files, and rules.json,
+// A small index, two full runs, NVDA's robustness, coverage and fill check, the pooled universe
+// files, and rules.json,
 // shaped as `pmcc export` writes them, for the page, route and loader tests. Each is typed against the
 // generated schema, so a schema change shows here.
+import type { Coverage } from "../types/generated/coverage";
+import type { FillCheck } from "../types/generated/fill_check";
 import type { Index } from "../types/generated/index";
 import type { Pooled } from "../types/generated/pooled";
+import type { PooledFillCheck } from "../types/generated/pooled_fill_check";
 import type { Robustness, RobustnessRow } from "../types/generated/robustness";
 import type { RuleChange, RuleOut, Rules, StrategyRules } from "../types/generated/rules";
 import type {
@@ -30,11 +34,13 @@ export const INDEX: Index = {
     source: "FRED",
   },
   starting_cash: 15000,
-  universe: { pooled: "universe/pooled.json" },
+  universe: { pooled: "universe/pooled.json",
+              pooled_fill_check: "universe/pooled_fill_check.json" },
   symbols: [
     {
       symbol: "NVDA",
-      files: { robustness: "NVDA/robustness.json" },
+      files: { robustness: "NVDA/robustness.json", coverage: "NVDA/coverage.json",
+               fill_check: "NVDA/fill_check.json" },
       runs: [
         {
           run_id: "baseline_pmcc",
@@ -258,7 +264,24 @@ function robustnessRow(run_id: string, label: string, pnl: number, pnl_vs_refere
            payoff_ratio, weekly_return: ci(0.0237, -0.01, 0.0574) };
 }
 
-/** NVDA's robustness file: quant, then two ablations against it. */
+/** A row against `reference`, with its own mean weekly return. */
+function against(reference: string, run_id: string, label: string, pnl: number, mean: number,
+                 refPnl: number): RobustnessRow {
+  return { run_id, label, reference, pnl, pnl_vs_reference: pnl - refPnl, max_drawdown: 150,
+           payoff_ratio: 1.2, weekly_return: ci(mean, mean - 0.02, mean + 0.02) };
+}
+
+/** The timing table: the E-T1 baseline (CI −1.0% to 3.0%), then two fixed bars inside it. */
+export const TIMING: RobustnessRow[] = [
+  against("baseline_pmcc", "baseline_pmcc", "Baseline PMCC", 712, 0.01, 712),
+  against("baseline_pmcc", "baseline_pmcc--t1", "Timing: baseline, short decided on bar 1 (10:00)",
+          712, 0.01, 712),
+  against("baseline_pmcc", "baseline_pmcc--t2", "Timing: baseline, short decided on bar 2 (11:00)",
+          500, 0.008, 712),
+];
+
+/** NVDA's robustness file: quant, then two ablations against it; each strategy's friction; the
+ * timing table; one grid run. */
 export const ROBUSTNESS: Robustness = {
   schema_version: SCHEMA_VERSION,
   symbol: "NVDA",
@@ -267,10 +290,62 @@ export const ROBUSTNESS: Robustness = {
     robustnessRow("quant_pmcc--a1", "A1: quant with the baseline long leg", 1006, 294, null),
     robustnessRow("quant_pmcc--a4", "A4: quant without the VRP gate", 457.5, -254.5, 2.1),
   ],
-  friction: [],
-  timing: [],
-  timing_dispersion: null,
-  grid: [],
+  friction: [
+    against("baseline_pmcc", "baseline_pmcc", "Baseline PMCC", 712, 0.01, 712),
+    against("baseline_pmcc", "baseline_pmcc--sc025", "Friction: baseline at spread capture 0.25",
+            690, 0.0095, 712),
+    against("quant_pmcc", "quant_pmcc", "Quant PMCC", 712, 0.01, 712),
+    against("quant_pmcc", "quant_pmcc--sc025", "Friction: quant at spread capture 0.25", 650,
+            0.009, 712),
+  ],
+  timing: TIMING,
+  timing_dispersion: { range: 212, runs: 2, std: 149.906638 },
+  grid: [
+    against("quant_pmcc", "quant_pmcc", "Quant PMCC", 712, 0.01, 712),
+    against("quant_pmcc", "quant_pmcc--k075", "Grid: quant with k = 0.75", 800, 0.011, 712),
+  ],
+};
+
+/** NVDA's fetch coverage. */
+export const COVERAGE: Coverage = {
+  schema_version: SCHEMA_VERSION,
+  symbol: "NVDA",
+  rows: [
+    { kind: "stock", requested: 1, answered: 1, unanswered: 0, mid_availability: 1 },
+    { kind: "weekly calls", requested: 993, answered: 881, unanswered: 112,
+      mid_availability: 0.829144 },
+  ],
+  iv_priced: 1000,
+  iv_failures: { below_floor: 80, no_convergence: 3 },
+  stale_mark_rate: 0.0125,
+  unavailable_fields: [],
+};
+
+/** NVDA's fill check: three short pairs (one on a locked quote), two long ones. */
+export const FILL_CHECK: FillCheck = {
+  schema_version: SCHEMA_VERSION,
+  symbol: "NVDA",
+  groups: [
+    { group: "shorts",
+      fit: { slope: 0.999837, intercept: 0.002265, r2: 0.999227, n: 3, locked: 1,
+             median_abs_gap_pct_spread: 0.5 },
+      points: { mid: [0.5, 1.25, 2], trade: [0.55, 1.2, 2], spread: [0.1, 0.1, 0] } },
+    { group: "longs",
+      fit: { slope: 1.000335, intercept: -0.003417, r2: 0.99969, n: 2, locked: 0,
+             median_abs_gap_pct_spread: 0.318182 },
+      points: { mid: [50, 60], trade: [50.2, 59.9], spread: [0.6, 0.6] } },
+  ],
+};
+
+/** The fill check pooled over NVDA alone. */
+export const POOLED_FILL_CHECK: PooledFillCheck = {
+  schema_version: SCHEMA_VERSION,
+  symbols: ["NVDA"],
+  groups: [
+    { group: "shorts", fit: { slope: 0.99, intercept: 0.01, r2: 0.98, n: 3, locked: 1,
+                              median_abs_gap_pct_spread: 0.5 } },
+    { group: "longs", fit: null },
+  ],
 };
 
 /** The universe pooled over NVDA alone. */
@@ -428,6 +503,9 @@ export const FILES: Record<string, unknown> = {
   "data/NVDA/baseline_pmcc.json": run("baseline_pmcc", []),
   "data/NVDA/quant_pmcc.json": run("quant_pmcc", ["gate_log", "greek_attribution"]),
   "data/NVDA/robustness.json": ROBUSTNESS,
+  "data/NVDA/coverage.json": COVERAGE,
+  "data/NVDA/fill_check.json": FILL_CHECK,
+  "data/universe/pooled_fill_check.json": POOLED_FILL_CHECK,
   "data/universe/pooled.json": POOLED,
   "data/rules.json": RULES,
 };

@@ -1,0 +1,138 @@
+// The methodology page's figures (UI-SPEC §6.4), each read from the results as the page renders:
+// the entry-timing dispersion and when it is fragile (PO, DEC-67), the fill check's pairs, the
+// longest long bought, and the facts the Limits of this backtest panel states (DEC-109).
+import type { FillPoints } from "../../types/generated/fill_check";
+import type { Robustness, RobustnessRow } from "../../types/generated/robustness";
+import type { Rules } from "../../types/generated/rules";
+import type { MeanCI, RunResult } from "../../types/generated/run_result";
+import { tradeResults } from "../strategy/tradePnl";
+
+// ---- entry timing ------------------------------------------------------------------------------
+
+/** The timing table's spread over its fixed-bar runs, and whether it is fragile. */
+export interface Timing {
+  /** The E-T1 baseline: shown beside the fixed bars, not counted. */
+  reference: RobustnessRow;
+  fixed: readonly RobustnessRow[];
+  /** The lowest and highest mean weekly return over the fixed bars. */
+  means: { low: number; high: number } | null;
+  /** The fixed bars whose mean weekly return falls outside the reference's 95% CI. */
+  outside: readonly RobustnessRow[];
+}
+
+/** Fragile when any fixed bar's mean weekly return falls outside the E-T1 baseline's 95% CI (PO,
+ * DEC-67): timing moved the result more than the sample's own noise. No new threshold. */
+export function timing(rows: readonly RobustnessRow[]): Timing | undefined {
+  const reference = rows.find((r) => r.run_id === r.reference);
+  if (!reference) return undefined;
+  const fixed = rows.filter((r) => r !== reference);
+  const means = fixed.flatMap((r) => (r.weekly_return ? [r.weekly_return.mean] : []));
+  const ci = reference.weekly_return;
+  const outside = ci
+    ? fixed.filter((r) => r.weekly_return
+        && (r.weekly_return.mean < ci.low || r.weekly_return.mean > ci.high))
+    : [];
+  return {
+    reference,
+    fixed,
+    means: means.length > 0 ? { low: Math.min(...means), high: Math.max(...means) } : null,
+    outside,
+  };
+}
+
+// ---- the fill check ----------------------------------------------------------------------------
+
+/** One pair of the fill check: a session bar's mid and its last trade. */
+export interface FillPair {
+  i: number;
+  mid: number;
+  trade: number;
+  spread: number;
+}
+
+export function fillPairs(points: FillPoints): FillPair[] {
+  return points.mid.map((mid, i) => ({ i, mid, trade: points.trade[i] ?? 0,
+                                       spread: points.spread[i] ?? 0 }));
+}
+
+/** |trade − mid| ÷ spread, as the fit's median takes it: none for a locked quote. */
+export function gapOfSpread(pair: FillPair): number | null {
+  return pair.spread > 0 ? Math.abs(pair.trade - pair.mid) / pair.spread : null;
+}
+
+// ---- Reg T ---------------------------------------------------------------------------------
+
+const DAY_MS = 86_400_000;
+
+/** Calendar days from a bar's date to an expiry date. */
+export function daysTo(time: string, expiry: string): number {
+  return Math.round((Date.parse(expiry) - Date.parse(time.slice(0, 10))) / DAY_MS);
+}
+
+/** The most days to expiry of any long bought (E-L1), over the runs: whether every long was
+ * within FINRA's nine months, which no rule defines in days. */
+export function longestLong(runs: readonly RunResult[]): number | undefined {
+  const days = runs.flatMap((r) => (r.blotter ?? [])
+    .filter((b) => b.rule_id === "E-L1" && b.instrument.expiry)
+    .map((b) => daysTo(b.time, b.instrument.expiry ?? "")));
+  return days.length > 0 ? Math.max(...days) : undefined;
+}
+
+/** How many missed assignments (X-S5) the runs had: none means the short-stock rows never ran. */
+export function assignments(runs: readonly RunResult[]): number {
+  return runs.reduce((n, r) => n + (r.summary.exit_mix?.["X-S5"] ?? 0), 0);
+}
+
+// ---- the limits of this backtest ---------------------------------------------------------------
+
+/** A long call's round trip, or the long still held at the end. */
+export interface LongTrip {
+  pnl: number;
+  /** When it was closed, and the rule that closed it; none for the long still held. */
+  closed?: { time: string; ruleId: string };
+}
+
+/** Each long a run held, in order: the closed ones from the blotter's round trips (DEC-108), and
+ * the one still held, the long leg's P&L less theirs. */
+export function longTrips(run: RunResult): LongTrip[] {
+  const blotter = run.blotter ?? [];
+  const longs = new Set(blotter.filter((b) => b.rule_id === "E-L1").map((b) => b.instrument.ric));
+  const results = tradeResults(blotter);
+  const closed: LongTrip[] = blotter.flatMap((b) => {
+    const result = results.get(b);
+    return result && longs.has(b.instrument.ric)
+      ? [{ pnl: result.pnl, closed: { time: b.time, ruleId: b.rule_id } }]
+      : [];
+  });
+  const total = run.attribution?.leg?.long_pnl;
+  if (total === undefined) return closed;
+  const booked = closed.reduce((s, t) => s + Math.round(t.pnl * 100), 0) / 100;
+  const held = blotter.length > 0 && openLong(blotter, longs);
+  return held ? [...closed, { pnl: Math.round((total - booked) * 100) / 100 }] : closed;
+}
+
+function openLong(blotter: NonNullable<RunResult["blotter"]>, longs: Set<string>): boolean {
+  const qty = new Map<string, number>();
+  for (const b of blotter) {
+    if (!longs.has(b.instrument.ric)) continue;
+    const signed = b.side === "BUY" ? b.qty : -b.qty;
+    qty.set(b.instrument.ric, (qty.get(b.instrument.ric) ?? 0) + signed);
+  }
+  return [...qty.values()].some((q) => q !== 0);
+}
+
+/** Whether two weekly-return CIs overlap: if they do, the sample can't tell the means apart. */
+export function overlap(a: MeanCI, b: MeanCI): boolean {
+  return Math.max(a.low, b.low) <= Math.min(a.high, b.high);
+}
+
+/** The ablation that swaps quant's long-leg selection for the baseline's: the one whose every
+ * changed rule is a long-leg entry rule (E-L…), read from rules.json, not from its name. */
+export function longSelectorAblation(rules: Rules, robustness: Robustness)
+  : RobustnessRow | undefined {
+  const ids = rules.strategies
+    .filter((s) => s.family === "ablation" && s.changes.length > 0
+      && s.changes.every((c) => c.rule_id.startsWith("E-L")))
+    .map((s) => s.id);
+  return robustness.ablations.find((r) => ids.includes(r.run_id));
+}

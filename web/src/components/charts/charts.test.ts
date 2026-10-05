@@ -12,6 +12,7 @@ import { barAxis, sessionAxis, shortDate, weekOf, xAxis } from "./axis";
 import { legOption } from "./legs";
 import { navCompareOption, navGap, navRows } from "./navCompare";
 import { residualOption } from "./residual";
+import { scatterOption } from "./scatter";
 
 const P = new Proxy({} as Palette, { get: (_t, key) => String(key) });
 
@@ -225,5 +226,57 @@ describe("the NAV comparison (DEC-04)", () => {
   it("shows a dash for a run without the bar", () => {
     const option = navCompareOption(P, navRows(ahead.slice(1), LEDGER), names);
     expect(tooltip(option, 0)).toContain("—");
+  });
+});
+
+describe("the mid-vs-print scatter", () => {
+  const points = { mid: [1, 3, 2], trade: [1.1, 2.9, 2], spread: [0.2, 0.2, 0] };
+  const fit = { slope: 0.9, intercept: 0.2, r2: 0.99, n: 3, locked: 1,
+                median_abs_gap_pct_spread: 0.5 };
+
+  interface Scatter extends Omit<Series, "data"> {
+    data: readonly (readonly [number, number | null])[];
+    type: string;
+    large?: boolean;
+    symbolSize?: number;
+    itemStyle?: { color: string };
+  }
+
+  function scatterSeries(option: { series: unknown[] }, name: string): Scatter {
+    return series(option, name) as unknown as Scatter;
+  }
+
+  it("draws every pair as a --mark circle, x the mid and y the print, in large mode", () => {
+    const option = scatterOption(P, points, fit);
+    const pairs = scatterSeries(option, "Print vs mid");
+    expect(pairs.type).toBe("scatter");
+    expect(pairs.data).toEqual([[1, 1.1], [3, 2.9], [2, 2]]);
+    expect(pairs.itemStyle?.color).toBe("mark");
+    expect(pairs.symbolSize).toBe(4);
+    expect(pairs.large).toBe(true);
+  });
+
+  it("draws the fit in --fit-line and y = x dashed in --identity-line, over the mids' range", () => {
+    const option = scatterOption(P, points, fit);
+    const line = scatterSeries(option, "OLS fit");
+    expect(line.data).toEqual([[1, 1.1], [3, 2.9000000000000004]]);
+    expect(line.lineStyle).toMatchObject({ color: "fit-line", type: "solid" });
+    const identity = scatterSeries(option, "y = x");
+    expect(identity.data).toEqual([[1, 1], [3, 3]]);
+    expect(identity.lineStyle).toMatchObject({ color: "identity-line", type: "dashed" });
+  });
+
+  it("has no fit line without a fit, and no reference at all without a pair", () => {
+    const names = (o: { series: unknown[] }) => (o.series as Series[]).map((s) => s.name);
+    expect(names(scatterOption(P, points, null))).toEqual(["Print vs mid", "y = x"]);
+    expect(names(scatterOption(P, { mid: [], trade: [], spread: [] }, null)))
+      .toEqual(["Print vs mid"]);
+  });
+
+  it("shows a point's mid and print on hover", () => {
+    const { formatter } = scatterOption(P, points, fit).tooltip;
+    const tip = formatter({ value: [2.5, 2.45] });
+    expect(tip).toContain("Mid $2.5000");
+    expect(tip).toContain("$2.4500");
   });
 });

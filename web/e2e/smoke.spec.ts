@@ -123,6 +123,32 @@ test("the comparison page shows both runs, the pooled universe and the ablations
   await expect(page.getByRole("region", { name: "Purpose" })).toContainText("the long leg made");
 });
 
+test("the methodology page draws every pair, its tables and the limits", async ({ page }) => {
+  await page.goto(`./#/methodology/${SYMBOL}`);
+  await settled(page);
+  for (const name of ["Mid vs print — weekly shorts", "Mid vs print — long-dated longs"]) {
+    const region = page.getByRole("region", { name });
+    await expect(region.getByRole("figure").locator("svg path").first()).toBeAttached();
+    await expect(region.getByRole("table", { name: `${name} fit` }).locator("tbody tr"))
+      .toHaveCount(6);
+  }
+  // Every pair's table is built only when its disclosure opens, then scrolls virtualized.
+  const shorts = page.getByRole("region", { name: "Mid vs print — weekly shorts" });
+  await shorts.getByText("Values for every pair").click();
+  const pairs = shorts.getByRole("table", { name: "Mid vs print — weekly shorts pairs" });
+  await expect(pairs.locator("tbody tr:not(.pm-spacer)").first()).toBeVisible();
+  const rows = (name: string) =>
+    page.getByRole("table", { name, exact: true }).locator("tbody tr:not(.pm-spacer)");
+  for (const name of ["Data coverage", "Friction", "Entry timing", "Parameter grid"]) {
+    expect(await rows(name).count(), name).toBeGreaterThan(1);
+  }
+  // Fragility follows DEC-67; the limits' figures are read from the runs (DEC-109).
+  await expect(page.getByRole("table", { name: "Timing dispersion" }))
+    .toContainText(/(Not fragile|Fragile):/);
+  await expect(page.getByRole("region", { name: "Limits of this backtest" }))
+    .toContainText("long leg made");
+});
+
 test("a trade's rule link lands on that rule's row, outlined and in view", async ({ page }) => {
   await page.goto(`./#/quant/${SYMBOL}`);
   await settled(page);

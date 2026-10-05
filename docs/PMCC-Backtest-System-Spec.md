@@ -273,7 +273,7 @@ Two strategies, five ablations, and three sensitivity checks, run independently 
 **Sensitivity checks** (robustness reporting, not optimization; the full results are published, never a best-cell pick)
 
 - **Friction:** both strategies at `spread_capture` 0, 0.25, 0.50.
-- **Entry timing:** baseline with E-T1 replaced by a fixed Monday bar, run once per Monday bar. Large dispersion is reported as fragility.
+- **Entry timing:** baseline with E-T1 replaced by a fixed Monday bar, run once per Monday bar. Large dispersion is reported as fragility: timing is fragile when any fixed bar's mean weekly return falls outside the E-T1 baseline's 95% weekly-return CI (PO, DEC-67).
 - **Parameter grid (quant):** k in {0.75, 1.00, 1.25}; G-4 threshold in {0.90, 1.00, 1.10}; G-3 threshold in {1.10, 1.20, 1.30}. One parameter varied at a time from the defaults.
 
 **Universe** (`configs/universe.yaml`)
@@ -406,6 +406,6 @@ Resolve these by Sep 27; each one affects every fill or the backtest window.
 - [x] **History depth.** How far back LSEG hourly BID/ASK goes for expired weeklies and for long-dated contracts. This sets the backtest window for all symbols. *Resolved in DEC-07: back to late Oct 2025; the window is Mar 30 – Sep 25 2026.*
 - [ ] **Long-dated coverage.** Whether hourly BID/ASK exists for deep ITM, 120–270 DTE strikes on each universe symbol, and how sparse it is. Sparse data will limit E-L3's candidate set. *DEC-08: sampled at P1-04; measured in full at P1-09 and P1-10 (by Sat Oct 3).*
 - [x] **Live-contract RICs.** Confirm that long legs still listed at fetch time resolve without the caret suffix. *Resolved in DEC-09: confirmed on all 12 symbols.*
-- [ ] **Reg T text.** Confirm the long-option loan value (≤ 9 months: none) and the covered-diagonal treatment against the Reg T and FINRA 4210 text, and cite it on the Methodology page. *DEC-10: both confirmed and cited. The PO settled the short stock after X-S5 on Sep 29 (the hedged requirement, now in the NAV and Reg T table); the quotes go on Methodology at P7-04 (Wed Oct 7).*
+- [x] **Reg T text.** Confirm the long-option loan value (≤ 9 months: none) and the covered-diagonal treatment against the Reg T and FINRA 4210 text, and cite it on the Methodology page. *DEC-10: both confirmed and cited. The PO settled the short stock after X-S5 on Sep 29 (the hedged requirement, now in the NAV and Reg T table); the live text was re-read and quoted on Methodology on Oct 4 (P7-04).*
 - [x] **Risk-free rate.** Choose the source and value of r, and state it on the site. *Resolved in DEC-11: FRED DGS3MO, 3.73% on Mar 27 2026, so r = 0.0371.*
 - [x] **LSEG terms.** Confirm whether raw cached data may be committed to a public repo; default to committing derived results only. *Resolved in DEC-05 (PO, Sep 30): the raw cache is committed (NVDA's for now), and every derived output is public, the fill-assumption scatter's raw points included.*

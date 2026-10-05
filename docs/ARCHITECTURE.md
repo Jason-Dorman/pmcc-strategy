@@ -767,23 +767,26 @@ web/                            P4-06 (DEC-97); Node 22 (.nvmrc, engines)
     theme/      tokens.css (theme.py's values), shell.css (PAGE_CSS, ported), index.css (Tailwind +
                 tokens), tokens.ts (with DEC-04's chart roles), fonts.ts; echarts.ts (the modular
                 core, the base option and series builders, P7-01)
-    components/ CommandBar, Readouts, PanelGrid, Panel, Note (Details, Empty, Loading), PageFrame,
+    components/ CommandBar, Readouts, PanelGrid, Panel, Note (Details, lazy at P7-04; Empty,
+                Loading), PageFrame,
                 ManifestFooter, WarningBanner, ui/select; DataTable (sorting, toggle filters,
                 virtualization; a row's detail, a target row and wrapping cells at P7-03) and
                 cells (RuleLink, Instrument, KeyValue) at P7-01;
                 RobustnessTable (a robustness.json table, P7-02);
                 charts/: Chart, axis (trading time), tooltip, and one option builder per chart
-                (account, legs, residual; navCompare at P7-02) (P7-01, DEC-106, DEC-110)
+                (account, legs, residual; navCompare at P7-02; scatter at P7-04, every pair in
+                ECharts' large mode) (P7-01, DEC-106, DEC-110, DEC-115)
     pages/      Strategy (P7-01) and strategy/ (its sections, tables and each close's Trade P&L);
                 Comparison (P7-02) and compare/ (its figures and panels, DEC-110);
                 Rules (P7-03) and rules/ (its model and panels, DEC-112);
-                Methodology, Universe, Data (placeholders until their P7 item);
+                Methodology (P7-04) and methodology/ (its figures, data panels and prose,
+                DEC-115); Universe, Data (placeholders until their P7 item);
                 placeholder (the placeholder helpers)
     lib/        cn (shadcn/ui's class joiner)
     format/     money (and chart ticks, signed), number (percent, ratio, IV), time (ET), hash,
                 rule (a rule ID's plain label for the filters, DEC-107)
-    test/       fixtures (an index, two full runs, NVDA's robustness, the pooled universe and
-                rules.json, typed against the schema); page (the page tests' helpers); setup
+    test/       fixtures (an index, two full runs, NVDA's robustness, coverage and fill check,
+                the pooled universe and fill check, and rules.json, typed against the schema); page (the page tests' helpers); setup
                 (Vitest: jsdom's missing canvas, for ECharts, and scrollIntoView)
   e2e/          smoke.spec.ts: the Playwright smoke test (P4-08, DEC-99); playwright.config.ts
                 serves web/dist with vite preview; tsconfig.e2e.json type-checks it

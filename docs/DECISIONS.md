@@ -33,7 +33,7 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-07 | Backtest window | SETTLED (PO) | — |
 | DEC-08 | Long-dated coverage | VERIFY: NVDA measured (P1-09) and its results reviewed (P5-05); QQQ, TSLA at P1-10 | P1-10 (paused, DEC-15) |
 | DEC-09 | Live-contract RIC form | SETTLED (spec, probed) | — |
-| DEC-10 | Reg T and FINRA 4210 citations | SETTLED (PO): hedged short stock after X-S5 · citations found | quotes by P7-04 |
+| DEC-10 | Reg T and FINRA 4210 citations | SETTLED (PO): hedged short stock after X-S5 · citations found · quoted on Methodology (P7-04) | — |
 | DEC-11 | Risk-free rate | SETTLED (PO) | — |
 | DEC-12 | Per-symbol identifiers, splits, max strike | SETTLED (PO) | — |
 | DEC-13 | Hourly field availability | SETTLED (spec, probed) | — |
@@ -83,7 +83,7 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-64 | Fill-assumption check | SETTLED (PO): as recommended | — |
 | DEC-65 | Robustness tables: references, dispersion, columns | SETTLED (PO) | — |
 | DEC-66 | Suitability screen: the sample, the contracts, the credit, G-3 | SETTLED (PO): as recommended | — |
-| DEC-67 | Entry timing: when dispersion is "fragility" | ASK | P7-04 |
+| DEC-67 | Entry timing: when dispersion is "fragility" | SETTLED (PO): as recommended | — |
 | DEC-70 | Design tokens | ENG | — |
 | DEC-71 | shadcn/ui restyled | ENG | — |
 | DEC-72 | Fonts self-hosted | ENG | — |
@@ -129,6 +129,7 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-112 | P7-03: the Trade rules page and its traceability links | ENG · the rule tables' height SETTLED (PO); its copy amended by DEC-113 | P7-03 |
 | DEC-113 | No rule IDs in the copy: rules named by what they are | SETTLED (PO) | P7-03 |
 | DEC-114 | The Trade rules page in plain words: each rule's title, summary and Why | SETTLED (PO) · the exits' merged column put to the PO | handover 2026-10-03 |
+| DEC-115 | P7-04: the Methodology page | ENG · the half-width robustness tables put to the PO | handover 2026-10-04 |
 
 ---
 
@@ -328,7 +329,7 @@ The results are reported to the PO at P1-05. A result that contradicts the spec 
   - Weeklies expired 9 days earlier answered in the caret form, 12 of 12 (DEC-14's check).
 
 ### DEC-10 — Reg T and FINRA 4210 citations
-**Status:** SETTLED (the short stock after X-S5: PO, 2026-09-29) · citations found · **Quotes due:** P7-04 · **Affects:** P3-04, Methodology page, Spec › NAV and Reg T
+**Status:** SETTLED (the short stock after X-S5: PO, 2026-09-29) · citations found · quoted on the Methodology page (P7-04, 2026-10-04) · **Affects:** P3-04, Methodology page, Spec › NAV and Reg T
 
 - **Confirm and cite:**
   - A long listed option with 9 months or less to expiry has no loan value (paid in full).
@@ -365,6 +366,11 @@ The results are reported to the PO at P1-05. A result that contradicts the spec 
   - **While long calls covering the shares are held:** no initial requirement beyond the sale proceeds. Maintenance is 10% of the long calls' aggregate exercise price plus their out-of-the-money amount at the stock's mark, capped at the greater of $5 a share and 30% of the short stock's market value.
   - **Without such a long:** the spec's 150% initial (proceeds plus 50%) and 30% maintenance.
   - Built in `pmcc/accounting/regt.py` (P3-04, DEC-91). A requirement that isn't a whole $0.0001 is rounded up, never down.
+- **Outcome:** 2026-10-04 — P7-04 re-read the live text and quotes it on the Methodology page's Reg T treatment (DEC-115).
+  - **Sources, as read 2026-10-04:** 12 CFR 220.12 from eCFR's versioner API (Title 12 current to 2026-10-01; the section's history still ends at 63 FR 2827, Jan 16 1998); FINRA Rule 4210 from finra.org, whose latest amendment is still SR-FINRA-2025-017, effective June 4 2026. Every passage this entry cited reads as it did on 2026-09-28.
+  - **Quoted word for word:** 4210(f)(2)(D) (a long option of nine months or less, 100% of its purchase price); 4210(f)(2)(H)(i) (a spread's short at the lesser of its naked margin and the maximum potential loss; "'Long' options must be paid for in full"); 12 CFR 220.12(c)(2) (short stock against a long call struck at or below the sale price: 100%, the proceeds); 4210(f)(2)(H)(v)a (its maintenance: 10% of the aggregate exercise price plus the out-of-the-money amount, capped by (c)). **Quoted in a sentence:** 220.12(a) and (f)(1), 4210(f)(2)(A)(xxxii)e, 220.12(c)(1), 4210(c)(3), (d)(1)(B) and (b)(4); (d)(2) is named as not modelled.
+  - **Cboe 10.3 isn't quoted:** the spec asks for the Reg T and FINRA 4210 text, and the Cboe rule book wasn't re-read; its citations stay in this entry.
+  - **Figures the treatment reads from the results:** the longest any long had left when bought (NVDA: 179 days, within the 273 of the shortest nine calendar months), the missed assignments (none, so neither short-stock row applied) and the starting cash against 4210(b)(4)'s $2,000.
 
 ### DEC-11 — Risk-free rate
 **Status:** SETTLED · **Basis:** PO, 2026-09-28 · **Affects:** pricing, eligibility, Methodology, `configs/universe.yaml`
@@ -2709,6 +2715,59 @@ export and never committed, so it gains two fields without a schema version.
   every file's `schema_version` moved: no figure, row or CI. Every rule in the exported
   `rules.json` has its title and summary, and none of its text names a rule ID.
 
+### DEC-115 — P7-04: the Methodology page
+**Status:** ENG · the half-width robustness tables put to the PO at the handover, 2026-10-04 · **Affects:** P7-04; UI-SPEC §4, §6.4; ARCHITECTURE §13; DEC-10, DEC-64, DEC-65, DEC-67, DEC-105, DEC-106, DEC-109, DEC-113
+
+How P7-04 builds UI-SPEC §6.4. Nothing here changes a result.
+
+- **Data** (DEC-105): [1] `coverage.json`; [2] and [3] `fill_check.json` with
+  `universe/pooled_fill_check.json`; [4] to [6] `robustness.json`'s `friction`, `timing` with
+  `timing_dispersion`, and `grid` (`RobustnessTable`, DEC-110); [7] the index's
+  `risk_free_rate`. The prose reads both full runs, `robustness.json` and `rules.json`. A route
+  without a symbol shows the index's first symbol with runs.
+- **The scatters** (`web/src/components/charts/scatter.ts`): every pair a `--mark` circle
+  (`SIZE_MARK`), the OLS fit in `--fit-line` and y = x dashed in `--identity-line` over the
+  mids' range; a point's mid and print on hover. Every pair is drawn (PO, DEC-05): NVDA has
+  46,874 shorts and 124,723 longs, so the series uses ECharts' large mode, which draws them as
+  one path, and the SVG renderer stays (DEC-106). On the built site the page settles in about
+  2 s at 1600 px with no console error. Under each scatter the fit's measures (slope,
+  intercept, R², N, the median gap and the locked quotes left out of it) sit in a table, the
+  symbol's column beside the pooled one; every pair's values (mid, print, print − mid, spread,
+  gap ÷ spread) are a virtualized table in a disclosure built only when first opened
+  (`Details`' `lazy`), so 170,000 rows cost nothing until a reader asks.
+- **Entry timing** (PO, DEC-67): `timing()` in `pages/methodology/figures.ts`; the verdict sits
+  in the dispersion's key/value table.
+- **The prose** (`pages/methodology/prose.tsx`): the data and RIC scheme (the first long bought,
+  its RIC over its OCC symbol, as the example), bar timing and MarketView, the fill model (its
+  captures and fee from `rules.json`), the Reg T treatment (DEC-10's outcome of 2026-10-04) and
+  the limits of this backtest (DEC-109). Rules are named and linked, never by ID (DEC-113). The
+  close's gap from the official close (up to 0.09% in the probes) is stated, as R-21 asked. Two
+  facts are typed rather than read, being neither results nor rules: that gap, and the data's
+  reach (late October 2025, DEC-07).
+- **The limits' figures, each read as the page renders:** the symbols and weeks; each
+  strategy's long leg with its intrinsic and extrinsic parts, its shorts and its P&L; each first
+  long's round trip from the blotter (`longTrips`, from DEC-108's trade P&L), when it was sold
+  and by which rule; quant's long against the baseline's, and the ablation that swaps only the
+  long-leg rules (found by `rules.json`'s `changes`, not by its name) against quant; both
+  weekly-return CIs and whether they overlap. As at DEC-110, a claim is made only where the
+  results bear it out: "the stock rose under every long" where every run's long intrinsic change
+  is above zero; "the long made more than the whole P&L" where every run shows it; "its long
+  selection isn't shown to help" where that ablation did at least as well as quant; "can't be
+  told apart" where the CIs overlap. On NVDA every claim holds: the long +$4,955.00 and
+  +$4,162.50, the shorts −$1,651.50 and −$490.00; the first longs +$4,522.50 (sold May 26) and
+  +$3,862.50 (Jun 22), both at the long roll; quant's long $792.50 over the baseline's, A1
+  $294.00 over quant; CIs −1.0% to 2.7% and −0.9% to 2.8%.
+- **Stated assumptions:** the spec's list (HR-9): r with its series, quote and date (its source
+  on hover), q = 0, no early assignment, Black-Scholes on American calls (with no dividend an
+  American call is worth its European value), quotes not proven to be the NBBO.
+- **Put to the PO:** UI-SPEC sets Friction and Entry timing at half width, and a table's 720 px
+  minimum then scrolls each sideways inside its panel at 1366 and 1600 px, hiding the CI column
+  until a reader scrolls. Recommendation: let those two tables span the full width.
+- **Tests:** `web/src/pages/Methodology.test.tsx` (22) and `pages/methodology/figures.test.ts`
+  (13), the scatter's option in `charts.test.ts` (4); the fixtures gain NVDA's coverage and fill
+  check, the pooled fill check and the friction, timing and grid tables. The smoke test checks
+  the page on the built site (19 pass).
+
 ## E. Analytics definitions
 
 These define the reported numbers, so each goes to the PO. They're asked as one batch when P6 starts.
@@ -2963,7 +3022,7 @@ These define the reported numbers, so each goes to the PO. They're asked as one 
     there.
 
 ### DEC-67 — Entry timing: when dispersion is "fragility"
-**Status:** ASK · **Ask at:** P7-04 · **Affects:** P7-04, UI-SPEC §6.4 [5]; Spec › Robustness tables; DEC-65
+**Status:** SETTLED · **Basis:** PO, 2026-10-03, asked at P7-04 · **Affects:** P7-04, UI-SPEC §6.4 [5]; Spec › Robustness tables; DEC-65
 
 - **Context:** the spec says "large dispersion is reported as fragility", and UI-SPEC §6.4 [5]
   flags it, but nothing says how large. DEC-65 settled what the dispersion is (the range and
@@ -2981,6 +3040,13 @@ These define the reported numbers, so each goes to the PO. They're asked as one 
     `configs/sensitivity.yaml`;
   - no flag: show the range and standard deviation, with the range as a share of the baseline's
     P&L, and leave the reading to the write-up.
+- **Outcome:** 2026-10-03 — PO: **as recommended**, recorded with P7-04 (DEC-115). Timing is
+  fragile when any fixed-bar run's mean weekly return falls outside the E-T1 baseline's 95%
+  weekly-return CI; a mean on the CI's edge is inside. The Entry timing panel states the fixed
+  bars' count, the P&L range and sample standard deviation, the fixed bars' means against the
+  baseline's CI and the verdict, a fragile one in `--negative` naming each bar outside. Spec ›
+  Sensitivity checks now says so. On NVDA: 7 fixed bars, range $1,544.50, standard deviation
+  $610.26, means 0.8% to 1.1% against the baseline's −0.9% to 2.8%: **not fragile**.
 
 ## F. Frontend
 

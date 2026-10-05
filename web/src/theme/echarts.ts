@@ -2,7 +2,7 @@
 // and the base option every chart starts from. Colours and font stacks are read from tokens.css
 // when a chart renders, so a palette change there reaches every chart; the sizes and insets
 // below are the only chart literals in the site (the token lint keeps them here).
-import { LineChart } from "echarts/charts";
+import { LineChart, ScatterChart } from "echarts/charts";
 import {
   AriaComponent,
   GridComponent,
@@ -17,6 +17,7 @@ import { color, type ColorToken, type RoleToken } from "./tokens";
 
 echarts.use([
   LineChart,
+  ScatterChart,
   GridComponent,
   TooltipComponent,
   LegendComponent,

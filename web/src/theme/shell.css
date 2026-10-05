@@ -280,13 +280,38 @@ body {
 }
 .pm-note p + p,
 .pm-note ol + p,
-.pm-note p + ol {
+.pm-note p + ol,
+.pm-note .pm-quote + p {
   margin-top: 8px;
 }
 /* a numbered sequence in prose (the Trade rules page's order of operations) */
 .pm-note .pm-steps {
   list-style: decimal;
   padding-left: 22px;
+}
+/* code in prose (a RIC, its grammar), and an OCC symbol with its spaces kept */
+.pm-note code {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+}
+.pm-note .pm-occ {
+  white-space: pre;
+}
+/* a rule quoted word for word (the Methodology page's Reg T treatment) */
+.pm-quote {
+  border-left: 2px solid var(--border);
+  color: var(--text-muted);
+  margin: 8px 0;
+  padding-left: 12px;
+}
+.pm-quote cite {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-style: normal;
+  letter-spacing: 1.1px;
+  margin-top: 4px;
+  text-transform: uppercase;
 }
 .pm-empty {
   color: var(--text-muted);
@@ -575,7 +600,8 @@ th[aria-sort="descending"] .pm-sort-mark::after {
   margin-bottom: 10px;
 }
 .pm-stack + .pm-figure,
-.pm-table-kv + .pm-figure {
+.pm-table-kv + .pm-figure,
+.pm-figure + .pm-table-kv {
   margin-top: 10px;
 }
 .pm-details-table {
