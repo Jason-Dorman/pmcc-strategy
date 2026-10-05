@@ -110,10 +110,18 @@ def test_config_quant_rule_text_renders_the_spec_rule(rule_id: str, field: str,
     assert rendered in getattr(rule(QUANT, rule_id).text(), field)
 
 
-def test_config_g_3_rationale_is_the_spec_paragraph() -> None:
-    spec = re.search(r"^(The event-week gate detects events .+)$", SPEC, flags=re.MULTILINE)
-    assert spec
-    assert rule(QUANT, "G-3").text().rationale == spec[1]
+def test_config_g_3_rationale_says_what_the_spec_paragraph_does() -> None:
+    # The spec's paragraph, in the page's plain words (PO, DEC-114).
+    assert re.search(r"^The event-week gate detects events .+$", SPEC, flags=re.MULTILINE)
+    rationale = rule(QUANT, "G-3").text().rationale
+    for fact in (
+        "usually earnings",
+        "from the chain",
+        "no external earnings calendar",
+        "ratio",
+        "calm and volatile stocks alike",
+    ):
+        assert fact in rationale
 
 
 def test_config_g_5_rationale_locked_quote_claim_holds_at_e_t1s_threshold() -> None:

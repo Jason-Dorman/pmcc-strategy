@@ -1,6 +1,7 @@
 // The Trade rules page's panels (UI-SPEC §6.3), all from rules.json (DEC-52): how rules work, the
-// entry, gate and exit tables with each rule's live values and its rationale under a toggle, the
-// ablations and the sensitivity runs. Each rule's row is `#/rules/<ID>`'s target.
+// entry, gate and exit tables, each row a rule's title and summary in plain words with its live
+// values and its reasoning under a toggle (PO, DEC-114), the ablations and the sensitivity runs.
+// Each rule's row is `#/rules/<ID>`'s target.
 import { Fragment, type ReactNode } from "react";
 
 import { RuleLink } from "../../components/cells";
@@ -24,7 +25,6 @@ import {
   type RuleRow,
   type Section,
   type VariantRow,
-  type Versions,
 } from "./model";
 
 function hint(rule: RuleOut | undefined): string | undefined {
@@ -62,15 +62,29 @@ function Names({ pair, ids }: { pair: Pair; ids: readonly string[] }) {
 
 // ---- how rules work ---------------------------------------------------------------------------
 
+const COUNTS = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
+
+/** How the strategies differ, in words (PO, DEC-114), where the rules bear it out: they share every
+ * rule but entry rules both run differently and gates only quant runs. Otherwise each rule that
+ * differs is named. */
 function Differ({ pair }: { pair: Pair }) {
   const d = differences(pair);
   const [quant, baseline] = [pair.quant.name, pair.baseline.name];
+  if (d.other.length === 0 && d.baselineGates.length === 0) {
+    const filters = COUNTS[d.quantGates.length] ?? String(d.quantGates.length);
+    return (
+      <p>
+        <b>{baseline} and {quant} manage positions the same way.</b> They differ only in how they
+        choose the long and short calls
+        {d.quantGates.length > 0 && <>, plus {filters} extra filters used by {quant}</>}. That
+        means any performance difference comes from contract selection and trade filtering, not
+        different exit rules.
+      </p>
+    );
+  }
   const names = (ids: readonly string[]) => <Names pair={pair} ids={ids} />;
   const clauses: ReactNode[] = [];
-  if (d.selection.length > 0) {
-    clauses.push(<Fragment key="s">their {names(d.selection)} rules, which select the
-      contracts</Fragment>);
-  }
+  if (d.selection.length > 0) clauses.push(<Fragment key="s">their {names(d.selection)} rules</Fragment>);
   if (d.quantGates.length > 0) {
     clauses.push(<Fragment key="q">the {names(d.quantGates)} gates, which only{" "}
       {quant} runs</Fragment>);
@@ -80,17 +94,12 @@ function Differ({ pair }: { pair: Pair }) {
       {baseline} runs</Fragment>);
   }
   if (d.other.length > 0) clauses.push(<Fragment key="o">their {names(d.other)} rules</Fragment>);
-  if (clauses.length === 0) return <p>{baseline} and {quant} run the same rules.</p>;
   return (
     <p>
-      <b>{baseline} and {quant} differ only in</b>{" "}
+      <b>{baseline} and {quant} differ in</b>{" "}
       {clauses.map((c, i) => (
         <Fragment key={i}>{i > 0 && (i === clauses.length - 1 ? ", and in " : ", in ")}{c}</Fragment>
       ))}.
-      {d.other.length === 0 && (
-        <> Every other rule, every exit included, is the same in both, so a difference in their
-          results comes from selection and gates, not from how the positions are managed.</>
-      )}
     </p>
   );
 }
@@ -102,17 +111,22 @@ export function HowRulesWork({ pair, ruleId }: { pair: Pair; ruleId: string | un
       {ruleId !== undefined && !known && (
         <p><b>The rule this link names isn&apos;t in these results.</b></p>
       )}
+      <p>Every decision is made at the end of an hourly bar, in the same order each session:</p>
+      <ol className="pm-steps">
+        <li>Check whether the long call needs to be exited or replaced.</li>
+        <li>Check whether the short call needs to be closed.</li>
+        <li>On the first trading day of the week, sell a new short call if no skip-week gate
+          blocks the trade.</li>
+      </ol>
       <p>
-        Every decision is made at the end of an hourly bar, in the same order each session: first
-        the long leg&apos;s exits and resets, then the short&apos;s exits, then, in the week-open
-        session only, the week&apos;s new short, sold only if no skip-week gate fires. The gates
-        are checked in order, and the first to fire is logged with the values that fired it.
+        If more than one gate could apply, we stop at the first one and log exactly what triggered
+        it.
       </p>
       <Differ pair={pair} />
       <p>
         Every blotter row and gate-log entry links here to the rule behind it, and the ID column
-        gives each rule&apos;s reference in the results. Each rule reads with the values the runs
-        used, from the configs they ran with; ▸ opens its rationale.
+        gives each rule&apos;s reference in the results. Each row reads with the values the runs
+        used, from the configs they ran with; ▸ opens the reasoning.
       </p>
     </Note>
   );
@@ -120,29 +134,30 @@ export function HowRulesWork({ pair, ruleId }: { pair: Pair; ruleId: string | un
 
 // ---- the rule tables --------------------------------------------------------------------------
 
-/** A rule's condition, then its action. */
-function Said({ rule }: { rule: RuleOut }) {
-  return (
-    <>
-      <div className="pm-prose">{rule.condition}</div>
-      <div className="pm-prose pm-then">→ {rule.action}</div>
-    </>
-  );
+/** A rule's row in plain words (PO, DEC-114); the rule stated exactly on hover. */
+function Summary({ rule }: { rule: RuleOut }) {
+  return <div className="pm-prose" title={hint(rule)}>{rule.summary}</div>;
 }
 
 function NotRun() {
   return <span className="pm-label">not run</span>;
 }
 
-/** Text both strategies share, or each strategy's, labelled. */
-function Texts({ v, pair }: { v: Versions; pair: Pair }) {
-  if (v.kind === "shared") return <div className="pm-prose">{v.text}</div>;
+/** A rule's summary both strategies share, or each strategy's, labelled. */
+function Summaries({ row, pair }: { row: RuleRow; pair: Pair }) {
+  const { baseline, quant } = row;
+  if (!baseline || !quant || sameRule(baseline, quant)) {
+    const one = quant ?? baseline;
+    return one ? <Summary rule={one} /> : null;
+  }
   return (
     <>
-      <div className="pm-prose"><span className="pm-label">{pair.baseline.name}:</span>{" "}
-        {v.baseline ?? <NotRun />}</div>
-      <div className="pm-prose"><span className="pm-label">{pair.quant.name}:</span>{" "}
-        {v.quant ?? <NotRun />}</div>
+      <div className="pm-prose" title={hint(baseline)}>
+        <span className="pm-label">{pair.baseline.name}:</span> {baseline.summary}
+      </div>
+      <div className="pm-prose" title={hint(quant)}>
+        <span className="pm-label">{pair.quant.name}:</span> {quant.summary}
+      </div>
     </>
   );
 }
@@ -151,7 +166,7 @@ function paragraphs(text: string): ReactNode {
   return text.split("\n").map((p, i) => <p key={i}>{p}</p>);
 }
 
-/** The rationale under a rule's row: one both strategies share, or each one's. */
+/** The reasoning under a rule's row: one both strategies share, or each one's. */
 function rationale(pair: Pair): TableDetail<RuleRow> {
   return {
     header: "Why",
@@ -175,20 +190,25 @@ const idColumn: TableColumn<RuleRow> = {
   id: "id", header: "ID", sort: (r) => r.id, cell: (r) => <Id row={r} />,
 };
 
-const nameOf = (r: RuleRow) => (r.quant ?? r.baseline)?.name ?? r.id;
+const titleOf = (r: RuleRow) => (r.quant ?? r.baseline)?.title ?? r.id;
+const summaryOf = (r: RuleRow) => (r.quant ?? r.baseline)?.summary;
+
+const titleColumn = (header: string): TableColumn<RuleRow> => ({
+  id: "rule", header, sort: titleOf, cell: (r) => <div className="pm-prose">{titleOf(r)}</div>,
+});
 
 function entryColumns(): TableColumn<RuleRow>[] {
   const same = (r: RuleRow) =>
     r.baseline !== undefined && r.quant !== undefined && sameRule(r.baseline, r.quant);
   return [
     idColumn,
-    { id: "rule", header: "Rule", sort: nameOf, cell: nameOf },
-    { id: "baseline", header: "Baseline", sort: (r) => r.baseline?.condition,
-      cell: (r) => (r.baseline ? <Said rule={r.baseline} /> : <NotRun />) },
-    { id: "quant", header: "Quant", sort: (r) => (same(r) ? "Same" : r.quant?.condition),
+    titleColumn("Rule"),
+    { id: "baseline", header: "Baseline", sort: (r) => r.baseline?.summary,
+      cell: (r) => (r.baseline ? <Summary rule={r.baseline} /> : <NotRun />) },
+    { id: "quant", header: "Quant", sort: (r) => (same(r) ? "Same" : r.quant?.summary),
       cell: (r) => {
         if (same(r)) return <span className="pm-label">Same</span>;
-        return r.quant ? <Said rule={r.quant} /> : <NotRun />;
+        return r.quant ? <Summary rule={r.quant} /> : <NotRun />;
       } },
   ];
 }
@@ -207,14 +227,9 @@ const onOffText = (rule: RuleOut | undefined) =>
 function gateColumns(pair: Pair): TableColumn<RuleRow>[] {
   return [
     idColumn,
-    { id: "gate", header: "Gate", sort: nameOf, cell: nameOf },
-    { id: "condition", header: "Condition", sort: (r) => (r.quant ?? r.baseline)?.condition,
-      cell: (r) => {
-        const differ = r.baseline && r.quant && !sameRule(r.baseline, r.quant);
-        const one = differ ? undefined : (r.quant ?? r.baseline);
-        if (one) return <Said rule={one} />;
-        return <Texts v={versions(r, (rule) => `${rule.condition} → ${rule.action}`)} pair={pair} />;
-      } },
+    titleColumn("Gate"),
+    { id: "condition", header: "Condition", sort: summaryOf,
+      cell: (r) => <Summaries row={r} pair={pair} /> },
     { id: "baseline", header: "Baseline", sort: (r) => onOffText(r.baseline),
       cell: (r) => <OnOff rule={r.baseline} /> },
     { id: "quant", header: "Quant", sort: (r) => onOffText(r.quant),
@@ -223,13 +238,11 @@ function gateColumns(pair: Pair): TableColumn<RuleRow>[] {
 }
 
 function exitColumns(pair: Pair): TableColumn<RuleRow>[] {
-  const trigger = (rule: RuleOut) => `${rule.name}: ${rule.condition}`;
   return [
     idColumn,
-    { id: "trigger", header: "Trigger", sort: (r) => (r.quant ?? r.baseline)?.name,
-      cell: (r) => <Texts v={versions(r, trigger)} pair={pair} /> },
-    { id: "action", header: "Action", sort: (r) => (r.quant ?? r.baseline)?.action,
-      cell: (r) => <Texts v={versions(r, (rule) => rule.action)} pair={pair} /> },
+    titleColumn("Rule"),
+    { id: "happens", header: "What happens", sort: summaryOf,
+      cell: (r) => <Summaries row={r} pair={pair} /> },
   ];
 }
 
@@ -264,7 +277,7 @@ function ReplacedBy({ c }: { c: Changed }) {
   if (c.change.change === "params") {
     return <div className="pm-prose">{paramChanges(c.before, c.after).join(" · ")}</div>;
   }
-  return <div className="pm-prose" title={c.after.condition}>{c.after.action}</div>;
+  return <div className="pm-prose" title={hint(c.after)}>{c.after.summary}</div>;
 }
 
 const ablationColumns: TableColumn<AblationRow>[] = [
@@ -276,7 +289,7 @@ const ablationColumns: TableColumn<AblationRow>[] = [
         {r.before ? <Named id={r.change.rule_id} rule={r.before} /> : "—"}
       </div>
     ) },
-  { id: "replaced", header: "Replaced by", sort: (r) => r.after?.action ?? "",
+  { id: "replaced", header: "Replaced by", sort: (r) => r.after?.summary ?? "",
     cell: (r) => <ReplacedBy c={r} /> },
 ];
 

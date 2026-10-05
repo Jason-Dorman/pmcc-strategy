@@ -286,70 +286,91 @@ export const POOLED: Pooled = {
 
 // ---- rules.json --------------------------------------------------------------------------------
 
-function rule(id: string, name: string, condition: string, action: string, rationale: string,
-              shown: Record<string, string> = {}): RuleOut {
-  return { id, name, kind: id.toLowerCase(), params: {}, shown, condition, action, rationale };
+interface RuleFixture {
+  name: string;
+  title: string;
+  summary: string;
+  rationale: string;
+  shown?: Record<string, string>;
 }
 
-const NO_ROLLS = "There are no rolls.";
+/** A rule as rules.json writes it. The condition and action, the rule stated exactly, are only
+ * hovers on this page, so they're the summary's stand-ins. */
+function rule(id: string, { name, title, summary, rationale, shown = {} }: RuleFixture): RuleOut {
+  return { id, name, kind: id.toLowerCase(), params: {}, shown, title, summary,
+           condition: `${id} condition`, action: `${id} action`, rationale };
+}
+
+const NO_ROLLS = "Why no rolls: next Monday's sale already is the roll.";
 
 /** The rules both strategies share, as the shared YAML writes them. */
 const SHARED: Record<string, RuleOut> = {
-  "E-T1": rule("E-T1", "Entry trigger", "Spread at most 3% of mid for the long, 10% for the short",
-               "Enter on the first bar where the condition holds", "Liquidity decides.",
-               { long_max_spread: "3%", short_max_spread: "10%" }),
-  "E-S5": rule("E-S5", "Structural constraint", "Short strike − long strike > net debit",
-               "Sell the short only if this holds", "The strikes cover the debit."),
-  "G-1": rule("G-1", "No quote / liquidity", "Selected short never passes the entry trigger",
-              "Skip the week; keep the long", "No quote, no trade."),
-  "G-2": rule("G-2", "Structural constraint", "Selected short fails the structural constraint",
-              "Skip the week; keep the long", "No losing structure."),
-  "X-L1": rule("X-L1", "Long reset", "Long delta < 0.50 at the Monday decision bar",
-               "Sell long at mid, then re-enter", "Keep the stock substitute.",
-               { min_delta: "0.50" }),
-  "X-L2": rule("X-L2", "Long roll", "Long DTE < 90 at the Monday decision bar", "Same as the long reset",
-               "Stay long-dated.", { min_dte: "90" }),
-  "X-S1": rule("X-S1", "Take profit", "Short mid ≤ 25% of the credit received",
-               "Buy to close at mid", `${NO_ROLLS}\nBuy the short back once it is cheap.`,
-               { max_credit_fraction: "25%" }),
-  "X-S3": rule("X-S3", "Friday check", "Spot ≥ short strike − 0.25 × EM by 15:00 ET",
-               "Buy to close at mid", `${NO_ROLLS}\nThe Friday buffer.`,
-               { check_by: "15:00", em_buffer: "0.25" }),
-  "X-E1": rule("X-E1", "End of backtest", "The window's final bar", "Mark all positions",
-               "Nothing is force-closed."),
+  "E-T1": rule("E-T1", { name: "Entry trigger", title: "When do we enter?",
+                         summary: "On the first bar with a spread within 3% (long) or 10% (short).",
+                         rationale: "Liquidity decides.",
+                         shown: { long_max_spread: "3%", short_max_spread: "10%" } }),
+  "E-S5": rule("E-S5", { name: "Structural constraint", title: "Structural safety check",
+                         summary: "Sell only if the strikes cover the debit.",
+                         rationale: "The strikes cover the debit.\nIt uses the long's entry fill." }),
+  "G-1": rule("G-1", { name: "No quote / liquidity", title: "No tradable quote",
+                       summary: "The selected short never passes the entry trigger on Monday.",
+                       rationale: "No quote, no trade." }),
+  "G-2": rule("G-2", { name: "Structural constraint", title: "Structural constraint",
+                       summary: "The selected short fails the structural safety check.",
+                       rationale: "No losing structure." }),
+  "X-L1": rule("X-L1", { name: "Long reset", title: "Replace the long when its delta gets too low",
+                         summary: "On Monday, if the long's delta is below 0.50, replace it.",
+                         rationale: "Keep the stock substitute.", shown: { min_delta: "0.50" } }),
+  "X-L2": rule("X-L2", { name: "Long roll", title: "Replace the long when expiry gets close",
+                         summary: "On Monday, if the long has under 90 days left, replace it.",
+                         rationale: "Stay long-dated.", shown: { min_dte: "90" } }),
+  "X-S1": rule("X-S1", { name: "Take profit", title: "Take profit",
+                         summary: "If the short falls to 25% of the premium, before the Friday check, buy it back.",
+                         rationale: `${NO_ROLLS}\nBuy the short back once it is cheap.`,
+                         shown: { max_credit_fraction: "25%" } }),
+  "X-S3": rule("X-S3", { name: "Friday check", title: "Friday risk check",
+                         summary: "On the last session by 15:00 ET, buy the short back if spot is within 0.25 × EM of it.",
+                         rationale: `${NO_ROLLS}\nThe Friday buffer.`,
+                         shown: { check_by: "15:00", em_buffer: "0.25" } }),
+  "X-E1": rule("X-E1", { name: "End of backtest", title: "End of the backtest",
+                         summary: "Mark everything to its mid.", rationale: "Nothing is force-closed." }),
 };
 
 const BASELINE_PICKS: Record<string, RuleOut> = {
-  "E-L2": rule("E-L2", "Long leg expiry", "Monthly expiries listed",
-               "Choose the monthly expiry nearest 180 days to expiry", "The textbook long.",
-               { target_dte: "180" }),
-  "E-L3": rule("E-L3", "Long leg strike", "Eligible calls on the E-L2 expiry",
-               "Choose the strike with delta nearest 0.80", "A deep ITM long.",
-               { target_delta: "0.80" }),
-  "E-S3": rule("E-S3", "Short leg strike", "Eligible OTM calls on the E-S2 expiry",
-               "Choose the strike with delta nearest 0.30", "The textbook short.",
-               { target_delta: "0.30" }),
+  "E-L2": rule("E-L2", { name: "Long leg expiry", title: "Which expiry do we use for the long call?",
+                         summary: "The monthly expiry closest to 180 days out.",
+                         rationale: "The textbook long.", shown: { target_dte: "180" } }),
+  "E-L3": rule("E-L3", { name: "Long leg strike", title: "Which long call do we buy?",
+                         summary: "The call with delta closest to 0.80.", rationale: "A deep ITM long.",
+                         shown: { target_delta: "0.80" } }),
+  "E-S3": rule("E-S3", { name: "Short leg strike", title: "Which short strike do we sell?",
+                         summary: "The OTM call with delta closest to 0.30.",
+                         rationale: "The textbook short.", shown: { target_delta: "0.30" } }),
 };
 
 const QUANT_PICKS: Record<string, RuleOut> = {
-  "E-L2": rule("E-L2", "Long leg expiry", "Monthly expiries listed",
-               "Keep every monthly expiry from 120 to 270 days to expiry", "A range of longs.",
-               { max_dte: "270", min_dte: "120" }),
-  "E-L3": rule("E-L3", "Long leg strike", "Eligible calls with delta from 0.70 to 0.90",
-               "Choose the lowest extrinsic ÷ delta", "The cheapest replacement.",
-               { max_delta: "0.90", min_delta: "0.70" }),
-  "E-S3": rule("E-S3", "Short leg strike", "Eligible calls on the E-S2 expiry",
-               "Choose the lowest listed strike ≥ spot + 1.0 × EM", "The expected-move short.",
-               { k: "1.0" }),
+  "E-L2": rule("E-L2", { name: "Long leg expiry", title: "Which expiry do we use for the long call?",
+                         summary: "Any monthly expiry 120 to 270 days out.",
+                         rationale: "A range of longs.", shown: { max_dte: "270", min_dte: "120" } }),
+  "E-L3": rule("E-L3", { name: "Long leg strike", title: "Which long call do we buy?",
+                         summary: "Among deltas 0.70 to 0.90, the lowest extrinsic ÷ delta.",
+                         rationale: "The cheapest replacement.",
+                         shown: { max_delta: "0.90", min_delta: "0.70" } }),
+  "E-S3": rule("E-S3", { name: "Short leg strike", title: "Which short strike do we sell?",
+                         summary: "The lowest strike at or above spot + 1.0 × the expected move.",
+                         rationale: "The expected-move short.", shown: { k: "1.0" } }),
 };
 
 const QUANT_GATES: Record<string, RuleOut> = {
-  "G-3": rule("G-3", "Event week", "Front-week ATM IV ÷ next-week ATM IV > 1.20",
-              "Skip the week; keep the long", "Events from the chain.", { max_ratio: "1.20" }),
-  "G-4": rule("G-4", "Volatility risk premium", "Front-week ATM IV ÷ RV20 < 1.00",
-              "Skip the week; keep the long", "The VRP gate.", { min_ratio: "1.00" }),
-  "G-5": rule("G-5", "Minimum premium", "Selected short mid < $0.10 per share",
-              "Skip the week; keep the long", "Too small a premium.", { min_mid: "$0.10" }),
+  "G-3": rule("G-3", { name: "Event week", title: "Event week",
+                       summary: "Front-week ATM IV ÷ next-week ATM IV is above 1.20.",
+                       rationale: "Events from the chain.", shown: { max_ratio: "1.20" } }),
+  "G-4": rule("G-4", { name: "Volatility risk premium", title: "Volatility risk premium",
+                       summary: "Front-week ATM IV ÷ RV20 is below 1.00.",
+                       rationale: "The VRP gate.", shown: { min_ratio: "1.00" } }),
+  "G-5": rule("G-5", { name: "Minimum premium", title: "Minimum premium",
+                       summary: "The selected short's mid is below $0.10 a share.",
+                       rationale: "Too small a premium.", shown: { min_mid: "$0.10" } }),
 };
 
 const ORDER = ["E-T1", "E-L2", "E-L3", "E-S3", "E-S5", "G-1", "G-2", "G-3", "G-4", "G-5", "X-S1",
@@ -378,13 +399,16 @@ export const RULES: Rules = {
              rulesOf(SHARED, BASELINE_PICKS), "friction", [], 0.25),
     strategy("baseline_pmcc--t1", "Timing: baseline, short decided on bar 1 (10:00)",
              rulesOf(SHARED, BASELINE_PICKS, {
-               "E-T1": rule("E-T1", "Entry trigger, fixed bar", "Spread at most 3% / 10%",
-                            "Decide the short on session bar 1", "The timing check.",
-                            { bar: "1", long_max_spread: "3%", short_max_spread: "10%" }),
+               "E-T1": rule("E-T1", { name: "Entry trigger, fixed bar", title: "When do we enter?",
+                                      summary: "The short is decided only on bar 1.",
+                                      rationale: "The timing check.",
+                                      shown: { bar: "1", long_max_spread: "3%",
+                                               short_max_spread: "10%" } }),
              }), "timing", [{ rule_id: "E-T1", change: "replaced" }]),
     strategy("quant_pmcc", "Quant PMCC", QUANT_RULES, "strategy"),
     strategy("quant_pmcc--a1", "A1: quant with the baseline long leg",
-             rulesOf(SHARED, QUANT_PICKS, QUANT_GATES, BASELINE_PICKS, { "E-S3": QUANT_PICKS["E-S3"] as RuleOut }),
+             rulesOf(SHARED, QUANT_PICKS, QUANT_GATES, BASELINE_PICKS,
+                     { "E-S3": QUANT_PICKS["E-S3"] as RuleOut }),
              "ablation",
              [{ rule_id: "E-L2", change: "replaced" }, { rule_id: "E-L3", change: "replaced" }]),
     strategy("quant_pmcc--a3", "A3: quant without the event gate",
@@ -392,9 +416,9 @@ export const RULES: Rules = {
              [{ rule_id: "G-3", change: "removed" }]),
     strategy("quant_pmcc--k075", "Grid: quant with k = 0.75",
              rulesOf(SHARED, QUANT_PICKS, QUANT_GATES, {
-               "E-S3": rule("E-S3", "Short leg strike", "Eligible calls on the E-S2 expiry",
-                            "Choose the lowest listed strike ≥ spot + 0.75 × EM",
-                            "The expected-move short.", { k: "0.75" }),
+               "E-S3": rule("E-S3", { name: "Short leg strike", title: "Which short strike do we sell?",
+                                      summary: "The lowest strike at or above spot + 0.75 × the expected move.",
+                                      rationale: "The expected-move short.", shown: { k: "0.75" } }),
              }), "grid", [{ rule_id: "E-S3", change: "params" }]),
   ],
 };

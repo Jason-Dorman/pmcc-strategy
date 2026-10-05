@@ -51,9 +51,11 @@ export function ruleRows(pair: Pair, section?: Section): RuleRow[] {
     .map((id) => ({ id, baseline: find(pair.baseline, id), quant: find(pair.quant, id) }));
 }
 
-/** Two versions of a rule read the same: name, condition and action (its values show in them). */
+/** Two versions of a rule read the same: its name, its row (title and summary) and the rule
+ * stated exactly (condition and action); its values show in them. */
 export function sameRule(a: RuleOut, b: RuleOut): boolean {
-  return a.name === b.name && a.condition === b.condition && a.action === b.action;
+  return a.name === b.name && a.title === b.title && a.summary === b.summary
+    && a.condition === b.condition && a.action === b.action;
 }
 
 /** A rule's text both strategies share, or each one's. */

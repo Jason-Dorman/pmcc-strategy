@@ -57,6 +57,8 @@ class Manifest(_Model):
 
 
 class RuleTextOut(_Model):
+    title: str  # the Trade rules page's row in plain words (PO, DEC-114)
+    summary: str
     condition: str
     action: str
     rationale: str

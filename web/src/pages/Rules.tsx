@@ -34,17 +34,17 @@ export function Rules() {
                 <HowRulesWork pair={pair} ruleId={ruleId} />))), false),
         { ...panel("entry", "Entry rules", W_FULL, table("entry")),
           note: "baseline and quant side by side, with the values they ran",
-          caption: <>Quant reads Same where it runs the baseline&apos;s rule. ▸ opens a rule&apos;s
-            rationale.</> },
+          caption: <>Quant reads Same where it runs the baseline&apos;s rule. ▸ opens the
+            reasoning; hover a row for the rule stated exactly.</> },
         { ...panel("gates", "Skip-week gates", W_FULL, table("gate")),
           note: "checked in order at the week-open decision bar",
           caption: <>A gate that fires keeps the long and sells no short that week; the gate log
             on the quant page has each week&apos;s values. On shows the threshold the gate ran
             at.</> },
         { ...panel("exits", "Exit rules", W_FULL, table("exit")),
-          note: "each trigger and what it does",
-          caption: <>The rationales say why the short is never exercised, why there are no rolls,
-            and why the Friday check keeps a buffer.</> },
+          note: "what closes, expires or replaces a position",
+          caption: <>▸ opens the reasoning: why there are no rolls, why the short is never
+            exercised on purpose, and why the Friday check keeps a buffer.</> },
         { ...panel("ablations", "Ablations", W_HALF,
                    whenLoaded(rules, (r) => <Ablations rules={r} />)),
           note: "quant with one layer switched off",

@@ -93,8 +93,8 @@ describe("ruleLabel", () => {
     expect(ruleLabel("G-4")).toBe("Low vol premium");
   });
   it("falls back to the rule's YAML name, then its ID", () => {
-    const rules = [{ id: "X-Z9", name: "Some new exit", kind: "k", params: {}, condition: "",
-                     action: "", rationale: "" }];
+    const rules = [{ id: "X-Z9", name: "Some new exit", kind: "k", params: {}, title: "",
+                     summary: "", condition: "", action: "", rationale: "" }];
     expect(ruleLabel("X-Z9", rules)).toBe("Some new exit");
     expect(ruleLabel("X-Z8", rules)).toBe("X-Z8");
   });

@@ -13,18 +13,22 @@ overrides:
       name: Long leg expiry
       kind: nearest_dte_expiry
       params: {target_dte: 180}
+      title: Which expiry do we use for the long call?
+      summary: The monthly expiry closest to {target_dte} days out.
       condition: Monthly expiries listed at the decision bar
       action: Choose the monthly expiry nearest {target_dte} days to expiry
       rationale: >-
-        The textbook PMCC long: a monthly about {target_dte} days out. A listed option with 9
-        months or less to expiry has no loan value under Reg T, so the long is always fully paid.
+        The textbook PMCC long: a monthly about {target_dte} days out. Under Reg T a listed option
+        with 9 months or less to expiry has no loan value, so the long is always paid in full.
   E-L3:
     replace:
       name: Long leg strike
       kind: nearest_delta_long
       params: {target_delta: 0.80}
+      title: Which long call do we buy?
+      summary: The call with delta closest to {target_delta:.2f}.
       condition: Eligible calls on the long leg's expiry
       action: Choose the strike with delta nearest {target_delta:.2f}
       rationale: >-
-        The long call is the stock substitute: a deep in-the-money, long-dated call, here at the
-        textbook PMCC's delta of {target_delta:.2f}.
+        The long call is our stock substitute: a deep in-the-money, long-dated call, here the
+        textbook PMCC's {target_delta:.2f}-delta version.

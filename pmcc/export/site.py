@@ -207,7 +207,8 @@ def _strategy_rules(result: RunResult, by_id: Mapping[str, RunResult],
 def _rule(rule: Rule, params: Mapping[str, float | int | str]) -> RuleOut:
     text = rule.text()
     return RuleOut(id=str(rule.id), name=rule.name, kind=rule.kind, params=dict(params),
-                   shown=rule.shown_params(), condition=text.condition, action=text.action,
+                   shown=rule.shown_params(), title=text.title, summary=text.summary,
+                   condition=text.condition, action=text.action,
                    rationale=text.rationale)  # fmt: skip
 
 

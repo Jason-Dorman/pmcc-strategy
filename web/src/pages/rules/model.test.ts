@@ -24,8 +24,8 @@ function pair(): Pair {
 }
 
 function rule(shown: Record<string, string>): RuleOut {
-  return { id: "R-1", name: "R", kind: "r", params: {}, shown, condition: "c", action: "a",
-           rationale: "r" };
+  return { id: "R-1", name: "R", kind: "r", params: {}, shown, title: "t", summary: "s",
+           condition: "c", action: "a", rationale: "r" };
 }
 
 describe("sections and rows", () => {

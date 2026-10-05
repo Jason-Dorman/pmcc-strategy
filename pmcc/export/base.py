@@ -11,7 +11,7 @@ from typing import Annotated, Any
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, WithJsonSchema
 
-SCHEMA_VERSION = 3  # every file `pmcc export` publishes; the site refuses another (UI-SPEC §8)
+SCHEMA_VERSION = 4  # every file `pmcc export` publishes; the site refuses another (UI-SPEC §8)
 
 _SCALAR_TYPES = (float, int, str, bool, type(None))
 _JSON_SCALARS = ["number", "string", "boolean", "null"]

@@ -344,7 +344,7 @@ A static React app on GitHub Pages with a global symbol selector; the comparison
 
 **Traceability.** Every blotter row's rule ID links to that rule on the Trade rules page, and every gate-log entry links to its gate. A reader can go from any trade to the exact rule and values that caused it.
 
-**Rule write-up source.** Each rule in the YAML carries `id`, `name`, `condition`, `action`, and `rationale` fields. The Trade rules page and the write-up text are generated from these, so the published rules always match the code that ran. Written for a human reader, the text and the site's copy name a rule by what it is ("the entry trigger", "the long reset"), never by its ID; IDs appear only in the results and the site's ID columns (PO, DEC-113).
+**Rule write-up source.** Each rule in the YAML carries `id`, `name`, `title`, `summary`, `condition`, `action`, and `rationale` fields: the title and summary are the rule in plain words, as the Trade rules page shows it, every threshold in the summary; the condition and action state it exactly; the rationale is its reasoning (PO, DEC-114). The Trade rules page and the write-up text are generated from these, so the published rules always match the code that ran. Written for a human reader, the text and the site's copy name a rule by what it is ("the entry trigger", "the long reset"), never by its ID; IDs appear only in the results and the site's ID columns (PO, DEC-113).
 
 **Frontend constraints**
 

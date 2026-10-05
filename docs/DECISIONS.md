@@ -128,6 +128,7 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-111 | The headline return and an annualized Sharpe, for an institutional reader | SETTLED (PO) | P7-02 |
 | DEC-112 | P7-03: the Trade rules page and its traceability links | ENG · the rule tables' height SETTLED (PO); its copy amended by DEC-113 | P7-03 |
 | DEC-113 | No rule IDs in the copy: rules named by what they are | SETTLED (PO) | P7-03 |
+| DEC-114 | The Trade rules page in plain words: each rule's title, summary and Why | SETTLED (PO) · the exits' merged column put to the PO | handover 2026-10-03 |
 
 ---
 
@@ -734,6 +735,10 @@ Every rule in the YAML carries a `rationale` (Spec › Rule write-up source), bu
   - A threshold in a rationale is a placeholder, like one in a condition, so it can't drift from the param (DEC-52).
   - A test holds the five no-roll paragraphs identical.
   - The spec is unchanged: this settles what it leaves open.
+  - *Amended by DEC-114 (2026-10-03):* the rules gain a plain-language title and summary, and the
+    rationales are rewritten in the PO's draft words; the no-roll paragraph becomes one concise
+    note, still opening every short exit word for word, and the rule above (only what the spec or
+    the PO says) still holds.
 - **Outcome:** 2026-09-29 — the adversarial review of P3-01 (DEC-90) found the text not yet as settled. Fixed, with tests:
   - **E-S2 was wrong:** "a holiday week expires on Thursday". Only a week whose Friday is closed does; the Memorial Day and Labor Day weeks lose their Monday and still expire on Friday. It now reads "a holiday week never gets an invented Friday expiry: when the Friday is a holiday, it expires on Thursday".
   - **Claims the spec doesn't make are gone:** E-T1 (a tight spread making mid "a realistic fill"), E-L1 ("invested from the start", "rather than paying a wide spread"), E-L3 ("a fraction of the price of 100 shares"), E-L4 ("keeps results comparable"), X-S1 ("most of the premium is already earned"), X-L1 ("no longer does that well") and X-E1 ("no trade the rules didn't call for"). Each now says what the spec or the PO's summary says.
@@ -2635,6 +2640,69 @@ export and never committed, so it gains two fields without a schema version.
   `git_dirty: false`; `just verify` passed all 31 files. The 24 runs and `robustness.json` moved,
   as the preview had; the coverage, fill-check and universe files didn't. The exported
   `rules.json` holds no rule ID in any rule's text or run's name.
+
+### DEC-114 — The Trade rules page in plain words: each rule's title, summary and Why
+**Status:** SETTLED · **Basis:** PO, 2026-10-03, after reading P7-03's Rules page · **Affects:** P7-03; Spec › Rule write-up source; UI-SPEC §6.3; ARCHITECTURE §10, §12, §13; `configs/`; the results (schema version 4, re-run); amends DEC-35, DEC-112
+
+- **Context:** the PO asked for the page to be rewritten: "the logic is solid, but the current copy
+  reads more like a spec than something a person can quickly understand", with a draft that has
+  each rule answer when it happens, what we do, and why. Asked before building: the layout, where
+  the copy lives, six places the draft dropped or changed something, and the ablation and
+  sensitivity panels.
+- **Outcome:** 2026-10-03 — PO:
+  - **Layout:** keep the three tables, one row per rule, and the Why toggle. "The main row should
+    tell me quickly when the rule applies and what happens, while the expanded Why should explain
+    the reasoning." IDs stay in the ID column, not in a heading; trade links still land on and
+    outline the row. "Don't force the literal when / what / why labels into every row. That is
+    the writing principle, not necessarily the visual structure."
+  - **Where the copy lives:** in the configs, every threshold filled in from the settings, so the
+    page can't drift from what ran; re-run as needed.
+  - **Corrections, as recommended:** take profit says it fires only before the Friday check; a
+    concise "Why no rolls" on the exits, and the never-exercised reason kept under missed
+    assignment; G-5 keeps DEC-95's fact that the entry trigger's 10% spread limit already
+    filters a short under $0.10 unless its quote is locked; G-2 reads "fails the structural safety
+    check"; E-S5 keeps that it uses the long's entry fill, not its current mark. Not taken: IDs
+    in a heading.
+  - **Ablations and Sensitivity:** as they are, rules named.
+  - "Preserve all rules, thresholds, edge cases, and auditability — we're changing clarity, not
+    strategy logic."
+- **Built:**
+  - **Each rule gains `title` and `summary`** (`pmcc/config/strategy.py`), templates like the
+    rest: the title is the row's Rule column ("When do we enter?", "Event week"), the summary its
+    text in plain words. The loader refuses a summary that leaves out any param, so every
+    threshold shows in its row. `condition` and `action` stay as they were, the rule stated
+    exactly, and are the summary's hover here and the blotter's and gate log's hovers elsewhere.
+    `rationale` is rewritten as the Why. The results' `rule_text` and `rules.json` carry the
+    title and summary; new required fields, so the **schema version goes to 4** (ENG, as at
+    DEC-111).
+  - **The copy** is the PO's draft, cut to a short row and a Why. Each Why says only what the spec
+    or the PO's draft says (DEC-35's rule): claims the P3-01 review had removed ("a realistic
+    fill", "for far less capital", "results comparable", "most of the premium is already earned",
+    "no longer does that well") stay out. The no-roll note opens every short exit's Why, word for
+    word, now one sentence pair (DEC-35's paragraph, made concise by the PO). The spec's
+    paragraphs are unchanged; tests now check the Whys carry their facts rather than the spec's
+    exact words.
+  - **The page:** How rules work is the draft's: the order as three numbered steps, the first gate
+    to fire logged, and how the strategies differ ("plus three extra filters used by Quant PMCC",
+    the count read from the rules; where the rules don't bear the sentence out, each rule that
+    differs is named instead). Entry: ID · Rule (title) · Baseline · Quant (summaries; Same where
+    quant runs the baseline's rule). Gates: ID · Gate · Condition (summary) · Baseline · Quant
+    (On · threshold). Exits: ID · Rule · What happens, the Trigger and Action columns merged, since
+    a plain sentence carries both (ENG, put to the PO at the handover). Ablations' Replaced by
+    reads the variant's summary.
+  - **A bug in the type generator, fixed:** `web/scripts/gen-types.mjs` drops pydantic's
+    per-field `title` annotations, and it also deleted any field *named* `title`. It now steps
+    into a `properties` map's fields without treating the map as a schema; the regenerated types
+    differ only by the two new `title` fields.
+- **Tests:** the loader refuses a missing or blank title or summary and a summary missing a
+  param, and renders both from live values (`test_strategy_loader.py`); DEC-113's guard covers
+  titles and summaries (`test_rule_copy.py`); `rules.json` carries them
+  (`tests/scenario/test_export.py`); the Rules page's rows, hovers, numbered steps, the
+  differences sentence and its fallback, exits' columns and the ablations' summaries
+  (`Rules.test.tsx`, 20). 2,179 pytest and 354 Vitest tests pass.
+- **The results:** a preview batch from the uncommitted tree wrote all 24 runs and every analytics
+  file, and the built site passes the smoke test (18). The publishable re-run follows the code
+  commit, as at DEC-113.
 
 ## E. Analytics definitions
 

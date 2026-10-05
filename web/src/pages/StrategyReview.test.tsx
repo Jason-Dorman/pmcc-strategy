@@ -250,8 +250,8 @@ describe("filter buttons say what the trade was, not its rule ID (PO, DEC-107)",
   it("names each trade in the blotter's filter, the rule's text on hover", async () => {
     renderPage("quant", withQuant((r) => ({
       ...r,
-      rule_text: { "X-S1": { condition: "Short mid ≤ 25% of the credit", action: "Buy to close at mid",
-                             rationale: "" } },
+      rule_text: { "X-S1": { title: "", summary: "", condition: "Short mid ≤ 25% of the credit",
+                             action: "Buy to close at mid", rationale: "" } },
     })));
     const blotter = await panel("Blotter");
     await within(blotter).findByRole("table", { name: "Blotter" });
@@ -275,8 +275,8 @@ describe("filter buttons say what the trade was, not its rule ID (PO, DEC-107)",
   it("names each trade's rule in the blotter, linked to the rule, its text on hover", async () => {
     renderPage("quant", withQuant((r) => ({
       ...r,
-      rule_text: { "E-L1": { condition: "No long call is held", action: "Buy the selection",
-                             rationale: "" } },
+      rule_text: { "E-L1": { title: "", summary: "", condition: "No long call is held",
+                             action: "Buy the selection", rationale: "" } },
     })));
     const table = await screen.findByRole("table", { name: "Blotter" });
     const open = within(rowAt(table, 0)).getByRole("link", { name: "Open long" });
@@ -305,8 +305,8 @@ describe("filter buttons say what the trade was, not its rule ID (PO, DEC-107)",
       ...r,
       blotter: (r.blotter ?? []).map((row, i) => (i === 2 ? { ...row, rule_id: "X-Z9" } : row)),
       config: { ...r.config, strategy: { ...r.config.strategy, rules: [
-        { id: "X-Z9", name: "Some new exit", kind: "k", params: {}, condition: "", action: "",
-          rationale: "" },
+        { id: "X-Z9", name: "Some new exit", kind: "k", params: {}, title: "", summary: "",
+          condition: "", action: "", rationale: "" },
       ] } },
     })));
     const blotter = await panel("Blotter");

@@ -278,8 +278,15 @@ body {
   color: var(--accent);
   font-weight: 600;
 }
-.pm-note p + p {
+.pm-note p + p,
+.pm-note ol + p,
+.pm-note p + ol {
   margin-top: 8px;
+}
+/* a numbered sequence in prose (the Trade rules page's order of operations) */
+.pm-note .pm-steps {
+  list-style: decimal;
+  padding-left: 22px;
 }
 .pm-empty {
   color: var(--text-muted);

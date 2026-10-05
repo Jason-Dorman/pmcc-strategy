@@ -55,6 +55,8 @@ class RuleOut(Model):
     kind: str
     params: Mapping[str, float | int | str]  # dollars "0.1000", clock times "15:00"
     shown: Mapping[str, str]  # each param as its text shows it: "1.20", "$0.10", "3%" (P7-03)
+    title: str  # the row in plain words (PO, DEC-114)
+    summary: str
     condition: str
     action: str
     rationale: str

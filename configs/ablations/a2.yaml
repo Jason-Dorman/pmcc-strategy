@@ -13,9 +13,12 @@ overrides:
       name: Short leg strike
       kind: nearest_delta_short
       params: {target_delta: 0.30}
+      title: Which short strike do we sell?
+      summary: The out-of-the-money call with delta closest to {target_delta:.2f}.
       condition: Eligible out-of-the-money calls on the short leg's expiry
       action: Choose the strike with delta nearest {target_delta:.2f}
       rationale: >-
-        The textbook PMCC short: a weekly call out of the money at a fixed delta. If the selected
-        strike fails the entry trigger or the structural constraint, the skip-week gates decide;
-        no other strike is substituted.
+        The textbook PMCC short: a weekly out-of-the-money call at a fixed delta.
+
+        If that strike fails the entry trigger or the structural safety check, the week is
+        skipped: we never substitute another strike.

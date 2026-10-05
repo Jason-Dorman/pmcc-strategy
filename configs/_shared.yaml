@@ -4,10 +4,13 @@
 # difference in results comes from selection, not from how the trades are managed.
 #
 # This file is only ever extended (it has no id). Each rule has the spec's `id`, a `name`, the
-# `kind` that implements it, `params` holding every threshold, and `condition`, `action` and
-# `rationale` templates rendered from those params at load (DEC-52). Placeholders are param names:
-# `{max_delta:.2f}`. Rationales are in the PO's words, from the spec (DEC-35); a blank line between
-# paragraphs becomes one newline in the text. The loader is pmcc.config.strategy.
+# `kind` that implements it, `params` holding every threshold, and its write-up, templates rendered
+# from those params at load (DEC-52): `title` and `summary`, the Trade rules page's row in plain
+# words (PO, DEC-114); `rationale`, the reasoning its Why toggle opens; and `condition` and
+# `action`, the rule stated exactly, which the blotter and gate log show on hover. Placeholders are
+# param names: `{max_delta:.2f}`. The summary names every param, so each threshold shows in its
+# row. A blank line between paragraphs becomes one newline in the text. No text names a rule by
+# its ID (PO, DEC-113). The loader is pmcc.config.strategy.
 
 # Spec › Fill model: limit at mid; buys fill at mid + capture × half-spread, sells at mid − it.
 # The friction sensitivity runs set spread_capture to 0.25 and 0.50.
@@ -21,18 +24,31 @@ rules:
     name: Entry trigger
     kind: spread_trigger
     params: {long_max_spread: 0.03, short_max_spread: 0.10}
+    title: When do we enter?
+    summary: >-
+      On the first hourly bar where the contract has both a bid and an ask, and its spread is no
+      wider than {long_max_spread:.0%} of mid for the long call or {short_max_spread:.0%} for the
+      short call.
     condition: >-
       The selected contract has a valid bid and ask, and its spread is at most
       {long_max_spread:.0%} of mid for the long leg or {short_max_spread:.0%} for the short leg
     action: Enter on the first bar of the session where the condition holds
     rationale: >-
-      Liquidity, not the clock, decides when to enter: there is no fixed entry time. Entry waits
-      for the first hourly bar where the bid-ask spread is tight enough, and fills are at mid.
+      There's no fixed entry time: liquidity decides when we trade, and fills are modeled at the
+      mid.
+
+      If no bar in the session passes, the long waits for the next session, and the week's short
+      is skipped by the no-quote gate.
 
   - id: E-L1
     name: Long leg timing
     kind: first_session_retry
     params: {}
+    title: When do we buy the long call?
+    summary: >-
+      Whenever we don't hold one: on the backtest's first session, or right after a long reset or
+      long roll sold the last one. If no bar passes the entry trigger that session, we try again
+      the next.
     condition: >-
       No long call is held: the window's first session, or a session in which a long reset or
       long roll sold it
@@ -40,210 +56,266 @@ rules:
       Buy the long the expiry and strike rules select once the entry trigger passes. If it doesn't
       pass this session, retry each following session until it does
     rationale: >-
-      The long call is bought on the first day of the backtest. If no bar in a session passes the
-      entry trigger, the entry is retried the next session.
+      The long call is bought on the backtest's first day. This rule decides when; the expiry and
+      strike rules decide which call.
 
   - id: E-L4
     name: Sizing
     kind: fixed_contracts
     # The starting cash's rule sits here with the spec's E-L4 (PO, DEC-30); pmcc calibrate reads it.
     params: {contracts: 1, cash_multiple: 2, cash_round_to: 5000}
+    title: How large is the position?
+    summary: >-
+      Buy {contracts} long call, but never if it would push available funds below zero. Each
+      account starts with {cash_multiple}× the most expensive first long call in the universe,
+      rounded up to the nearest ${cash_round_to:,.0f}.
     condition: Every long entry
     action: >-
       Buy a fixed quantity of {contracts}. No entry, logged, if it would make available funds
       negative. Every account starts with {cash_multiple}× the most expensive first long-leg cost
       in the universe, rounded up to the nearest ${cash_round_to:,.0f}
     rationale: >-
-      One long call and one short call. Every symbol's account starts with the same cash balance,
-      used for NAV and Reg T tracking, and no entry is made that would make available funds
-      negative.
+      One long call and one short call. Every symbol starts with the same cash, which is tracked
+      for NAV and Reg T. An entry that would leave available funds negative isn't made; it's logged
+      instead.
 
   - id: E-S1
     name: Short leg timing
     kind: week_open_short
     params: {}
+    title: When do we sell the weekly call?
+    summary: >-
+      On Monday, or the week's first session if Monday is a holiday, when we hold a long call, no
+      short is open and no skip-week gate fires. The entry trigger decides which bar.
     condition: >-
       Each Monday (the first session of the week if Monday is a holiday), while a long call is held
       and no short is open
     action: Sell a new short call; the entry trigger decides which bar
     rationale: >-
-      One short call a week, sold as the week opens. A short closed early isn't replaced until the
-      next Monday, so every new short passes the skip-week gates.
+      One short call a week, sold as the week opens. If a short closes early, we wait for the next
+      week instead of selling another straight away, so every new short has passed the skip-week
+      gates.
 
   - id: E-S2
     name: Short leg expiry
     kind: week_final_expiry
     params: {}
+    title: Which expiry do we use for the short call?
+    summary: The one expiring on the week's last trading session, which is normally Friday.
     condition: Selling the week's short call
     action: Use the expiry on that week's final trading session
     rationale: >-
-      The short lives for one week. Its expiry is the week's last trading session, so a holiday
-      week never gets an invented Friday expiry: when the Friday is a holiday, it expires on
-      Thursday.
+      The short lives for one week. In a holiday week we never invent a Friday expiry: when the
+      Friday is a holiday, it expires on Thursday.
 
   - id: E-S4
     name: Short leg quantity
     kind: match_long_qty
     params: {}
+    title: How many short calls?
+    summary: One for each long call we hold.
     condition: Selling the week's short call
     action: Sell as many contracts as the long leg holds
     rationale: >-
-      Each short call is covered by one long call with a lower strike and a later expiry, so the
-      position is a diagonal spread and the short needs no margin of its own under Reg T.
+      Each short call is covered by a long call with a lower strike and a later expiry. That makes
+      the position a diagonal spread, so the short needs no margin of its own under Reg T.
 
   - id: E-S5
     name: Structural constraint
     kind: strike_covers_debit
     params: {}
+    title: Structural safety check
+    summary: >-
+      Sell the short only if short strike − long strike > what we paid for the long − the short's
+      mid, per share. If it doesn't hold, the week is skipped.
     condition: Short strike − long strike > long entry fill − short mid, per share
     action: Sell the short only if this holds; otherwise the structural-constraint gate skips the
       week
     rationale: >-
-      The gap between the strikes has to be bigger than the net debit paid. Then, if the short
-      finishes deep in the money, the long leg's intrinsic gain covers the short's loss plus the
-      debit, so the trade still doesn't lose money overall. It uses the long leg's entry fill, not
-      its current mark, which keeps it conservative.
+      This keeps the gap between the strikes bigger than the net debit paid. Then, even if the
+      short finishes deep in the money, the long's gain covers the short's loss plus the debit, so
+      the position can't lose money overall.
+
+      It uses the long's entry fill, not its current mark, which keeps the check conservative.
 
   # ── Skip-week gates, evaluated in order at the Monday decision bar ───────────────────────────
   - id: G-1
     name: No quote / liquidity
     kind: no_quote_gate
     params: {}
+    title: No tradable quote
+    summary: The selected short call never passes the entry trigger on any Monday bar.
     condition: Selected short never passes the entry trigger on any Monday bar
     action: Skip the week; keep the long
     rationale: >-
-      No tradable quote, no trade: the backtest never invents a fill and never swaps in a different
-      strike. This gate replaces a separate short-leg spread gate, since the entry trigger's spread
-      threshold already covers it.
+      No tradable quote, no trade: we never invent a fill or switch to another strike. A short
+      whose spread is too wide is caught here too, since the entry trigger's spread threshold
+      already rules it out, so no separate spread gate is needed.
 
   - id: G-2
     name: Structural constraint
     kind: structural_gate
     params: {}
+    title: Structural constraint
+    summary: The selected short call fails the structural safety check.
     condition: Selected short fails the structural constraint
     action: Skip the week; keep the long
     rationale: >-
-      A short that could turn the position into a net loss isn't sold, and no other strike is tried
-      in its place.
+      A short that could turn the position into a net loss isn't sold, and we don't search for a
+      replacement strike.
 
   # ── Exits, identical in both strategies ──────────────────────────────────────────────────────
-  # Every short exit opens with the same no-roll paragraph, word for word (DEC-35).
+  # Every short exit's Why opens with the same note on why there are no rolls, word for word
+  # (DEC-35, made concise by the PO at DEC-114).
   - id: X-S1
     name: Take profit
     kind: take_profit
     params: {max_credit_fraction: 0.25}
+    title: Take profit
+    summary: >-
+      If the short falls to {max_credit_fraction:.0%} or less of the premium we collected, on any
+      bar before the Friday check, buy it back at mid. No new short until next week.
     condition: >-
       Short mid ≤ {max_credit_fraction:.0%} of the credit received, on any bar before the Friday
       check
     action: Buy to close at mid. No new short until next Monday
     rationale: >-
-      There are no rolls, and the plan is never to get assigned. With weekly shorts, the Monday
-      entry already is the roll. A same-bar roll would let a new short bypass the skip gates, and
-      rolling to defer a loss turns a defined loss into an open-ended one. The loss is realized and
-      the next week starts fresh.
+      Why no rolls: with weekly shorts, next Monday's sale already is the roll. Rolling on the spot
+      would let a new short skip the skip-week gates, and could turn a defined loss into an
+      open-ended one.
 
-      Buy the short back once it has lost most of its value: once it's worth
-      {max_credit_fraction:.0%} or less of the credit received.
+      Buy the short back once it has lost most of its value. This rule stops at the Friday check:
+      from then on, that check and expiry decide.
 
   - id: X-S2
     name: Defensive
     kind: defensive_delta
     params: {max_delta: 0.60}
+    title: Defensive exit
+    summary: >-
+      If the short's delta rises above {max_delta:.2f}, on any bar, buy it back at mid. No new
+      short until next week.
     condition: Short delta > {max_delta:.2f}, on any bar
     action: Buy to close at mid. No new short until next Monday
     rationale: >-
-      There are no rolls, and the plan is never to get assigned. With weekly shorts, the Monday
-      entry already is the roll. A same-bar roll would let a new short bypass the skip gates, and
-      rolling to defer a loss turns a defined loss into an open-ended one. The loss is realized and
-      the next week starts fresh.
+      Why no rolls: with weekly shorts, next Monday's sale already is the roll. Rolling on the spot
+      would let a new short skip the skip-week gates, and could turn a defined loss into an
+      open-ended one.
 
-      It keeps the short from sitting deep in the money, where early exercise becomes likely.
+      It keeps the short from sitting deep in the money, where early exercise becomes likely and
+      assignment risk grows.
 
   - id: X-S3
     name: Friday check
     kind: friday_check
     params: {check_by: "15:00", em_buffer: 0.25}
+    title: Friday risk check
+    summary: >-
+      On the week's last session, at the last bar ending by {check_by:%H:%M} ET, buy the short back
+      at mid if spot ≥ strike − {em_buffer:.2f} × the expected move measured when it was sold.
     condition: >-
       On the week's final session, at the last bar ending at or before {check_by:%H:%M} ET:
       spot ≥ short strike − {em_buffer:.2f} × EM, with EM measured at the short's entry
     action: Buy to close at mid
     rationale: >-
-      There are no rolls, and the plan is never to get assigned. With weekly shorts, the Monday
-      entry already is the roll. A same-bar roll would let a new short bypass the skip gates, and
-      rolling to defer a loss turns a defined loss into an open-ended one. The loss is realized and
-      the next week starts fresh.
+      Why no rolls: with weekly shorts, next Monday's sale already is the roll. Rolling on the spot
+      would let a new short skip the skip-week gates, and could turn a defined loss into an
+      open-ended one.
 
-      The stock can move into the money in the final hour after the check. Treating "within
-      {em_buffer:.2f} × EM of the strike" as in the money reduces missed assignments; the
-      missed-assignment rule handles any that still occur, honestly recorded rather than assumed
-      away.
+      The stock can move into the money in the final hour after the check. Treating anything
+      within {em_buffer:.2f} × the expected move of the strike as in the money gets us out when
+      the stock is close late on Friday, reducing missed assignments; the missed-assignment rule
+      records any that still happen, rather than assuming them away.
 
   - id: X-S4
     name: Expires out of the money
     kind: expire_otm
     params: {}
+    title: Short expires out of the money
+    summary: >-
+      If the short is still open at expiry and the stock closes at or below the strike, it
+      expires worthless.
     condition: >-
       The short is still open at expiry and out of the money at the close (closing spot ≤ strike)
     action: EXPIRE at $0
     rationale: >-
-      There are no rolls, and the plan is never to get assigned. With weekly shorts, the Monday
-      entry already is the roll. A same-bar roll would let a new short bypass the skip gates, and
-      rolling to defer a loss turns a defined loss into an open-ended one. The loss is realized and
-      the next week starts fresh.
+      Why no rolls: with weekly shorts, next Monday's sale already is the roll. Rolling on the spot
+      would let a new short skip the skip-week gates, and could turn a defined loss into an
+      open-ended one.
 
-      The call expires worthless, and the full credit is kept.
+      The call expires worthless, and we keep the full premium.
 
   - id: X-S5
     name: Missed assignment
     kind: missed_assignment
     params: {}
+    title: Missed assignment
+    summary: >-
+      If the short is still open at expiry and the stock closes above the strike, it's assigned:
+      we're short the stock at the strike, and buy it back at the first valid bar of the next
+      session.
     condition: >-
       The short is still open at expiry and in the money at the close (closing spot > strike)
     action: >-
       ASSIGN the call; open short stock at the strike (Reg T short-stock margin applies); buy to
       cover at the first valid bar of the next session
     rationale: >-
-      There are no rolls, and the plan is never to get assigned. With weekly shorts, the Monday
-      entry already is the roll. A same-bar roll would let a new short bypass the skip gates, and
-      rolling to defer a loss turns a defined loss into an open-ended one. The loss is realized and
-      the next week starts fresh.
+      Why no rolls: with weekly shorts, next Monday's sale already is the roll. Rolling on the spot
+      would let a new short skip the skip-week gates, and could turn a defined loss into an
+      open-ended one.
 
-      Assignment only happens if the stock jumps into the money after the Friday check, and the
-      backtest records it honestly. The short is never exercised on purpose: buying back an
-      in-the-money short at expiry costs its intrinsic value plus almost no extrinsic, which is
-      economically equal to assignment and covering. Assignment only adds weekend gap risk on
-      short stock, short-stock margin that can push available funds negative, or the loss of the
-      long leg's extrinsic if it's exercised to deliver.
+      Assignment only happens if the stock jumps past the strike after the Friday check, and the
+      backtest records it honestly. While the short stock is open, Reg T short-stock margin
+      applies.
+
+      Why we never let the short be exercised on purpose: buying back an in-the-money short at
+      expiry costs its intrinsic value plus almost no extrinsic, which is economically equal to
+      assignment and covering. Assignment only adds weekend gap risk on short stock, short-stock
+      margin that can push available funds negative, or the loss of the long's extrinsic value if
+      it's exercised to deliver.
 
   - id: X-L1
     name: Long reset
     kind: long_delta_reset
     params: {min_delta: 0.50}
+    title: Replace the long when its delta gets too low
+    summary: >-
+      On Monday, if the long's delta is below {min_delta:.2f}, sell it at mid and buy a new one by
+      the long entry rules that session, if the entry trigger passes. Then decide the week's
+      short.
     condition: Long delta < {min_delta:.2f} at the Monday decision bar
     action: >-
       Sell long at mid, then re-enter by the long leg's entry rules in the same session if the
       entry trigger passes; then apply the short leg's entry rules
     rationale: >-
-      The long call is the stock substitute, and it's sold and re-bought if its delta falls below
-      {min_delta:.2f}. It's checked on Mondays, before the week's short is sold, so a new short is
-      always covered by the long that's held.
+      The long call is our stock substitute, and it's sold and re-bought if its delta falls below
+      {min_delta:.2f}. Checking on Monday, before the week's short is sold, means a new short is
+      always covered by the long we actually hold.
 
   - id: X-L2
     name: Long roll
     kind: long_dte_roll
     params: {min_dte: 90}
+    title: Replace the long when expiry gets close
+    summary: >-
+      On Monday, if the long has fewer than {min_dte} days to expiry, replace it the same way as a
+      long whose delta got too low.
     condition: Long DTE < {min_dte} at the Monday decision bar
     action: Same as the long reset
     rationale: >-
-      The long is sold and re-bought once it has fewer than {min_dte} days left, so it stays a
-      long-dated stock substitute. Like the long reset, it's checked on Mondays, before the week's
-      short is sold.
+      Replacing the long before it's down to {min_dte} days keeps it acting like a long-dated
+      stock substitute. Like the delta check, it's made on Monday, before the week's short is sold.
 
   - id: X-E1
     name: End of backtest
     kind: end_of_backtest
     params: {}
+    title: End of the backtest
+    summary: >-
+      At the window's final bar, every open position is marked to its mid. Nothing is
+      force-closed.
     condition: The window's final bar
     action: Mark all positions to the final bar's mid; no forced liquidation
     rationale: >-
-      Positions are valued at the last price. Nothing is force-closed.
+      Open positions are valued at their last mid. Nothing is force-closed just because the
+      backtest ends.

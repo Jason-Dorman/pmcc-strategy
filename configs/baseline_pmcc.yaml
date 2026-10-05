@@ -15,29 +15,36 @@ rules:
     name: Long leg expiry
     kind: nearest_dte_expiry
     params: {target_dte: 180}
+    title: Which expiry do we use for the long call?
+    summary: The monthly expiry closest to {target_dte} days out.
     condition: Monthly expiries listed at the decision bar
     action: Choose the monthly expiry nearest {target_dte} days to expiry
     rationale: >-
-      The textbook PMCC long: a monthly about {target_dte} days out. A listed option with 9 months
-      or less to expiry has no loan value under Reg T, so the long is always fully paid.
+      The textbook PMCC long: a monthly about {target_dte} days out. Under Reg T a listed option
+      with 9 months or less to expiry has no loan value, so the long is always paid in full.
 
   - id: E-L3
     name: Long leg strike
     kind: nearest_delta_long
     params: {target_delta: 0.80}
+    title: Which long call do we buy?
+    summary: The call with delta closest to {target_delta:.2f}.
     condition: Eligible calls on the long leg's expiry
     action: Choose the strike with delta nearest {target_delta:.2f}
     rationale: >-
-      The long call is the stock substitute: a deep in-the-money, long-dated call, here at the
-      textbook PMCC's delta of {target_delta:.2f}.
+      The long call is our stock substitute: a deep in-the-money, long-dated call, here the
+      textbook PMCC's {target_delta:.2f}-delta version.
 
   - id: E-S3
     name: Short leg strike
     kind: nearest_delta_short
     params: {target_delta: 0.30}
+    title: Which short strike do we sell?
+    summary: The out-of-the-money call with delta closest to {target_delta:.2f}.
     condition: Eligible out-of-the-money calls on the short leg's expiry
     action: Choose the strike with delta nearest {target_delta:.2f}
     rationale: >-
-      The textbook PMCC short: a weekly call out of the money at a fixed delta. If the selected
-      strike fails the entry trigger or the structural constraint, the skip-week gates decide; no
-      other strike is substituted.
+      The textbook PMCC short: a weekly out-of-the-money call at a fixed delta.
+
+      If that strike fails the entry trigger or the structural safety check, the week is skipped:
+      we never substitute another strike.

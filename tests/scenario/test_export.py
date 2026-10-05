@@ -264,8 +264,9 @@ def test_export_rules_render_each_run_ids_config(runs: Runs, exported: Path) -> 
         assert [r.id for r in strategy.rules] == list(result.rule_text)
         for rule in strategy.rules:
             written = result.rule_text[rule.id]
-            assert (rule.condition, rule.action, rule.rationale) == (
-                written.condition, written.action, written.rationale)  # fmt: skip
+            assert (rule.title, rule.summary, rule.condition, rule.action, rule.rationale) == (
+                written.title, written.summary, written.condition, written.action,
+                written.rationale)  # fmt: skip
 
 
 def test_export_rules_publish_params_as_the_config_holds_them(exported: Path) -> None:

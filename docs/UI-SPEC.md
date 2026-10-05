@@ -181,14 +181,14 @@ The page is rendered from `rules.json` (DEC-52). Nothing on it is hand-typed.
 
 | # | Panel | Width | Content |
 | --- | --- | --- | --- |
-| — | How rules work | 10 | Prose: order of operations; the strategies differ only in selection and gates, the rules that differ named and linked; what the ID column is |
-| 1 | Entry rules | 10 | ID · Rule · Baseline · Quant (rendered conditions with live values, each condition with "→ action" under it; Quant reads "Same" where it runs the baseline's rule); rationale expands per row |
-| 2 | Skip-week gates | 10 | ID · Gate · Condition (→ action) · Baseline (On/Off) · Quant (On/Off + threshold: "On · 1.20", the value as the rule's text shows it, `shown`); rationale |
-| 3 | Exit rules | 10 | ID · Trigger (name: condition) · Action; rationale (includes the spec's "why the short is never exercised / no rolls / Friday buffer") |
-| 4 | Ablations | 5 | A1–A5, one row per rule changed: Ablation · Layer removed (quant's rule, by name, linked) · Replaced by (the ablation's action, or "nothing") |
+| — | How rules work | 10 | Prose: order of operations as three numbered steps; the first gate to fire is logged; the strategies manage positions the same way and differ only in contract selection and quant's extra filters (their count read from the rules; where the rules don't bear that out, each rule that differs named and linked); what the ID column is |
+| 1 | Entry rules | 10 | ID · Rule (its title: "When do we enter?") · Baseline · Quant (each strategy's summary in plain words, live values filled in; Quant reads "Same" where it runs the baseline's rule; the rule stated exactly on hover); the Why expands per row |
+| 2 | Skip-week gates | 10 | ID · Gate (title) · Condition (summary) · Baseline (On/Off) · Quant (On/Off + threshold: "On · 1.20", the value as the rule's text shows it, `shown`); Why |
+| 3 | Exit rules | 10 | ID · Rule (title) · What happens (summary); the Why (includes why there are no rolls, why the short is never exercised on purpose, and the Friday buffer) |
+| 4 | Ablations | 5 | A1–A5, one row per rule changed: Ablation · Layer removed (quant's rule, by name, linked) · Replaced by (the ablation's summary, or "nothing") |
 | 5 | Sensitivity | 5 | friction, timing and grid runs: Check · Run · Change against its strategy ("spread capture 0.00 → 0.25", "Entry trigger: replaced by Entry trigger, fixed bar · bar 1", "Event week: max ratio 1.20 → 1.10"); filtered by check |
 
-The two strategies and each variant's family come from `rules.json` (DEC-112). The page's copy names a rule by its name, linked to its row, never by its ID; IDs appear only in the ID columns (PO, DEC-113). How rules work reads every rule ID it names, and how the strategies differ, from the rules; a text the strategies don't share shows each one's, labelled.
+The two strategies and each variant's family come from `rules.json` (DEC-112). The page's copy names a rule by its name, linked to its row, never by its ID; IDs appear only in the ID columns (PO, DEC-113). Each row is short and conversational and the Why holds the reasoning, with no when / what / why labels on the page (PO, DEC-114). How rules work reads every rule ID it names, and how the strategies differ, from the rules; a text the strategies don't share shows each one's, labelled.
 
 Arriving at `#/rules/X-S3` scrolls to that row and outlines it in `--accent`. The outline is chrome, not data. An ID the results lack says so in How rules work.
 

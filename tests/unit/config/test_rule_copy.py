@@ -11,7 +11,7 @@ from pmcc.config.strategy import StrategyConfig
 
 RULE_ID = re.compile(r"\b[EGX]-[A-Z]?\d\b")
 MATRIX = strategy_configs()
-FIELDS = ("condition", "action", "rationale")
+FIELDS = ("title", "summary", "condition", "action", "rationale")
 
 
 @pytest.mark.parametrize("config", MATRIX, ids=lambda c: c.id)

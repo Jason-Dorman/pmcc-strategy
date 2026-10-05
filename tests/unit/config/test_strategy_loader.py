@@ -127,6 +127,8 @@ def test_config_rule_redefined_by_a_child_is_refused(configs: Path) -> None:
             name: Defensive
             kind: defensive_delta
             params: {max_delta: 0.7}
+            title: Defensive
+            summary: "Close above {max_delta}"
             condition: "delta > {max_delta}"
             action: Close
             rationale: Why
@@ -197,6 +199,8 @@ def test_config_override_replace_swaps_the_kind(configs: Path) -> None:
               name: Short leg strike
               kind: expected_move_strike
               params: {k: 1.0}
+              title: Which short strike?
+              summary: "At least spot + {k:.2f} × EM"
               condition: Listed calls on the E-S2 expiry
               action: "Lowest listed strike ≥ spot + {k:.2f} × EM"
               rationale: The expected move scales the strike to the week's priced risk.
@@ -213,7 +217,8 @@ def test_config_override_replace_under_another_id_is_refused(configs: Path) -> N
         overrides:
           E-S3:
             replace: {id: E-L3, name: n, kind: nearest_delta_short, params: {target_delta: 0.3},
-                      condition: "{target_delta}", action: a, rationale: r}
+                      title: t, summary: "{target_delta}", condition: "{target_delta}", action: a,
+                      rationale: r}
         """
     with pytest.raises(ValueError, match="the replacement for E-S3 is given another id"):
         load_strategy(_variant(configs, body))
@@ -259,6 +264,8 @@ def test_config_override_of_a_rule_the_same_file_defines_is_refused(configs: Pat
             name: Minimum premium
             kind: min_premium_gate
             params: {min_mid: 0.10}
+            title: Minimum premium
+            summary: "Mid below ${min_mid:.2f}"
             condition: "Selected short mid < ${min_mid:.2f}"
             action: Skip the week
             rationale: Why
@@ -308,6 +315,8 @@ def _replace_x_s2(configs: Path, **fields: object) -> Path:
         "name": "Defensive",
         "kind": "defensive_delta",
         "params": {"max_delta": 0.6},
+        "title": "Defensive exit",
+        "summary": "Buy it back above {max_delta:.2f}",
         "condition": "Short delta > {max_delta:.2f}",
         "action": "Buy to close",
         "rationale": "Why",
@@ -342,7 +351,7 @@ def test_config_unknown_rule_field_is_refused(configs: Path) -> None:
         load_strategy(_replace_x_s2(configs, threshold=0.6))
 
 
-@pytest.mark.parametrize("field", ["name", "condition", "action", "rationale"])
+@pytest.mark.parametrize("field", ["name", "title", "summary", "condition", "action", "rationale"])
 def test_config_empty_write_up_field_is_refused(configs: Path, field: str) -> None:
     with pytest.raises(ValueError, match=rf"(?m)^rules\.\d+\.{field}\n  String should match"):
         load_strategy(_replace_x_s2(configs, **{field: " "}))
@@ -440,6 +449,8 @@ def test_config_dollar_param_renders_as_dollars(configs: Path) -> None:
             name: Minimum premium
             kind: min_premium_gate
             params: {min_mid: 0.10}
+            title: Minimum premium
+            summary: "Mid below ${min_mid:.2f}"
             condition: "Selected short mid < ${min_mid:.2f} per share"
             action: Skip the week; keep the long
             rationale: Too little premium.
@@ -451,7 +462,31 @@ def test_config_dollar_param_renders_as_dollars(configs: Path) -> None:
 def test_config_rationale_follows_a_changed_param(configs: Path) -> None:
     # The thresholds a rationale quotes are placeholders, so a variant can't publish a stale one.
     config = load_strategy(_variant(configs, "overrides:\n  X-S3: {params: {em_buffer: 0.5}}\n"))
-    assert "within 0.50 × EM of the strike" in config.rule(RuleId("X-S3")).text().rationale
+    assert "within 0.50 × the expected move" in config.rule(RuleId("X-S3")).text().rationale
+
+
+# each rule's title and summary: its row on the Trade rules page (PO, DEC-114)
+
+
+def test_dec_114_title_and_summary_render_with_live_values(configs: Path) -> None:
+    config = load_strategy(_variant(configs, "overrides:\n  X-S3: {params: {em_buffer: 0.5}}\n"))
+    text = config.rule(RuleId("X-S3")).text()
+    assert text.title == "Friday risk check"
+    assert "strike − 0.50 × the expected move" in text.summary
+
+
+def test_dec_114_a_summary_must_show_every_param(configs: Path) -> None:
+    with pytest.raises(ValueError, match=r"never shown in the summary: \['max_delta'\]"):
+        load_strategy(_replace_x_s2(configs, summary="Buy it back when it's deep in the money"))
+
+
+def test_dec_114_title_and_summary_are_required(configs: Path) -> None:
+    body = yaml.safe_dump({"overrides": {"X-S2": {"replace": {
+        "name": "Defensive", "kind": "defensive_delta", "params": {"max_delta": 0.6},
+        "condition": "Short delta > {max_delta:.2f}", "action": "Buy to close",
+        "rationale": "Why"}}}}, allow_unicode=True)  # fmt: skip
+    with pytest.raises(ValueError, match=r"(?ms)^rules\.\d+\.title\n  Field required.*summary"):
+        load_strategy(_variant(configs, body))
 
 
 # the config hash

@@ -18,19 +18,27 @@ rules:
     name: Long leg expiry
     kind: dte_range_expiry
     params: {min_dte: 120, max_dte: 270}
+    title: Which expiry do we use for the long call?
+    summary: >-
+      Any monthly expiry {min_dte} to {max_dte} days out; the strike rule picks the best contract
+      across all of them.
     condition: Monthly expiries listed at the decision bar
     action: >-
       Keep every monthly expiry from {min_dte} to {max_dte} days to expiry; the strike rule
       chooses across them
     rationale: >-
       The long can be any monthly in the range, so the strike rule looks for the cheapest
-      replacement across all of them. A listed option with 9 months or less to expiry has no loan value under Reg T;
-      capping the range at {max_dte} days keeps the long always fully paid.
+      replacement across all of them. Under Reg T a listed option with 9 months or less to expiry
+      has no loan value; capping the range at {max_dte} days keeps the long always paid in full.
 
   - id: E-L3
     name: Long leg strike
     kind: cheapest_replacement
     params: {min_delta: 0.70, max_delta: 0.90}
+    title: Which long call do we buy?
+    summary: >-
+      Among calls with delta {min_delta:.2f} to {max_delta:.2f}, the one with the lowest
+      extrinsic value ÷ delta, where extrinsic = mid − max(0, spot − strike).
     condition: >-
       Eligible calls with delta from {min_delta:.2f} to {max_delta:.2f} across the long leg's
       expiries
@@ -38,55 +46,71 @@ rules:
       Choose the lowest extrinsic ÷ delta, where extrinsic = mid − max(0, spot − strike). Ties go
       to the lower spread % of mid, then the earlier expiry, then the lower strike
     rationale: >-
-      The cheapest-replacement long leg: the long call is the stock substitute, and among the
-      eligible calls it buys the one with the least extrinsic value per unit of delta.
+      The long call is our stock substitute, and this is the cheapest way to buy that stock-like
+      exposure: among the eligible calls, the one with the least extrinsic value per unit of delta.
+
+      Ties go to the tighter spread as a % of mid, then the earlier expiry, then the lower strike.
 
   - id: E-S3
     name: Short leg strike
     kind: expected_move_strike
     params: {k: 1.0}
+    title: Which short strike do we sell?
+    summary: >-
+      The lowest listed strike at or above spot + {k} × the week's expected move, which is the ATM
+      call mid + the ATM put mid.
     condition: >-
       Eligible calls on the short leg's expiry. EM is that week's at-the-money straddle mid: the
       ATM call mid + the ATM put mid
     action: Choose the lowest listed strike ≥ spot + {k} × EM
     rationale: >-
-      The expected-move short strike: the short is sold at least {k} × the week's expected move
-      above spot, the expected move being the at-the-money straddle's mid. If the selected strike
-      fails the entry trigger or the structural constraint, the skip-week gates decide; no other
-      strike is substituted.
+      The expected-move short: it's sold at least {k} × the week's expected move above spot, the
+      expected move being the at-the-money straddle's mid.
+
+      If that strike fails the entry trigger or the structural safety check, the week is skipped:
+      we never substitute another strike.
 
   # ── The quant layer's skip-week gates, evaluated after G-1 and G-2 ─────────────────────────
   - id: G-3
     name: Event week
     kind: event_ratio_gate
     params: {max_ratio: 1.20}
+    title: Event week
+    summary: Front-week ATM IV ÷ next-week ATM IV is above {max_ratio:.2f}.
     condition: Front-week ATM IV ÷ next-week ATM IV > {max_ratio:.2f}
     action: Skip the week; keep the long
     rationale: >-
-      The event-week gate detects events (usually earnings) from the chain itself, with no
-      external calendar: an event priced into the front week lifts its IV above the following
-      week's. A ratio is used instead of a vol-point difference so the threshold scales across low-
-      and high-volatility symbols.
+      It's designed to catch weeks where the options market is pricing an unusual near-term
+      event, usually earnings: an event priced into the front week lifts its implied volatility
+      above the following week's. Reading that from the chain
+      itself means no external earnings calendar is needed, and a ratio rather than a difference
+      in vol points lets one threshold work for calm and volatile stocks alike.
 
   - id: G-4
     name: Volatility risk premium
     kind: vrp_gate
     params: {min_ratio: 1.00}
+    title: Volatility risk premium
+    summary: Front-week ATM IV ÷ RV20 is below {min_ratio:.2f}.
     condition: Front-week ATM IV ÷ RV20 < {min_ratio:.2f}
     action: Skip the week; keep the long
     rationale: >-
-      The volatility risk premium gate: the week is skipped when the front week's implied
+      The volatility risk premium gate: we don't sell the weekly call when the front week's implied
       volatility is below the stock's realized volatility over the last 20 sessions (RV20).
 
   - id: G-5
     name: Minimum premium
     kind: min_premium_gate
     params: {min_mid: 0.10}
+    title: Minimum premium
+    summary: The selected short call's mid is below ${min_mid:.2f} a share.
     condition: Selected short mid < ${min_mid:.2f} per share
     action: Skip the week; keep the long
     rationale: >-
-      A short that would collect less than ${min_mid:.2f} a share isn't sold, and no other strike
-      is tried in its place. Quotes are in whole cents, so below ${min_mid:.2f} a short's spread
-      is wider than the entry trigger's 10% of mid unless its bid equals its ask. This gate
-      therefore fires only on such a locked quote; otherwise the no-quote gate skips the week
-      first.
+      Below ${min_mid:.2f} a share there's too little premium to justify the trade, and we don't
+      look for another strike.
+
+      In practice the entry trigger gets there first. Quotes are in whole cents, so below
+      ${min_mid:.2f} a short's spread is wider than the entry trigger's 10% of mid unless its bid
+      equals its ask. This gate therefore fires only on such a locked quote; otherwise the no-quote
+      gate skips the week first.

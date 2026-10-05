@@ -594,14 +594,16 @@ A rule entry (DEC-52):
   name: Event week
   kind: event_ratio_gate
   params: {max_ratio: 1.20}
+  title: Event week
+  summary: Front-week ATM IV ÷ next-week ATM IV is above {max_ratio:.2f}.
   condition: Front-week ATM IV ÷ next-week ATM IV > {max_ratio:.2f}
   action: Skip the week; keep the long
   rationale: >-
-    The event-week gate detects events (usually earnings) from the chain itself, with no
-    external calendar: an event priced into the front week lifts its IV above the following
-    week's. A ratio is used instead of a vol-point difference so the threshold scales across low-
-    and high-volatility symbols.
+    It's designed to catch weeks where the options market is pricing an unusual near-term
+    event, usually earnings: ...
 ```
+
+`title` and `summary` are the Trade rules page's row in plain words, and the summary names every param, so each threshold shows in it; `condition` and `action` state the rule exactly (the hovers); `rationale` is the row's Why (PO, DEC-114).
 
 Rule text and run names name a rule by what it is ("the entry trigger", "the long reset"), never by its ID (PO, DEC-113; `tests/unit/config/test_rule_copy.py`).
 
@@ -691,10 +693,10 @@ results/                            committed; every file here is one the pipeli
 
 `pmcc export` derives two more files from the results into its output, never committed under `results/`, so they can't disagree with the runs (DEC-96): `index.json` (per symbol, its runs with their detail, sections, path, data source, config hash and commit, and the analytics files present; the window, r and starting cash every run shares; the exporter's version) and `rules.json` (per run ID, the rules as it ran them: params, each param as the rule's text shows it (`shown`), rendered text, a variant's changes against its strategy, and its family, read from the robustness tables that hold it, null for a variant none does; DEC-112).
 
-`RunResult` (pydantic; JSON Schema written by `pmcc export`), schema version 3 (2 at P4-05, DEC-96; 3 at DEC-111, when the metrics dropped return on capital and annualized Sharpe and Sortino). The detail is the strategy's `report.detail` (DEC-54): a summary run keeps no rows. Every run's summary holds its analytics (P6-01, P6-02, P6-05; DEC-60 to DEC-62), and a full run keeps its cycles and its attribution: by leg, and by Greek where its `report.sections` lists `greek_attribution` (P6-03, P6-04; DEC-63, DEC-102). A result written before P6 would have null analytics and no fill IV and still validate; the committed results were re-run with both at P6-09 (DEC-101, DEC-102, DEC-105):
+`RunResult` (pydantic; JSON Schema written by `pmcc export`), schema version 4 (2 at P4-05, DEC-96; 3 at DEC-111, when the metrics dropped return on capital and annualized Sharpe and Sortino; 4 at DEC-114, when each rule and its `rule_text` gained a title and summary). The detail is the strategy's `report.detail` (DEC-54): a summary run keeps no rows. Every run's summary holds its analytics (P6-01, P6-02, P6-05; DEC-60 to DEC-62), and a full run keeps its cycles and its attribution: by leg, and by Greek where its `report.sections` lists `greek_attribution` (P6-03, P6-04; DEC-63, DEC-102). A result written before P6 would have null analytics and no fill IV and still validate; the committed results were re-run with both at P6-09 (DEC-101, DEC-102, DEC-105):
 
 ```
-schema_version  3
+schema_version  4
 manifest    run_id, symbol, strategy_id, git_sha, git_dirty, config_hash, data_manifest_hash,
             lock_hash, run_timestamp, data_source (lseg|synthetic), pmcc_version
 config      the resolved RunConfig, dumped exactly as config_hash covers it (dollars as "0.1000");
@@ -751,7 +753,8 @@ An `instrument` is `{ric, occ, kind, expiry, strike}`: `ric` is the RIC the cach
 
 ```
 web/                            P4-06 (DEC-97); Node 22 (.nvmrc, engines)
-  scripts/gen-types.mjs         public/data/schema → src/types/generated/ (+ version.ts)
+  scripts/gen-types.mjs         public/data/schema → src/types/generated/ (+ version.ts); drops
+                                pydantic's per-field titles, never a field named `title` (DEC-114)
   scripts/dist-guard.mjs        the dist guard (P4-07): no LSEG or Google Fonts host in web/dist
   src/
     main.tsx    the entry: fonts, stylesheet, App

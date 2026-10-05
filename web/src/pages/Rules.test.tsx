@@ -6,7 +6,7 @@ import { cleanup, fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { clearRunCache } from "../data/loader";
-import { FILES } from "../test/fixtures";
+import { FILES, RULES } from "../test/fixtures";
 import { bodyRows, column, panel, renderRules } from "../test/page";
 
 afterEach(() => {
@@ -59,17 +59,23 @@ describe("entry rules", () => {
     expect(link.getAttribute("href")).toBe("/rules/E-L2");
   });
 
-  it("reads Same where quant runs the baseline's rule, and its own rule where it doesn't", async () => {
+  it("reads each rule's title and summary, Same where quant runs the baseline's rule (PO, DEC-114)",
+     async () => {
     renderRules();
     const t = await table("Entry rules");
-    const [, , name, baseline, quant] = cells(ruleRow(t, "E-T1"));
-    expect([name, quant]).toEqual(["Entry trigger", "Same"]);
-    expect(baseline).toContain("Spread at most 3% of mid");
-    expect(baseline).toContain("→ Enter on the first bar");
-    const l3 = cells(ruleRow(t, "E-L3"));
-    expect(l3[3]).toContain("Choose the strike with delta nearest 0.80");
-    expect(l3[4]).toContain("Eligible calls with delta from 0.70 to 0.90");
-    expect(l3[4]).toContain("→ Choose the lowest extrinsic ÷ delta");
+    expect(cells(ruleRow(t, "E-T1")).slice(2)).toEqual([
+      "When do we enter?", "On the first bar with a spread within 3% (long) or 10% (short).",
+      "Same"]);
+    expect(cells(ruleRow(t, "E-L3")).slice(2)).toEqual([
+      "Which long call do we buy?", "The call with delta closest to 0.80.",
+      "Among deltas 0.70 to 0.90, the lowest extrinsic ÷ delta."]);
+  });
+
+  it("keeps the rule stated exactly on the summary's hover", async () => {
+    renderRules();
+    const t = await table("Entry rules");
+    const summary = within(ruleRow(t, "E-L3")).getByText("The call with delta closest to 0.80.");
+    expect(summary.getAttribute("title")).toBe("E-L3 condition → E-L3 action");
   });
 
   it("opens a rule's rationale under its row, each strategy's where they differ", async () => {
@@ -97,27 +103,31 @@ describe("skip-week gates", () => {
       .toBe("max ratio 1.20");
   });
 
-  it("states the condition with its live value and what a firing gate does", async () => {
+  it("states when each gate skips the week, with its live value", async () => {
     renderRules();
     const t = await table("Skip-week gates");
-    const [, , gate, condition] = cells(ruleRow(t, "G-4"));
-    expect(gate).toBe("Volatility risk premium");
-    expect(condition).toBe("Front-week ATM IV ÷ RV20 < 1.00→ Skip the week; keep the long");
+    expect(cells(ruleRow(t, "G-4")).slice(2, 4)).toEqual([
+      "Volatility risk premium", "Front-week ATM IV ÷ RV20 is below 1.00."]);
+    expect(cells(ruleRow(t, "G-1")).slice(2, 4)).toEqual([
+      "No tradable quote", "The selected short never passes the entry trigger on Monday."]);
   });
 });
 
 describe("exit rules", () => {
-  it("gives each exit's trigger and action, and its rationale's paragraphs", async () => {
+  it("gives each exit and what happens, and its reasoning's paragraphs", async () => {
     renderRules();
     const t = await table("Exit rules");
     expect(column(t, 1)).toEqual(["X-S1", "X-S3", "X-L1", "X-L2", "X-E1"]);
+    const headers = within(t).getAllByRole("columnheader").map((h) => h.textContent);
+    expect(headers).toEqual(["Why", "ID", "Rule", "What happens"]);
     expect(cells(ruleRow(t, "X-S3")).slice(2)).toEqual([
-      "Friday check: Spot ≥ short strike − 0.25 × EM by 15:00 ET", "Buy to close at mid"]);
+      "Friday risk check",
+      "On the last session by 15:00 ET, buy the short back if spot is within 0.25 × EM of it."]);
     fireEvent.click(within(t).getByRole("button", { name: "Rationale for X-S3" }));
     const paragraphs = within(t).getByText("The Friday buffer.").closest("td")
       ?.querySelectorAll("p");
     expect([...(paragraphs ?? [])].map((p) => p.textContent))
-      .toEqual(["There are no rolls.", "The Friday buffer."]);
+      .toEqual(["Why no rolls: next Monday's sale already is the roll.", "The Friday buffer."]);
   });
 });
 
@@ -138,26 +148,43 @@ describe("arriving for a rule", () => {
 });
 
 describe("how rules work", () => {
-  it("gives the order of operations in words", async () => {
+  it("gives the order of operations as numbered steps (PO, DEC-114)", async () => {
     renderRules();
     const how = await panel("How rules work");
     await within(how).findByText(/Every decision is made/);
-    expect(how.textContent).toContain("first the long leg's exits and resets, then the short's " +
-      "exits, then, in the week-open session only, the week's new short, sold only if no " +
-      "skip-week gate fires");
+    const steps = within(how).getAllByRole("listitem").map((li) => li.textContent);
+    expect(steps).toEqual([
+      "Check whether the long call needs to be exited or replaced.",
+      "Check whether the short call needs to be closed.",
+      "On the first trading day of the week, sell a new short call if no skip-week gate blocks " +
+      "the trade."]);
+    expect(how.textContent).toContain("we stop at the first one and log exactly what triggered it");
   });
 
-  it("reads how the strategies differ from the rules", async () => {
+  it("says how the strategies differ, the count of quant's filters read from the rules", async () => {
     renderRules();
     const how = await panel("How rules work");
-    await within(how).findByText(/differ only in/);
+    await within(how).findByText(/manage positions the same way/);
     expect(how.textContent).toContain(
-      "Baseline PMCC and Quant PMCC differ only in their Long leg expiry, Long leg strike and " +
-      "Short leg strike rules, which select the contracts, and in the Event week, Volatility " +
-      "risk premium and Minimum premium gates, which only Quant PMCC runs. Every other rule, " +
-      "every exit included, is the same in both");
-    const link = within(how).getByRole("link", { name: "Minimum premium" });
-    expect(link.getAttribute("href")).toBe("/rules/G-5");
+      "Baseline PMCC and Quant PMCC manage positions the same way. They differ only in how they " +
+      "choose the long and short calls, plus three extra filters used by Quant PMCC. That means " +
+      "any performance difference comes from contract selection and trade filtering, not " +
+      "different exit rules.");
+  });
+
+  it("names each rule that differs where the rules don't bear the sentence out", async () => {
+    const quant = RULES.strategies.find((s) => s.id === "quant_pmcc");
+    if (!quant) throw new Error("fixture lacks quant");
+    const exitsDiffer = { ...quant, rules: quant.rules.map((r) =>
+      (r.id === "X-S1" ? { ...r, summary: "Hold to expiry." } : r)) };
+    const rules = { ...RULES, strategies: RULES.strategies.map((s) =>
+      (s.id === "quant_pmcc" ? exitsDiffer : s)) };
+    renderRules("/rules", { ...FILES, "data/rules.json": rules });
+    const how = await panel("How rules work");
+    await within(how).findByText(/differ in/);
+    expect(how.textContent).not.toContain("manage positions the same way");
+    expect(within(how).getByRole("link", { name: "Take profit" }).getAttribute("href"))
+      .toBe("/rules/X-S1");
   });
 });
 
@@ -167,9 +194,9 @@ describe("ablations", () => {
     const t = await table("Ablations");
     expect(bodyRows(t).map(cells)).toEqual([
       ["A1: quant with the baseline long leg", "Long leg expiry",
-       "Choose the monthly expiry nearest 180 days to expiry"],
+       "The monthly expiry closest to 180 days out."],
       ["A1: quant with the baseline long leg", "Long leg strike",
-       "Choose the strike with delta nearest 0.80"],
+       "The call with delta closest to 0.80."],
       ["A3: quant without the event gate", "Event week", "nothing"],
     ]);
     const removed = within(t).getByRole("link", { name: "Event week" });

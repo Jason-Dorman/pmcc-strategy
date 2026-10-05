@@ -54,8 +54,12 @@ AnyParams = Annotated[
 
 @dataclass(frozen=True, slots=True)
 class RuleText:
-    """A rule's write-up with its live values filled in (Trade rules page, blotter links)."""
+    """A rule's write-up with its live values filled in: its title and summary, the Trade rules
+    page's row in plain words (PO, DEC-114); its condition and action, the rule stated exactly (the
+    blotter's and gate log's hovers); and its rationale, the row's Why."""
 
+    title: str
+    summary: str
     condition: str
     action: str
     rationale: str
@@ -70,6 +74,8 @@ class Rule(BaseModel):
     name: str = Field(pattern=r"\S")
     kind: str
     params: AnyParams
+    title: str = Field(pattern=r"\S")
+    summary: str = Field(pattern=r"\S")
     condition: str = Field(pattern=r"\S")
     action: str = Field(pattern=r"\S")
     rationale: str = Field(pattern=r"\S")
@@ -106,6 +112,9 @@ class Rule(BaseModel):
             raise ValueError(
                 f"{self.id}: params never referenced in condition or action: {sorted(unused)}"
             )
+        unshown = declared - placeholders(self.summary)  # every threshold shows in the row
+        if unshown:
+            raise ValueError(f"{self.id}: params never shown in the summary: {sorted(unshown)}")
         self.text()  # every placeholder resolves and formats
 
     def text(self) -> RuleText:
@@ -124,8 +133,8 @@ class Rule(BaseModel):
             for name, text in shown(self._templates(), self._values()).items()
         }
 
-    def _templates(self) -> tuple[str, str, str]:
-        return self.condition, self.action, self.rationale
+    def _templates(self) -> tuple[str, str, str, str, str]:
+        return self.title, self.summary, self.condition, self.action, self.rationale
 
     def _values(self) -> dict[str, object]:
         return {

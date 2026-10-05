@@ -50,6 +50,12 @@ timing:
           name: &timing_name Entry trigger, fixed bar
           kind: fixed_bar_trigger
           params: {bar: 1, long_max_spread: 0.03, short_max_spread: 0.10}
+          title: &timing_title When do we enter?
+          summary: &timing_summary >-
+            The long enters on the first hourly bar where its spread is no wider than
+            {long_max_spread:.0%} of mid. The short is decided only on bar {bar} of the week-open
+            session: sold if its spread is within {short_max_spread:.0%} of mid there, or else the
+            week is skipped.
           condition: &timing_condition >-
             The selected contract has a valid bid and ask, and its spread is at most
             {long_max_spread:.0%} of mid for the long leg or {short_max_spread:.0%} for the short
@@ -59,9 +65,10 @@ timing:
             short only on session bar {bar} of the week-open session (bar 1 ends at 10:00): sell
             it if the condition holds there, or else the no-quote gate skips the week
           rationale: &timing_rationale >-
-            The entry-timing check: the baseline with its liquidity-based entry trigger replaced
-            by a fixed bar of the week-open session, run once for each of its bars. Large dispersion in
-            results across the bars is reported as fragility.
+            The entry-timing check: the baseline run once for each bar of the week-open session,
+            with the short's liquidity-based timing replaced by that fixed bar. How far the results
+            spread across the bars shows how much they depend on timing; large dispersion is
+            reported as fragility.
 
   - id: baseline_pmcc--t2
     name: "Timing: baseline, short decided on bar 2 (11:00)"
@@ -73,6 +80,8 @@ timing:
           name: *timing_name
           kind: fixed_bar_trigger
           params: {bar: 2, long_max_spread: 0.03, short_max_spread: 0.10}
+          title: *timing_title
+          summary: *timing_summary
           condition: *timing_condition
           action: *timing_action
           rationale: *timing_rationale
@@ -87,6 +96,8 @@ timing:
           name: *timing_name
           kind: fixed_bar_trigger
           params: {bar: 3, long_max_spread: 0.03, short_max_spread: 0.10}
+          title: *timing_title
+          summary: *timing_summary
           condition: *timing_condition
           action: *timing_action
           rationale: *timing_rationale
@@ -101,6 +112,8 @@ timing:
           name: *timing_name
           kind: fixed_bar_trigger
           params: {bar: 4, long_max_spread: 0.03, short_max_spread: 0.10}
+          title: *timing_title
+          summary: *timing_summary
           condition: *timing_condition
           action: *timing_action
           rationale: *timing_rationale
@@ -115,6 +128,8 @@ timing:
           name: *timing_name
           kind: fixed_bar_trigger
           params: {bar: 5, long_max_spread: 0.03, short_max_spread: 0.10}
+          title: *timing_title
+          summary: *timing_summary
           condition: *timing_condition
           action: *timing_action
           rationale: *timing_rationale
@@ -129,6 +144,8 @@ timing:
           name: *timing_name
           kind: fixed_bar_trigger
           params: {bar: 6, long_max_spread: 0.03, short_max_spread: 0.10}
+          title: *timing_title
+          summary: *timing_summary
           condition: *timing_condition
           action: *timing_action
           rationale: *timing_rationale
@@ -143,6 +160,8 @@ timing:
           name: *timing_name
           kind: fixed_bar_trigger
           params: {bar: 7, long_max_spread: 0.03, short_max_spread: 0.10}
+          title: *timing_title
+          summary: *timing_summary
           condition: *timing_condition
           action: *timing_action
           rationale: *timing_rationale

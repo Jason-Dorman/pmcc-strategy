@@ -175,22 +175,26 @@ def test_config_condition_keeps_the_spec_comparison(rule_id: str, condition: str
 
 
 def test_config_short_exits_share_the_no_roll_rationale() -> None:
-    # DEC-35: the spec's "Why there are no rolls" opens every short exit, word for word, after the
-    # PO's line.
-    spec = re.search(r"^\*\*Why there are no rolls\.\*\* (.+)$", SPEC, flags=re.MULTILINE)
-    assert spec
-    no_roll = "There are no rolls, and the plan is never to get assigned. " + spec[1]
-    for rule_id in SHORT_EXITS:
-        assert BASELINE.rule(RuleId(rule_id)).text().rationale.split("\n")[0] == no_roll
+    # DEC-35: why there are no rolls opens every short exit's Why, word for word; the PO made it
+    # concise at DEC-114, keeping the spec's two reasons.
+    assert re.search(r"^\*\*Why there are no rolls\.\*\* ", SPEC, flags=re.MULTILINE)
+    first = {BASELINE.rule(RuleId(i)).text().rationale.split("\n")[0] for i in SHORT_EXITS}
+    assert len(first) == 1
+    (no_roll,) = first
+    assert no_roll.startswith("Why no rolls: with weekly shorts, next Monday's sale already is")
+    assert "skip the skip-week gates" in no_roll
+    assert "a defined loss into an open-ended one" in no_roll
 
 
 @pytest.mark.parametrize(
     ("rule_id", "rationale"),
     [
-        ("X-S1", "once it's worth 25% or less of the credit received"),
+        ("X-S1", "Buy the short back once it has lost most of its value"),
+        ("X-S1", "This rule stops at the Friday check"),
         ("X-S2", "keeps the short from sitting deep in the money, where early exercise"),
-        ("X-S4", "The call expires worthless, and the full credit is kept."),
+        ("X-S4", "The call expires worthless, and we keep the full premium."),
         ("E-S2", "when the Friday is a holiday, it expires on Thursday"),
+        ("E-T1", "the long waits for the next session"),
     ],
 )
 def test_config_rationale_says_why(rule_id: str, rationale: str) -> None:
@@ -200,7 +204,7 @@ def test_config_rationale_says_why(rule_id: str, rationale: str) -> None:
 def test_config_x_s3_rationale_is_the_spec_friday_buffer() -> None:
     rationale = BASELINE.rule(RuleId("X-S3")).text().rationale
     assert "The stock can move into the money in the final hour after the check" in rationale
-    assert "within 0.25 × EM of the strike" in rationale
+    assert "within 0.25 × the expected move of the strike" in rationale
 
 
 def test_config_x_s5_rationale_is_why_the_short_is_never_exercised() -> None:
@@ -211,12 +215,12 @@ def test_config_x_s5_rationale_is_why_the_short_is_never_exercised() -> None:
 
 def test_config_e_s5_rationale_uses_the_long_entry_fill() -> None:
     rationale = BASELINE.rule(RuleId("E-S5")).text().rationale
-    assert "entry fill, not its current mark" in rationale
+    assert "It uses the long's entry fill, not its current mark" in rationale
 
 
 def test_config_g_1_rationale_says_it_replaces_the_spread_gate() -> None:
     rationale = BASELINE.rule(RuleId("G-1")).text().rationale
-    assert "since the entry trigger's spread threshold already covers it" in rationale
+    assert "since the entry trigger's spread threshold already rules it out" in rationale
 
 
 def test_config_baseline_run_config_carries_the_universe_window_and_r() -> None:
