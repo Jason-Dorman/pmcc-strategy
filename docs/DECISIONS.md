@@ -2793,6 +2793,12 @@ How P7-04 builds UI-SPEC §6.4. Nothing here changes a result.
   figures (`daysTo`, `longestLong`, `assignments`), the quote and OCC styles, the coverage
   fixture, and their tests (8). The Fill model's prose names the Friction table rather than its
   number.
+- **Then, the same day:** the PO cut the limits' sentence weighing quant's long against A1 ("but
+  A1: quant with the baseline long leg made $294.00 more than Quant PMCC, so its long selection
+  isn't shown to help: its better long is mostly when its roll fell"). The paragraph now ends
+  "Quant PMCC's long leg made +$792.50 more than Baseline PMCC's." The limits no longer read
+  `robustness.json` or `rules.json`; `longSelectorAblation` and its test go. The ablations table
+  on the Comparison page still shows A1.
 
 ## E. Analytics definitions
 

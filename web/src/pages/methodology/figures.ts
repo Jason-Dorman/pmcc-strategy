@@ -2,8 +2,7 @@
 // the entry-timing dispersion and when it is fragile (PO, DEC-67), the fill check's pairs, and
 // the facts the Limits of this backtest panel states (DEC-109).
 import type { FillPoints } from "../../types/generated/fill_check";
-import type { Robustness, RobustnessRow } from "../../types/generated/robustness";
-import type { Rules } from "../../types/generated/rules";
+import type { RobustnessRow } from "../../types/generated/robustness";
 import type { MeanCI, RunResult } from "../../types/generated/run_result";
 import { tradeResults } from "../strategy/tradePnl";
 
@@ -101,15 +100,4 @@ function openLong(blotter: NonNullable<RunResult["blotter"]>, longs: Set<string>
 /** Whether two weekly-return CIs overlap: if they do, the sample can't tell the means apart. */
 export function overlap(a: MeanCI, b: MeanCI): boolean {
   return Math.max(a.low, b.low) <= Math.min(a.high, b.high);
-}
-
-/** The ablation that swaps quant's long-leg selection for the baseline's: the one whose every
- * changed rule is a long-leg entry rule (E-L…), read from rules.json, not from its name. */
-export function longSelectorAblation(rules: Rules, robustness: Robustness)
-  : RobustnessRow | undefined {
-  const ids = rules.strategies
-    .filter((s) => s.family === "ablation" && s.changes.length > 0
-      && s.changes.every((c) => c.rule_id.startsWith("E-L")))
-    .map((s) => s.id);
-  return robustness.ablations.find((r) => ids.includes(r.run_id));
 }

@@ -2,8 +2,8 @@
 // how robust its result is, and what it assumes. The limits lead (PO, DEC-116). The data panels
 // follow the symbol (the index's first when the route names none): the fill check with the
 // pooled fit beside it, and the grid, friction and timing tables (DEC-105); r is the index's.
-// The prose's figures are read from both full runs, `robustness.json` and `rules.json` as the
-// page renders (DEC-109).
+// The prose's figures are read from both full runs and `rules.json` as the page renders
+// (DEC-109).
 import { useParams } from "react-router-dom";
 
 import { STRATEGY_PAGES } from "../app/pages";
@@ -63,8 +63,7 @@ export function Methodology() {
       panels={[
         panel("limits", "Limits of this backtest", W_FULL,
               whenLoaded(runs, (rs) => (
-                <Limits runs={rs} robustness={value(robustness)} rules={rules}
-                        symbols={symbols} />)),
+                <Limits runs={rs} symbols={symbols} />)),
               false),
         panel("timing", "Bar timing and look-ahead guard", W_FULL, <BarTiming name={name} />,
               false),

@@ -1,15 +1,13 @@
 // The methodology page's figures: entry timing's fragility (PO, DEC-67), the fill check's pairs,
-// and the limits' facts (DEC-109): each long's round trip, whether two CIs overlap, and which
-// ablation swaps the long selection.
+// and the limits' facts (DEC-109): each long's round trip and whether two CIs overlap.
 import { describe, expect, it } from "vitest";
 
-import { BLOTTER, LONG, ROBUSTNESS, RULES, run, TIMING } from "../../test/fixtures";
+import { BLOTTER, LONG, run, TIMING } from "../../test/fixtures";
 import type { RobustnessRow } from "../../types/generated/robustness";
 import type { BlotterRow, RunResult } from "../../types/generated/run_result";
 import {
   fillPairs,
   gapOfSpread,
-  longSelectorAblation,
   longTrips,
   overlap,
   timing,
@@ -100,11 +98,5 @@ describe("the limits of this backtest", () => {
     expect(overlap(ci(-0.01, 0.027), ci(-0.009, 0.028))).toBe(true);
     expect(overlap(ci(-0.01, 0.01), ci(0.01, 0.02))).toBe(true);
     expect(overlap(ci(-0.01, 0.009), ci(0.01, 0.02))).toBe(false);
-  });
-
-  it("finds the ablation that swaps only the long-leg rules, from rules.json", () => {
-    expect(longSelectorAblation(RULES, ROBUSTNESS)?.run_id).toBe("quant_pmcc--a1");
-    const none = { ...RULES, strategies: RULES.strategies.filter((s) => s.id !== "quant_pmcc--a1") };
-    expect(longSelectorAblation(none, ROBUSTNESS)).toBeUndefined();
   });
 });

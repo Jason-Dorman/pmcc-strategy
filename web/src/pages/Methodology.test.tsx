@@ -236,15 +236,16 @@ describe("the prose's figures", () => {
       .toBeDefined();
   });
 
-  it("weighs quant's better long against the ablation with the baseline's long selection",
+  it("states how much more quant's long made, and nothing of the ablations (DEC-116)",
      async () => {
     renderMethodology("/methodology/NVDA",
                       { ...FILES, [QUANT]: quant(withLegs({ long_pnl: 900 })) });
     const limits = await panel("Limits of this backtest");
     await within(limits).findByText(/Rolls book the gain/);
     expect(limits.textContent).toContain("Quant PMCC's long leg made +$227.50 more than Baseline "
-      + "PMCC's, but A1: quant with the baseline long leg made $294.00 more than Quant PMCC, so "
-      + "its long selection isn't shown to help");
+      + "PMCC's.");
+    expect(limits.textContent).not.toContain("A1");
+    expect(limits.textContent).not.toContain("long selection");
   });
 
   it("says whether the strategies' weekly-return CIs overlap", async () => {

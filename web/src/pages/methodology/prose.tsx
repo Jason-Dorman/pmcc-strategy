@@ -7,11 +7,10 @@ import { shortDate } from "../../components/charts/axis";
 import { Note } from "../../components/Note";
 import { money, moneySigned } from "../../format/money";
 import { count, meanCI, ratio } from "../../format/number";
-import type { Robustness } from "../../types/generated/robustness";
 import type { Rules } from "../../types/generated/rules";
 import type { RunResult } from "../../types/generated/run_result";
 import { legSplit, longRode } from "../compare/figures";
-import { longSelectorAblation, longTrips, overlap } from "./figures";
+import { longTrips, overlap } from "./figures";
 
 /** A rule's name as the runs' configs have it, else its ID's link alone. */
 export type RuleName = (id: string) => string;
@@ -97,8 +96,6 @@ export function FillModel({ rules }: { rules: Rules | null }) {
 export interface LimitsInput {
   /** Quant's full run, then the baseline's. */
   runs: readonly [RunResult, RunResult];
-  robustness: Robustness | null;
-  rules: Rules | null;
   symbols: readonly string[];
 }
 
@@ -149,7 +146,7 @@ function Legs({ runs }: LimitsInput) {
   );
 }
 
-function Timing({ runs, robustness, rules, name }: LimitsInput & { name: RuleName }) {
+function Timing({ runs, name }: LimitsInput & { name: RuleName }) {
   const [quant, baseline] = runs;
   const firsts = runs.flatMap((r) => {
     const first = longTrips(r)[0];
@@ -157,7 +154,6 @@ function Timing({ runs, robustness, rules, name }: LimitsInput & { name: RuleNam
   });
   const q = legSplit(quant);
   const b = legSplit(baseline);
-  const a = rules && robustness ? longSelectorAblation(rules, robustness) : undefined;
   return (
     <p>
       <b>Rolls book the gain; they don&apos;t make it.</b>{" "}
@@ -168,14 +164,9 @@ function Timing({ runs, robustness, rules, name }: LimitsInput & { name: RuleNam
           <Named id={closed.ruleId} name={name} />.
         </span>
       ))}
-      {q && b && a && q.long > b.long && (
+      {q && b && q.long > b.long && (
         <> {q.name}&apos;s long leg made {moneySigned(q.long - b.long)} more than{" "}
-          {b.name}&apos;s, but {a.label} made {money(Math.abs(a.pnl_vs_reference))}{" "}
-          {a.pnl_vs_reference >= 0 ? "more" : "less"} than {q.name}
-          {a.pnl_vs_reference >= 0
-            ? <>, so its long selection isn&apos;t shown to help: its better long is mostly when
-                its roll fell.</>
-            : "."}</>
+          {b.name}&apos;s.</>
       )}
     </p>
   );
