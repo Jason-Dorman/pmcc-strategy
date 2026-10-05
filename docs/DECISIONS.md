@@ -2703,6 +2703,11 @@ export and never committed, so it gains two fields without a schema version.
 - **The results:** a preview batch from the uncommitted tree wrote all 24 runs and every analytics
   file, and the built site passes the smoke test (18). The publishable re-run follows the code
   commit, as at DEC-113.
+- **Re-run:** 2026-10-04, `just batch` from a clean tree at `882f32f`, every run
+  `git_dirty: false`; `just verify` passed all 31 files, now schema version 4. Against the
+  committed results only the rules' text, `rule_text`, `config_hash`, the provenance fields and
+  every file's `schema_version` moved: no figure, row or CI. Every rule in the exported
+  `rules.json` has its title and summary, and none of its text names a rule ID.
 
 ## E. Analytics definitions
 
