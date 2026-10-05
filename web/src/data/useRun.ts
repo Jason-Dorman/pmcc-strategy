@@ -1,11 +1,12 @@
 // A page's results files: a run found through the index by symbol and run ID, a symbol's or the
 // universe's file by its key in the index, or `rules.json`, each loaded on demand and cached
-// (ARCHITECTURE §13). A file the index lacks is "missing", never an error.
+// (ARCHITECTURE §13), and the manifests of several runs for a page that draws on them all. A
+// file the index lacks is "missing", never an error.
 import { useEffect, useState } from "react";
 
 import type { Index, IndexRun } from "../types/generated/index";
 import type { Rules } from "../types/generated/rules";
-import type { RunResult } from "../types/generated/run_result";
+import type { Manifest, RunResult } from "../types/generated/run_result";
 import { failure, useIndex } from "./IndexContext";
 import { loadFile, loadRun } from "./loader";
 import type { Loaded } from "./state";
@@ -46,6 +47,35 @@ function useLoaded<T>(locate: (index: Index) => string | undefined, what: string
 export function useRun(symbol: string, runId: string): Loaded<RunResult> {
   return useLoaded((index) => findRun(index, symbol, runId)?.path, `${symbol} / ${runId}`,
                    loadRun);
+}
+
+/** The manifests of the runs a page's figures came from (the universe page's, which the universe
+ * files don't carry), as they load. A run the index lacks, or that fails to load, is left out:
+ * the footer shows what it can (UI-SPEC §2). */
+export function useManifests(runs: readonly (readonly [symbol: string, runId: string])[]):
+    Manifest[] {
+  const index = useIndex();
+  const paths = index.kind === "ready"
+    ? runs.flatMap(([symbol, runId]) => findRun(index.value, symbol, runId)?.path ?? [])
+    : [];
+  const key = paths.join("\n");
+  const [loaded, setLoaded] = useState<{ key: string; manifests: Manifest[] } | null>(null);
+
+  useEffect(() => {
+    if (key === "") return;
+    let live = true;
+    void Promise.allSettled(key.split("\n").map((path) => loadRun(path))).then((results) => {
+      if (live) {
+        setLoaded({ key, manifests: results.flatMap((r) => (
+          r.status === "fulfilled" ? [r.value.manifest] : [])) });
+      }
+    });
+    return () => {
+      live = false;
+    };
+  }, [key]);
+
+  return loaded?.key === key ? loaded.manifests : [];
 }
 
 /** One of a symbol's files (`robustness`, `coverage`, `fill_check`). */

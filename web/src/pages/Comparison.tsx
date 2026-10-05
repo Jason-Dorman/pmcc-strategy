@@ -15,7 +15,7 @@ import { W_FULL, W_HALF } from "../theme/tokens";
 import type { Pooled as PooledFile } from "../types/generated/pooled";
 import type { Robustness } from "../types/generated/robustness";
 import { READOUT_HINTS, readouts } from "./compare/figures";
-import { Headline, NavCompare, Pooled, Purpose } from "./compare/sections";
+import { Headline, NavCompare, Pooled, POOLED_CAPTION, Purpose } from "./compare/sections";
 import { panel, whenLoaded } from "./placeholder";
 
 const QUANT = STRATEGY_PAGES.quant;
@@ -46,8 +46,7 @@ export function Comparison() {
             CI resamples whole weeks.</> },
         { ...panel("pooled", "Pooled universe", W_HALF,
                    whenLoaded(pooled, (p) => <Pooled pooled={p} name={name} quantId={QUANT} />)),
-          caption: <>The pooled CI resamples each week across every symbol at once, so symbols
-            that move together aren&apos;t counted as independent evidence.</> },
+          caption: POOLED_CAPTION },
         { ...panel("ablations", "Ablations", W_FULL,
                    whenLoaded(robustness, (r) => (
                      <RobustnessTable label="Ablations" rows={r.ablations} against="quant" />))),

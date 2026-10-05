@@ -1,5 +1,5 @@
-// Helpers for the page tests (strategy, comparison, rules, methodology): render a page over a fake fetch, and read its
-// readouts, panels and tables the way a reader sees them.
+// Helpers for the page tests (strategy, comparison, rules, methodology, universe): render a page
+// over a fake fetch, and read its readouts, panels and tables the way a reader sees them.
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { expect, vi } from "vitest";
@@ -9,6 +9,7 @@ import { Comparison } from "../pages/Comparison";
 import { Methodology } from "../pages/Methodology";
 import { Rules } from "../pages/Rules";
 import { Strategy } from "../pages/Strategy";
+import { Universe } from "../pages/Universe";
 import type { RunResult, Section } from "../types/generated/run_result";
 import { fakeFetch, FILES, run } from "./fixtures";
 
@@ -59,6 +60,19 @@ export function renderMethodology(path = "/methodology/NVDA",
       <IndexProvider>
         <Routes>
           <Route path="/methodology/:symbol?" element={<Methodology />} />
+        </Routes>
+      </IndexProvider>
+    </MemoryRouter>,
+  );
+}
+
+export function renderUniverse(files: Record<string, unknown> = FILES) {
+  vi.stubGlobal("fetch", vi.fn(fakeFetch(files)));
+  return render(
+    <MemoryRouter initialEntries={["/universe"]}>
+      <IndexProvider>
+        <Routes>
+          <Route path="/universe" element={<Universe />} />
         </Routes>
       </IndexProvider>
     </MemoryRouter>,

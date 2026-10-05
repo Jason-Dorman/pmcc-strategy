@@ -131,6 +131,7 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-114 | The Trade rules page in plain words: each rule's title, summary and Why | SETTLED (PO) · the exits' merged column put to the PO | handover 2026-10-03 |
 | DEC-115 | P7-04: the Methodology page | ENG · amended by DEC-116 · the half-width robustness tables put to the PO | handover 2026-10-04 |
 | DEC-116 | Methodology: the limits first, three panels dropped | SETTLED (PO) | P7-04 |
+| DEC-117 | P7-05: the Universe page | ENG | P7-05 |
 
 ---
 
@@ -2799,6 +2800,38 @@ How P7-04 builds UI-SPEC §6.4. Nothing here changes a result.
   "Quant PMCC's long leg made +$792.50 more than Baseline PMCC's." The limits no longer read
   `robustness.json` or `rules.json`; `longSelectorAblation` and its test go. The ablations table
   on the Comparison page still shows A1.
+
+### DEC-117 — P7-05: the Universe page
+**Status:** ENG · **Affects:** P7-05; UI-SPEC §6.5; ARCHITECTURE §13; DEC-66, DEC-105, DEC-111, DEC-113
+
+How P7-05 builds UI-SPEC §6.5. Nothing here changes a result.
+
+- **Data** (DEC-105): [1] `universe/suitability.json`, [2] `universe/headline.json`, [3]
+  `universe/pooled.json`; the strategies' names from the index, and the screen's rule names and
+  hovers from quant's rules in `rules.json`. No readouts: §6.5 lists none, and each symbol's
+  comparison page has them.
+- **[1] Symbol suitability:** a row per symbol, sortable: long extrinsic per delta (% of spot),
+  median spread (long / short), weekly credit after half-spread (% of long cost), IV ÷ RV20, and
+  the event-week gate's fires ("2 of 26 weeks", linked to the gate, with quant's threshold under
+  it). Each measure's weeks are under its value, since each is over the weeks it could be read
+  (DEC-66). Percents are at 1 dp and a spread under 1% at 2 (UI-SPEC §9), so NVDA's 1.65% credit
+  reads 1.7% and its spreads 2.5% / 2.1%. The caption says how the screen is read and names the
+  quant rules it reads (the long and short strike rules, the volatility risk premium and event
+  week gates), each linked (DEC-113).
+- **[2] Headline by symbol:** the comparison page's headline columns (`HEADLINE_COLUMNS`) after a
+  Symbol column that links to `#/compare/<SYM>`; the symbols in the file's order, quant first
+  within each, as Comparison [2] lists them. `headline.json` has no drawdown as a % of the peak,
+  so max drawdown shows dollars alone: the shared column now leaves the % out where a row has
+  none, which no comparison row lacks.
+- **[3] Pooled universe:** the comparison page's panel and caption, at full width.
+- **Footer:** the universe files carry no manifest, so the page loads the runs `headline.json`
+  names and shows their manifests (`useManifests`; a run the index lacks, or that fails to load,
+  is left out). On NVDA these are the two full runs the comparison page loads, about 1 MB.
+- **On NVDA:** extrinsic per delta 3.0% of spot, spreads 2.5% / 2.1%, credit 1.7% of the long,
+  IV ÷ RV20 1.12, the event-week gate 2 of 26 weeks above 1.20; quant +$3,303.50 and the
+  baseline +$3,672.50, as on the comparison page.
+- **Tests:** `web/src/pages/Universe.test.tsx` (12); the fixtures gain `headline.json` and
+  `suitability.json`. The smoke test checks the page on the built site (20 pass).
 
 ## E. Analytics definitions
 

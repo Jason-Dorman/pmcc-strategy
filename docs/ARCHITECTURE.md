@@ -762,7 +762,8 @@ web/                            P4-06 (DEC-97); Node 22 (.nvmrc, engines)
                 pages (paths), site (repo URL, wordmark)
     data/       loader (index; a per-file cache of runs and a symbol's or the universe's files;
                 schema_version check), IndexContext, useRun (useRun, useSymbolFile,
-                useUniverseFile; P7-02; useRules, P7-03), state (with both(), two loads as one)
+                useUniverseFile; P7-02; useRules, P7-03; useManifests, P7-05), state (with
+                both(), two loads as one)
     types/generated/   json-schema-to-typescript output (gitignored; regenerated before typecheck/build)
     theme/      tokens.css (theme.py's values), shell.css (PAGE_CSS, ported), index.css (Tailwind +
                 tokens), tokens.ts (with DEC-04's chart roles), fonts.ts; echarts.ts (the modular
@@ -780,13 +781,15 @@ web/                            P4-06 (DEC-97); Node 22 (.nvmrc, engines)
                 Comparison (P7-02) and compare/ (its figures and panels, DEC-110);
                 Rules (P7-03) and rules/ (its model and panels, DEC-112);
                 Methodology (P7-04) and methodology/ (its figures, data panels and prose,
-                DEC-115); Universe, Data (placeholders until their P7 item);
+                DEC-115); Universe (P7-05) and universe/ (its tables, DEC-117); Data (a
+                placeholder until P7-06);
                 placeholder (the placeholder helpers)
     lib/        cn (shadcn/ui's class joiner)
     format/     money (and chart ticks, signed), number (percent, ratio, IV), time (ET), hash,
                 rule (a rule ID's plain label for the filters, DEC-107)
-    test/       fixtures (an index, two full runs, NVDA's robustness and fill check, the pooled
-                universe and fill check, and rules.json, typed against the schema); page (the page tests' helpers); setup
+    test/       fixtures (an index, two full runs, NVDA's robustness and fill check, the universe's
+                headline, pooled, pooled fill check and suitability files, and rules.json, typed
+                against the schema); page (the page tests' helpers); setup
                 (Vitest: jsdom's missing canvas, for ECharts, and scrollIntoView)
   e2e/          smoke.spec.ts: the Playwright smoke test (P4-08, DEC-99); playwright.config.ts
                 serves web/dist with vite preview; tsconfig.e2e.json type-checks it

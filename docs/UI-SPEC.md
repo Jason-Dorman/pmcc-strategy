@@ -212,9 +212,11 @@ Panels that depend on the data follow the selected symbol (the index's first whe
 
 | # | Panel | Width | Content |
 | --- | --- | --- | --- |
-| 1 | Symbol suitability | 10 | symbol · long extrinsic per delta (% of spot) · median spread % (long / short) · average weekly credit after half-spread (% of long cost) · average IV ÷ RV20 · G-3 fires of the weeks it was evaluated; each measure with the weeks it's over, and a note that it's read at each week's first week-open bar from quant's picks (`universe/suitability.json`, DEC-66) |
-| 2 | Headline by symbol | 10 | symbol × strategy: P&L, return on starting NAV, max drawdown, Sharpe (annualized), payoff, weekly-return CI (DEC-111); each row links to that symbol's comparison page |
+| 1 | Symbol suitability | 10 | symbol · long extrinsic per delta (% of spot) · median spread % (long / short) · average weekly credit after half-spread (% of long cost) · average IV ÷ RV20 · event-week gate fires of the weeks it was evaluated (linked to the gate, quant's threshold under it); each measure with the weeks it's over, and a caption that it's read at each week's first week-open bar from quant's picks, naming the rules it reads (`universe/suitability.json`, DEC-66, DEC-113) |
+| 2 | Headline by symbol | 10 | symbol × strategy, the symbols in the file's order and quant first within each: P&L, return on starting NAV, max drawdown (dollars; the file has no % of the peak), Sharpe (annualized), payoff, weekly-return CI (DEC-111); each row's symbol links to that symbol's comparison page |
 | 3 | Pooled universe | 10 | same content as Comparison [3] |
+
+No readouts. The universe files carry no manifest, so the footer shows those of the runs the headline came from (DEC-117).
 
 ### 6.6 Data — `#/data/:symbol?` (DEC-75)
 

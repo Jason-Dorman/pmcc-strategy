@@ -1,6 +1,7 @@
 // The comparison page's panels (UI-SPEC §6.1): the purpose, with its sentence on the result's main
 // limit read from both runs' leg attribution (DEC-109); the NAV comparison and its values; the
-// headline, one row per strategy; and the pooled universe.
+// headline, one row per strategy; and the pooled universe. The universe page reuses the
+// headline's columns and the pooled panel (UI-SPEC §6.5).
 import { useCallback, useMemo } from "react";
 import { Link } from "react-router-dom";
 
@@ -102,7 +103,8 @@ export function NavCompare({ quant, baseline }: { quant: RunResult; baseline: Ru
 
 // ---- headline ---------------------------------------------------------------------------------
 
-const HEADLINE_COLUMNS: readonly TableColumn<HeadlineRow>[] = [
+/** The headline's columns, from the strategy on: the universe page puts its symbol first. */
+export const HEADLINE_COLUMNS: readonly TableColumn<HeadlineRow>[] = [
   { id: "strategy", header: "Strategy", sort: (r) => r.name,
     cell: (r) => <span className="pm-label">{r.name}</span> },
   { id: "pnl", header: "P&L", num: true, sort: (r) => r.pnl ?? undefined,
@@ -111,7 +113,8 @@ const HEADLINE_COLUMNS: readonly TableColumn<HeadlineRow>[] = [
     sort: (r) => r.returnOnNav ?? undefined, cell: (r) => orDash(r.returnOnNav, pct) },
   { id: "drawdown", header: "Max drawdown", num: true, sort: (r) => r.maxDrawdown ?? undefined,
     cell: (r) => (r.maxDrawdown === null ? "—"
-      : `${money(r.maxDrawdown)} (${orDash(r.maxDrawdownPct, pct)})`) },
+      : r.maxDrawdownPct === null ? money(r.maxDrawdown)
+      : `${money(r.maxDrawdown)} (${pct(r.maxDrawdownPct)})`) },
   { id: "sharpe", header: "Sharpe (annualized)", num: true, sort: (r) => r.sharpe ?? undefined,
     cell: (r) => orDash(r.sharpe, ratio) },
   { id: "payoff", header: "Payoff", num: true, sort: (r) => r.payoff ?? undefined,
@@ -154,3 +157,8 @@ export function Pooled({ pooled, name, quantId }: {
     />
   );
 }
+
+export const POOLED_CAPTION = (
+  <>The pooled CI resamples each week across every symbol at once, so symbols that move together
+    aren&apos;t counted as independent evidence.</>
+);

@@ -1,13 +1,14 @@
-// A small index, two full runs, NVDA's robustness and fill check, the pooled universe files, and
-// rules.json,
-// shaped as `pmcc export` writes them, for the page, route and loader tests. Each is typed against the
-// generated schema, so a schema change shows here.
+// A small index, two full runs, NVDA's robustness and fill check, the universe's files and
+// rules.json, shaped as `pmcc export` writes them, for the page, route and loader tests. Each is
+// typed against the generated schema, so a schema change shows here.
 import type { FillCheck } from "../types/generated/fill_check";
+import type { Headline } from "../types/generated/headline";
 import type { Index } from "../types/generated/index";
 import type { Pooled } from "../types/generated/pooled";
 import type { PooledFillCheck } from "../types/generated/pooled_fill_check";
 import type { Robustness, RobustnessRow } from "../types/generated/robustness";
 import type { RuleChange, RuleOut, Rules, StrategyRules } from "../types/generated/rules";
+import type { Suitability } from "../types/generated/suitability";
 import type {
   BlotterRow,
   GateLogRowOut,
@@ -33,8 +34,9 @@ export const INDEX: Index = {
     source: "FRED",
   },
   starting_cash: 15000,
-  universe: { pooled: "universe/pooled.json",
-              pooled_fill_check: "universe/pooled_fill_check.json" },
+  universe: { headline: "universe/headline.json", pooled: "universe/pooled.json",
+              pooled_fill_check: "universe/pooled_fill_check.json",
+              suitability: "universe/suitability.json" },
   symbols: [
     {
       symbol: "NVDA",
@@ -342,6 +344,30 @@ export const POOLED: Pooled = {
   ],
 };
 
+/** The headline by symbol, rows as the batch writes them: the baseline first, then quant. */
+export const HEADLINE: Headline = {
+  schema_version: SCHEMA_VERSION,
+  rows: [
+    { symbol: "NVDA", strategy_id: "baseline_pmcc", pnl: 3672.5, return_on_starting_nav: 0.244833,
+      max_drawdown: 4211.5, sharpe_annualized: 1.241761, payoff_ratio: 0.793884,
+      weekly_return: ci(0.009547, -0.008884, 0.027615) },
+    { symbol: "NVDA", strategy_id: "quant_pmcc", pnl: 3303.5, return_on_starting_nav: 0.220233,
+      max_drawdown: 4261.5, sharpe_annualized: 1.105636, payoff_ratio: 0.883684,
+      weekly_return: ci(0.008852, -0.010061, 0.027401) },
+  ],
+};
+
+/** The suitability screen over NVDA alone, as P6-08 measured it. */
+export const SUITABILITY: Suitability = {
+  schema_version: SCHEMA_VERSION,
+  rows: [
+    { symbol: "NVDA", weeks: 26, long_weeks: 26, short_weeks: 26, iv_rv20_weeks: 26,
+      long_extrinsic_per_delta_pct_spot: 0.030468, median_spread_long_pct: 0.024786,
+      median_spread_short_pct: 0.02069, weekly_credit_after_half_spread_pct_long_cost: 0.016511,
+      iv_over_rv20: 1.121395, g3_fires: 2, g3_weeks: 26, g3_max_ratio: 1.2 },
+  ],
+};
+
 // ---- rules.json --------------------------------------------------------------------------------
 
 interface RuleFixture {
@@ -489,6 +515,8 @@ export const FILES: Record<string, unknown> = {
   "data/NVDA/fill_check.json": FILL_CHECK,
   "data/universe/pooled_fill_check.json": POOLED_FILL_CHECK,
   "data/universe/pooled.json": POOLED,
+  "data/universe/headline.json": HEADLINE,
+  "data/universe/suitability.json": SUITABILITY,
   "data/rules.json": RULES,
 };
 

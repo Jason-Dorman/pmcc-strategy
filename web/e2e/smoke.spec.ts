@@ -149,6 +149,24 @@ test("the methodology page draws every pair, its tables and the limits", async (
     .toContainText("long leg made");
 });
 
+test("the universe page shows the screen, the headline by symbol and the pooled universe",
+     async ({ page }) => {
+  await page.goto("./#/universe");
+  await settled(page);
+  const rows = (name: string) =>
+    page.getByRole("table", { name, exact: true }).locator("tbody tr:not(.pm-spacer)");
+  await expect(rows("Symbol suitability").first()).toContainText(SYMBOL);
+  await expect(rows("Pooled universe").first()).toBeVisible();
+  // Two strategies per symbol, quant first, each row linked to its comparison page (DEC-111).
+  const headline = rows("Headline by symbol");
+  expect(await headline.count()).toBeGreaterThanOrEqual(2);
+  await expect(headline.first()).toContainText("Quant PMCC");
+  // The footer traces the figures to the runs they came from.
+  await expect(page.getByRole("contentinfo")).toContainText(`${SYMBOL} quant_pmcc`);
+  await headline.first().getByRole("link", { name: SYMBOL }).click();
+  await expect(page).toHaveURL(new RegExp(`#/compare/${SYMBOL}$`));
+});
+
 test("a trade's rule link lands on that rule's row, outlined and in view", async ({ page }) => {
   await page.goto(`./#/quant/${SYMBOL}`);
   await settled(page);
