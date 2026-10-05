@@ -1,17 +1,14 @@
 // The methodology page's figures: entry timing's fragility (PO, DEC-67), the fill check's pairs,
-// the longest long and the missed assignments (Reg T), and the limits' facts (DEC-109): each
-// long's round trip, whether two CIs overlap, and which ablation swaps the long selection.
+// and the limits' facts (DEC-109): each long's round trip, whether two CIs overlap, and which
+// ablation swaps the long selection.
 import { describe, expect, it } from "vitest";
 
 import { BLOTTER, LONG, ROBUSTNESS, RULES, run, TIMING } from "../../test/fixtures";
 import type { RobustnessRow } from "../../types/generated/robustness";
 import type { BlotterRow, RunResult } from "../../types/generated/run_result";
 import {
-  assignments,
-  daysTo,
   fillPairs,
   gapOfSpread,
-  longestLong,
   longSelectorAblation,
   longTrips,
   overlap,
@@ -63,30 +60,6 @@ describe("the fill check's pairs", () => {
   it("takes a pair's gap as a share of its spread, none on a locked quote", () => {
     expect(gapOfSpread({ i: 0, mid: 1, trade: 1.1, spread: 0.2 })).toBeCloseTo(0.5);
     expect(gapOfSpread({ i: 1, mid: 2, trade: 1.9, spread: 0 })).toBeNull();
-  });
-});
-
-describe("Reg T", () => {
-  it("counts calendar days from a bar to an expiry", () => {
-    expect(daysTo("2026-03-30T10:00:00-04:00", "2026-08-21")).toBe(144);
-  });
-
-  it("finds the most days any long had left when bought", () => {
-    const later: BlotterRow = { ...BLOTTER[0] as BlotterRow, time: "2026-05-26T10:00:00-04:00",
-                                instrument: { ...LONG, expiry: "2027-01-15" } };
-    const runs = [run("baseline_pmcc", []),
-                  { ...run("quant_pmcc", []), blotter: [...BLOTTER, later] }];
-    expect(longestLong(runs)).toBe(234);
-    expect(longestLong([{ ...run("quant_pmcc", []), blotter: [] }])).toBeUndefined();
-  });
-
-  it("counts the missed assignments over the runs", () => {
-    const assigned = (n: number): RunResult => {
-      const r = run("quant_pmcc", []);
-      return { ...r, summary: { ...r.summary, exit_mix: { "X-S5": n } } };
-    };
-    expect(assignments([run("baseline_pmcc", []), run("quant_pmcc", [])])).toBe(0);
-    expect(assignments([assigned(1), assigned(2)])).toBe(3);
   });
 });
 

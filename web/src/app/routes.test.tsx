@@ -40,7 +40,7 @@ const ROUTES: [string, string][] = [
   ["/quant/NVDA", "Gate log"],
   ["/rules", "Entry rules"],
   ["/rules/X-S3", "Exit rules"],
-  ["/methodology", "Data coverage"],
+  ["/methodology", "Limits of this backtest"],
   ["/methodology/NVDA", "Stated assumptions"],
   ["/universe", "Symbol suitability"],
   ["/data", "Data connection required"],

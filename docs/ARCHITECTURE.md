@@ -785,8 +785,8 @@ web/                            P4-06 (DEC-97); Node 22 (.nvmrc, engines)
     lib/        cn (shadcn/ui's class joiner)
     format/     money (and chart ticks, signed), number (percent, ratio, IV), time (ET), hash,
                 rule (a rule ID's plain label for the filters, DEC-107)
-    test/       fixtures (an index, two full runs, NVDA's robustness, coverage and fill check,
-                the pooled universe and fill check, and rules.json, typed against the schema); page (the page tests' helpers); setup
+    test/       fixtures (an index, two full runs, NVDA's robustness and fill check, the pooled
+                universe and fill check, and rules.json, typed against the schema); page (the page tests' helpers); setup
                 (Vitest: jsdom's missing canvas, for ECharts, and scrollIntoView)
   e2e/          smoke.spec.ts: the Playwright smoke test (P4-08, DEC-99); playwright.config.ts
                 serves web/dist with vite preview; tsconfig.e2e.json type-checks it

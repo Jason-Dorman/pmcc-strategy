@@ -1,8 +1,9 @@
-// Methodology (UI-SPEC §6.4): how the backtest gets its data and fills, what it assumes, how
-// robust its result is, and where it stops. The data panels follow the symbol (the index's first
-// when the route names none): coverage, the fill check with the pooled fit beside it, and the
-// friction, timing and grid tables (DEC-105); r is the index's. The prose's figures are read
-// from both full runs, `robustness.json` and `rules.json` as the page renders (DEC-109).
+// Methodology (UI-SPEC §6.4): where the backtest stops, how it times decisions and fills them,
+// how robust its result is, and what it assumes. The limits lead (PO, DEC-116). The data panels
+// follow the symbol (the index's first when the route names none): the fill check with the
+// pooled fit beside it, and the grid, friction and timing tables (DEC-105); r is the index's.
+// The prose's figures are read from both full runs, `robustness.json` and `rules.json` as the
+// page renders (DEC-109).
 import { useParams } from "react-router-dom";
 
 import { STRATEGY_PAGES } from "../app/pages";
@@ -13,25 +14,11 @@ import { useIndex } from "../data/IndexContext";
 import { both, type Loaded } from "../data/state";
 import { useRules, useRun, useSymbolFile, useUniverseFile } from "../data/useRun";
 import { W_FULL, W_HALF } from "../theme/tokens";
-import type { Coverage } from "../types/generated/coverage";
 import type { FillCheck } from "../types/generated/fill_check";
 import type { PooledFillCheck } from "../types/generated/pooled_fill_check";
 import type { Robustness } from "../types/generated/robustness";
-import {
-  BarTiming,
-  DataScheme,
-  FillModel,
-  Limits,
-  RegTTreatment,
-  ruleNames,
-} from "./methodology/prose";
-import {
-  Assumptions,
-  CoveragePanel,
-  MidVsPrint,
-  scatterCaption,
-  TimingPanel,
-} from "./methodology/sections";
+import { BarTiming, FillModel, Limits, ruleNames } from "./methodology/prose";
+import { Assumptions, MidVsPrint, scatterCaption, TimingPanel } from "./methodology/sections";
 import { panel, whenLoaded } from "./placeholder";
 
 function value<T>(state: Loaded<T>): T | null {
@@ -65,27 +52,20 @@ export function Methodology() {
   const index = useIndex();
   const { symbol, symbols } = useSymbols();
   const runs = both(useRun(symbol, STRATEGY_PAGES.quant), useRun(symbol, STRATEGY_PAGES.baseline));
-  const coverage = useSymbolFile<Coverage>(symbol, "coverage");
   const fill = useSymbolFile<FillCheck>(symbol, "fill_check");
   const robustness = useSymbolFile<Robustness>(symbol, "robustness");
   const pooledFill = value(useUniverseFile<PooledFillCheck>("pooled_fill_check"));
   const rules = value(useRules());
   const pair = value(runs);
   const name = ruleNames(pair ?? []);
-  const example = pair?.[0].blotter?.find((b) => b.rule_id === "E-L1")?.instrument;
-  const cash = value(index)?.starting_cash;
   return (
     <PageFrame
       panels={[
-        panel("ric", "Data and RIC scheme", W_HALF, <DataScheme example={example} />, false),
-        { ...panel("coverage", "Data coverage", W_HALF,
-                   whenLoaded(coverage, (c) => <CoveragePanel coverage={c} />)),
-          note: symbol,
-          caption: <>Contracts asked of LSEG and answered, by kind. Mid availability is the
-            share of the calendar&apos;s session bars, over each answered contract&apos;s dates,
-            with a valid quote (BID and ASK above zero, ASK at or above BID). An IV failure is a
-            bar with a valid quote whose mid no volatility prices; the contract can&apos;t be
-            picked on it.</> },
+        panel("limits", "Limits of this backtest", W_FULL,
+              whenLoaded(runs, (rs) => (
+                <Limits runs={rs} robustness={value(robustness)} rules={rules}
+                        symbols={symbols} />)),
+              false),
         panel("timing", "Bar timing and look-ahead guard", W_FULL, <BarTiming name={name} />,
               false),
         panel("fills", "Fill model", W_FULL, <FillModel rules={rules} />, false),
@@ -93,9 +73,13 @@ export function Methodology() {
                   pooledFill),
         fillPanel("longs", "Mid vs print — long-dated longs", "longs", "long-dated call", fill,
                   pooledFill),
-        panel("regt", "Reg T treatment", W_FULL,
-              <RegTTreatment runs={pair} symbol={symbol} startingCash={cash}
-                             name={name} />, false),
+        { ...panel("grid", "Parameter grid", W_FULL,
+                   whenLoaded(robustness, (r) => (
+                     <RobustnessTable label="Parameter grid" rows={r.grid} against="quant" />))),
+          note: "one parameter at a time",
+          caption: <>Quant at its defaults, then one parameter moved at a time. Every run is
+            published and none is picked as best; the defaults were fixed before the first
+            run.</> },
         { ...panel("friction", "Friction", W_HALF,
                    whenLoaded(robustness, (r) => (
                      <RobustnessTable label="Friction" rows={r.friction} against="its own at 0" />
@@ -111,21 +95,9 @@ export function Methodology() {
             fragile when any fixed bar&apos;s mean weekly return falls outside the
             baseline&apos;s 95% CI: then it moved the result more than the sample&apos;s own
             noise.</> },
-        { ...panel("grid", "Parameter grid", W_FULL,
-                   whenLoaded(robustness, (r) => (
-                     <RobustnessTable label="Parameter grid" rows={r.grid} against="quant" />))),
-          note: "one parameter at a time",
-          caption: <>Quant at its defaults, then one parameter moved at a time. Every run is
-            published and none is picked as best; the defaults were fixed before the first
-            run.</> },
         { ...panel("assumptions", "Stated assumptions", W_FULL,
                    whenLoaded(index, (i) => <Assumptions rate={i.risk_free_rate} />)),
           caption: <>The rate&apos;s full source is on its hover.</> },
-        panel("limits", "Limits of this backtest", W_FULL,
-              whenLoaded(runs, (rs) => (
-                <Limits runs={rs} robustness={value(robustness)} rules={rules}
-                        symbols={symbols} />)),
-              false),
       ]}
       manifests={pair ? pair.map((r) => r.manifest) : []}
     />

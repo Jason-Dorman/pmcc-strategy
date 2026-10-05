@@ -33,7 +33,7 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-07 | Backtest window | SETTLED (PO) | — |
 | DEC-08 | Long-dated coverage | VERIFY: NVDA measured (P1-09) and its results reviewed (P5-05); QQQ, TSLA at P1-10 | P1-10 (paused, DEC-15) |
 | DEC-09 | Live-contract RIC form | SETTLED (spec, probed) | — |
-| DEC-10 | Reg T and FINRA 4210 citations | SETTLED (PO): hedged short stock after X-S5 · citations found · quoted on Methodology (P7-04) | — |
+| DEC-10 | Reg T and FINRA 4210 citations | SETTLED (PO): hedged short stock after X-S5 · citations found and re-read (P7-04) · off the site (DEC-116) | — |
 | DEC-11 | Risk-free rate | SETTLED (PO) | — |
 | DEC-12 | Per-symbol identifiers, splits, max strike | SETTLED (PO) | — |
 | DEC-13 | Hourly field availability | SETTLED (spec, probed) | — |
@@ -129,7 +129,8 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-112 | P7-03: the Trade rules page and its traceability links | ENG · the rule tables' height SETTLED (PO); its copy amended by DEC-113 | P7-03 |
 | DEC-113 | No rule IDs in the copy: rules named by what they are | SETTLED (PO) | P7-03 |
 | DEC-114 | The Trade rules page in plain words: each rule's title, summary and Why | SETTLED (PO) · the exits' merged column put to the PO | handover 2026-10-03 |
-| DEC-115 | P7-04: the Methodology page | ENG · the half-width robustness tables put to the PO | handover 2026-10-04 |
+| DEC-115 | P7-04: the Methodology page | ENG · amended by DEC-116 · the half-width robustness tables put to the PO | handover 2026-10-04 |
+| DEC-116 | Methodology: the limits first, three panels dropped | SETTLED (PO) | P7-04 |
 
 ---
 
@@ -371,6 +372,7 @@ The results are reported to the PO at P1-05. A result that contradicts the spec 
   - **Quoted word for word:** 4210(f)(2)(D) (a long option of nine months or less, 100% of its purchase price); 4210(f)(2)(H)(i) (a spread's short at the lesser of its naked margin and the maximum potential loss; "'Long' options must be paid for in full"); 12 CFR 220.12(c)(2) (short stock against a long call struck at or below the sale price: 100%, the proceeds); 4210(f)(2)(H)(v)a (its maintenance: 10% of the aggregate exercise price plus the out-of-the-money amount, capped by (c)). **Quoted in a sentence:** 220.12(a) and (f)(1), 4210(f)(2)(A)(xxxii)e, 220.12(c)(1), 4210(c)(3), (d)(1)(B) and (b)(4); (d)(2) is named as not modelled.
   - **Cboe 10.3 isn't quoted:** the spec asks for the Reg T and FINRA 4210 text, and the Cboe rule book wasn't re-read; its citations stay in this entry.
   - **Figures the treatment reads from the results:** the longest any long had left when bought (NVDA: 179 days, within the 273 of the shortest nine calendar months), the missed assignments (none, so neither short-stock row applied) and the starting cash against 4210(b)(4)'s $2,000.
+- **Outcome:** 2026-10-04 — PO, reading P7-04's page: the Reg T treatment panel is dropped (DEC-116). The quotes above stay the record; the requirements themselves stay in Spec › NAV and Reg T and `pmcc/accounting/regt.py`.
 
 ### DEC-11 — Risk-free rate
 **Status:** SETTLED · **Basis:** PO, 2026-09-28 · **Affects:** pricing, eligibility, Methodology, `configs/universe.yaml`
@@ -2716,7 +2718,7 @@ export and never committed, so it gains two fields without a schema version.
   `rules.json` has its title and summary, and none of its text names a rule ID.
 
 ### DEC-115 — P7-04: the Methodology page
-**Status:** ENG · the half-width robustness tables put to the PO at the handover, 2026-10-04 · **Affects:** P7-04; UI-SPEC §4, §6.4; ARCHITECTURE §13; DEC-10, DEC-64, DEC-65, DEC-67, DEC-105, DEC-106, DEC-109, DEC-113
+**Status:** ENG · amended by DEC-116 (three panels dropped, the limits first) · the half-width robustness tables put to the PO at the handover, 2026-10-04 · **Affects:** P7-04; UI-SPEC §4, §6.4; ARCHITECTURE §13; DEC-10, DEC-64, DEC-65, DEC-67, DEC-105, DEC-106, DEC-109, DEC-113
 
 How P7-04 builds UI-SPEC §6.4. Nothing here changes a result.
 
@@ -2767,6 +2769,30 @@ How P7-04 builds UI-SPEC §6.4. Nothing here changes a result.
   (13), the scatter's option in `charts.test.ts` (4); the fixtures gain NVDA's coverage and fill
   check, the pooled fill check and the friction, timing and grid tables. The smoke test checks
   the page on the built site (19 pass).
+
+### DEC-116 — Methodology: the limits first, three panels dropped
+**Status:** SETTLED · **Basis:** PO, 2026-10-04, reading P7-04's page · **Affects:** P7-04; Spec › Site and UI (Methodology), Spec › Open items (Reg T text); PRD HR-8; UI-SPEC §4, §6.1, §6.4; amends DEC-10, DEC-115
+
+- **The PO:** "lose the data and ric scheme box, data coverage block, reg t treatment box, move
+  the 'limits of this backtest' box to the top of the page, move the parameter grid right below
+  the charts".
+- **The page now:** Limits of this backtest · Bar timing and look-ahead guard · Fill model · [1]
+  Mid vs print, shorts · [2] Mid vs print, longs · [3] Parameter grid · [4] Friction · [5] Entry
+  timing · [6] Stated assumptions. Nothing else changes: each panel's content, figures and claims
+  are as DEC-115 built them.
+- **What leaves the site:**
+  - **Data coverage** (HR-8): `coverage.json` is still written by the batch, committed and
+    exported, so the disclosure stays in the published results, but no page shows it.
+  - **The Reg T treatment and its quotes** (DEC-10): the citations stay in DEC-10 and the
+    requirements in Spec › NAV and Reg T; the spec's open item that asked for them on
+    Methodology now says they were dropped. Each strategy page's Reg T panel and its breach
+    warning (HR-4) are unaffected.
+  - **The data and RIC scheme:** LSEG hourly bars, the RIC grammar and caret rule, guess and
+    check, the cache and manifest. The manifest footer still shows every hash.
+- **Code removed:** the three panels (`DataScheme`, `CoveragePanel`, `RegTTreatment`), their
+  figures (`daysTo`, `longestLong`, `assignments`), the quote and OCC styles, the coverage
+  fixture, and their tests (8). The Fill model's prose names the Friction table rather than its
+  number.
 
 ## E. Analytics definitions
 

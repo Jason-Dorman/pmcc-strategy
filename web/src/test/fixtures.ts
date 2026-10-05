@@ -1,8 +1,7 @@
-// A small index, two full runs, NVDA's robustness, coverage and fill check, the pooled universe
-// files, and rules.json,
+// A small index, two full runs, NVDA's robustness and fill check, the pooled universe files, and
+// rules.json,
 // shaped as `pmcc export` writes them, for the page, route and loader tests. Each is typed against the
 // generated schema, so a schema change shows here.
-import type { Coverage } from "../types/generated/coverage";
 import type { FillCheck } from "../types/generated/fill_check";
 import type { Index } from "../types/generated/index";
 import type { Pooled } from "../types/generated/pooled";
@@ -39,8 +38,7 @@ export const INDEX: Index = {
   symbols: [
     {
       symbol: "NVDA",
-      files: { robustness: "NVDA/robustness.json", coverage: "NVDA/coverage.json",
-               fill_check: "NVDA/fill_check.json" },
+      files: { robustness: "NVDA/robustness.json", fill_check: "NVDA/fill_check.json" },
       runs: [
         {
           run_id: "baseline_pmcc",
@@ -306,21 +304,6 @@ export const ROBUSTNESS: Robustness = {
   ],
 };
 
-/** NVDA's fetch coverage. */
-export const COVERAGE: Coverage = {
-  schema_version: SCHEMA_VERSION,
-  symbol: "NVDA",
-  rows: [
-    { kind: "stock", requested: 1, answered: 1, unanswered: 0, mid_availability: 1 },
-    { kind: "weekly calls", requested: 993, answered: 881, unanswered: 112,
-      mid_availability: 0.829144 },
-  ],
-  iv_priced: 1000,
-  iv_failures: { below_floor: 80, no_convergence: 3 },
-  stale_mark_rate: 0.0125,
-  unavailable_fields: [],
-};
-
 /** NVDA's fill check: three short pairs (one on a locked quote), two long ones. */
 export const FILL_CHECK: FillCheck = {
   schema_version: SCHEMA_VERSION,
@@ -503,7 +486,6 @@ export const FILES: Record<string, unknown> = {
   "data/NVDA/baseline_pmcc.json": run("baseline_pmcc", []),
   "data/NVDA/quant_pmcc.json": run("quant_pmcc", ["gate_log", "greek_attribution"]),
   "data/NVDA/robustness.json": ROBUSTNESS,
-  "data/NVDA/coverage.json": COVERAGE,
   "data/NVDA/fill_check.json": FILL_CHECK,
   "data/universe/pooled_fill_check.json": POOLED_FILL_CHECK,
   "data/universe/pooled.json": POOLED,

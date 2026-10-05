@@ -139,7 +139,7 @@ test("the methodology page draws every pair, its tables and the limits", async (
   await expect(pairs.locator("tbody tr:not(.pm-spacer)").first()).toBeVisible();
   const rows = (name: string) =>
     page.getByRole("table", { name, exact: true }).locator("tbody tr:not(.pm-spacer)");
-  for (const name of ["Data coverage", "Friction", "Entry timing", "Parameter grid"]) {
+  for (const name of ["Parameter grid", "Friction", "Entry timing"]) {
     expect(await rows(name).count(), name).toBeGreaterThan(1);
   }
   // Fragility follows DEC-67; the limits' figures are read from the runs (DEC-109).

@@ -1,6 +1,6 @@
 // The methodology page's figures (UI-SPEC §6.4), each read from the results as the page renders:
-// the entry-timing dispersion and when it is fragile (PO, DEC-67), the fill check's pairs, the
-// longest long bought, and the facts the Limits of this backtest panel states (DEC-109).
+// the entry-timing dispersion and when it is fragile (PO, DEC-67), the fill check's pairs, and
+// the facts the Limits of this backtest panel states (DEC-109).
 import type { FillPoints } from "../../types/generated/fill_check";
 import type { Robustness, RobustnessRow } from "../../types/generated/robustness";
 import type { Rules } from "../../types/generated/rules";
@@ -58,29 +58,6 @@ export function fillPairs(points: FillPoints): FillPair[] {
 /** |trade − mid| ÷ spread, as the fit's median takes it: none for a locked quote. */
 export function gapOfSpread(pair: FillPair): number | null {
   return pair.spread > 0 ? Math.abs(pair.trade - pair.mid) / pair.spread : null;
-}
-
-// ---- Reg T ---------------------------------------------------------------------------------
-
-const DAY_MS = 86_400_000;
-
-/** Calendar days from a bar's date to an expiry date. */
-export function daysTo(time: string, expiry: string): number {
-  return Math.round((Date.parse(expiry) - Date.parse(time.slice(0, 10))) / DAY_MS);
-}
-
-/** The most days to expiry of any long bought (E-L1), over the runs: whether every long was
- * within FINRA's nine months, which no rule defines in days. */
-export function longestLong(runs: readonly RunResult[]): number | undefined {
-  const days = runs.flatMap((r) => (r.blotter ?? [])
-    .filter((b) => b.rule_id === "E-L1" && b.instrument.expiry)
-    .map((b) => daysTo(b.time, b.instrument.expiry ?? "")));
-  return days.length > 0 ? Math.max(...days) : undefined;
-}
-
-/** How many missed assignments (X-S5) the runs had: none means the short-stock rows never ran. */
-export function assignments(runs: readonly RunResult[]): number {
-  return runs.reduce((n, r) => n + (r.summary.exit_mix?.["X-S5"] ?? 0), 0);
 }
 
 // ---- the limits of this backtest ---------------------------------------------------------------

@@ -1,8 +1,8 @@
-// The methodology page (P7-04, UI-SPEC §6.4) over the fixture files: the panels in order, data
-// coverage, the fill check's scatters with the pooled fit and every pair, friction, entry timing
-// with its dispersion and fragility (PO, DEC-67), the grid, the stated assumptions, the Reg T
-// treatment's figures (DEC-10) and the limits of this backtest, every figure read from the
-// results (DEC-109), with no rule ID in the prose (DEC-113).
+// The methodology page (P7-04, UI-SPEC §6.4) over the fixture files: the panels in order, the
+// limits of this backtest first (PO, DEC-116), every figure read from the results (DEC-109), the
+// fill check's scatters with the pooled fit and every pair, the grid, friction, entry timing with
+// its dispersion and fragility (PO, DEC-67) and the stated assumptions, with no rule ID in the
+// prose (DEC-113).
 import { cleanup, fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -50,26 +50,28 @@ function withWeekly(weekly: MeanCI) {
 }
 
 async function loaded() {
-  await screen.findByRole("table", { name: "Data coverage" });
+  await screen.findByRole("table", { name: "Parameter grid" });
   await screen.findByRole("table", { name: "Entry timing" });
   await screen.findByRole("table", { name: "Stated assumptions" });
   await screen.findByText("One symbol, one window.");
 }
 
 describe("the panels", () => {
-  it("follows UI-SPEC §6.4's order, numbering only the figure and table panels", async () => {
+  it("leads with the limits, the grid under the scatters, numbering only figures and tables",
+     async () => {
     renderMethodology();
     await loaded();
     const names = screen.getAllByRole("region").map((r) => r.getAttribute("aria-label"));
     expect(names).toEqual([
-      "Data and RIC scheme", "Data coverage", "Bar timing and look-ahead guard", "Fill model",
-      "Mid vs print — weekly shorts", "Mid vs print — long-dated longs", "Reg T treatment",
-      "Friction", "Entry timing", "Parameter grid", "Stated assumptions",
-      "Limits of this backtest",
+      "Limits of this backtest", "Bar timing and look-ahead guard", "Fill model",
+      "Mid vs print — weekly shorts", "Mid vs print — long-dated longs", "Parameter grid",
+      "Friction", "Entry timing", "Stated assumptions",
     ]);
-    expect(within(await panel("Data coverage")).getByText("[1]")).toBeDefined();
-    expect(within(await panel("Stated assumptions")).getByText("[7]")).toBeDefined();
-    for (const prose of ["Data and RIC scheme", "Reg T treatment", "Limits of this backtest"]) {
+    expect(within(await panel("Mid vs print — weekly shorts")).getByText("[1]")).toBeDefined();
+    expect(within(await panel("Parameter grid")).getByText("[3]")).toBeDefined();
+    expect(within(await panel("Stated assumptions")).getByText("[6]")).toBeDefined();
+    for (const prose of ["Limits of this backtest", "Bar timing and look-ahead guard",
+                         "Fill model"]) {
       expect(within(await panel(prose)).queryByText(/^\[\d+\]$/)).toBeNull();
     }
   });
@@ -77,8 +79,8 @@ describe("the panels", () => {
   it("shows the index's first symbol when the route names none", async () => {
     renderMethodology("/methodology");
     await loaded();
-    expect(column(screen.getByRole("table", { name: "Data coverage" }), 0))
-      .toEqual(["stock", "weekly calls"]);
+    expect(column(screen.getByRole("table", { name: "Parameter grid" }), 0))
+      .toEqual(["Quant PMCC", "Grid: quant with k = 0.75"]);
   });
 
   it("shows both full runs' manifests in the footer", async () => {
@@ -93,46 +95,10 @@ describe("the panels", () => {
     renderMethodology();
     await loaded();
     const ID = /\b[EGX]-[A-Z]?\d\b/;
-    for (const prose of ["Data and RIC scheme", "Bar timing and look-ahead guard", "Fill model",
-                         "Reg T treatment", "Limits of this backtest"]) {
+    for (const prose of ["Limits of this backtest", "Bar timing and look-ahead guard",
+                         "Fill model"]) {
       expect((await panel(prose)).textContent).not.toMatch(ID);
     }
-  });
-});
-
-describe("data coverage", () => {
-  it("lists each kind's contracts and mid availability", async () => {
-    renderMethodology();
-    await loaded();
-    const table = screen.getByRole("table", { name: "Data coverage" });
-    const weekly = bodyRows(table)[1]?.textContent;
-    expect(weekly).toContain("993");
-    expect(weekly).toContain("881");
-    expect(weekly).toContain("112");
-    expect(weekly).toContain("82.9%");
-  });
-
-  it("states the IV failures by reason, the stale-mark rate and the missing fields", async () => {
-    renderMethodology();
-    await loaded();
-    const rows = kv(screen.getByRole("table", { name: "Pricing and marks" }));
-    expect(rows["IV failures, of the bars with a valid quote"]).toBe("8.3%, 83 of 1,000");
-    expect(rows["· mid below the no-arbitrage floor"]).toBe("80");
-    expect(rows["· no vol prices the mid"]).toBe("3");
-    expect(rows["Stale-mark rate, both strategies"]).toBe("1.3%");
-    expect(rows["Fields that never came back"]).toBe("none");
-  });
-
-  it("says so in the panel when the symbol has no coverage file", async () => {
-    const files = { ...FILES };
-    delete files["data/NVDA/coverage.json"];
-    const index = structuredClone(files["data/index.json"]) as {
-      symbols: { files: Record<string, string> }[];
-    };
-    delete index.symbols[0]?.files.coverage;
-    renderMethodology("/methodology/NVDA", { ...files, "data/index.json": index });
-    expect(await within(await panel("Data coverage"))
-      .findByText("No results for NVDA / coverage.")).toBeDefined();
   });
 });
 
@@ -241,14 +207,6 @@ describe("the stated assumptions", () => {
 });
 
 describe("the prose's figures", () => {
-  it("names the first long bought as the RIC example, with its OCC symbol", async () => {
-    renderMethodology();
-    await loaded();
-    const text = (await panel("Data and RIC scheme")).textContent;
-    expect(text).toContain("The first long bought here, NVDAH212611500.U^H26, is the OCC's "
-      + "NVDA  260821C00115000.");
-  });
-
   it("reads the fill model's captures and fee from rules.json", async () => {
     renderMethodology();
     await loaded();
@@ -256,19 +214,6 @@ describe("the prose's figures", () => {
     expect(rows["Spread capture, both strategies"]).toBe("0.00");
     expect(rows["Spread capture, the friction runs"]).toBe("0.25");
     expect(rows["Fee per contract"]).toBe("$0.00");
-  });
-
-  it("states the longest long, the missed assignments and the starting cash under Reg T",
-     async () => {
-    renderMethodology();
-    await loaded();
-    const text = (await panel("Reg T treatment")).textContent;
-    expect(text).toContain("the longest any long here had left when bought was 144 days, so "
-      + "every long was paid in full.");
-    expect(text).toContain("On NVDA no short was ever assigned, so neither short-stock "
-      + "requirement applied.");
-    expect(text).toContain("which the starting cash of $15,000.00 clears.");
-    expect(text).toContain("100 percent of the purchase price of the option or warrant.");
   });
 
   it("states each strategy's legs, and that the long made more than the P&L only if so",

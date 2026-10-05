@@ -188,7 +188,7 @@ Every row points to its source. "Verified by" names the invariant test (INV-nn),
 | HR-5 | Small-sample statistics are shown with bootstrap CIs, never as standalone headlines. Sharpe and Sortino are unannualized, or labelled. | every run's weekly-return CI and the pooled CI (P6-05, DEC-61); Sharpe annualized and labelled with its daily returns (DEC-111) |
 | HR-6 | Every sensitivity result is published in full; no best-cell picks | `{SYM}/robustness.json` holds every run (P6-06, DEC-65) |
 | HR-7 | The fill-assumption fit is published even where it's weak (the long leg) | both groups' fits and every pair in `{SYM}/fill_check.json`, whatever they show (P6-07, DEC-64) |
-| HR-8 | Data coverage is disclosed: unanswered contracts, IV failures, stale-mark rates, unavailable fields | `coverage.json`, written by `pmcc batch` (P5-03, DEC-100); Methodology |
+| HR-8 | Data coverage is disclosed: unanswered contracts, IV failures, stale-mark rates, unavailable fields | `coverage.json`, written by `pmcc batch` (P5-03, DEC-100), committed in `results/` and exported with the site's data; not shown on a page (PO, DEC-116) |
 | HR-9 | Stated assumptions: r (value and source); q = 0; no early assignment; dividends out of scope; Black-Scholes on American calls; the bar's final quotes aren't proven to be the NBBO (LDG §4.14) | Methodology |
 | HR-10 | Synthetic data can never pass for real | banner (DEC-74) |
 | HR-11 | The backtest's limits are stated: one symbol in one window, a rising one, and how much of each strategy's P&L the long call made against the shorts; figures read from the results (PO, DEC-109) | Comparison purpose panel (P7-02, DEC-110); Methodology |

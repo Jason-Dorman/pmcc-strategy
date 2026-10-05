@@ -1,7 +1,7 @@
-// The methodology page's data panels (UI-SPEC §6.4): data coverage (`coverage.json`), the two
-// mid-vs-print scatters with their fits and the pooled fit beside them (`fill_check.json`,
-// `universe/pooled_fill_check.json`; DEC-64), entry timing with its dispersion and fragility (PO,
-// DEC-67), and the stated assumptions, r read from the index.
+// The methodology page's data panels (UI-SPEC §6.4): the two mid-vs-print scatters with their
+// fits and the pooled fit beside them (`fill_check.json`, `universe/pooled_fill_check.json`;
+// DEC-64), entry timing with its dispersion and fragility (PO, DEC-67), and the stated
+// assumptions, r read from the index.
 import { useCallback, useMemo } from "react";
 
 import { KeyValue } from "../../components/cells";
@@ -13,60 +13,13 @@ import { RobustnessTable } from "../../components/RobustnessTable";
 import { money, price } from "../../format/money";
 import { count, meanCI, orDash, pct } from "../../format/number";
 import type { Palette } from "../../theme/echarts";
-import type { Coverage, CoverageRow } from "../../types/generated/coverage";
 import type { Fit, FillGroup } from "../../types/generated/fill_check";
 import type { RiskFreeRate } from "../../types/generated/index";
 import type { PooledFillGroup } from "../../types/generated/pooled_fill_check";
 import type { Robustness } from "../../types/generated/robustness";
 import { fillPairs, gapOfSpread, timing, type FillPair } from "./figures";
 
-// ---- [1] data coverage -------------------------------------------------------------------------
-
-const COVERAGE_COLUMNS: readonly TableColumn<CoverageRow>[] = [
-  { id: "kind", header: "Contracts", sort: (r) => r.kind,
-    cell: (r) => <span className="pm-label">{r.kind}</span> },
-  { id: "requested", header: "Requested", num: true, sort: (r) => r.requested,
-    cell: (r) => count(r.requested) },
-  { id: "answered", header: "Answered", num: true, sort: (r) => r.answered,
-    cell: (r) => count(r.answered) },
-  { id: "unanswered", header: "Unanswered", num: true, sort: (r) => r.unanswered,
-    cell: (r) => count(r.unanswered) },
-  { id: "mid", header: "Mid availability", num: true, sort: (r) => r.mid_availability ?? undefined,
-    cell: (r) => orDash(r.mid_availability, pct) },
-];
-
-// Why an IV solve failed (pmcc/pricing/iv.py), as a reader would say it.
-const IV_REASONS: Readonly<Record<string, string>> = {
-  below_floor: "mid below the no-arbitrage floor",
-  above_cap: "mid above what any vol can reach",
-  no_convergence: "no vol prices the mid",
-  no_spot: "no stock price on the bar",
-};
-
-export function CoveragePanel({ coverage }: { coverage: Coverage }) {
-  const failed = Object.values(coverage.iv_failures).reduce((s, n) => s + n, 0);
-  const priced = coverage.iv_priced;
-  return (
-    <div className="pm-stack">
-      <DataTable label="Data coverage" rows={coverage.rows} columns={COVERAGE_COLUMNS}
-                 rowId={(r) => r.kind} />
-      <KeyValue
-        label="Pricing and marks"
-        rows={[
-          ["IV failures, of the bars with a valid quote",
-           priced > 0 ? `${pct(failed / priced)}, ${count(failed)} of ${count(priced)}` : "—"],
-          ...Object.entries(coverage.iv_failures).map(([reason, n]) => [
-            `· ${IV_REASONS[reason] ?? reason}`, count(n),
-          ] as const),
-          ["Stale-mark rate, both strategies", orDash(coverage.stale_mark_rate, pct)],
-          ["Fields that never came back", coverage.unavailable_fields.join(", ") || "none"],
-        ]}
-      />
-    </div>
-  );
-}
-
-// ---- [2], [3] mid vs print ---------------------------------------------------------------------
+// ---- mid vs print ---------------------------------------------------------------------
 
 const PAIR_COLUMNS: readonly TableColumn<FillPair>[] = [
   { id: "mid", header: "Mid", num: true, sort: (r) => r.mid, cell: (r) => price(r.mid) },
@@ -155,7 +108,7 @@ export function scatterCaption(what: string) {
   );
 }
 
-// ---- [5] entry timing --------------------------------------------------------------------------
+// ---- entry timing --------------------------------------------------------------------------
 
 export function TimingPanel({ robustness }: { robustness: Robustness }) {
   const t = timing(robustness.timing);
@@ -186,7 +139,7 @@ export function TimingPanel({ robustness }: { robustness: Robustness }) {
   );
 }
 
-// ---- [7] stated assumptions --------------------------------------------------------------------
+// ---- stated assumptions --------------------------------------------------------------------
 
 export function Assumptions({ rate }: { rate: RiskFreeRate }) {
   return (
