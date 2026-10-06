@@ -95,6 +95,9 @@ test("the strategy pages show the run's numbers, charts and tables", async ({ pa
     await expect(nav).toHaveText(/^\$\d{1,3}(,\d{3})*\.\d{2}$/);
     const account = page.getByRole("figure", { name: /available funds/ });
     await expect(account.locator("svg path").first()).toBeAttached();
+    // Both pages show the position Greeks (DEC-120).
+    const greeks = page.getByRole("figure", { name: "Net delta, gamma, theta and vega at every bar" });
+    await expect(greeks.locator("svg path").first()).toBeAttached();
     const blotter = page.getByRole("table", { name: "Blotter" });
     await expect(blotter.locator("tbody tr:not(.pm-spacer)").first()).toBeVisible();
     // The ledger is virtualized: some of its hourly bars render, never all of them.
@@ -123,7 +126,7 @@ test("the comparison page shows both runs, the pooled universe and the ablations
   await expect(page.getByRole("region", { name: "Purpose" })).toContainText("the long leg made");
 });
 
-test("the methodology page draws every pair, its tables and the limits", async ({ page }) => {
+test("the methodology page draws every pair, its tables and discovery", async ({ page }) => {
   await page.goto(`./#/methodology/${SYMBOL}`);
   await settled(page);
   for (const name of ["Mid vs print — weekly shorts", "Mid vs print — long-dated longs"]) {
@@ -145,7 +148,7 @@ test("the methodology page draws every pair, its tables and the limits", async (
   // Fragility follows DEC-67; the limits' figures are read from the runs (DEC-109).
   await expect(page.getByRole("table", { name: "Timing dispersion" }))
     .toContainText(/(Not fragile|Fragile):/);
-  await expect(page.getByRole("region", { name: "Limits of this backtest" }))
+  await expect(page.getByRole("region", { name: "Discovery" }))
     .toContainText("long leg made");
 });
 

@@ -40,7 +40,7 @@ const ROUTES: [string, string][] = [
   ["/quant/NVDA", "Gate log"],
   ["/rules", "Entry rules"],
   ["/rules/X-S3", "Exit rules"],
-  ["/methodology", "Limits of this backtest"],
+  ["/methodology", "Discovery"],
   ["/methodology/NVDA", "Stated assumptions"],
   ["/universe", "Symbol suitability"],
   ["/data", "Data connection required"],
@@ -82,15 +82,16 @@ describe("routes", () => {
   it("shows the quant page's optional sections", async () => {
     renderAt("/quant/NVDA");
     await screen.findByRole("table", { name: "Gate log" });
-    expect(await panelNames()).toEqual(expect.arrayContaining(["Gate log", "Greek attribution"]));
+    expect(await panelNames()).toEqual(expect.arrayContaining(
+      ["Gate log", "Position Greeks", "Greek attribution"]));
   });
 
-  it("leaves them off the baseline's page, which renumbers", async () => {
+  it("leaves the gate log off the baseline's page, which renumbers (DEC-120)", async () => {
     renderAt("/baseline/NVDA");
     await screen.findByRole("table", { name: "Blotter" });
     const names = await panelNames();
     expect(names).not.toContain("Gate log");
-    expect(names).not.toContain("Greek attribution");
+    expect(names).toEqual(expect.arrayContaining(["Position Greeks", "Greek attribution"]));
     const ledger = screen.getByRole("region", { name: "Ledger" });
     expect(within(ledger).getByText("[6]")).toBeDefined();
   });

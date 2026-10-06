@@ -168,6 +168,7 @@ def to_result(output: RunOutput, market: Market, config: RunConfig, stamp: Stamp
         gate_log=tuple(_gate_row(g) for g in output.gate_log) if full else None,
         cycles=analytics.cycles if full else None,
         attribution=analytics.attribution,
+        position_greeks=analytics.position_greeks,
     )
 
 

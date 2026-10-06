@@ -32,17 +32,20 @@ def _variant(configs: Path, body: str = "", parent: str = "baseline_pmcc.yaml") 
     return path
 
 
-def test_dec_54_the_baseline_keeps_full_detail_and_no_optional_section() -> None:
+def test_dec_120_the_baseline_page_adds_the_greek_attribution_and_position_greeks() -> None:
     report = load_strategy(CONFIGS_DIR / "baseline_pmcc.yaml").report
 
-    assert (report.detail, report.sections) == (Detail.FULL, ())
+    assert report.detail is Detail.FULL
+    assert report.sections == (Section.GREEK_ATTRIBUTION, Section.POSITION_GREEKS)
 
 
-def test_dec_54_the_quant_page_adds_the_gate_log_and_greek_attribution() -> None:
+def test_dec_54_the_quant_page_adds_the_gate_log_greek_attribution_and_position_greeks() -> None:
     report = load_strategy(CONFIGS_DIR / "quant_pmcc.yaml").report
 
     assert report.detail is Detail.FULL
-    assert report.sections == (Section.GATE_LOG, Section.GREEK_ATTRIBUTION)
+    assert report.sections == (
+        Section.GATE_LOG, Section.GREEK_ATTRIBUTION, Section.POSITION_GREEKS,
+    )  # fmt: skip
 
 
 @pytest.mark.parametrize("path", ABLATIONS, ids=lambda p: p.stem)

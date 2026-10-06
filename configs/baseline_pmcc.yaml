@@ -6,9 +6,11 @@ id: baseline_pmcc
 name: Baseline PMCC
 extends: _shared.yaml
 
-# What its results keep and its page shows (PO, DEC-54): every row, and no optional section.
+# What its results keep and its page shows (PO, DEC-54): every row, plus the Greek attribution
+# and the position Greeks (PO, DEC-120). Only quant's page shows the gate log.
 report:
   detail: full
+  sections: [greek_attribution, position_greeks]
 
 rules:
   - id: E-L2

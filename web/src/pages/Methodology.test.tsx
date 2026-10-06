@@ -1,5 +1,5 @@
 // The methodology page (P7-04, UI-SPEC §6.4) over the fixture files: the panels in order, the
-// limits of this backtest first (PO, DEC-116), every figure read from the results (DEC-109), the
+// Discovery first (PO, DEC-116, DEC-120), every figure read from the results (DEC-109), the
 // fill check's scatters with the pooled fit and every pair, the grid, friction, entry timing with
 // its dispersion and fragility (PO, DEC-67) and the stated assumptions, with no rule ID in the
 // prose (DEC-113).
@@ -26,11 +26,11 @@ function ci(mean: number, low: number, high: number): MeanCI {
 }
 
 function quant(change: (r: RunResult) => RunResult): RunResult {
-  return change(run("quant_pmcc", ["gate_log", "greek_attribution"]));
+  return change(run("quant_pmcc", ["gate_log", "greek_attribution", "position_greeks"]));
 }
 
 function baseline(change: (r: RunResult) => RunResult): RunResult {
-  return change(run("baseline_pmcc", []));
+  return change(run("baseline_pmcc", ["greek_attribution", "position_greeks"]));
 }
 
 function withLegs(change: Partial<LegAttribution>) {
@@ -57,20 +57,20 @@ async function loaded() {
 }
 
 describe("the panels", () => {
-  it("leads with the limits, the grid under the scatters, numbering only figures and tables",
+  it("leads with discovery, the grid under the scatters, numbering only figures and tables",
      async () => {
     renderMethodology();
     await loaded();
     const names = screen.getAllByRole("region").map((r) => r.getAttribute("aria-label"));
     expect(names).toEqual([
-      "Limits of this backtest", "Bar timing and look-ahead guard", "Fill model",
+      "Discovery", "Bar timing and look-ahead guard", "Fill model",
       "Mid vs print — weekly shorts", "Mid vs print — long-dated longs", "Parameter grid",
       "Friction", "Entry timing", "Stated assumptions",
     ]);
     expect(within(await panel("Mid vs print — weekly shorts")).getByText("[1]")).toBeDefined();
     expect(within(await panel("Parameter grid")).getByText("[3]")).toBeDefined();
     expect(within(await panel("Stated assumptions")).getByText("[6]")).toBeDefined();
-    for (const prose of ["Limits of this backtest", "Bar timing and look-ahead guard",
+    for (const prose of ["Discovery", "Bar timing and look-ahead guard",
                          "Fill model"]) {
       expect(within(await panel(prose)).queryByText(/^\[\d+\]$/)).toBeNull();
     }
@@ -95,7 +95,7 @@ describe("the panels", () => {
     renderMethodology();
     await loaded();
     const ID = /\b[EGX]-[A-Z]?\d\b/;
-    for (const prose of ["Limits of this backtest", "Bar timing and look-ahead guard",
+    for (const prose of ["Discovery", "Bar timing and look-ahead guard",
                          "Fill model"]) {
       expect((await panel(prose)).textContent).not.toMatch(ID);
     }
@@ -220,7 +220,7 @@ describe("the prose's figures", () => {
      async () => {
     renderMethodology();
     await loaded();
-    const limits = await panel("Limits of this backtest");
+    const limits = await panel("Discovery");
     expect(limits.textContent).toContain("Quant PMCC's long leg made +$672.50 (+$900.00 "
       + "intrinsic, −$227.50 extrinsic), its shorts +$39.50, for a P&L of +$712.00.");
     expect(limits.textContent).not.toContain("the long made more than the whole P&L");
@@ -240,7 +240,7 @@ describe("the prose's figures", () => {
      async () => {
     renderMethodology("/methodology/NVDA",
                       { ...FILES, [QUANT]: quant(withLegs({ long_pnl: 900 })) });
-    const limits = await panel("Limits of this backtest");
+    const limits = await panel("Discovery");
     await within(limits).findByText(/Rolls book the gain/);
     expect(limits.textContent).toContain("Quant PMCC's long leg made +$227.50 more than Baseline "
       + "PMCC's.");
@@ -255,7 +255,40 @@ describe("the prose's figures", () => {
       [BASELINE]: baseline(withWeekly(ci(0.0095, -0.0089, 0.0276))),
     });
     expect(await screen.findByText("The two can't be told apart.")).toBeDefined();
-    expect((await panel("Limits of this backtest")).textContent)
+    expect((await panel("Discovery")).textContent)
       .toContain("95% CIs over 26 weeks that overlap.");
+  });
+
+  it("weighs each strategy's short theta against its long's (DEC-120)", async () => {
+    renderMethodology();
+    await loaded();
+    const discovery = await panel("Discovery");
+    await within(discovery).findByText("The weekly rent didn't cover the long's decay.");
+    expect(discovery.textContent).toContain("Quant PMCC's shorts earned +$30.00 of theta while "
+      + "its long paid −$40.00.");
+    expect(discovery.textContent).toContain("A short is held at most from Monday to Friday, and "
+      + "none in a skipped week, while the long decays every calendar day, weekends included.");
+  });
+
+  it("says when the rent covered the decay in one strategy only", async () => {
+    const covered = (r: RunResult): RunResult => {
+      const greek = r.attribution?.greek;
+      if (!r.attribution || !greek) throw new Error("fixture has no Greek attribution");
+      const rows = greek.rows.map((x) => (x.leg === "long" && x.component === "theta"
+        ? { ...x, dollars: -10 } : x));
+      return { ...r, attribution: { ...r.attribution, greek: { ...greek, rows } } };
+    };
+    renderMethodology("/methodology/NVDA", { ...FILES, [QUANT]: quant(covered) });
+    expect(await screen.findByText("The weekly rent covered the long's decay in one strategy "
+      + "only.")).toBeDefined();
+  });
+
+  it("leaves theta out where no run has a Greek attribution", async () => {
+    const none = (r: RunResult): RunResult => (r.attribution
+      ? { ...r, attribution: { ...r.attribution, greek: null } } : r);
+    renderMethodology("/methodology/NVDA",
+                      { ...FILES, [QUANT]: quant(none), [BASELINE]: baseline(none) });
+    await loaded();
+    expect((await panel("Discovery")).textContent).not.toContain("weekly rent");
   });
 });

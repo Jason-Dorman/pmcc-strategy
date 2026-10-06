@@ -38,21 +38,32 @@ describe("readouts", () => {
 });
 
 describe("the panels", () => {
-  it("numbers the quant page's eight panels in order", async () => {
+  it("numbers the quant page's nine panels in order", async () => {
     renderPage("quant");
     await screen.findByRole("table", { name: "Gate log" });
     const names = screen.getAllByRole("region").map((r) => r.getAttribute("aria-label"));
     expect(names).toEqual(["Account", "Reg T", "Cycle statistics", "Leg attribution", "Blotter",
-                           "Gate log", "Ledger", "Greek attribution"]);
-    expect(within(await panel("Greek attribution")).getByText("[8]")).toBeDefined();
+                           "Gate log", "Ledger", "Position Greeks", "Greek attribution"]);
+    expect(within(await panel("Position Greeks")).getByText("[8]")).toBeDefined();
+    expect(within(await panel("Greek attribution")).getByText("[9]")).toBeDefined();
   });
 
-  it("leaves the baseline's page without the gate log and Greeks, renumbered", async () => {
+  it("leaves the baseline's page without the gate log, renumbered (DEC-120)", async () => {
     renderPage("baseline");
     await screen.findByRole("table", { name: "Ledger" });
     expect(screen.queryByRole("region", { name: "Gate log" })).toBeNull();
-    expect(screen.queryByRole("region", { name: "Greek attribution" })).toBeNull();
     expect(within(await panel("Ledger")).getByText("[6]")).toBeDefined();
+    expect(within(await panel("Position Greeks")).getByText("[7]")).toBeDefined();
+    expect(within(await panel("Greek attribution")).getByText("[8]")).toBeDefined();
+  });
+
+  it("shows no position Greeks where a run's sections leave them out", async () => {
+    renderPage("quant", withQuant((r) => ({
+      ...r, config: { ...r.config, strategy: { ...r.config.strategy,
+        report: { detail: "full", sections: ["gate_log", "greek_attribution"] } } },
+    })));
+    await screen.findByRole("table", { name: "Gate log" });
+    expect(screen.queryByRole("region", { name: "Position Greeks" })).toBeNull();
   });
 
   it("draws the account chart over the ledger's bars", async () => {
@@ -210,6 +221,43 @@ describe("the ledger", () => {
     const nav = within(table).getByRole("columnheader", { name: "NAV" });
     fireEvent.click(within(nav).getByRole("button"));
     await waitFor(() => expect(bodyRows(table)[0]?.textContent).toContain("$14,850.00"));
+  });
+});
+
+function cells(table: HTMLElement, index: number): string[] {
+  return [...rowAt(table, index).querySelectorAll("td")].map((td) => td.textContent ?? "");
+}
+
+describe("position Greeks (DEC-120)", () => {
+  it("shows each Greek's long, short and net mean in its units, against the textbook sign",
+     async () => {
+    renderPage("baseline");
+    const position = await panel("Position Greeks");
+    const table = within(position).getByRole("table", { name: "Position Greeks by leg" });
+    const theta = cells(table, 2);
+    expect(theta).toEqual(["θ theta", "$ a day", "−$9.10", "+$23.30", "+$14.20", "+", "100.0%",
+                           "3"]);
+    const delta = cells(table, 0);
+    expect(delta.slice(2, 5)).toEqual(["89.4", "−31.2", "58.2"]);
+    expect(cells(table, 1).slice(2, 6)).toEqual(["0.61", "−4.13", "−3.52", "−"]);
+    expect(cells(table, 3)[6]).toBe("66.7%");
+  });
+
+  it("draws the net at every bar and lists its values", async () => {
+    renderPage("quant");
+    const position = await panel("Position Greeks");
+    expect(await within(position).findByRole("figure", {
+      name: "Net delta, gamma, theta and vega at every bar" })).toBeDefined();
+    const values = within(position).getByRole("table", { name: "Position Greeks by bar" });
+    expect(values.textContent).toContain("none");
+    expect(values.textContent).toContain("open");
+  });
+
+  it("says when a run's file has none", async () => {
+    renderPage("quant", withQuant((r) => ({ ...r, position_greeks: null })));
+    const position = await panel("Position Greeks");
+    expect(await within(position).findByText("This run's file has no position Greeks."))
+      .toBeDefined();
   });
 });
 

@@ -7,11 +7,12 @@ id: quant_pmcc
 name: Quant PMCC
 extends: _shared.yaml
 
-# What its results keep and its page shows (PO, DEC-54): every row, plus the gate log and the Greek
-# attribution, which the baseline's page doesn't show. The ablations keep a summary.
+# What its results keep and its page shows (PO, DEC-54): every row, plus the gate log, which the
+# baseline's page doesn't show, and the Greek attribution and position Greeks, which both pages
+# show (PO, DEC-120). The ablations keep a summary.
 report:
   detail: full
-  sections: [gate_log, greek_attribution]
+  sections: [gate_log, greek_attribution, position_greeks]
 
 rules:
   - id: E-L2

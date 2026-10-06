@@ -17,6 +17,7 @@ import type {
   LedgerRowOut,
   LegOut,
   Manifest,
+  PositionGreeks,
   RunResult,
   Section,
 } from "../types/generated/run_result";
@@ -47,7 +48,7 @@ export const INDEX: Index = {
           strategy_id: "baseline_pmcc",
           name: "Baseline PMCC",
           detail: "full",
-          sections: [],
+          sections: ["greek_attribution", "position_greeks"],
           path: "NVDA/baseline_pmcc.json",
           data_source: "lseg",
           config_hash: "c".repeat(64),
@@ -58,7 +59,7 @@ export const INDEX: Index = {
           strategy_id: "quant_pmcc",
           name: "Quant PMCC",
           detail: "full",
-          sections: ["gate_log", "greek_attribution"],
+          sections: ["gate_log", "greek_attribution", "position_greeks"],
           path: "NVDA/quant_pmcc.json",
           data_source: "lseg",
           config_hash: "d".repeat(64),
@@ -184,6 +185,7 @@ export const GATE_LOG: GateLogRowOut[] = [
 const GREEK: GreekAttribution = {
   rows: [
     { leg: "long", component: "delta", dollars: 800, share_of_change: 1.12 },
+    { leg: "long", component: "theta", dollars: -40, share_of_change: -0.06 },
     { leg: "long", component: "residual", dollars: -85, share_of_change: -0.12 },
     { leg: "short", component: "theta", dollars: 30, share_of_change: 0.75 },
     { leg: "short", component: "residual", dollars: 10, share_of_change: null },
@@ -193,6 +195,25 @@ const GREEK: GreekAttribution = {
     { leg: "short", change: 39.5, bars_held: 3, bars_unattributed: 0 },
   ],
   residual: LEDGER.map((r, i) => ({ time: r.time, cumulative: i * -25 })),
+};
+
+/** Net Greeks at the ledger's four bars (the short open on the first three), and each leg's mean
+ * over those three: net θ +$14.20 a day, net Γ −3.52 shares per $1, 2 of 3 bars long vega. */
+const POSITION: PositionGreeks = {
+  rows: [
+    { component: "delta", expected_sign: 1, long: 89.4, short: -31.2, net: 58.2,
+      share_with_sign: 1, bars: 3 },
+    { component: "gamma", expected_sign: -1, long: 0.61, short: -4.13, net: -3.52,
+      share_with_sign: 1, bars: 3 },
+    { component: "theta", expected_sign: 1, long: -9.1, short: 23.3, net: 14.2,
+      share_with_sign: 1, bars: 3 },
+    { component: "vega", expected_sign: 1, long: 38, short: -6.5, net: 31.5,
+      share_with_sign: 2 / 3, bars: 3 },
+  ],
+  series: LEDGER.map((r) => ({
+    time: r.time, short_open: r.short !== null, delta: r.short ? 58.2 : 89.4,
+    gamma: r.short ? -3.52 : 0.61, theta: r.short ? 14.2 : -9.1, vega: r.short ? 31.5 : 38,
+  })),
 };
 
 const NAMES: Readonly<Record<string, string>> = {
@@ -251,6 +272,7 @@ export function run(runId: string, sections: Section[]): RunResult {
       },
       greek: sections.includes("greek_attribution") ? GREEK : null,
     },
+    position_greeks: sections.includes("position_greeks") ? POSITION : null,
   };
 }
 
@@ -509,8 +531,9 @@ export const RULES: Rules = {
 
 export const FILES: Record<string, unknown> = {
   "data/index.json": INDEX,
-  "data/NVDA/baseline_pmcc.json": run("baseline_pmcc", []),
-  "data/NVDA/quant_pmcc.json": run("quant_pmcc", ["gate_log", "greek_attribution"]),
+  "data/NVDA/baseline_pmcc.json": run("baseline_pmcc", ["greek_attribution", "position_greeks"]),
+  "data/NVDA/quant_pmcc.json": run("quant_pmcc",
+                                   ["gate_log", "greek_attribution", "position_greeks"]),
   "data/NVDA/robustness.json": ROBUSTNESS,
   "data/NVDA/fill_check.json": FILL_CHECK,
   "data/universe/pooled_fill_check.json": POOLED_FILL_CHECK,

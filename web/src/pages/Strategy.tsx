@@ -20,6 +20,7 @@ import { Cycles } from "./strategy/Cycles";
 import { READOUT_HINTS, readouts } from "./strategy/figures";
 import { Greeks } from "./strategy/Greeks";
 import { Legs } from "./strategy/Legs";
+import { PositionGreeks } from "./strategy/PositionGreeks";
 import { RegT } from "./strategy/RegT";
 import {
   blotterColumns,
@@ -107,6 +108,13 @@ const SECTIONS: readonly PanelDef[] = [
     note: (r) => counted(r.ledger, "bars"),
     caption: <>A mark in the flag colour is stale: the last valid mid, carried, never
       filled.</> },
+  { key: "position", name: "Position Greeks", width: W_FULL, section: "position_greeks",
+    body: (r) => <PositionGreeks run={r} />, note: () => "the short signed as held",
+    caption: <>The table averages each Greek over the bars ending with both legs held; net is
+      long plus short (and, for delta, any assigned stock). The textbook PMCC is long delta,
+      short gamma, long theta and long vega. The chart shows the net at every bar: where no short
+      is open (a skipped week, or after the short is closed) it is the long alone. δ in shares,
+      Γ in shares per $1 move, θ in $ a calendar day, ν in $ a vol point.</> },
   { key: "greeks", name: "Greek attribution", width: W_FULL, section: "greek_attribution",
     body: (r) => <Greeks run={r} />, note: () => "δΔS + ½Γ(ΔS)² + θΔt + νΔσ, per bar",
     caption: <>Each held bar is priced from the previous bar&apos;s Greeks; the residual is the

@@ -1,6 +1,6 @@
 // The methodology page's figures (UI-SPEC §6.4), each read from the results as the page renders:
 // the entry-timing dispersion and when it is fragile (PO, DEC-67), the fill check's pairs, and
-// the facts the Limits of this backtest panel states (DEC-109).
+// the facts the Discovery panel states (DEC-109, DEC-120).
 import type { FillPoints } from "../../types/generated/fill_check";
 import type { RobustnessRow } from "../../types/generated/robustness";
 import type { MeanCI, RunResult } from "../../types/generated/run_result";
@@ -59,7 +59,7 @@ export function gapOfSpread(pair: FillPair): number | null {
   return pair.spread > 0 ? Math.abs(pair.trade - pair.mid) / pair.spread : null;
 }
 
-// ---- the limits of this backtest ---------------------------------------------------------------
+// ---- discovery ---------------------------------------------------------------------------------
 
 /** A long call's round trip, or the long still held at the end. */
 export interface LongTrip {

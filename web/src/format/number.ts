@@ -22,6 +22,11 @@ export function ratio(value: number): string {
   return fixed(value, 2);
 }
 
+/** A position's delta in shares, to 1 dp (DEC-120). */
+export function shares(value: number): string {
+  return fixed(value, 1);
+}
+
 /** An implied volatility as a percent, to 1 dp. */
 export function iv(value: number): string {
   return pct(value, 1);

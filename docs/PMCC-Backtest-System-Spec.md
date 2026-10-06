@@ -306,6 +306,8 @@ Every metric is computed per symbol and strategy, plus pooled across the univers
 \Delta V \approx \delta\,\Delta S + \tfrac{1}{2}\,\Gamma\,(\Delta S)^2 + \theta\,\Delta t + \nu\,\Delta\sigma + \text{residual}
 ```
 
+- Position Greeks: the position's net delta, gamma, theta and vega at every bar, in dollars (shares, shares per $1, $ a calendar day, $ a vol point), and each leg's mean over the bars both legs were held, against the textbook PMCC's long delta, short gamma, long theta and long vega (PO, DEC-120).
+
 **Uncertainty**
 
 - Bootstrap (10,000 resamples) 95% percentile CI on mean weekly return per symbol and strategy, seeded from `configs/universe.yaml` (PO, DEC-61).
@@ -335,10 +337,10 @@ A static React app on GitHub Pages with a global symbol selector; the comparison
 | Page | Contents |
 | --- | --- |
 | Comparison (landing) | Overlaid NAV curves for baseline and quant PMCC; headline table (P&L, return on starting NAV, max drawdown, annualized Sharpe, payoff ratio, weekly-return CI; DEC-111); ablation table; pooled-universe summary |
-| Baseline PMCC | Blotter; NAV chart with IM, MM, and available funds on mouseover; ledger; Reg T panel; cycle statistics; leg attribution |
-| Quant PMCC | Everything on the baseline page, plus the gate log and Greek attribution |
+| Baseline PMCC | Blotter; NAV chart with IM, MM, and available funds on mouseover; ledger; Reg T panel; cycle statistics; leg attribution; position Greeks and Greek attribution (PO, DEC-120) |
+| Quant PMCC | Everything on the baseline page, plus the gate log |
 | Trade rules | Entry, skip-gate, and exit tables rendered from the YAML configs, with rule IDs and live parameter values, plus the short rationale text for each rule |
-| Methodology | The backtest's limits first: one symbol in one window, and how much of the P&L the long call made (DEC-109); bar-timing convention and look-ahead guard; fill model; mid-vs-trade scatters with R²; parameter, friction, and timing sensitivity; stated assumptions (r, q = 0, no early assignment). The data and RIC scheme, data coverage and Reg T treatment are not shown (PO, DEC-116) |
+| Methodology | Discovery first: the backtest's limits, one symbol in one window, and how much of the P&L the long call made (DEC-109), and whether the shorts' theta covered the long's (PO, DEC-120); bar-timing convention and look-ahead guard; fill model; mid-vs-trade scatters with R²; parameter, friction, and timing sensitivity; stated assumptions (r, q = 0, no early assignment). The data and RIC scheme, data coverage and Reg T treatment are not shown (PO, DEC-116) |
 | Universe | Symbol suitability screen and per-symbol headline table |
 | Data | Shows "Data connection required" on github.io; only works via the local server |
 

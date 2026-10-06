@@ -176,6 +176,7 @@ class Section(StrEnum):
 
     GATE_LOG = "gate_log"
     GREEK_ATTRIBUTION = "greek_attribution"
+    POSITION_GREEKS = "position_greeks"  # PO, DEC-120
 
 
 class Report(BaseModel):

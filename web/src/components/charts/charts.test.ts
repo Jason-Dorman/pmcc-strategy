@@ -11,6 +11,7 @@ import { accountOption } from "./account";
 import { barAxis, sessionAxis, shortDate, weekOf, xAxis } from "./axis";
 import { legOption } from "./legs";
 import { navCompareOption, navGap, navRows } from "./navCompare";
+import { positionGreeksOption } from "./positionGreeks";
 import { residualOption } from "./residual";
 import { scatterOption } from "./scatter";
 
@@ -190,6 +191,45 @@ describe("the residual chart (DEC-76)", () => {
     expect(option.series).toHaveLength(1);
     expect(series(option, "Cumulative residual").lineStyle.color).toBe("text");
     expect(tooltip(option, 1)).toContain("+$2.31");
+  });
+});
+
+describe("the position Greeks chart (DEC-120)", () => {
+  const points = [
+    { time: "2026-03-30T10:00:00-04:00", short_open: true, delta: 58.2, gamma: -3.52,
+      theta: 14.2, vega: 31.5 },
+    { time: "2026-03-30T11:00:00-04:00", short_open: false, delta: null, gamma: null,
+      theta: null, vega: null },
+  ];
+  const option = positionGreeksOption(P, points);
+
+  it("puts each net Greek in its own pane on the shared axis, against a zero ruler", () => {
+    expect(option.grid).toHaveLength(4);
+    ["Net δ", "Net Γ", "Net θ", "Net ν"].forEach((name, i) => {
+      const s = series(option, name);
+      expect([s.xAxisIndex, s.yAxisIndex]).toEqual([i, i]);
+      expect(s.lineStyle.color).toBe("text");
+      expect(s.markLine?.lineStyle.type).toBe("dotted");
+    });
+    expect((option.yAxis as { name?: string }[]).map((a) => a.name)).toEqual([
+      "Net δ · shares", "Net Γ · shares per $1", "Net θ · $ a day", "Net ν · $ a vol point",
+    ]);
+  });
+
+  it("labels only the bottom pane's time axis and leaves a bar holding nothing a hole", () => {
+    expect(option.xAxis.map((a) => a.axisLabel.show)).toEqual([false, false, false, true]);
+    expect(series(option, "Net θ").data).toEqual([14.2, null]);
+    expect(series(option, "Net θ").connectNulls).toBe(false);
+  });
+
+  it("lists each Greek in its units and whether the short is open", () => {
+    const tip = tooltip(option, 0);
+    expect(tip).toContain("58.2");
+    expect(tip).toContain("−3.52");
+    expect(tip).toContain("+$14.20");
+    expect(tip).toContain("+$31.50");
+    expect(tip).toContain("open");
+    expect(tooltip(option, 1)).toContain("none");
   });
 });
 

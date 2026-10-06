@@ -93,7 +93,8 @@ The baseline chart rules (DG §5–6), restated for ECharts:
 | NAV comparison | Comparison [1] | quant NAV (`--strategy-quant`), baseline NAV (`--strategy-baseline`) on every bar either run has, a bar one lacks a hole; tooltip shows both and the difference; the values, with the difference, in a virtualized disclosure (DEC-110) |
 | Leg attribution | Strategy [4] | cumulative long-leg P&L (`--long-leg`) vs cumulative net short premium (`--short-leg`) |
 | Mid vs print | Methodology [1], [2] | every pair as a cyan circle (x = mid, y = print), in ECharts' large mode, one path for all (DEC-115); OLS fit (`--fit-line`); y = x (`--identity-line`, dashed); a point's mid and print on hover. Shorts and longs in separate panels; the fit's measures in a table under the chart |
-| Greek residual | Strategy [8] (quant) | one cumulative-residual line (`--text`), beside the DEC-76 table |
+| Position Greeks | Strategy [8] (quant; [7] on the baseline) | four panes on one shared time axis at hero height, one per net Greek (δ shares, Γ shares per $1, θ $ a day, ν $ a vol point), each one line (`--text`) against a zero ruler and named by its axis, no legend; a bar holding nothing is a hole; tooltip: the four nets and whether a short is open (PO, DEC-120) |
+| Greek residual | Strategy [9] (quant; [8] on the baseline) | one cumulative-residual line (`--text`), beside the DEC-76 table |
 | Quote browser | Data [2] (local) | BID/ASK as a band or lines, mid as cyan circles, prints as magenta diamonds |
 
 ## 5. Tables (TanStack Table)
@@ -171,9 +172,10 @@ One component tree for both pages. The sections shown come from the result's `re
 | 5 | Blotter | 10 | §5 |
 | 6 | Gate log | 10 | quant only, via `report.sections`; §5 |
 | 7 | Ledger | 10 | §5; virtualized; stale and breach flags |
-| 8 | Greek attribution | 10 | quant only; DEC-76 table plus the cumulative-residual line, and each leg's bars wholly residual out of its bars held (DEC-63) |
+| 8 | Position Greeks | 10 | both pages, via `report.sections` (PO, DEC-120): a table of each Greek's long, short and net mean over the bars ending with both legs held, in its units, the textbook PMCC's sign (+δ, −Γ, +θ, +ν) and the share of those bars with it, and the bars counted; then the four-pane chart (§4), its values at every bar in a virtualized disclosure |
+| 9 | Greek attribution | 10 | both pages (PO, DEC-120); DEC-76 table plus the cumulative-residual line, and each leg's bars wholly residual out of its bars held (DEC-63) |
 
-The numbers above are the quant page's. The baseline page has no [6] or [8], so it renumbers at render time: Blotter is [5] and Ledger is [6].
+The numbers above are the quant page's. The baseline page has no [6], the gate log, so it renumbers at render time: Ledger is [6], Position Greeks [7] and Greek attribution [8] (DEC-120).
 
 ### 6.3 Trade rules — `#/rules/:ruleId?`
 
@@ -194,11 +196,11 @@ Arriving at `#/rules/X-S3` scrolls to that row and outlines it in `--accent`. Th
 
 ### 6.4 Methodology — `#/methodology/:symbol?`
 
-Panels that depend on the data follow the selected symbol (the index's first when the route names none) and show pooled figures where they exist. No readouts: the page explains rather than measures. Rules in its prose are named and linked, never by ID (DEC-113). The limits lead the page and the parameter grid follows the scatters; the data and RIC scheme, data coverage and Reg T treatment panels were dropped (PO, DEC-116).
+Panels that depend on the data follow the selected symbol (the index's first when the route names none) and show pooled figures where they exist. No readouts: the page explains rather than measures. Rules in its prose are named and linked, never by ID (DEC-113). Discovery, the limits and what the run found, leads the page (PO, DEC-120) and the parameter grid follows the scatters; the data and RIC scheme, data coverage and Reg T treatment panels were dropped (PO, DEC-116).
 
 | # | Panel | Width | Content |
 | --- | --- | --- | --- |
-| — | Limits of this backtest | 10 | Prose (DEC-109): one symbol and one 26-week window, a rising one; a PMCC is net long delta, so a rally rewards the long and runs over the shorts; each strategy's long and short legs; each first long's round trip and the roll that sold it, and how much more quant's long leg made than the baseline's (no ablation is cited, PO, DEC-116); whether the weekly-return CIs overlap; what a flat or falling market would likely change; no bear market is in the data's reach (DEC-07). Every figure is read from the results as the page renders, never typed in, and each claim is made only where the results bear it out (DEC-115) |
+| — | Discovery | 10 | Prose (DEC-109; renamed from "Limits of this backtest", PO, DEC-120): one symbol and one 26-week window, a rising one; a PMCC is net long delta, so a rally rewards the long and runs over the shorts; each strategy's long and short legs; each first long's round trip and the roll that sold it, and how much more quant's long leg made than the baseline's (no ablation is cited, PO, DEC-116); whether each strategy's short theta covered its long's, from the Greek attribution, and that a short is held at most Monday to Friday (and none in a skipped week) while the long decays every calendar day (PO, DEC-120); whether the weekly-return CIs overlap; what a flat or falling market would likely change; no bear market is in the data's reach (DEC-07). Every figure is read from the results as the page renders, never typed in, and each claim is made only where the results bear it out (DEC-115) |
 | — | Bar timing and look-ahead guard | 10 | Prose: the verified convention (DEC-06), decision time = bar end, MarketView's structural guarantee; the session close is the close bar's last trade, not the official closing auction, and the gap between them (DEC-23, R-21) |
 | — | Fill model | 10 | Prose + key/value: mid fills, no quote → no fill, `spread_capture` (the strategies' and the friction runs', from `rules.json`), fees |
 | 1 | Mid vs print — weekly shorts | 5 | scatter of every pair + fitted line; a table of slope, intercept, R², N, median \|print − mid\| as % of spread and the locked quotes, the symbol's column beside the pooled one (`fill_check.json`, `pooled_fill_check.json`; DEC-64); every pair's values in a virtualized disclosure, built when first opened (DEC-115); the caveat that a print can be up to an hour older than the end-of-bar quote |
@@ -266,7 +268,7 @@ No readouts. The universe files carry no manifest, so the footer shows those of 
 | Counts | grouped by thousands; a negative (short shares) with a true minus: `−100 sh` |
 | Option prices | `$2.3450` (4 dp, as quantized) |
 | Percent | 1 dp; spreads < 1% at 2 dp |
-| Greeks, IV | δ 2 dp; IV as % at 1 dp |
+| Greeks, IV | δ 2 dp; IV as % at 1 dp. Position Greeks (DEC-120): δ in shares at 1 dp (whole shares on chart ticks), Γ at 2 dp, θ and ν as signed money |
 | Time | `2026-09-14 10:00 ET` |
 | Instrument | RIC on top, OCC symbol underneath (`QQQ   260918C00710000`, spaces preserved) |
 | Rule IDs | mono, linked |

@@ -70,6 +70,15 @@ export const STACKED_GRIDS = [
 // A lower pane's value axis: few ticks, so its labels never crowd.
 export const PANE_TICKS = 2;
 
+/** Four equal panes sharing a time axis (the position Greeks, DEC-120). The band above each pane
+ * holds its axis name. */
+export const FOUR_PANES = [4, 28, 52, 76].map((top) => ({
+  left: INSET.left, right: INSET.right, top: `${String(top)}%`, height: "17%",
+}));
+
+// A pane's axis name: set left, just above the pane.
+export const PANE_NAME_GAP = 8;
+
 // Line weights: a series is solid; a reference is thinner and dashed or dotted. The account
 // chart's NAV, IM and MM are tokens.ts's ACCOUNT_LINES.
 export const LINE = { series: 1.6, ruler: 1 } as const;

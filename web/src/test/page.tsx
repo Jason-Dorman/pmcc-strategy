@@ -86,7 +86,7 @@ export function withRun(id: "baseline_pmcc" | "quant_pmcc", sections: Section[],
 }
 
 export function withQuant(change: (r: RunResult) => RunResult) {
-  return withRun("quant_pmcc", ["gate_log", "greek_attribution"], change);
+  return withRun("quant_pmcc", ["gate_log", "greek_attribution", "position_greeks"], change);
 }
 
 export async function panel(name: string): Promise<HTMLElement> {

@@ -28,6 +28,7 @@ from pmcc.export.analytics_models import (
     CycleStats,
     Metrics,
     NavPoint,
+    PositionGreeks,
     WeeklyReturn,
 )
 from pmcc.export.base import SCHEMA_VERSION, Dollars, ScalarMap, SchemaVersion
@@ -187,6 +188,7 @@ class RunResult(_Model):
     gate_log: tuple[GateLogRowOut, ...] | None = None
     cycles: tuple[Cycle, ...] | None = None  # full detail (P6-02)
     attribution: Attribution | None = None
+    position_greeks: PositionGreeks | None = None  # where its page shows them (DEC-120)
 
     @model_validator(mode="after")
     def _detail(self) -> Self:
@@ -197,7 +199,11 @@ class RunResult(_Model):
             if missing:
                 raise ValueError(f"a full-detail result needs its {', '.join(missing)}")
         else:
-            records |= {"cycles": self.cycles, "attribution": self.attribution}
+            records |= {
+                "cycles": self.cycles,
+                "attribution": self.attribution,
+                "position_greeks": self.position_greeks,
+            }
             kept = [k for k, v in records.items() if v is not None]
             if kept:
                 raise ValueError(f"a summary result keeps no {', '.join(kept)}")

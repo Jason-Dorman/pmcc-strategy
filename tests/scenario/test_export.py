@@ -130,6 +130,22 @@ def test_p6_01_every_run_carries_its_analytics_and_a_full_run_its_cycles(runs: R
         if result.attribution is not None:
             greek = Section.GREEK_ATTRIBUTION in report.sections
             assert (result.attribution.greek is not None) == greek
+        position = Section.POSITION_GREEKS in report.sections
+        assert (result.position_greeks is not None) == position
+
+
+def test_dec_120_position_greeks_have_a_point_per_ledger_bar(runs: Runs) -> None:
+    """On the synthetic market: one point per bar, at the ledger's times, the short open where
+    the ledger holds one; and a row per Greek in the textbook PMCC's order."""
+    for run_id in ("baseline_pmcc", "quant_pmcc"):
+        result = runs[1][run_id]
+        assert result.position_greeks is not None
+        assert result.ledger is not None
+        series = result.position_greeks.series
+        assert [p.time for p in series] == [r.time for r in result.ledger]
+        assert [p.short_open for p in series] == [r.short is not None for r in result.ledger]
+        rows = result.position_greeks.rows
+        assert [r.component for r in rows] == ["delta", "gamma", "theta", "vega"]
 
 
 def test_p6_03_04_the_attribution_reconciles_with_the_runs_own_rows(runs: Runs) -> None:
@@ -237,8 +253,11 @@ def test_export_index_lists_every_run_with_its_detail_and_sections(exported: Pat
     assert [s.symbol for s in index.symbols] == ["SYN"]
     runs = {r.run_id: r for r in index.symbols[0].runs}
     assert list(runs) == ["baseline_pmcc", "quant_pmcc", "quant_pmcc--a3"]
-    assert (runs["baseline_pmcc"].detail, runs["baseline_pmcc"].sections) == (Detail.FULL, ())
-    assert runs["quant_pmcc"].sections == (Section.GATE_LOG, Section.GREEK_ATTRIBUTION)
+    assert runs["baseline_pmcc"].detail is Detail.FULL
+    assert runs["baseline_pmcc"].sections == (Section.GREEK_ATTRIBUTION, Section.POSITION_GREEKS)
+    assert runs["quant_pmcc"].sections == (
+        Section.GATE_LOG, Section.GREEK_ATTRIBUTION, Section.POSITION_GREEKS,
+    )  # fmt: skip
     assert (runs["quant_pmcc--a3"].detail, runs["quant_pmcc--a3"].strategy_id) == (
         Detail.SUMMARY, "quant_pmcc")  # fmt: skip
     assert runs["quant_pmcc"].path == "SYN/quant_pmcc.json"

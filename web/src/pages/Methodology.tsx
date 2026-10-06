@@ -1,7 +1,8 @@
 // Methodology (UI-SPEC §6.4): where the backtest stops, how it times decisions and fills them,
-// how robust its result is, and what it assumes. The limits lead (PO, DEC-116). The data panels
-// follow the symbol (the index's first when the route names none): the fill check with the
-// pooled fit beside it, and the grid, friction and timing tables (DEC-105); r is the index's.
+// how robust its result is, and what it assumes. Discovery, the limits and what the run found,
+// leads (PO, DEC-116, DEC-120). The data panels follow the symbol (the index's first when the
+// route names none): the fill check with the pooled fit beside it, and the grid, friction and
+// timing tables (DEC-105); r is the index's.
 // The prose's figures are read from both full runs and `rules.json` as the page renders
 // (DEC-109).
 import { useParams } from "react-router-dom";
@@ -17,7 +18,7 @@ import { W_FULL, W_HALF } from "../theme/tokens";
 import type { FillCheck } from "../types/generated/fill_check";
 import type { PooledFillCheck } from "../types/generated/pooled_fill_check";
 import type { Robustness } from "../types/generated/robustness";
-import { BarTiming, FillModel, Limits, ruleNames } from "./methodology/prose";
+import { BarTiming, Discovery, FillModel, ruleNames } from "./methodology/prose";
 import { Assumptions, MidVsPrint, scatterCaption, TimingPanel } from "./methodology/sections";
 import { panel, whenLoaded } from "./placeholder";
 
@@ -61,9 +62,9 @@ export function Methodology() {
   return (
     <PageFrame
       panels={[
-        panel("limits", "Limits of this backtest", W_FULL,
+        panel("discovery", "Discovery", W_FULL,
               whenLoaded(runs, (rs) => (
-                <Limits runs={rs} symbols={symbols} />)),
+                <Discovery runs={rs} symbols={symbols} />)),
               false),
         panel("timing", "Bar timing and look-ahead guard", W_FULL, <BarTiming name={name} />,
               false),

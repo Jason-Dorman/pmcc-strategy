@@ -189,6 +189,42 @@ class Attribution(Model):
     greek: GreekAttribution | None
 
 
+class GreekPoint(Model):
+    """The position's Greeks at a bar's end (PO, DEC-120), in dollars from DEC-24's units: δ in
+    shares (δ × 100 × contracts), Γ in shares per $1 of spot, θ in $ a calendar day (θ ÷ 365),
+    vega in $ a vol point (vega ÷ 100). Each is the long's plus the short's, negated, plus X-S5's
+    stock for δ (its shares); null when nothing is held or a held leg's Greek is unknown."""
+
+    time: datetime
+    short_open: bool
+    delta: float | None
+    gamma: float | None
+    theta: float | None
+    vega: float | None
+
+
+class PositionGreekRow(Model):
+    """One Greek over the bars that end with both legs held and it known for both: each leg's mean
+    (the short's negated), the net's (X-S5's stock included), and the share of those bars on which
+    the net had the textbook PMCC's sign (+δ, −Γ, +θ, +vega). The means and share are null over no
+    bars."""
+
+    component: str  # "delta", "gamma", "theta" or "vega"
+    expected_sign: int  # +1 or −1
+    long: float | None
+    short: float | None
+    net: float | None
+    share_with_sign: float | None
+    bars: int
+
+
+class PositionGreeks(Model):
+    """The position's Greeks, bar by bar and averaged per leg (PO, DEC-120)."""
+
+    rows: tuple[PositionGreekRow, ...]  # delta, gamma, theta, vega
+    series: tuple[GreekPoint, ...]  # one per bar
+
+
 # ---- per-symbol files ---------------------------------------------------------------------------
 
 

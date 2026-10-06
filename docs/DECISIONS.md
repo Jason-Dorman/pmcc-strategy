@@ -133,6 +133,8 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-116 | Methodology: the limits first, three panels dropped | SETTLED (PO) | P7-04 |
 | DEC-117 | P7-05: the Universe page | ENG | P7-05 |
 | DEC-118 | L-03: each symbol's own starting cash | ENG · E-L4's reworded text put to the PO | handover 2026-10-05 |
+| DEC-119 | LSEG's request cap, and QQQ's fetch deadline | SETTLED (PO): keep pulling; drop QQQ if not in by the due date | P1-10 |
+| DEC-120 | The lecture's Greeks on the site: position Greeks, both pages' Greek attribution, Discovery | SETTLED (PO) | L-04 |
 
 ---
 
@@ -942,6 +944,7 @@ INV-14 and INV-15 run in the web job.
 - **Outcome:** 2026-09-30 — PO, at P4-04's handover: as recommended.
 - **Outcome:** 2026-09-30 — PO, at P4-05, on what the summary holds before P6: **its analytics stay null until P6.** Metrics, cycle statistics, exit mix, skips by rule, session-close NAV and weekly returns are in the model but null; P4-05 records only the invariants the run held and the ledger's flag counts, since the rest depend on DEC-60 and DEC-62, asked at P6. The ablation files carry few numbers until P6-09 re-runs everything; the P4-04 review notes stay in BUILD-PLAN and DEC-95.
 - **Built at P4-05 (DEC-96):** each strategy YAML has a `report` block: `detail` (`full` or `summary`) and `sections` (`gate_log`, `greek_attribution`). Like `id` and `name`, it is never inherited: a file without one keeps a summary, so every variant (the ablations, and P5-02's sensitivity runs) is a summary unless its own file says otherwise. The ablations also say so explicitly; the test harness's variants ask for `full`. Sections need full detail. (P4-05 first made it inherited; the review found that P5-02's variants would then have published full detail, contrary to this entry.) The block is part of the config and so of its hash. A summary result keeps no blotter, ledger or gate log: over NVDA's 26 weeks the quant file is about 430 KB and A4's summary about 23 KB.
+- **Amended 2026-10-05 (PO, DEC-120):** the baseline declares `greek_attribution` too, and both strategies a third section, `position_greeks`; only quant's page shows the gate log.
 
 ### DEC-55 — Dividends
 **Status:** SETTLED · **Basis:** Spec › Overview and scope
@@ -2444,6 +2447,7 @@ How P4-05 builds the results contract (ARCHITECTURE §12). None of it changes wh
     recalibrating the starting cash first, DEC-30). Neither is started; each goes to the PO
     with a proposal before any work.
   - Spec › Site and UI's Methodology row now lists the backtest's limits, citing this entry.
+- **Amended 2026-10-05 (PO, DEC-120):** the panel is renamed **Discovery**, and states whether each strategy's short theta covered its long's.
 
 ### DEC-110 — P7-02: the comparison page
 **Status:** ENG · the limit sentence's wording where a run doesn't bear it out put to the PO at the handover, 2026-10-02 · **Affects:** P7-02, P7-04 (the robustness table), P7-05 (the universe files); UI-SPEC §4, §6.1; ARCHITECTURE §13; DEC-61, DEC-63, DEC-65, DEC-105, DEC-109
@@ -2858,6 +2862,36 @@ How L-03 builds the PO's 2026-10-05 answer to DEC-30. No result's numbers change
 - **E-L4's text** (`configs/_shared.yaml`, shown on the Trade rules page): the summary and action now say each symbol's account starts with 2× its most expensive first long-leg cost, and the rationale says why (each symbol is its own account, so returns compare). The wording is the agent's, put to the PO at the handover. It is part of the config, so every run's `config_hash` changes.
 - **Re-run:** the new hash and schema version mean every committed result is stale. After the PO commits this, `just batch` from a clean tree re-writes `results/` (24 NVDA runs and the symbol and universe files); their numbers are expected to stay as they are, since NVDA's cash didn't move.
 
+### DEC-119 — LSEG's request cap, and QQQ's fetch deadline
+**Status:** SETTLED · **Basis:** PO, 2026-10-05; the cap measured from the fetch logs · **Affects:** P1-10, L-02; R-04; DEC-15
+
+- **Found, resuming QQQ's fetch on 2026-10-05:** LSEG answers `429, Too many requests, please try again later` after a few thousand RIC requests, and keeps answering it for hours. `pmcc fetch` treats three refusals in a row as an outage, so it stops cleanly and writes nothing for the unit in flight (DEC-49); re-running resumes at the first missing unit.
+  - **2026-09-29 (seen again in the logs):** NVDA's 2,001 requests, then TSLA's 3,146, then 429s from 05:17 UTC. It was still refused at 13:17 and 13:20 UTC, 8 hours on. This is why TSLA's pull stopped with none of its monthlies (P1-10).
+  - **2026-10-05:** QQQ's 1,913 requests, a Workspace hang on the May 29 unit (read timeouts, cleared by restarting Workspace), then 1,358 more, then 429s from 15:47 UTC. Still refused 15 minutes later, and again at 01:01 UTC on Oct 6, more than 9 hours on.
+  - **So:** a cap of very roughly 3,300 to 5,200 requests (depending on how the one-RIC re-asks count), over a day or a rolling 24 hours; LSEG doesn't say which. LSEG-DATA-GUIDE doesn't mention it.
+- **QQQ's state:** 27 of 63 units cached, the stock tape and every weekly from Apr 2 to Jun 26, calls and puts. None of the long-leg monthlies are cached (the fetch works through expiries in date order), so QQQ can't be backtested on what's there. The rest is 36 units, an estimated 4,611 to 13,833 requests: one to three more days at the cap.
+- **A shorter QQQ window was considered and declined** (PO, as recommended): Mar 30 to Jun 26 would need only the long-leg monthlies (about 1,600 to 1,800 requests), but it breaks one window for every symbol (DEC-07), needs a window per symbol in the universe, batch and export, mixes two windows in the pooled CI, and would cache those monthlies with the short window's narrower strike bands, which are never overwritten.
+- **Outcome:** 2026-10-05 — PO: **keep pulling QQQ's full window, a quota at a time, and drop QQQ if it isn't in before the due date.** Each attempt resumes with the same command; the agent reports what came in. Until then `configs/universe.yaml`'s uncommented QQQ line stays uncommitted (`just batch` refuses a symbol with no starting cash, DEC-118). Once the fetch completes: calibrate QQQ alone, run the batch, repeat P5-05's band-edge check, then the site (DEC-15).
+
+### DEC-120 — The lecture's Greeks on the site: position Greeks, both pages' Greek attribution, Discovery
+**Status:** SETTLED · **Basis:** PO, 2026-10-05 · **Affects:** L-04; Spec › Attribution, Site and UI (Baseline PMCC, Quant PMCC, Methodology); PRD FR-M9, HR-11; UI-SPEC §4, §6.2, §6.4, §9; ARCHITECTURE §12; amends DEC-54 (the baseline's sections), DEC-76 (its display, now on both pages), DEC-109 and DEC-116 (the panel's name)
+
+- **Context:** the PO checked the build against the 2026-09-22 lecture on the PMCC (a deep ITM long call with weekly calls sold against it) and its Greeks. The rules and accounting already did what the lecture asks: a 0.70–0.90 delta long; an explicit rule after assignment that leaves the position short 100 shares and still long the call (X-S5, never exercising the long); no 50%-of-LMV Reg T; coverage only while the long's strike is no higher and its expiry no later (INV-05); full Black-Scholes theta, rate term included; every rule written down. Where it fell short was in showing the lecture's central point: the weekly is a gamma and theta position, the long a vega one, and the PMCC is long delta, short gamma, long theta and long vega.
+- **Gaps put to the PO, each with a recommendation:** (1) the committed results contradict the lecture's "positive net theta" for quant, and the site doesn't say so; (2) only quant's page showed the Greek attribution; (3) no page showed the position's net Greeks; (4) quant's long is never "six months or more"; (5) the event-week gate leaves the long's vega uncovered. Also corrected at the time: quant skipped 18 of its 26 weeks, not 11 (the baseline's figure).
+- **Outcome:** 2026-10-05 — PO: **1, 2 and 3.**
+  - **(1):** "a simple sentence or two in the limits of the backtest, but rename that box to Discovery". No new figure (the long's theta split by whether a short was open was offered and not taken).
+  - **(2):** the baseline's `report.sections` gains `greek_attribution`.
+  - **(3):** a chart and table, on both strategy pages, in dollar units.
+- **Built (L-04):**
+  - **Position Greeks** (`pmcc/analytics/position_greeks.py`; section `position_greeks`, which both strategy files now list). At every ledger bar, the position's net δ, Γ, θ and ν: the long's plus the short's, negated, plus X-S5's shares for δ. Units from DEC-24's: δ × 100 × contracts (shares), Γ × 100 × contracts (shares per $1), θ ÷ 365 × 100 × contracts ($ a calendar day), ν ÷ 100 × 100 × contracts ($ a vol point). A Greek is null on a bar holding nothing, or where a held leg's is unknown; the ledger's Greeks are used as recorded. The table averages each Greek over the bars ending with both legs held and it known for both (`bars`), gives each leg's mean and the net's, and the share of those bars on which the net had the textbook PMCC's sign. Sums use `math.fsum`.
+  - **The result** gains `position_greeks {rows, series}` beside `attribution`, null unless declared; a summary run keeps none. `SCHEMA_VERSION` is 6, so every committed result is stale until re-run.
+  - **The page:** Strategy [8] Position Greeks (quant; [7] on the baseline), before the Greek attribution, now [9] ([8]). The table first, then the four panes on one time axis at hero height, each named by its axis with a zero ruler, then every bar's values in a disclosure: the order the leg and Greek attribution panels use, rather than the table beside the chart in the mockup put to the PO. Its caption says where no short is open, the net is the long alone.
+  - **Discovery** (Methodology's first panel, renamed): one paragraph, between the rolls and the CIs, read from each run's Greek attribution as the page renders. Its head says whether the weekly rent covered the long's decay in both, neither or one strategy; then each strategy's short theta against its long's; then that a short is held at most Monday to Friday (and none in a skipped week, where any run skipped one) while the long decays every calendar day, weekends included. A run without a Greek attribution leaves the paragraph out.
+- **NVDA, from the uncommitted tree** (scratch runs; trades, ledger and P&L unchanged):
+  - **Theta over the run:** the baseline's shorts +$1,336.93 against its long's −$973.03, the rent covering the decay; quant's +$836.54 against −$838.24, about even. Quant's short was open on 138 of its 875 bars (18 weeks skipped), the baseline's on 211.
+  - **While both legs were held**, both strategies had the lecture's package. Net θ averaged +$42.91 a day (baseline) and +$40.99 (quant); net δ +64.1 and +68.4 shares; net Γ −3.70 and −3.27 shares per $1; net ν +$10.66 and +$8.02 a vol point. Net δ, Γ and θ had the textbook sign on every such bar; net ν on 96.7% and 78.3% of them.
+  - **Size:** `position_greeks` adds about 118 KB to each full run's file.
+
 ## E. Analytics definitions
 
 These define the reported numbers, so each goes to the PO. They're asked as one batch when P6 starts.
@@ -3206,6 +3240,7 @@ These define the reported numbers, so each goes to the PO. They're asked as one 
   a row per leg × component (δ, Γ, θ, ν, residual) with its dollars and its share of the leg's
   change, each leg's change with its bars held and unattributed, and the cumulative residual over
   both legs at every bar. The display waits for P7-01.
+- **Amended 2026-10-05 (PO, DEC-120):** shown on both strategy pages, after the new position Greeks panel.
 
 ---
 

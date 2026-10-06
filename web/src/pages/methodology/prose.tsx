@@ -1,4 +1,4 @@
-// The methodology page's prose panels (UI-SPEC §6.4): the limits of this backtest (DEC-109), bar
+// The methodology page's prose panels (UI-SPEC §6.4): discovery (DEC-109, DEC-120), bar
 // timing and the look-ahead guard, and the fill model. Every figure in them is read from the results as the
 // page renders, and a claim is made only where the results bear it out; rules are named, never
 // by ID (PO, DEC-113).
@@ -91,9 +91,9 @@ export function FillModel({ rules }: { rules: Rules | null }) {
   );
 }
 
-// ---- the limits of this backtest ---------------------------------------------------------------
+// ---- discovery: the backtest's limits, and what it found (DEC-109, DEC-120) ----------------------
 
-export interface LimitsInput {
+export interface DiscoveryInput {
   /** Quant's full run, then the baseline's. */
   runs: readonly [RunResult, RunResult];
   symbols: readonly string[];
@@ -103,7 +103,7 @@ function plural(n: number, one: string, many: string): string {
   return `${count(n)} ${n === 1 ? one : many}`;
 }
 
-function OneWindow({ runs, symbols }: LimitsInput) {
+function OneWindow({ runs, symbols }: DiscoveryInput) {
   const [quant] = runs;
   const weeks = quant.summary.cycle_stats?.weeks;
   const { start, end } = quant.config.window;
@@ -122,7 +122,7 @@ function OneWindow({ runs, symbols }: LimitsInput) {
   );
 }
 
-function Legs({ runs }: LimitsInput) {
+function Legs({ runs }: DiscoveryInput) {
   const splits = runs.flatMap((r) => legSplit(r) ?? []);
   if (splits.length === 0) return null;
   const leg = (r: RunResult) => r.attribution?.leg;
@@ -146,7 +146,7 @@ function Legs({ runs }: LimitsInput) {
   );
 }
 
-function Timing({ runs, name }: LimitsInput & { name: RuleName }) {
+function Timing({ runs, name }: DiscoveryInput & { name: RuleName }) {
   const [quant, baseline] = runs;
   const firsts = runs.flatMap((r) => {
     const first = longTrips(r)[0];
@@ -172,7 +172,44 @@ function Timing({ runs, name }: LimitsInput & { name: RuleName }) {
   );
 }
 
-function Noise({ runs }: LimitsInput) {
+/** Each run's theta, short against long, from its Greek attribution (DEC-63, DEC-120). */
+function thetas(runs: readonly RunResult[]) {
+  return runs.flatMap((r) => {
+    const rows = r.attribution?.greek?.rows ?? [];
+    const of = (leg: string) => rows.find((x) => x.leg === leg && x.component === "theta");
+    const short = of("short");
+    const long = of("long");
+    return short && long
+      ? [{ id: r.manifest.run_id, name: r.config.strategy.name, short: short.dollars,
+           long: long.dollars }]
+      : [];
+  });
+}
+
+function Theta({ runs }: DiscoveryInput) {
+  const found = thetas(runs);
+  if (found.length === 0) return null;
+  const covered = found.filter((t) => t.short + t.long > 0).length;
+  const skipped = runs.some((r) => (r.summary.cycle_stats?.weeks_skipped ?? 0) > 0);
+  const head = covered === found.length ? "The weekly rent covered the long's decay."
+    : covered === 0 ? "The weekly rent didn't cover the long's decay."
+    : "The weekly rent covered the long's decay in one strategy only.";
+  return (
+    <p>
+      <b>{head}</b>{" "}
+      {found.map((t, i) => (
+        <span key={t.id}>
+          {i > 0 && " "}{t.name}&apos;s shorts earned {moneySigned(t.short)} of theta while its
+          long paid {moneySigned(t.long)}.
+        </span>
+      ))}{" "}
+      A short is held at most from Monday to Friday{skipped && <>, and none in a skipped
+      week</>}, while the long decays every calendar day, weekends included.
+    </p>
+  );
+}
+
+function Noise({ runs }: DiscoveryInput) {
   const [quant, baseline] = runs;
   const qc = quant.summary.metrics?.weekly_return;
   const bc = baseline.summary.metrics?.weekly_return;
@@ -188,7 +225,7 @@ function Noise({ runs }: LimitsInput) {
   );
 }
 
-export function Limits(input: LimitsInput) {
+export function Discovery(input: DiscoveryInput) {
   const name = ruleNames(input.runs);
   const reset = input.runs[0].config.strategy.rules.find((r) => r.id === "X-L1");
   const delta = reset?.params.min_delta;
@@ -197,6 +234,7 @@ export function Limits(input: LimitsInput) {
       <OneWindow {...input} />
       <Legs {...input} />
       <Timing {...input} name={name} />
+      <Theta {...input} />
       <Noise {...input} />
       <p>
         <b>Other markets.</b> In a flat or mean-reverting market the shorts would become the

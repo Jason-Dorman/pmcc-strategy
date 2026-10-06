@@ -142,6 +142,7 @@ Every row points to its source. "Verified by" names the invariant test (INV-nn),
 | FR-M6 | Fill-assumption check: TRDPRC_1 vs mid scatter with fitted line and R², shorts and longs shown separately | Spec › Fill-assumption check; DEC-64 | `tests/unit/analytics/test_fillcheck.py`, `tests/unit/data/test_fill_pairs.py`; `{SYM}/fill_check.json` and `universe/pooled_fill_check.json` in `tests/unit/test_cli_batch.py` (P6-07, DEC-103) |
 | FR-M7 | Symbol suitability screen with the spec's five point-in-time measures | Spec › Symbol suitability screen; DEC-66 | `tests/unit/analytics/test_suitability.py`; `universe/suitability.json` in `tests/unit/test_cli_batch.py` (P6-08, DEC-104) |
 | FR-M8 | Every metric computed per symbol × strategy, and pooled across the universe | Spec › Analytics | `pmcc verify` schema |
+| FR-M9 | Position Greeks: the net delta, gamma, theta and vega at every bar in dollar units, and each leg's mean over the bars both legs were held against the textbook PMCC's signs; on both strategy pages, with the Greek attribution (PO, DEC-120) | Spec › Attribution; DEC-120 | `tests/unit/analytics/test_position_greeks.py`; `tests/scenario/test_export.py`; `web/src/pages/Strategy.test.tsx`, `charts.test.ts` |
 
 ### 6.8 Export
 
@@ -191,7 +192,7 @@ Every row points to its source. "Verified by" names the invariant test (INV-nn),
 | HR-8 | Data coverage is disclosed: unanswered contracts, IV failures, stale-mark rates, unavailable fields | `coverage.json`, written by `pmcc batch` (P5-03, DEC-100), committed in `results/` and exported with the site's data; not shown on a page (PO, DEC-116) |
 | HR-9 | Stated assumptions: r (value and source); q = 0; no early assignment; dividends out of scope; Black-Scholes on American calls; the bar's final quotes aren't proven to be the NBBO (LDG §4.14) | Methodology |
 | HR-10 | Synthetic data can never pass for real | banner (DEC-74) |
-| HR-11 | The backtest's limits are stated: one symbol in one window, a rising one, and how much of each strategy's P&L the long call made against the shorts; figures read from the results (PO, DEC-109) | Comparison purpose panel (P7-02, DEC-110); Methodology |
+| HR-11 | The backtest's limits are stated: one symbol in one window, a rising one, and how much of each strategy's P&L the long call made against the shorts, and whether the shorts' theta covered the long's; figures read from the results (PO, DEC-109, DEC-120) | Comparison purpose panel (P7-02, DEC-110); Methodology's Discovery panel |
 
 ## 8. Non-functional requirements
 
