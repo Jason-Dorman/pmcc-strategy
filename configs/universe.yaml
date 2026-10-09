@@ -39,7 +39,7 @@ bootstrap:
 # its fetch (P1-10); run `just calibrate` (it calibrates only symbols without a final value); then
 # run the batch (`just batch`).
 symbols:
-  - {symbol: QQQ, stock_ric: QQQ.O, option_root: QQQ}
+  # - {symbol: QQQ, stock_ric: QQQ.O, option_root: QQQ}
   - {symbol: NVDA, stock_ric: NVDA.O, option_root: NVDA}
   # - {symbol: TSLA, stock_ric: TSLA.O, option_root: TSLA}
 
