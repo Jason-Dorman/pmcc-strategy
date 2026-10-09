@@ -2912,6 +2912,7 @@ How L-03 builds the PO's 2026-10-05 answer to DEC-30. No result's numbers change
   - **No footer:** `ManifestFooter`, `format/hash`, `REPO_URL` and `useManifests` are removed, with the footer's styles. The tests and the smoke test that waited on the footer wait on the page's main landmark, and check that no page has a footer.
   - **No result changes:** configs and results are untouched, so no re-run.
 - **Tests:** Vitest 400 (the footer, sensitivity, friction, assumptions and hash tests removed; one added for the fill model's sentence); the smoke test passes on the built site (20).
+- **Then, 2026-10-08 — PO:** "make the ablations table fill the width of the window". The Rules page's Ablations panel is full width (10 columns), the page's last panel now that the sensitivity table is gone; a test pins it (Vitest 401).
 
 ## E. Analytics definitions
 

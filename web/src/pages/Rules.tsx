@@ -9,7 +9,7 @@ import { useParams } from "react-router-dom";
 import { Empty } from "../components/Note";
 import { PageFrame } from "../components/PageFrame";
 import { useRules } from "../data/useRun";
-import { W_FULL, W_HALF } from "../theme/tokens";
+import { W_FULL } from "../theme/tokens";
 import type { Rules as RulesFile } from "../types/generated/rules";
 import { panel, whenLoaded } from "./placeholder";
 import { pairOf, type Pair } from "./rules/model";
@@ -46,7 +46,7 @@ export function Rules() {
           note: "what closes, expires or replaces a position",
           caption: <>▸ opens the reasoning: why there are no rolls, why the short is never
             exercised on purpose, and why the Friday check keeps a buffer.</> },
-        { ...panel("ablations", "Ablations", W_HALF,
+        { ...panel("ablations", "Ablations", W_FULL,
                    whenLoaded(rules, (r) => <Ablations rules={r} />)),
           note: "quant with one layer switched off",
           caption: <>Each ablation is quant with the rule shown replaced or removed, and nothing else.

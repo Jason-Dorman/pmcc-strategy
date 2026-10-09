@@ -43,6 +43,12 @@ describe("the page", () => {
     expect(numbers).toEqual([null, "[1]", "[2]", "[3]", "[4]"]);
   });
 
+  it("gives the ablations the full width (PO, DEC-121)", async () => {
+    renderRules();
+    await table("Ablations");
+    expect((await panel("Ablations")).classList.contains("pm-w10")).toBe(true);
+  });
+
   it("says so in each panel when rules.json is missing, never a blank page", async () => {
     const files = { ...FILES };
     delete files["data/rules.json"];

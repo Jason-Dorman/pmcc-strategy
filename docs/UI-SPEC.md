@@ -186,7 +186,7 @@ The page is rendered from `rules.json` (DEC-52). Nothing on it is hand-typed.
 | 1 | Entry rules | 10 | ID · Rule (its title: "When do we enter?") · Baseline · Quant (each strategy's summary in plain words, live values filled in; Quant reads "Same" where it runs the baseline's rule; the rule stated exactly on hover); the Why expands per row |
 | 2 | Skip-week gates | 10 | ID · Gate (title) · Condition (summary) · Baseline (On/Off) · Quant (On/Off + threshold: "On · 1.20", the value as the rule's text shows it, `shown`); Why |
 | 3 | Exit rules | 10 | ID · Rule (title) · What happens (summary); the Why (includes why there are no rolls, why the short is never exercised on purpose, and the Friday buffer) |
-| 4 | Ablations | 5 | A1–A5, one row per rule changed: Ablation · Layer removed (quant's rule, by name, linked) · Replaced by (the ablation's summary, or "nothing") |
+| 4 | Ablations | 10 | A1–A5, one row per rule changed (full width, PO, DEC-121): Ablation · Layer removed (quant's rule, by name, linked) · Replaced by (the ablation's summary, or "nothing") |
 
 The sensitivity runs' table was dropped (PO, DEC-121).
 
