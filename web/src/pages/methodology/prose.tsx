@@ -1,12 +1,12 @@
-// The methodology page's prose panels (UI-SPEC §6.4): discovery (DEC-109, DEC-120), bar
-// timing and the look-ahead guard, and the fill model. Every figure in them is read from the results as the
-// page renders, and a claim is made only where the results bear it out; rules are named, never
-// by ID (PO, DEC-113).
+// The methodology page's prose panels (UI-SPEC §6.4): discovery (DEC-109, DEC-120) and the fill
+// model, which carries the look-ahead guard and r in a sentence (PO, DEC-121). Every figure in
+// them is read from the results as the page renders, and a claim is made only where the results
+// bear it out; rules are named, never by ID (PO, DEC-113).
 import { KeyValue, RuleLink } from "../../components/cells";
 import { shortDate } from "../../components/charts/axis";
 import { Note } from "../../components/Note";
 import { money, moneySigned } from "../../format/money";
-import { count, meanCI, ratio } from "../../format/number";
+import { count, meanCI, pct, ratio } from "../../format/number";
 import type { Rules } from "../../types/generated/rules";
 import type { RunResult } from "../../types/generated/run_result";
 import { legSplit, longRode } from "../compare/figures";
@@ -25,41 +25,12 @@ function Named({ id, name, lower = true }: { id: string; name: RuleName; lower?:
   return <RuleLink id={id} prose>{lower ? text.toLowerCase() : text}</RuleLink>;
 }
 
-// ---- bar timing and the look-ahead guard -------------------------------------------------------
-
-export function BarTiming({ name }: { name: RuleName }) {
-  return (
-    <Note>
-      <p>
-        <b>Bars are keyed by their end.</b> LSEG stamps an hourly bar at its start, but its BID
-        and ASK are the quotes at its end, as checked on a known contract before anything was
-        built. Acting on them at the stamp would be look-ahead, so every bar is keyed by its end
-        time, and every decision is made at a bar&apos;s end and filled at that bar&apos;s mid.
-      </p>
-      <p>
-        <b>Look-ahead is impossible by construction.</b> A strategy never sees a data table. On
-        each bar the engine hands it a MarketView, which returns only data stamped at or before
-        the decision time and raises an error on any request for later data. Strikes are fetched
-        across the whole window&apos;s range, but a rule chooses among them only through
-        MarketView.
-      </p>
-      <p>
-        <b>The close.</b> A session&apos;s close is its last bar&apos;s last trade, not the
-        official closing auction, which the cache doesn&apos;t hold. The two differed by up to
-        0.09% in the probes, so a short pinned at its strike can be in the money by one and out
-        of it by the other. The <Named id="X-S3" name={name} /> uses the last bar ending by
-        15:00 ET on the week&apos;s final session.
-      </p>
-    </Note>
-  );
-}
-
 // ---- fill model --------------------------------------------------------------------------------
 
-export function FillModel({ rules }: { rules: Rules | null }) {
+/** The fill model, with one sentence on the look-ahead guard and the risk-free rate, which have
+ * no panel of their own (PO, DEC-121). */
+export function FillModel({ rules, rate }: { rules: Rules | null; rate: number | null }) {
   const strategies = rules?.strategies.filter((s) => s.family === "strategy") ?? [];
-  const friction = [...new Set(rules?.strategies
-    .filter((s) => s.family === "friction").map((s) => s.spread_capture) ?? [])].sort();
   const captures = [...new Set(strategies.map((s) => s.spread_capture))];
   const fees = [...new Set(strategies.map((s) => s.fee_per_contract))];
   return (
@@ -70,8 +41,13 @@ export function FillModel({ rules }: { rules: Rules | null }) {
           on that bar. A bar without a BID or an ASK fills nothing: no print is ever invented, and
           a stale mark, carried only to value a position, never fills. Friction moves a fill off
           the mid by a share of the half-spread, <code>spread_capture</code>: a buy fills at mid +
-          capture × half-spread, a sell at mid − it. The Friction table runs both strategies at
-          each capture against themselves at the mid.
+          capture × half-spread, a sell at mid − it.
+        </p>
+        <p>
+          Every decision uses only data stamped at or before its bar&apos;s end, and the engine
+          refuses any request for later data, so look-ahead is impossible by construction
+          {rate !== null && <>; implied volatilities and Greeks use a risk-free rate of{" "}
+            {pct(rate, 2)}</>}.
         </p>
       </Note>
       {rules && (
@@ -81,8 +57,6 @@ export function FillModel({ rules }: { rules: Rules | null }) {
             ["Fill price", "the decision bar's mid, at its end"],
             ["No BID or no ASK", "no fill"],
             ["Spread capture, both strategies", captures.map((c) => ratio(c)).join(", ") || "—"],
-            ["Spread capture, the friction runs",
-             friction.map((c) => ratio(c)).join(", ") || "none"],
             ["Fee per contract", fees.map(money).join(", ") || "—"],
           ]}
         />

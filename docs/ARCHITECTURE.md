@@ -763,10 +763,10 @@ web/                            P4-06 (DEC-97); Node 22 (.nvmrc, engines)
   src/
     main.tsx    the entry: fonts, stylesheet, App
     app/        App (HashRouter + IndexProvider), routes (the table), AppShell (command bar, banners),
-                pages (paths), site (repo URL, wordmark)
+                pages (paths), site (wordmark)
     data/       loader (index; a per-file cache of runs and a symbol's or the universe's files;
                 schema_version check), IndexContext, useRun (useRun, useSymbolFile,
-                useUniverseFile; P7-02; useRules, P7-03; useManifests, P7-05), state (with
+                useUniverseFile; P7-02; useRules, P7-03), state (with
                 both(), two loads as one)
     types/generated/   json-schema-to-typescript output (gitignored; regenerated before typecheck/build)
     theme/      tokens.css (theme.py's values), shell.css (PAGE_CSS, ported), index.css (Tailwind +
@@ -774,7 +774,7 @@ web/                            P4-06 (DEC-97); Node 22 (.nvmrc, engines)
                 core, the base option and series builders, P7-01)
     components/ CommandBar, Readouts, PanelGrid, Panel, Note (Details, lazy at P7-04; Empty,
                 Loading), PageFrame,
-                ManifestFooter, WarningBanner, ui/select; DataTable (sorting, toggle filters,
+                WarningBanner, ui/select; DataTable (sorting, toggle filters,
                 virtualization; a row's detail, a target row and wrapping cells at P7-03) and
                 cells (RuleLink, Instrument, KeyValue) at P7-01;
                 RobustnessTable (a robustness.json table, P7-02);
@@ -790,7 +790,7 @@ web/                            P4-06 (DEC-97); Node 22 (.nvmrc, engines)
                 placeholder until P7-06);
                 placeholder (the placeholder helpers)
     lib/        cn (shadcn/ui's class joiner)
-    format/     money (and chart ticks, signed), number (percent, ratio, IV), time (ET), hash,
+    format/     money (and chart ticks, signed), number (percent, ratio, IV), time (ET),
                 rule (a rule ID's plain label for the filters, DEC-107)
     test/       fixtures (an index, two full runs, NVDA's robustness and fill check, the universe's
                 headline, pooled, pooled fill check and suitability files, and rules.json, typed

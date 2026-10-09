@@ -154,7 +154,7 @@ describe("cycle statistics, legs and Greeks read every field", () => {
     })));
     const values = kv(await screen.findByRole("table", { name: "Leg attribution" }));
     expect(values["Short open at the end, at its mark"]).toBe("−$12.50");
-    expect(values["Stock after X-S5"]).toBe("−$50.00");
+    expect(values["Stock after a missed assignment"]).toBe("−$50.00");
     expect(values["Long leg, intrinsic change"]).toBe("+$900.00");
     expect(values["Long leg, extrinsic change"]).toBe("−$227.50");
   });
@@ -181,7 +181,8 @@ describe("cycle statistics, legs and Greeks read every field", () => {
 });
 
 describe("the record tables", () => {
-  it("shows a sale down, a gate's every value on hover, ET decision times and δ", async () => {
+  it("shows a sale down, a gate's every value on hover, ET decision times and delta in words",
+     async () => {
     renderPage("quant");
     const blotter = await screen.findByRole("table", { name: "Blotter" });
     expect(within(rowAt(blotter, 1)).getByText("SELL").className).toBe("pm-down");
@@ -189,10 +190,10 @@ describe("the record tables", () => {
     const sold = rowAt(gates, 0);
     expect(within(sold).getByText("pass 1.11").getAttribute("title")).toContain("ratio 1.105527");
     expect(within(sold).getByText("2026-03-30 10:00 ET")).toBeDefined();
-    expect(within(sold).getByText("δ 0.19 · mid $0.6950")).toBeDefined();
+    expect(within(sold).getByText("delta 0.19 · mid $0.6950")).toBeDefined();
     const ledger = screen.getByRole("table", { name: "Ledger" });
-    const delta = within(ledger).getByRole("columnheader", { name: "L δ" });
-    expect(delta.querySelector(".pm-greek")?.textContent).toBe("δ");
+    const delta = within(ledger).getByRole("columnheader", { name: "L delta" });
+    expect(delta.querySelector(".pm-greek")).toBeNull();
     expect(column(ledger, 4)[0]).toBe("0.90");
     expect(delta.getAttribute("aria-sort")).toBe("none");
   });

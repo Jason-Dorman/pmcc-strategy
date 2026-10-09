@@ -27,9 +27,9 @@ The product answers these questions:
 | --- | --- | --- |
 | Q1 | Does the quant PMCC beat the baseline, per symbol and pooled, after honest costs? | Comparison |
 | Q2 | Which quant layers earn their complexity? | Comparison (ablations A1–A5) |
-| Q3 | Does the answer survive friction, entry timing and parameter changes? | Methodology |
+| Q3 | Does the answer survive friction, entry timing and parameter changes? | Methodology (entry timing, parameter grid); friction in `robustness.json`, not on a page (PO, DEC-121) |
 | Q4 | Which symbols suit a PMCC? | Universe |
-| Q5 | Can every trade be traced to its rule and inputs, and every number to its code, config, environment and data? | Strategy pages, Trade rules, manifest footer |
+| Q5 | Can every trade be traced to its rule and inputs, and every number to its code, config, environment and data? | Strategy pages, Trade rules; each result file's manifest (no footer on the site, PO, DEC-121) |
 
 ## 3. Users
 
@@ -48,7 +48,7 @@ The product answers these questions:
 | G2 | Honest reporting | Every HR requirement (§7) is visible on the site |
 | G3 | Performance reporting | Every metric in Spec › Analytics is present per symbol × strategy and pooled |
 | G4 | Purpose | The landing page states it; every rule shows its rationale |
-| G5 | Reproducibility | Clean clone + cache → `just reproduce` → byte-identical results; manifest footer on every page |
+| G5 | Reproducibility | Clean clone + cache → `just reproduce` → byte-identical results; a manifest in every result file |
 | G6 | On time | Gradable baseline (M1) by Sep 30; URL submitted by Oct 9, 11:59 pm |
 
 ## 5. Scope
@@ -125,7 +125,7 @@ Every row points to its source. "Verified by" names the invariant test (INV-nn),
 | --- | --- | --- | --- |
 | FR-B1 | Strategies `baseline_pmcc` and `quant_pmcc`, defined as configs | Spec › Strategies; DEC-53 | `tests/unit/config/test_baseline_config.py` (P3-01); `test_quant_config.py` (P4-03, DEC-95) |
 | FR-B2 | Ablations A1–A5: quant with one layer removed | Spec › Ablations; DEC-53, DEC-95 | config-diff test, `tests/unit/config/test_quant_config.py` (P4-03) |
-| FR-B3 | Sensitivity: friction at 0 / 0.25 / 0.50 for both strategies; entry timing (baseline, one run per week-open bar); parameter grid (quant, one parameter at a time). Every result is published. | Spec › Sensitivity checks; DEC-31 | `tests/unit/config/test_sensitivity_config.py`, `tests/scenario/test_scenario_timing.py` (P5-02); `tests/unit/analytics/test_robustness.py` (P6-06) |
+| FR-B3 | Sensitivity: friction at 0 / 0.25 / 0.50 for both strategies; entry timing (baseline, one run per week-open bar); parameter grid (quant, one parameter at a time). Every result is published; the friction table is not shown on a page (PO, DEC-121). | Spec › Sensitivity checks; DEC-31 | `tests/unit/config/test_sensitivity_config.py`, `tests/scenario/test_scenario_timing.py` (P5-02); `tests/unit/analytics/test_robustness.py` (P6-06) |
 | FR-B4 | A universe batch over `configs/universe.yaml` (NVDA for now; QQQ and TSLA commented out, PO, DEC-15) on one common window, Mon Mar 30 – Fri Sep 25 2026 (26 weeks; at least 10 required); any symbol can run alone | Spec › Universe; DEC-07, DEC-15, DEC-100 | `tests/unit/config/test_universe_file.py`, `tests/unit/test_cli_batch.py` (P5-03); P5-04 |
 | FR-B5 | Each symbol's own starting cash, used by every run on it and fixed before its first run (PO, 2026-10-05, DEC-30): `pmcc calibrate` sets it to 2 × that symbol's most expensive first long-leg cost, rounded up to $5,000 (E-L4's `cash_multiple` and `cash_round_to`), checks that it covers every entry, reports each run's lowest available funds, and writes it with its basis into `configs/universe.yaml`, provisional until the symbol is in under both strategies (NVDA final at P5-01: $15,000). Calibrating one symbol never changes another's. `pmcc run` reads it only from there, refuses a symbol without one, and says when it's provisional | Spec › E-L4; DEC-30, DEC-93, DEC-118 | `tests/unit/test_cli_run.py` (P3-08); `tests/unit/config/test_capital.py`, `tests/scenario/test_calibration.py`, `tests/unit/test_cli_calibrate.py` (P3-09); P5-01 |
 | FR-B6 | `just reproduce`: cached data → all runs → export → built site | Spec › CLI | INV-13; P8-01 |
@@ -167,7 +167,7 @@ Every row points to its source. "Verified by" names the invariant test (INV-nn),
 | FR-S8 | Blotter, ledger and gate log use TanStack Table: sortable, filterable by rule ID and side, virtualized ledger | Spec › Tables | P7-01 |
 | FR-S9 | ECharts with mouseover on every time series; NAV charts show IM, MM and available funds on a shared time axis; styled from the tokens; readable on mobile | Spec › Charts; DEC-04 | P7-01, P7-07 |
 | FR-S10 | One dark theme, the baseline look of DESIGN-GUIDE.md and theme.py unchanged; no light theme (PO, DEC-03) | Spec › Frontend constraints; DEC-03 | contrast and token-lint tests (P4-06); P7-07 |
-| FR-S11 | The run manifest in the footer of every page | Spec › Run manifest | `web/src/app/routes.test.tsx` (P4-06); smoke test |
+| FR-S11 | ~~The run manifest in the footer of every page~~ Dropped: no page has a footer; the manifest stays in every result file (PO, DEC-121) | Spec › Run manifest; DEC-121 | `web/src/app/routes.test.tsx` and the smoke test check that no page has a footer |
 | FR-S12 | The Data page shows "Data connection required" on github.io | Spec › Site and UI; DEC-75 | smoke test |
 | FR-S13 | Pages built from synthetic data show a warning banner | DEC-74 | `web/src/app/routes.test.tsx` (P4-06); smoke test |
 
@@ -190,7 +190,7 @@ Every row points to its source. "Verified by" names the invariant test (INV-nn),
 | HR-6 | Every sensitivity result is published in full; no best-cell picks | `{SYM}/robustness.json` holds every run (P6-06, DEC-65) |
 | HR-7 | The fill-assumption fit is published even where it's weak (the long leg) | both groups' fits and every pair in `{SYM}/fill_check.json`, whatever they show (P6-07, DEC-64) |
 | HR-8 | Data coverage is disclosed: unanswered contracts, IV failures, stale-mark rates, unavailable fields | `coverage.json`, written by `pmcc batch` (P5-03, DEC-100), committed in `results/` and exported with the site's data; not shown on a page (PO, DEC-116) |
-| HR-9 | Stated assumptions: r (value and source); q = 0; no early assignment; dividends out of scope; Black-Scholes on American calls; the bar's final quotes aren't proven to be the NBBO (LDG §4.14) | Methodology |
+| HR-9 | Stated assumptions: r and the look-ahead guard, in one sentence of the Methodology page's fill model. The stated-assumptions panel (q = 0, no early assignment, dividends out of scope, Black-Scholes on American calls, quotes not proven NBBO) was dropped (PO, DEC-121); those stay in the spec | Methodology's fill model |
 | HR-10 | Synthetic data can never pass for real | banner (DEC-74) |
 | HR-11 | The backtest's limits are stated: one symbol in one window, a rising one, and how much of each strategy's P&L the long call made against the shorts, and whether the shorts' theta covered the long's; figures read from the results (PO, DEC-109, DEC-120) | Comparison purpose panel (P7-02, DEC-110); Methodology's Discovery panel |
 
@@ -247,7 +247,7 @@ Every row points to its source. "Verified by" names the invariant test (INV-nn),
 - [ ] Results are committed from a clean tree for every symbol × run in the universe (after any cuts per BUILD-PLAN §5).
 - [ ] Every spec open item is resolved in DECISIONS.
 - [ ] The site passes the full read-through (P7-08) at 390, 1100, 1366 and 1600 px.
-- [ ] The footer manifest matches the committed results, the site makes no cross-origin requests, and the Data page shows "Data connection required".
+- [ ] The committed results' manifests name the deployed commit, the site makes no cross-origin requests, and the Data page shows "Data connection required".
 - [ ] A clean clone plus the cache reproduces byte-identical results (P8-01).
 - [ ] The URL is submitted.
 

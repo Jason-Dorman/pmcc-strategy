@@ -1,8 +1,7 @@
 // The universe page (P7-05, UI-SPEC §6.5) over the fixture files: the three panels in order, the
 // suitability screen with each measure's weeks (DEC-66), the headline by symbol with quant first
 // and each row linked to its symbol's comparison page (DEC-111), the pooled universe as the
-// comparison page shows it, the runs' manifests in the footer, and the in-panel states when a
-// universe file is missing.
+// comparison page shows it, and the in-panel states when a universe file is missing.
 import { cleanup, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -47,14 +46,6 @@ describe("the panels", () => {
     expect(within(await panel("Symbol suitability")).getByText("[1]")).toBeDefined();
     expect(within(await panel("Pooled universe")).getByText("[3]")).toBeDefined();
     expect(document.querySelector(".pm-readout")).toBeNull();
-  });
-
-  it("shows the manifests of the runs the headline came from", async () => {
-    renderUniverse();
-    await loaded();
-    const footer = screen.getByRole("contentinfo");
-    expect(await within(footer).findByText("NVDA quant_pmcc")).toBeDefined();
-    expect(within(footer).getByText("NVDA baseline_pmcc")).toBeDefined();
   });
 });
 
@@ -181,7 +172,5 @@ describe("missing files", () => {
       expect(await within(await panel(name)).findByText(`No results for the universe / ${file}.`))
         .toBeDefined();
     }
-    expect(within(screen.getByRole("contentinfo")).getByText("No run is shown on this page."))
-      .toBeDefined();
   });
 });

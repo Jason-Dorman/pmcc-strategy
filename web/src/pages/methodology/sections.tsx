@@ -1,7 +1,7 @@
 // The methodology page's data panels (UI-SPEC §6.4): the two mid-vs-print scatters with their
 // fits and the pooled fit beside them (`fill_check.json`, `universe/pooled_fill_check.json`;
-// DEC-64), entry timing with its dispersion and fragility (PO, DEC-67), and the stated
-// assumptions, r read from the index.
+// DEC-64), and entry timing with its dispersion and fragility (PO, DEC-67). The stated
+// assumptions panel was dropped (PO, DEC-121).
 import { useCallback, useMemo } from "react";
 
 import { KeyValue } from "../../components/cells";
@@ -14,7 +14,6 @@ import { money, price } from "../../format/money";
 import { count, meanCI, orDash, pct } from "../../format/number";
 import type { Palette } from "../../theme/echarts";
 import type { Fit, FillGroup } from "../../types/generated/fill_check";
-import type { RiskFreeRate } from "../../types/generated/index";
 import type { PooledFillGroup } from "../../types/generated/pooled_fill_check";
 import type { Robustness } from "../../types/generated/robustness";
 import { fillPairs, gapOfSpread, timing, type FillPair } from "./figures";
@@ -136,27 +135,5 @@ export function TimingPanel({ robustness }: { robustness: Robustness }) {
         ]}
       />
     </div>
-  );
-}
-
-// ---- stated assumptions --------------------------------------------------------------------
-
-export function Assumptions({ rate }: { rate: RiskFreeRate }) {
-  return (
-    <KeyValue
-      label="Stated assumptions"
-      rows={[
-        ["Risk-free rate r",
-         <span key="r" title={rate.source}>
-           {pct(rate.value, 2)} a year, continuously compounded: {rate.series} at{" "}
-           {rate.quoted_pct.toFixed(2)}% on {rate.as_of}, the last close before the window
-         </span>],
-        ["Dividend yield q", "0: dividends are out of scope, so no ex-dividend date is modelled"],
-        ["Early assignment", "assumed not to happen before expiry"],
-        ["Option pricing", "Black-Scholes on American calls: with no dividend an American call "
-          + "is worth its European value"],
-        ["Quotes", "LSEG's hourly BID and ASK, not proven to be the NBBO"],
-      ]}
-    />
   );
 }

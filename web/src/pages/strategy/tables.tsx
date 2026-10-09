@@ -115,7 +115,7 @@ function GateCell({ gate }: { gate: GateOut | undefined }) {
 function selected(row: GateLogRowOut): ReactNode {
   const s = row.selected;
   if (!s) return <span className="pm-label">none</span>;
-  const delta = typeof s.delta === "number" ? `δ ${ratio(s.delta)}` : "";
+  const delta = typeof s.delta === "number" ? `delta ${ratio(s.delta)}` : "";
   const mid = s.mid === undefined || s.mid === null ? "" : `mid ${price(Number(s.mid))}`;
   return <Stacked top={String(s.option ?? "")} sub={[delta, mid].filter(Boolean).join(" · ")} />;
 }
@@ -201,7 +201,7 @@ function legColumns(side: "long" | "short", tag: string): TableColumn<LedgerRowO
       cell: (r) => leg(r)?.qty ?? "—" },
     { id: `${tag}mark`, header: `${tag} mark`, num: true, sort: (r) => leg(r)?.mark,
       cell: (r) => mark(leg(r)) },
-    { id: `${tag}delta`, header: `${tag} δ`, num: true, sort: (r) => leg(r)?.delta ?? undefined,
+    { id: `${tag}delta`, header: `${tag} delta`, num: true, sort: (r) => leg(r)?.delta ?? undefined,
       cell: (r) => orDash(leg(r)?.delta, ratio) },
   ];
 }

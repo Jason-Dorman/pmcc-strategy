@@ -135,6 +135,7 @@ Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** 
 | DEC-118 | L-03: each symbol's own starting cash | ENG · E-L4's reworded text put to the PO | handover 2026-10-05 |
 | DEC-119 | LSEG's request cap, and QQQ's fetch deadline | SETTLED (PO): keep pulling; drop QQQ if not in by the due date | P1-10 |
 | DEC-120 | The lecture's Greeks on the site: position Greeks, both pages' Greek attribution, Discovery | SETTLED (PO) | L-04 |
+| DEC-121 | Site trims: Greeks in words, no sensitivity or friction table, fewer Methodology panels, no footer | SETTLED (PO) | L-05 |
 
 ---
 
@@ -2619,6 +2620,8 @@ export and never committed, so it gains two fields without a schema version.
   `test_quant_config.py`). The smoke test follows a gate-log link to its outlined row, in view,
   and checks the page's tables on the built site (18 pass).
 
+- **Amended 2026-10-08 (PO, DEC-121):** the Sensitivity panel is dropped; the page ends with the ablations.
+
 ### DEC-113 — No rule IDs in the copy: rules named by what they are
 **Status:** SETTLED · **Basis:** PO, 2026-10-03, reading P7-03's Rules page · **Affects:** P7-03; Spec › Trade rules (G-1, G-2, X-L1, X-L2 and the event-week paragraph), Spec › Rule write-up source; UI-SPEC §6.3; ARCHITECTURE §10; `configs/`; the results (re-run); amends DEC-112
 
@@ -2812,6 +2815,7 @@ How P7-04 builds UI-SPEC §6.4. Nothing here changes a result.
   "Quant PMCC's long leg made +$792.50 more than Baseline PMCC's." The limits no longer read
   `robustness.json` or `rules.json`; `longSelectorAblation` and its test go. The ablations table
   on the Comparison page still shows A1.
+- **Amended 2026-10-08 (PO, DEC-121):** the Bar timing and look-ahead guard, Friction and Stated assumptions panels are dropped too; the fill model states the look-ahead guard and r in a sentence.
 
 ### DEC-117 — P7-05: the Universe page
 **Status:** ENG · **Affects:** P7-05; UI-SPEC §6.5; ARCHITECTURE §13; DEC-66, DEC-105, DEC-111, DEC-113
@@ -2844,6 +2848,7 @@ How P7-05 builds UI-SPEC §6.5. Nothing here changes a result.
   baseline +$3,672.50, as on the comparison page.
 - **Tests:** `web/src/pages/Universe.test.tsx` (12); the fixtures gain `headline.json` and
   `suitability.json`. The smoke test checks the page on the built site (20 pass).
+- **Amended 2026-10-08 (PO, DEC-121):** no page has a footer, so the Universe page no longer loads the headline's runs for their manifests (`useManifests` is gone).
 
 ### DEC-118 — L-03: each symbol's own starting cash
 **Status:** ENG · E-L4's reworded text put to the PO at the handover · **Affects:** L-03, L-02, P1-10; `pmcc.config.capital`, `pmcc.config.universe`, `pmcc.calibration`, `pmcc calibrate`, `pmcc run`, `pmcc batch`, `pmcc export`; ARCHITECTURE §10, §12; DEC-15, DEC-30, DEC-93
@@ -2891,6 +2896,22 @@ How L-03 builds the PO's 2026-10-05 answer to DEC-30. No result's numbers change
   - **Theta over the run:** the baseline's shorts +$1,336.93 against its long's −$973.03, the rent covering the decay; quant's +$836.54 against −$838.24, about even. Quant's short was open on 138 of its 875 bars (18 weeks skipped), the baseline's on 211.
   - **While both legs were held**, both strategies had the lecture's package. Net θ averaged +$42.91 a day (baseline) and +$40.99 (quant); net δ +64.1 and +68.4 shares; net Γ −3.70 and −3.27 shares per $1; net ν +$10.66 and +$8.02 a vol point. Net δ, Γ and θ had the textbook sign on every such bar; net ν on 96.7% and 78.3% of them.
   - **Size:** `position_greeks` adds about 118 KB to each full run's file.
+
+### DEC-121 — Site trims: Greeks in words, no sensitivity or friction table, fewer Methodology panels, no footer
+**Status:** SETTLED · **Basis:** PO, 2026-10-08 · **Affects:** L-05; Spec › Run manifest, Site and UI (Trade rules, Methodology), Frontend constraints; PRD Q3, Q5, G5, FR-B3, FR-S11, HR-9; UI-SPEC §2, §5, §6.3, §6.4, §6.5, §9; ARCHITECTURE §13; TEST-STRATEGY; amends DEC-11 (where r is stated), DEC-112 (the Sensitivity panel), DEC-116 and DEC-117
+
+- **The PO, reading the site after L-04:** "anything related to the greeks - lets not use the symbol and just use the name. lets lose the sensitivity table in the rules page and the methodology page. Lets also lose the stated assumptions on the methodology page and the bar timing and look ahead guard on the methodology page. Let's also lose the footer on all pages." And: the leg attribution's "Stock after X-S5" and its caption's "X-S5's stock" break DEC-113's rule that the site names a rule, never its ID.
+- **Asked, and answered:**
+  - **Which Methodology table is "the sensitivity table"** (the page had the parameter grid, friction and entry timing)? PO: **friction only** ("just [4]"); the grid and entry timing stay.
+  - **Removing those panels and the footer leaves the site without r (DEC-11), the look-ahead guard (the spec's deliverable lists "no look-ahead bias") and the manifest.** Recommended: keep one sentence in the fill model for the first two; the manifest stays in every result file. PO: **as recommended.**
+- **Built (L-05):**
+  - **Greeks in words** on every page: the position Greeks' table and chart (Net delta, Net gamma, Net theta, Net vega), the Greek attribution's components (delta, gamma, theta, vega, residual) and its note ("delta, gamma, theta and vega terms, per bar"), the ledger's L delta and S delta, the gate log's "delta 0.19", and the position Greeks' caption. Δ for a change (Cash Δ, Δ vs quant) is not a Greek and stays.
+  - **Rule names, not IDs:** the leg attribution's row reads "Stock after a missed assignment", the rule's name from the run's config, linked to its rule; the caption says "the stock after a missed assignment". A sweep found no other ID in the site's copy outside the ID columns.
+  - **Trade rules:** the Sensitivity panel and its helpers (`fillChanges`, `CHECK_NAMES`) are gone; the four tables renumber. The sensitivity runs are still run and published in `robustness.json` and `rules.json`.
+  - **Methodology:** Discovery · Fill model · [1] and [2] Mid vs print · [3] Parameter grid · [4] Entry timing, now full width (alone at half width it would have scrolled sideways, as P7-04 found). Bar timing and look-ahead guard, Friction and Stated assumptions are gone. The fill model drops the friction runs' capture row and gains one sentence: "Every decision uses only data stamped at or before its bar's end, and the engine refuses any request for later data, so look-ahead is impossible by construction; implied volatilities and Greeks use a risk-free rate of 3.71%", r read from the index.
+  - **No footer:** `ManifestFooter`, `format/hash`, `REPO_URL` and `useManifests` are removed, with the footer's styles. The tests and the smoke test that waited on the footer wait on the page's main landmark, and check that no page has a footer.
+  - **No result changes:** configs and results are untouched, so no re-run.
+- **Tests:** Vitest 400 (the footer, sensitivity, friction, assumptions and hash tests removed; one added for the fill model's sentence); the smoke test passes on the built site (20).
 
 ## E. Analytics definitions
 

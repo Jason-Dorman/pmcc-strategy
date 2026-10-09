@@ -83,7 +83,7 @@ pmcc export --out web/public/data/
 just reproduce   # cached data -> all runs -> export -> built site
 ```
 
-**Run manifest.** Every result file carries the git commit SHA and whether the working tree was dirty, config hash, data-manifest hash, package lockfile hash, and run timestamp. Results are written as canonical JSON. A run on a dirty tree still runs but records it, and published results must come from a clean tree, so the code is committed before a publishable run (DEC-50). The site shows the manifest in the footer of every page, so any number on the site traces to the exact code, config, environment, and data that produced it.
+**Run manifest.** Every result file carries the git commit SHA and whether the working tree was dirty, config hash, data-manifest hash, package lockfile hash, and run timestamp. Results are written as canonical JSON. A run on a dirty tree still runs but records it, and published results must come from a clean tree, so the code is committed before a publishable run (DEC-50). Any number on the site traces, through its result file's manifest, to the exact code, config, environment, and data that produced it; the site itself shows no manifest footer (PO, DEC-121).
 
 ## Data layer (LSEG)
 
@@ -339,8 +339,8 @@ A static React app on GitHub Pages with a global symbol selector; the comparison
 | Comparison (landing) | Overlaid NAV curves for baseline and quant PMCC; headline table (P&L, return on starting NAV, max drawdown, annualized Sharpe, payoff ratio, weekly-return CI; DEC-111); ablation table; pooled-universe summary |
 | Baseline PMCC | Blotter; NAV chart with IM, MM, and available funds on mouseover; ledger; Reg T panel; cycle statistics; leg attribution; position Greeks and Greek attribution (PO, DEC-120) |
 | Quant PMCC | Everything on the baseline page, plus the gate log |
-| Trade rules | Entry, skip-gate, and exit tables rendered from the YAML configs, with rule IDs and live parameter values, plus the short rationale text for each rule |
-| Methodology | Discovery first: the backtest's limits, one symbol in one window, and how much of the P&L the long call made (DEC-109), and whether the shorts' theta covered the long's (PO, DEC-120); bar-timing convention and look-ahead guard; fill model; mid-vs-trade scatters with R²; parameter, friction, and timing sensitivity; stated assumptions (r, q = 0, no early assignment). The data and RIC scheme, data coverage and Reg T treatment are not shown (PO, DEC-116) |
+| Trade rules | Entry, skip-gate, and exit tables rendered from the YAML configs, with rule IDs and live parameter values, plus the short rationale text for each rule; the ablations. No sensitivity-run table (PO, DEC-121) |
+| Methodology | Discovery first: the backtest's limits, one symbol in one window, and how much of the P&L the long call made (DEC-109), and whether the shorts' theta covered the long's (PO, DEC-120); fill model, with one sentence stating the look-ahead guard and r; mid-vs-trade scatters with R²; parameter and timing sensitivity. The data and RIC scheme, data coverage and Reg T treatment are not shown (PO, DEC-116), nor the bar-timing, friction and stated-assumptions panels (PO, DEC-121) |
 | Universe | Symbol suitability screen and per-symbol headline table |
 | Data | Shows "Data connection required" on github.io; only works via the local server |
 
@@ -357,7 +357,7 @@ A static React app on GitHub Pages with a global symbol selector; the comparison
 - **Global state.** Selected symbol lives in app state and the URL, so every page and chart follows it.
 - **Tables.** Blotter, ledger, and gate log use TanStack Table: sortable, filterable by rule ID and side, virtualized for long hourly ledgers.
 - **Styling.** Tailwind with shadcn/ui components, in one dark theme: the look of `DESIGN-GUIDE.md` and `theme.py`, unchanged (DEC-03).
-- **Run manifest footer** on every page.
+- **No footer:** the run manifest stays in every result file, not on the pages (PO, DEC-121).
 
 **Charts.** ECharts with mouseover on all time series; NAV charts show IM, MM, and available funds on a shared time axis. Styled from the design tokens and readable on mobile (DEC-03).
 

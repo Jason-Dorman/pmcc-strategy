@@ -623,25 +623,3 @@ th[aria-sort="descending"] .pm-sort-mark::after {
   font-family: var(--font-mono);
   font-size: 12px;
 }
-
-/* ---- the manifest footer: what produced the numbers on screen ---- */
-.pm-footer {
-  margin-top: 10px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  padding: 8px 14px;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--text-muted);
-  line-height: 1.6;
-}
-.pm-footer a {
-  color: var(--text);
-}
-.pm-footer a:hover {
-  color: var(--accent);
-}
-.pm-footer b {
-  color: var(--text);
-  font-weight: 700;
-}

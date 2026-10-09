@@ -2,12 +2,10 @@
 // ID spans, and each variant's changes in words.
 import { describe, expect, it } from "vitest";
 
-import { money } from "../../format/money";
 import { RULES } from "../../test/fixtures";
 import type { RuleOut } from "../../types/generated/rules";
 import {
   differences,
-  fillChanges,
   pairOf,
   paramChanges,
   ruleRows,
@@ -83,15 +81,6 @@ describe("a variant's changes", () => {
     expect(paramChanges(rule({ max_spread: "3%" }), rule({ bar: "1", max_spread: "3%" })))
       .toEqual(["bar 1"]);
     expect(paramChanges(rule({ min_dte: "90" }), rule({}))).toEqual(["min dte dropped"]);
-  });
-
-  it("names a fill model's change", () => {
-    const [friction] = variantRows(RULES, ["friction"]);
-    if (!friction) throw new Error("fixture lacks a friction run");
-    expect(fillChanges(friction, money)).toEqual(["spread capture 0.00 → 0.25"]);
-    const fee = { ...friction, variant: { ...friction.variant, spread_capture: 0,
-                                          fee_per_contract: 0.65 } };
-    expect(fillChanges(fee, money)).toEqual(["fee $0.00 → $0.65 a contract"]);
   });
 
   it("lists a family's variants with their strategies, family by family", () => {

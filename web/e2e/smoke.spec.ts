@@ -1,6 +1,6 @@
 // The smoke test (P4-08, INV-15): every route loads for one symbol, as built, with no console
-// error, no request to any origin but the site's own, the manifest footer present, and no page
-// wider than the screen. Each route is screenshotted at the four widths UI-SPEC §10 reviews; CI
+// error, no request to any origin but the site's own, no footer (PO, DEC-121), and no page wider
+// than the screen. Each route is screenshotted at the four widths UI-SPEC §10 reviews; CI
 // uploads them (test-results/screenshots).
 import { expect, test, type Page } from "@playwright/test";
 
@@ -40,9 +40,11 @@ function watch(page: Page, origin: string): Watched {
   return watched;
 }
 
-/** The page has loaded its data: the footer is up and no panel is still loading. */
+/** The page has loaded its data: its frame is up, no panel is still loading, and no page has a
+ * footer (PO, DEC-121). */
 async function settled(page: Page): Promise<void> {
-  await expect(page.getByRole("contentinfo", { name: "Run manifest" })).toBeVisible();
+  await expect(page.getByRole("main")).toBeVisible();
+  await expect(page.getByRole("contentinfo")).toHaveCount(0);
   await expect(page.getByRole("status", { name: "Loading" })).toHaveCount(0);
   await expect(page.getByText("PMCC Backtest", { exact: true })).toBeVisible();
 }
@@ -142,7 +144,7 @@ test("the methodology page draws every pair, its tables and discovery", async ({
   await expect(pairs.locator("tbody tr:not(.pm-spacer)").first()).toBeVisible();
   const rows = (name: string) =>
     page.getByRole("table", { name, exact: true }).locator("tbody tr:not(.pm-spacer)");
-  for (const name of ["Parameter grid", "Friction", "Entry timing"]) {
+  for (const name of ["Parameter grid", "Entry timing"]) {
     expect(await rows(name).count(), name).toBeGreaterThan(1);
   }
   // Fragility follows DEC-67; the limits' figures are read from the runs (DEC-109).
@@ -164,8 +166,6 @@ test("the universe page shows the screen, the headline by symbol and the pooled 
   const headline = rows("Headline by symbol");
   expect(await headline.count()).toBeGreaterThanOrEqual(2);
   await expect(headline.first()).toContainText("Quant PMCC");
-  // The footer traces the figures to the runs they came from.
-  await expect(page.getByRole("contentinfo")).toContainText(`${SYMBOL} quant_pmcc`);
   await headline.first().getByRole("link", { name: SYMBOL }).click();
   await expect(page).toHaveURL(new RegExp(`#/compare/${SYMBOL}$`));
 });
@@ -192,7 +192,6 @@ test("the rules page sets both strategies' rules side by side, from rules.json",
   await expect(rows("Skip-week gates")).toHaveCount(5);
   await expect(rows("Exit rules")).toHaveCount(8);
   await expect(rows("Ablations").first()).toBeVisible();
-  await expect(rows("Sensitivity").first()).toBeVisible();
   const gates = page.getByRole("table", { name: "Skip-week gates" });
   await expect(gates.locator("tr", { hasText: "G-3" })).toContainText("On · 1.20");
   await page.getByRole("button", { name: "Rationale for X-S5" }).click();

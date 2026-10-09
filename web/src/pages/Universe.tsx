@@ -1,14 +1,13 @@
 // Universe (UI-SPEC §6.5): every symbol at once. The suitability screen from
 // `universe/suitability.json` (DEC-66), the headline by symbol from `universe/headline.json` and the
-// pooled universe from `universe/pooled.json` (DEC-105). The universe files carry no manifest, so
-// the footer shows those of the runs the headline came from. No readouts: the comparison page has
+// pooled universe from `universe/pooled.json` (DEC-105). No readouts: the comparison page has
 // each symbol's.
-import { useCallback, useMemo } from "react";
+import { useCallback } from "react";
 
 import { STRATEGY_PAGES } from "../app/pages";
 import { PageFrame } from "../components/PageFrame";
 import { useIndex } from "../data/IndexContext";
-import { strategyName, useManifests, useRules, useUniverseFile } from "../data/useRun";
+import { strategyName, useRules, useUniverseFile } from "../data/useRun";
 import { W_FULL } from "../theme/tokens";
 import type { Headline } from "../types/generated/headline";
 import type { Pooled as PooledFile } from "../types/generated/pooled";
@@ -32,10 +31,6 @@ export function Universe() {
     : NO_RULES;
   const name = useCallback(
     (id: string) => (index.kind === "ready" ? strategyName(index.value, id) : id), [index]);
-  const runs = useMemo(() => (headline.kind === "ready"
-    ? headline.value.rows.map((r) => [r.symbol, r.strategy_id] as const)
-    : []), [headline]);
-  const manifests = useManifests(runs);
   return (
     <PageFrame
       panels={[
@@ -55,7 +50,6 @@ export function Universe() {
                    whenLoaded(pooled, (p) => <Pooled pooled={p} name={name} quantId={QUANT} />)),
           caption: POOLED_CAPTION },
       ]}
-      manifests={manifests}
     />
   );
 }

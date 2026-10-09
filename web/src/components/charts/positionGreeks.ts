@@ -1,6 +1,7 @@
-// The position Greeks chart (UI-SPEC §4, Strategy [8]; DEC-120): the position's net δ, Γ, θ and
-// ν at every bar, one pane each on a shared time axis, each against a zero ruler, since the sign
-// is the point. A bar holding nothing, or a Greek unknown on it, is a hole.
+// The position Greeks chart (UI-SPEC §4, Strategy [8]; DEC-120): the position's net delta, gamma,
+// theta and vega at every bar, one pane each on a shared time axis, each against a zero ruler,
+// since the sign is the point. A bar holding nothing, or a Greek unknown on it, is a hole. The
+// Greeks are named in words, never by their symbols (PO, DEC-121).
 import { moneySigned, moneyTick } from "../../format/money";
 import { count, ratio, shares } from "../../format/number";
 import {
@@ -32,10 +33,12 @@ interface Pane {
 }
 
 export const GREEK_PANES: readonly Pane[] = [
-  { key: "delta", name: "Net δ", axis: "Net δ · shares", value: shares, tick: count },
-  { key: "gamma", name: "Net Γ", axis: "Net Γ · shares per $1", value: ratio, tick: ratio },
-  { key: "theta", name: "Net θ", axis: "Net θ · $ a day", value: moneySigned, tick: moneyTick },
-  { key: "vega", name: "Net ν", axis: "Net ν · $ a vol point", value: moneySigned,
+  { key: "delta", name: "Net delta", axis: "Net delta · shares", value: shares, tick: count },
+  { key: "gamma", name: "Net gamma", axis: "Net gamma · shares per $1", value: ratio,
+    tick: ratio },
+  { key: "theta", name: "Net theta", axis: "Net theta · $ a day", value: moneySigned,
+    tick: moneyTick },
+  { key: "vega", name: "Net vega", axis: "Net vega · $ a vol point", value: moneySigned,
     tick: moneyTick },
 ];
 

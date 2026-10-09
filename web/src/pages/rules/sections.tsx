@@ -1,19 +1,17 @@
 // The Trade rules page's panels (UI-SPEC §6.3), all from rules.json (DEC-52): how rules work, the
 // entry, gate and exit tables, each row a rule's title and summary in plain words with its live
-// values and its reasoning under a toggle (PO, DEC-114), the ablations and the sensitivity runs.
+// values and its reasoning under a toggle (PO, DEC-114), and the ablations. The sensitivity runs'
+// table was dropped (PO, DEC-121).
 // Each rule's row is `#/rules/<ID>`'s target.
 import { Fragment, type ReactNode } from "react";
 
 import { RuleLink } from "../../components/cells";
 import { DataTable, type TableColumn, type TableDetail } from "../../components/DataTable";
 import { Note } from "../../components/Note";
-import { money } from "../../format/money";
 import type { RuleOut, Rules } from "../../types/generated/rules";
 import {
   changed,
-  CHECK_NAMES,
   differences,
-  fillChanges,
   paramChanges,
   paramWords,
   ruleRows,
@@ -299,62 +297,5 @@ export function Ablations({ rules }: { rules: Rules }) {
   return (
     <DataTable label="Ablations" rows={rows} columns={ablationColumns} wrap
                rowId={(r) => `${r.row.variant.id}:${r.change.rule_id}`} />
-  );
-}
-
-// ---- the sensitivity runs ---------------------------------------------------------------------
-
-/** One rule a variant changed, by the rule's name: `Short leg strike: k 1.0 → 0.75`, `Entry
- * trigger: replaced by Entry trigger, fixed bar · bar 1`, `Event week: removed`. */
-function RuleChangeText({ c }: { c: Changed }) {
-  const values = paramChanges(c.before, c.after);
-  const words: Record<string, string[]> = {
-    params: values,
-    replaced: [`replaced by ${c.after?.name ?? ""}`, ...values],
-    removed: ["removed"],
-    added: ["added", ...values],
-    text: ["reworded"],
-  };
-  return (
-    <>
-      <Named id={c.change.rule_id} rule={c.before ?? c.after} />:{" "}
-      {(words[c.change.change] ?? [c.change.change]).join(" · ")}
-    </>
-  );
-}
-
-function Change({ row }: { row: VariantRow }) {
-  const fill = fillChanges(row, money);
-  const rules = changed(row);
-  return (
-    <div className="pm-prose">
-      {fill.join(" · ")}
-      {rules.map((c, i) => (
-        <Fragment key={c.change.rule_id}>
-          {(fill.length > 0 || i > 0) && "; "}
-          <RuleChangeText c={c} />
-        </Fragment>
-      ))}
-    </div>
-  );
-}
-
-const changeText = (row: VariantRow) =>
-  [...fillChanges(row, money), ...changed(row).map((c) => (c.before ?? c.after)?.name)].join(" ");
-
-const sensitivityColumns: TableColumn<VariantRow>[] = [
-  { id: "check", header: "Check", sort: (r) => CHECK_NAMES[r.family],
-    cell: (r) => CHECK_NAMES[r.family] },
-  { id: "run", header: "Run", sort: (r) => r.variant.name,
-    cell: (r) => <div className="pm-prose">{r.variant.name}</div> },
-  { id: "change", header: "Change", sort: changeText, cell: (r) => <Change row={r} /> },
-];
-
-export function Sensitivity({ rules }: { rules: Rules }) {
-  const rows = variantRows(rules, ["friction", "timing", "grid"]);
-  return (
-    <DataTable label="Sensitivity" rows={rows} columns={sensitivityColumns} wrap
-               rowId={(r) => r.variant.id}
-               filters={[{ id: "check", name: "Check", offer: (r) => [CHECK_NAMES[r.family]] }]} />
   );
 }

@@ -2,7 +2,6 @@
 // by section, how they differ, and each variant's changes against its strategy, in words. Nothing
 // here is typed in: every rule, value and change comes from rules.json (DEC-52).
 import { STRATEGY_PAGES } from "../../app/pages";
-import { ratio } from "../../format/number";
 import type { Family, RuleChange, RuleOut, Rules, StrategyRules } from "../../types/generated/rules";
 
 export type Section = "entry" | "gate" | "exit";
@@ -101,7 +100,7 @@ export function differences(pair: Pair): Differences {
   return found;
 }
 
-// ---- the variants: ablations and sensitivity runs ---------------------------------------------
+// ---- the variants: the ablations --------------------------------------------------
 
 export interface VariantRow {
   variant: StrategyRules;
@@ -153,25 +152,3 @@ export function paramChanges(before: RuleOut | undefined, after: RuleOut | undef
     return [a === undefined ? `${words} dropped` : `${words} ${b} → ${a}`];
   });
 }
-
-/** The fill model's changes: `spread capture 0.00 → 0.25`, a fee a contract. */
-export function fillChanges(row: VariantRow, money: (dollars: number) => string): string[] {
-  const { base, variant } = row;
-  const found: string[] = [];
-  if (base.spread_capture !== variant.spread_capture) {
-    found.push(`spread capture ${ratio(base.spread_capture)} → ${ratio(variant.spread_capture)}`);
-  }
-  if (base.fee_per_contract !== variant.fee_per_contract) {
-    found.push(`fee ${money(base.fee_per_contract)} → ${money(variant.fee_per_contract)} a contract`);
-  }
-  return found;
-}
-
-/** A family as the Sensitivity panel names its check. */
-export const CHECK_NAMES: Readonly<Record<Family, string>> = {
-  strategy: "Strategy",
-  ablation: "Ablation",
-  friction: "Friction",
-  timing: "Timing",
-  grid: "Grid",
-};

@@ -1,10 +1,10 @@
-// Methodology (UI-SPEC §6.4): where the backtest stops, how it times decisions and fills them,
-// how robust its result is, and what it assumes. Discovery, the limits and what the run found,
-// leads (PO, DEC-116, DEC-120). The data panels follow the symbol (the index's first when the
-// route names none): the fill check with the pooled fit beside it, and the grid, friction and
-// timing tables (DEC-105); r is the index's.
-// The prose's figures are read from both full runs and `rules.json` as the page renders
-// (DEC-109).
+// Methodology (UI-SPEC §6.4): where the backtest stops, how it fills, and how robust its result
+// is. Discovery, the limits and what the run found, leads (PO, DEC-116, DEC-120); the fill model
+// carries the look-ahead guard and r (the index's) in a sentence, the bar-timing, friction and
+// stated-assumptions panels dropped (PO, DEC-121). The data panels follow the symbol (the
+// index's first when the route names none): the fill check with the pooled fit beside it, and
+// the grid and timing tables (DEC-105). The prose's figures are read from both full runs and
+// `rules.json` as the page renders (DEC-109).
 import { useParams } from "react-router-dom";
 
 import { STRATEGY_PAGES } from "../app/pages";
@@ -18,8 +18,8 @@ import { W_FULL, W_HALF } from "../theme/tokens";
 import type { FillCheck } from "../types/generated/fill_check";
 import type { PooledFillCheck } from "../types/generated/pooled_fill_check";
 import type { Robustness } from "../types/generated/robustness";
-import { BarTiming, Discovery, FillModel, ruleNames } from "./methodology/prose";
-import { Assumptions, MidVsPrint, scatterCaption, TimingPanel } from "./methodology/sections";
+import { Discovery, FillModel } from "./methodology/prose";
+import { MidVsPrint, scatterCaption, TimingPanel } from "./methodology/sections";
 import { panel, whenLoaded } from "./placeholder";
 
 function value<T>(state: Loaded<T>): T | null {
@@ -57,8 +57,6 @@ export function Methodology() {
   const robustness = useSymbolFile<Robustness>(symbol, "robustness");
   const pooledFill = value(useUniverseFile<PooledFillCheck>("pooled_fill_check"));
   const rules = value(useRules());
-  const pair = value(runs);
-  const name = ruleNames(pair ?? []);
   return (
     <PageFrame
       panels={[
@@ -66,9 +64,9 @@ export function Methodology() {
               whenLoaded(runs, (rs) => (
                 <Discovery runs={rs} symbols={symbols} />)),
               false),
-        panel("timing", "Bar timing and look-ahead guard", W_FULL, <BarTiming name={name} />,
+        panel("fills", "Fill model", W_FULL,
+              <FillModel rules={rules} rate={value(index)?.risk_free_rate.value ?? null} />,
               false),
-        panel("fills", "Fill model", W_FULL, <FillModel rules={rules} />, false),
         fillPanel("shorts", "Mid vs print — weekly shorts", "shorts", "weekly call", fill,
                   pooledFill),
         fillPanel("longs", "Mid vs print — long-dated longs", "longs", "long-dated call", fill,
@@ -80,14 +78,7 @@ export function Methodology() {
           caption: <>Quant at its defaults, then one parameter moved at a time. Every run is
             published and none is picked as best; the defaults were fixed before the first
             run.</> },
-        { ...panel("friction", "Friction", W_HALF,
-                   whenLoaded(robustness, (r) => (
-                     <RobustnessTable label="Friction" rows={r.friction} against="its own at 0" />
-                   ))),
-          note: "each strategy against itself",
-          caption: <>Each strategy at <code>spread_capture</code> 0, then each capture against
-            it: Δ is the run&apos;s P&amp;L less the same strategy&apos;s at the mid.</> },
-        { ...panel("entry", "Entry timing", W_HALF,
+        { ...panel("entry", "Entry timing", W_FULL,
                    whenLoaded(robustness, (r) => <TimingPanel robustness={r} />)),
           note: "the baseline against itself",
           caption: <>The baseline with its entry trigger replaced by one fixed Monday bar, once per
@@ -95,11 +86,7 @@ export function Methodology() {
             fragile when any fixed bar&apos;s mean weekly return falls outside the
             baseline&apos;s 95% CI: then it moved the result more than the sample&apos;s own
             noise.</> },
-        { ...panel("assumptions", "Stated assumptions", W_FULL,
-                   whenLoaded(index, (i) => <Assumptions rate={i.risk_free_rate} />)),
-          caption: <>The rate&apos;s full source is on its hover.</> },
       ]}
-      manifests={pair ? pair.map((r) => r.manifest) : []}
     />
   );
 }

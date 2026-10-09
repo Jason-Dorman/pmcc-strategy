@@ -235,7 +235,7 @@ describe("position Greeks (DEC-120)", () => {
     const position = await panel("Position Greeks");
     const table = within(position).getByRole("table", { name: "Position Greeks by leg" });
     const theta = cells(table, 2);
-    expect(theta).toEqual(["θ theta", "$ a day", "−$9.10", "+$23.30", "+$14.20", "+", "100.0%",
+    expect(theta).toEqual(["Theta", "$ a day", "−$9.10", "+$23.30", "+$14.20", "+", "100.0%",
                            "3"]);
     const delta = cells(table, 0);
     expect(delta.slice(2, 5)).toEqual(["89.4", "−31.2", "58.2"]);
@@ -266,7 +266,8 @@ describe("Greek attribution", () => {
     renderPage("quant");
     const greeks = await panel("Greek attribution");
     const rows = within(greeks).getByRole("table", { name: "Greek attribution by leg and component" });
-    expect(rows.textContent).toContain("δ delta");
+    expect(rows.textContent).toContain("delta");
+    expect(rows.textContent).not.toMatch(/[δΓθν]/);
     expect(rows.textContent).toContain("112.0%");
     const legs = within(greeks).getByRole("table", { name: "Bars each leg was held" });
     expect(legs.textContent).toContain("1 of 4");

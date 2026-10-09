@@ -55,7 +55,6 @@ export function Comparison() {
             P&amp;L less quant&apos;s, so a positive Δ means quant did better without that
             layer.</> },
       ]}
-      manifests={ready ? ready.map((r) => r.manifest) : []}
     />
   );
 }

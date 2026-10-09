@@ -96,8 +96,9 @@ const SECTIONS: readonly PanelDef[] = [
       exits link to their rules.</> },
   { key: "legs", name: "Leg attribution", width: W_FULL, body: (r) => <Legs run={r} />,
     note: () => "net of fees",
-    caption: <>Long-leg P&amp;L + net short premium − a short open at the end + X-S5&apos;s
-      stock = P&amp;L. The chart shows both legs so far at each session&apos;s close.</> },
+    caption: <>Long-leg P&amp;L + net short premium − a short open at the end + the stock after
+      a missed assignment = P&amp;L. The chart shows both legs so far at each session&apos;s
+      close.</> },
   { key: "blotter", name: "Blotter", width: W_FULL, body: (r) => <Blotter run={r} />,
     note: (r) => counted(r.blotter, "trades") },
   { key: "gates", name: "Gate log", width: W_FULL, section: "gate_log",
@@ -113,10 +114,11 @@ const SECTIONS: readonly PanelDef[] = [
     caption: <>The table averages each Greek over the bars ending with both legs held; net is
       long plus short (and, for delta, any assigned stock). The textbook PMCC is long delta,
       short gamma, long theta and long vega. The chart shows the net at every bar: where no short
-      is open (a skipped week, or after the short is closed) it is the long alone. δ in shares,
-      Γ in shares per $1 move, θ in $ a calendar day, ν in $ a vol point.</> },
+      is open (a skipped week, or after the short is closed) it is the long alone. Delta in
+      shares, gamma in shares per $1 move, theta in $ a calendar day, vega in $ a vol point.</> },
   { key: "greeks", name: "Greek attribution", width: W_FULL, section: "greek_attribution",
-    body: (r) => <Greeks run={r} />, note: () => "δΔS + ½Γ(ΔS)² + θΔt + νΔσ, per bar",
+    body: (r) => <Greeks run={r} />,
+    note: () => "delta, gamma, theta and vega terms, per bar",
     caption: <>Each held bar is priced from the previous bar&apos;s Greeks; the residual is the
       rest. A bar with a stale mark, no IV or no fill is residual whole.</> },
 ];
@@ -151,7 +153,6 @@ export function Strategy({ page }: { page: keyof typeof STRATEGY_PAGES }) {
     <PageFrame
       readouts={run ? readouts(run) : pending(READOUT_HINTS.map(([l, h]) => [l, h]))}
       panels={panels(run, body)}
-      manifests={run ? [run.manifest] : []}
     />
   );
 }

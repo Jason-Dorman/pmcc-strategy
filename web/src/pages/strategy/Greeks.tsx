@@ -1,6 +1,7 @@
-// Strategy [8], Greek attribution (UI-SPEC §6.2; DEC-63, DEC-76): a row per leg × component
-// (δ, Γ, θ, ν, residual) with its dollars and its share of the leg's change; each leg's change,
-// with the bars wholly residual out of its bars held; and the cumulative residual line.
+// Strategy [9], Greek attribution (UI-SPEC §6.2; DEC-63, DEC-76): a row per leg × component
+// (delta, gamma, theta, vega, residual) with its dollars and its share of the leg's change; each
+// leg's change, with the bars wholly residual out of its bars held; and the cumulative residual
+// line. Each Greek is named in words (PO, DEC-121).
 import { useCallback } from "react";
 
 import { Chart } from "../../components/charts/Chart";
@@ -19,10 +20,10 @@ import type {
 } from "../../types/generated/run_result";
 
 const COMPONENTS: Record<string, string> = {
-  delta: "δ delta",
-  gamma: "Γ gamma",
-  theta: "θ theta",
-  vega: "ν vega",
+  delta: "delta",
+  gamma: "gamma",
+  theta: "theta",
+  vega: "vega",
   residual: "residual",
 };
 

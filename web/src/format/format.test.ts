@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 
-import { short } from "./hash";
 import { money, moneySigned, moneyTick, price } from "./money";
 import { count, iv, meanCI, orDash, pct, ratio, spreadPct } from "./number";
 import { ruleLabel } from "./rule";
@@ -30,12 +29,6 @@ describe("timeET", () => {
   });
   it("converts a UTC time to New York time", () => {
     expect(timeET("2026-12-01T15:00:00Z")).toBe("2026-12-01 10:00 ET");
-  });
-});
-
-describe("short", () => {
-  it("keeps the first eight characters by default", () => {
-    expect(short("beb2b55f2f8dc760")).toBe("beb2b55f");
   });
 });
 

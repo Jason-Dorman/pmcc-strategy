@@ -1,8 +1,9 @@
 // The methodology page (P7-04, UI-SPEC §6.4) over the fixture files: the panels in order, the
 // Discovery first (PO, DEC-116, DEC-120), every figure read from the results (DEC-109), the
-// fill check's scatters with the pooled fit and every pair, the grid, friction, entry timing with
-// its dispersion and fragility (PO, DEC-67) and the stated assumptions, with no rule ID in the
-// prose (DEC-113).
+// fill check's scatters with the pooled fit and every pair, the grid and entry timing with its
+// dispersion and fragility (PO, DEC-67), the fill model's sentence on the look-ahead guard and r,
+// and no bar-timing, friction, stated-assumptions panel or footer (PO, DEC-121), with no rule ID
+// in the prose (DEC-113).
 import { cleanup, fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -52,7 +53,7 @@ function withWeekly(weekly: MeanCI) {
 async function loaded() {
   await screen.findByRole("table", { name: "Parameter grid" });
   await screen.findByRole("table", { name: "Entry timing" });
-  await screen.findByRole("table", { name: "Stated assumptions" });
+  await screen.findByText(/look-ahead is impossible by construction/);
   await screen.findByText("One symbol, one window.");
 }
 
@@ -63,15 +64,14 @@ describe("the panels", () => {
     await loaded();
     const names = screen.getAllByRole("region").map((r) => r.getAttribute("aria-label"));
     expect(names).toEqual([
-      "Discovery", "Bar timing and look-ahead guard", "Fill model",
-      "Mid vs print — weekly shorts", "Mid vs print — long-dated longs", "Parameter grid",
-      "Friction", "Entry timing", "Stated assumptions",
+      "Discovery", "Fill model", "Mid vs print — weekly shorts",
+      "Mid vs print — long-dated longs", "Parameter grid", "Entry timing",
     ]);
     expect(within(await panel("Mid vs print — weekly shorts")).getByText("[1]")).toBeDefined();
     expect(within(await panel("Parameter grid")).getByText("[3]")).toBeDefined();
-    expect(within(await panel("Stated assumptions")).getByText("[6]")).toBeDefined();
-    for (const prose of ["Discovery", "Bar timing and look-ahead guard",
-                         "Fill model"]) {
+    expect(within(await panel("Entry timing")).getByText("[4]")).toBeDefined();
+    expect(screen.queryByRole("contentinfo")).toBeNull();
+    for (const prose of ["Discovery", "Fill model"]) {
       expect(within(await panel(prose)).queryByText(/^\[\d+\]$/)).toBeNull();
     }
   });
@@ -83,20 +83,11 @@ describe("the panels", () => {
       .toEqual(["Quant PMCC", "Grid: quant with k = 0.75"]);
   });
 
-  it("shows both full runs' manifests in the footer", async () => {
-    renderMethodology();
-    await loaded();
-    const footer = screen.getByRole("contentinfo");
-    expect(within(footer).getByText("NVDA quant_pmcc")).toBeDefined();
-    expect(within(footer).getByText("NVDA baseline_pmcc")).toBeDefined();
-  });
-
   it("names no rule by its ID in the prose", async () => {
     renderMethodology();
     await loaded();
     const ID = /\b[EGX]-[A-Z]?\d\b/;
-    for (const prose of ["Discovery", "Bar timing and look-ahead guard",
-                         "Fill model"]) {
+    for (const prose of ["Discovery", "Fill model"]) {
       expect((await panel(prose)).textContent).not.toMatch(ID);
     }
   });
@@ -146,17 +137,6 @@ describe("mid vs print", () => {
 });
 
 describe("the robustness tables", () => {
-  it("lists friction, each strategy against itself at the mid", async () => {
-    renderMethodology();
-    await loaded();
-    const table = screen.getByRole("table", { name: "Friction" });
-    expect(column(table, 0)).toEqual([
-      "Baseline PMCC", "Friction: baseline at spread capture 0.25", "Quant PMCC",
-      "Friction: quant at spread capture 0.25",
-    ]);
-    expect(column(table, 2)).toEqual(["reference", "−$22.00", "reference", "−$62.00"]);
-  });
-
   it("publishes every grid run against quant", async () => {
     renderMethodology();
     await loaded();
@@ -194,15 +174,13 @@ describe("the robustness tables", () => {
 });
 
 describe("the stated assumptions", () => {
-  it("states r with its series, quote and date from the index", async () => {
+  it("states the look-ahead guard and r from the index in one sentence (DEC-121)", async () => {
     renderMethodology();
     await loaded();
-    const rows = kv(screen.getByRole("table", { name: "Stated assumptions" }));
-    expect(rows["Risk-free rate r"]).toBe("3.71% a year, continuously compounded: DGS3MO at "
-      + "3.73% on 2026-03-27, the last close before the window");
-    expect(rows["Dividend yield q"]).toMatch(/^0: dividends are out of scope/);
-    expect(rows["Early assignment"]).toBe("assumed not to happen before expiry");
-    expect(rows.Quotes).toBe("LSEG's hourly BID and ASK, not proven to be the NBBO");
+    expect((await panel("Fill model")).textContent).toContain("Every decision uses only data "
+      + "stamped at or before its bar's end, and the engine refuses any request for later data, "
+      + "so look-ahead is impossible by construction; implied volatilities and Greeks use a "
+      + "risk-free rate of 3.71%.");
   });
 });
 
@@ -212,7 +190,7 @@ describe("the prose's figures", () => {
     await loaded();
     const rows = kv(screen.getByRole("table", { name: "Fill model" }));
     expect(rows["Spread capture, both strategies"]).toBe("0.00");
-    expect(rows["Spread capture, the friction runs"]).toBe("0.25");
+    expect(rows["Spread capture, the friction runs"]).toBeUndefined();
     expect(rows["Fee per contract"]).toBe("$0.00");
   });
 

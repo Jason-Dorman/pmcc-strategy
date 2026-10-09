@@ -27,7 +27,6 @@ No rounded corners, no shadows, no floating cards, no whitespace gaps. shadcn/ui
 | Figure | `Chart` | ECharts; see §4 |
 | Prose | `Note`, `Details` | `<b>` renders amber (emphasis is chrome, not data); long reference material folds into a disclosure |
 | Warning | `WarningBanner` | `NEGATIVE`-tinted box: synthetic data, schema mismatch, Reg T breach statement |
-| Footer | `ManifestFooter` | Manifest of the data on screen: git SHA (linked to the commit), config / data / lock hashes (short), run time, data source |
 
 - **Numbering:** panels holding a figure or table are numbered `[1]`, `[2]`, … in page order. Prose panels are unnumbered. Numbers are computed at render time, so the shared strategy page numbers correctly whichever sections it shows.
 - **Breakpoints** (DG §4):
@@ -93,7 +92,7 @@ The baseline chart rules (DG §5–6), restated for ECharts:
 | NAV comparison | Comparison [1] | quant NAV (`--strategy-quant`), baseline NAV (`--strategy-baseline`) on every bar either run has, a bar one lacks a hole; tooltip shows both and the difference; the values, with the difference, in a virtualized disclosure (DEC-110) |
 | Leg attribution | Strategy [4] | cumulative long-leg P&L (`--long-leg`) vs cumulative net short premium (`--short-leg`) |
 | Mid vs print | Methodology [1], [2] | every pair as a cyan circle (x = mid, y = print), in ECharts' large mode, one path for all (DEC-115); OLS fit (`--fit-line`); y = x (`--identity-line`, dashed); a point's mid and print on hover. Shorts and longs in separate panels; the fit's measures in a table under the chart |
-| Position Greeks | Strategy [8] (quant; [7] on the baseline) | four panes on one shared time axis at hero height, one per net Greek (δ shares, Γ shares per $1, θ $ a day, ν $ a vol point), each one line (`--text`) against a zero ruler and named by its axis, no legend; a bar holding nothing is a hole; tooltip: the four nets and whether a short is open (PO, DEC-120) |
+| Position Greeks | Strategy [8] (quant; [7] on the baseline) | four panes on one shared time axis at hero height, one per net Greek (delta in shares, gamma in shares per $1, theta in $ a day, vega in $ a vol point), each named in words (DEC-121), each one line (`--text`) against a zero ruler and named by its axis, no legend; a bar holding nothing is a hole; tooltip: the four nets and whether a short is open (PO, DEC-120) |
 | Greek residual | Strategy [9] (quant; [8] on the baseline) | one cumulative-residual line (`--text`), beside the DEC-76 table |
 | Quote browser | Data [2] (local) | BID/ASK as a band or lines, mid as cyan circles, prints as magenta diamonds |
 
@@ -109,7 +108,7 @@ The baseline chart rules (DG §5–6), restated for ECharts:
 **Behaviour:**
 
 - Every column sorts on a header click, ascending first; a missing value sorts last either way (a gate not evaluated, a week with nothing selected). A gate column sorts by status (fire, pass, n/a), then by the value its cell shows.
-- Headers are set in capitals, but a lowercase Greek letter keeps its case (`L δ`; Δ means a change, as in `Cash Δ`).
+- Headers are set in capitals. Greeks are named in words on every page, never by their symbols (`L delta`; PO, DEC-121); Δ means a change, as in `Cash Δ`.
 - Filters are rows of toggles above the table, one per value the rows have, with its count; a row passes when it offers a toggled value, and with none on the filter is off (DEC-106). A filter over rule IDs shows what each rule did, never the ID ("Open long", "Take profit", "Event week"; `web/src/format/rule.ts`, PO, DEC-107), with the rule's condition → action on hover. Per table:
   - Blotter: Trade (by rule, multi-select) and side.
   - Gate log: outcome and Reason (the outcome's rule).
@@ -136,8 +135,8 @@ Rule cells show what the rule did in plain words (`Open long`, `Take profit`), n
 | Table | Columns |
 | --- | --- |
 | Blotter | Time (ET) · Instrument (RIC / OCC) · Side · Qty · Limit · Fill · Cash Δ · Trade P&L (a close's round trip, net of fees: its cash plus the cash its position was opened for; blank on an opening row; DEC-108) · Rule · Notes |
-| Ledger | Time · Long (RIC / K · expiry) · L qty · L mark · L δ · Short (RIC / K · expiry) · S qty · S mark · S δ · Stock · Cash · NAV · IM · MM · Avail. funds · Excess eq. · Flags |
-| Gate log | Session · Decision time · Selected (the option, with its δ and mid under it; RIC / OCC put to the PO, DEC-106) · one column per gate the log has, headed by what it checks (No quote, Structure, Event week, Vol premium, Min premium; DEC-107) · Outcome |
+| Ledger | Time · Long (RIC / K · expiry) · L qty · L mark · L delta · Short (RIC / K · expiry) · S qty · S mark · S delta · Stock · Cash · NAV · IM · MM · Avail. funds · Excess eq. · Flags |
+| Gate log | Session · Decision time · Selected (the option, with its delta and mid under it; RIC / OCC put to the PO, DEC-106) · one column per gate the log has, headed by what it checks (No quote, Structure, Event week, Vol premium, Min premium; DEC-107) · Outcome |
 
 Each gate-log gate cell shows its status and the one value it's judged on, where it has one (a ratio, or G-5's mid), e.g. `pass 1.08`, `FIRE 1.32`, `pass $0.6950`, `n/a`, or `—` (not evaluated); hover shows every value, and the cell links to `#/rules/G-n`. The Outcome cell shows "sold" (linked to the rule that sold) or "skipped · <reason>", the reason in plain words and linked to its rule (DEC-107).
 
@@ -188,7 +187,8 @@ The page is rendered from `rules.json` (DEC-52). Nothing on it is hand-typed.
 | 2 | Skip-week gates | 10 | ID · Gate (title) · Condition (summary) · Baseline (On/Off) · Quant (On/Off + threshold: "On · 1.20", the value as the rule's text shows it, `shown`); Why |
 | 3 | Exit rules | 10 | ID · Rule (title) · What happens (summary); the Why (includes why there are no rolls, why the short is never exercised on purpose, and the Friday buffer) |
 | 4 | Ablations | 5 | A1–A5, one row per rule changed: Ablation · Layer removed (quant's rule, by name, linked) · Replaced by (the ablation's summary, or "nothing") |
-| 5 | Sensitivity | 5 | friction, timing and grid runs: Check · Run · Change against its strategy ("spread capture 0.00 → 0.25", "Entry trigger: replaced by Entry trigger, fixed bar · bar 1", "Event week: max ratio 1.20 → 1.10"); filtered by check |
+
+The sensitivity runs' table was dropped (PO, DEC-121).
 
 The two strategies and each variant's family come from `rules.json` (DEC-112). The page's copy names a rule by its name, linked to its row, never by its ID; IDs appear only in the ID columns (PO, DEC-113). Each row is short and conversational and the Why holds the reasoning, with no when / what / why labels on the page (PO, DEC-114). How rules work reads every rule ID it names, and how the strategies differ, from the rules; a text the strategies don't share shows each one's, labelled.
 
@@ -196,19 +196,16 @@ Arriving at `#/rules/X-S3` scrolls to that row and outlines it in `--accent`. Th
 
 ### 6.4 Methodology — `#/methodology/:symbol?`
 
-Panels that depend on the data follow the selected symbol (the index's first when the route names none) and show pooled figures where they exist. No readouts: the page explains rather than measures. Rules in its prose are named and linked, never by ID (DEC-113). Discovery, the limits and what the run found, leads the page (PO, DEC-120) and the parameter grid follows the scatters; the data and RIC scheme, data coverage and Reg T treatment panels were dropped (PO, DEC-116).
+Panels that depend on the data follow the selected symbol (the index's first when the route names none) and show pooled figures where they exist. No readouts: the page explains rather than measures. Rules in its prose are named and linked, never by ID (DEC-113). Discovery, the limits and what the run found, leads the page (PO, DEC-120) and the parameter grid follows the scatters; the data and RIC scheme, data coverage and Reg T treatment panels were dropped (PO, DEC-116), and the bar timing and look-ahead guard, friction and stated assumptions panels (PO, DEC-121).
 
 | # | Panel | Width | Content |
 | --- | --- | --- | --- |
 | — | Discovery | 10 | Prose (DEC-109; renamed from "Limits of this backtest", PO, DEC-120): one symbol and one 26-week window, a rising one; a PMCC is net long delta, so a rally rewards the long and runs over the shorts; each strategy's long and short legs; each first long's round trip and the roll that sold it, and how much more quant's long leg made than the baseline's (no ablation is cited, PO, DEC-116); whether each strategy's short theta covered its long's, from the Greek attribution, and that a short is held at most Monday to Friday (and none in a skipped week) while the long decays every calendar day (PO, DEC-120); whether the weekly-return CIs overlap; what a flat or falling market would likely change; no bear market is in the data's reach (DEC-07). Every figure is read from the results as the page renders, never typed in, and each claim is made only where the results bear it out (DEC-115) |
-| — | Bar timing and look-ahead guard | 10 | Prose: the verified convention (DEC-06), decision time = bar end, MarketView's structural guarantee; the session close is the close bar's last trade, not the official closing auction, and the gap between them (DEC-23, R-21) |
-| — | Fill model | 10 | Prose + key/value: mid fills, no quote → no fill, `spread_capture` (the strategies' and the friction runs', from `rules.json`), fees |
+| — | Fill model | 10 | Prose + key/value: mid fills, no quote → no fill, `spread_capture` (the strategies', from `rules.json`), fees; one sentence: every decision uses only data up to its bar's end and the engine refuses later data, so look-ahead is impossible by construction, and the risk-free rate r from the index (PO, DEC-121) |
 | 1 | Mid vs print — weekly shorts | 5 | scatter of every pair + fitted line; a table of slope, intercept, R², N, median \|print − mid\| as % of spread and the locked quotes, the symbol's column beside the pooled one (`fill_check.json`, `pooled_fill_check.json`; DEC-64); every pair's values in a virtualized disclosure, built when first opened (DEC-115); the caveat that a print can be up to an hour older than the end-of-bar quote |
 | 2 | Mid vs print — long-dated longs | 5 | as [1], for the longs (expected to fit worse, and reported whatever it shows, HR-7) |
 | 3 | Parameter grid | 10 | quant at its defaults, then every grid run against it: P&L, Δ, max drawdown, payoff, CI; published in full (no best cell; DEC-65) |
-| 4 | Friction | 5 | each strategy at `spread_capture` 0, then 0.25 and 0.50 against it: P&L, Δ, max drawdown, payoff, CI (DEC-65) |
-| 5 | Entry timing | 5 | the E-T1 baseline, then each fixed Monday bar against it: P&L, Δ, max drawdown, payoff, CI; then key/value: the fixed bars' count, range and sample standard deviation of P&L, their means' range against the baseline's CI, and the verdict: fragile, in `flag`, naming each fixed bar whose mean weekly return falls outside the baseline's 95% CI, else not fragile (DEC-65; PO, DEC-67) |
-| 6 | Stated assumptions | 10 | key/value: r (value, source, date), q = 0, no early assignment, dividends out of scope (DEC-55), Black-Scholes on American calls, quotes not proven NBBO |
+| 4 | Entry timing | 10 | the E-T1 baseline, then each fixed Monday bar against it: P&L, Δ, max drawdown, payoff, CI; then key/value: the fixed bars' count, range and sample standard deviation of P&L, their means' range against the baseline's CI, and the verdict: fragile, in `flag`, naming each fixed bar whose mean weekly return falls outside the baseline's 95% CI, else not fragile (DEC-65; PO, DEC-67) |
 
 ### 6.5 Universe — `#/universe`
 
@@ -218,7 +215,7 @@ Panels that depend on the data follow the selected symbol (the index's first whe
 | 2 | Headline by symbol | 10 | symbol × strategy, the symbols in the file's order and quant first within each: P&L, return on starting NAV, max drawdown (dollars; the file has no % of the peak), Sharpe (annualized), payoff, weekly-return CI (DEC-111); each row's symbol links to that symbol's comparison page |
 | 3 | Pooled universe | 10 | same content as Comparison [3] |
 
-No readouts. The universe files carry no manifest, so the footer shows those of the runs the headline came from (DEC-117).
+No readouts.
 
 ### 6.6 Data — `#/data/:symbol?` (DEC-75)
 
@@ -268,7 +265,7 @@ No readouts. The universe files carry no manifest, so the footer shows those of 
 | Counts | grouped by thousands; a negative (short shares) with a true minus: `−100 sh` |
 | Option prices | `$2.3450` (4 dp, as quantized) |
 | Percent | 1 dp; spreads < 1% at 2 dp |
-| Greeks, IV | δ 2 dp; IV as % at 1 dp. Position Greeks (DEC-120): δ in shares at 1 dp (whole shares on chart ticks), Γ at 2 dp, θ and ν as signed money |
+| Greeks, IV | delta 2 dp; IV as % at 1 dp. Position Greeks (DEC-120): delta in shares at 1 dp (whole shares on chart ticks), gamma at 2 dp, theta and vega as signed money. Greeks are named in words, never symbols (DEC-121) |
 | Time | `2026-09-14 10:00 ET` |
 | Instrument | RIC on top, OCC symbol underneath (`QQQ   260918C00710000`, spaces preserved) |
 | Rule IDs | mono, linked |

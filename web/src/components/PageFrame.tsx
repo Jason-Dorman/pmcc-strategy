@@ -1,28 +1,19 @@
-// A page's frame (UI-SPEC §6): readouts first, then the panels, then the manifest footer.
-import { useIndex } from "../data/IndexContext";
-import type { Manifest } from "../types/generated/run_result";
-import { ManifestFooter } from "./ManifestFooter";
+// A page's frame (UI-SPEC §6): readouts first, then the panels. No page has a footer: the run
+// manifest stays in every results file (PO, DEC-121).
 import { PanelGrid, type PanelSpec } from "./PanelGrid";
 import { Readouts, type Readout } from "./Readouts";
 
 export interface PageFrameProps {
   readouts?: readonly Readout[];
   panels: readonly PanelSpec[];
-  manifests?: readonly Manifest[];
 }
 
-export function PageFrame({ readouts = [], panels, manifests = [] }: PageFrameProps) {
-  const index = useIndex();
-  const exporter = index.kind === "ready" ? index.value.pmcc_version : undefined;
+export function PageFrame({ readouts = [], panels }: PageFrameProps) {
   return (
-    <>
-      <main>
-        {readouts.length > 0 && <Readouts items={readouts} />}
-        <PanelGrid panels={panels} />
-      </main>
-      {/* After main, not in it: a footer inside main isn't the page's contentinfo landmark */}
-      <ManifestFooter manifests={manifests} exporter={exporter} />
-    </>
+    <main>
+      {readouts.length > 0 && <Readouts items={readouts} />}
+      <PanelGrid panels={panels} />
+    </main>
   );
 }
 

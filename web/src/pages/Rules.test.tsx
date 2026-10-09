@@ -1,7 +1,8 @@
 // The Trade rules page (P7-03, UI-SPEC §6.3) over the fixture rules.json: the panels in order;
 // the entry, gate and exit tables with both strategies' live values and each rule's rationale;
 // the target row of `#/rules/<ID>`; how rules work, its differences read from the rules; the
-// ablations and the sensitivity runs in words; and the in-panel state when rules.json is missing.
+// ablations in words, and no sensitivity table (PO, DEC-121); and the in-panel state when
+// rules.json is missing.
 import { cleanup, fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -31,15 +32,15 @@ function cells(row: HTMLElement): string[] {
 }
 
 describe("the page", () => {
-  it("shows how rules work, then the five tables numbered in order", async () => {
+  it("shows how rules work, then the four tables numbered in order", async () => {
     renderRules();
-    await table("Sensitivity");
+    await table("Ablations");
     const names = screen.getAllByRole("region").map((r) => r.getAttribute("aria-label"));
     expect(names).toEqual(["How rules work", "Entry rules", "Skip-week gates", "Exit rules",
-                           "Ablations", "Sensitivity"]);
+                           "Ablations"]);
     const numbers = screen.getAllByRole("region")
       .map((r) => r.querySelector(".pm-panel-n")?.textContent ?? null);
-    expect(numbers).toEqual([null, "[1]", "[2]", "[3]", "[4]", "[5]"]);
+    expect(numbers).toEqual([null, "[1]", "[2]", "[3]", "[4]"]);
   });
 
   it("says so in each panel when rules.json is missing, never a blank page", async () => {
@@ -204,35 +205,14 @@ describe("ablations", () => {
   });
 });
 
-describe("sensitivity", () => {
-  it("says what each run changes against the strategy it varies", async () => {
-    renderRules();
-    const t = await table("Sensitivity");
-    expect(bodyRows(t).map(cells)).toEqual([
-      ["Friction", "Friction: baseline at spread capture 0.25", "spread capture 0.00 → 0.25"],
-      ["Timing", "Timing: baseline, short decided on bar 1 (10:00)",
-       "Entry trigger: replaced by Entry trigger, fixed bar · bar 1"],
-      ["Grid", "Grid: quant with k = 0.75", "Short leg strike: k 1.0 → 0.75"],
-    ]);
-  });
-
-  it("filters by check", async () => {
-    renderRules();
-    const t = await table("Sensitivity");
-    const filter = screen.getByRole("group", { name: "Filter by Check" });
-    fireEvent.click(within(filter).getByRole("button", { name: /Grid/ }));
-    expect(column(t, 0)).toEqual(["Grid"]);
-  });
-});
-
 describe("table height (PO, DEC-112)", () => {
   it("lets the three rule tables grow to their rows, and keeps the cap on the others", async () => {
     renderRules();
-    await table("Sensitivity");
+    await table("Ablations");
     const grows = (name: string) => screen.getByRole("table", { name }).closest(".pm-table-scroll")
       ?.classList.contains("pm-table-grow");
-    expect(["Entry rules", "Skip-week gates", "Exit rules", "Ablations", "Sensitivity"].map(grows))
-      .toEqual([true, true, true, false, false]);
+    expect(["Entry rules", "Skip-week gates", "Exit rules", "Ablations"].map(grows))
+      .toEqual([true, true, true, false]);
   });
 });
 
@@ -241,12 +221,11 @@ describe("the page's copy (PO, DEC-113)", () => {
 
   it("names every rule by its name, never its ID, outside the ID columns", async () => {
     renderRules("/rules/Z-9");
-    await table("Sensitivity");
+    await table("Ablations");
     const copy = [
       (await panel("How rules work")).textContent,
       ...[...document.querySelectorAll(".pm-caption, .pm-panel-note")].map((e) => e.textContent),
       ...bodyRows(await table("Ablations")).map((r) => r.textContent),
-      ...bodyRows(await table("Sensitivity")).map((r) => r.textContent),
     ];
     expect(copy.filter((text) => ID.test(text ?? ""))).toEqual([]);
   });

@@ -1,6 +1,7 @@
 // Strategy [8], position Greeks (UI-SPEC §6.2; PO, DEC-120): each Greek's mean for the long, the
-// short and the net over the bars both legs were held, against the textbook PMCC's +δ, −Γ, +θ,
-// +ν; then the net at every bar, one pane per Greek, its values in a table under it.
+// short and the net over the bars both legs were held, against the textbook PMCC's long delta,
+// short gamma, long theta and long vega; then the net at every bar, one pane per Greek, its
+// values in a table under it. Each Greek is named in words (PO, DEC-121).
 import { useCallback } from "react";
 
 import { Chart } from "../../components/charts/Chart";
@@ -17,10 +18,10 @@ import type {
 } from "../../types/generated/run_result";
 
 const LABELS: Record<string, { greek: string; units: string }> = {
-  delta: { greek: "δ delta", units: "shares" },
-  gamma: { greek: "Γ gamma", units: "shares per $1" },
-  theta: { greek: "θ theta", units: "$ a day" },
-  vega: { greek: "ν vega", units: "$ a vol point" },
+  delta: { greek: "Delta", units: "shares" },
+  gamma: { greek: "Gamma", units: "shares per $1" },
+  theta: { greek: "Theta", units: "$ a day" },
+  vega: { greek: "Vega", units: "$ a vol point" },
 };
 
 /** A Greek's value in its own units. */

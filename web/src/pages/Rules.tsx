@@ -1,7 +1,8 @@
 // Trade rules (UI-SPEC §6.3), rendered from rules.json (DEC-52): nothing on it is typed in. Both
 // strategies' entry rules, gates and exits side by side with their live values and rationales,
-// then the ablations and the sensitivity runs. Arriving at `#/rules/X-S3` scrolls to that rule's
-// row and outlines it; every blotter row and gate-log entry links here (UI-SPEC §7).
+// then the ablations (the sensitivity runs' table was dropped, PO, DEC-121). Arriving at
+// `#/rules/X-S3` scrolls to that rule's row and outlines it; every blotter row and gate-log entry
+// links here (UI-SPEC §7).
 import type { ReactNode } from "react";
 import { useParams } from "react-router-dom";
 
@@ -12,7 +13,7 @@ import { W_FULL, W_HALF } from "../theme/tokens";
 import type { Rules as RulesFile } from "../types/generated/rules";
 import { panel, whenLoaded } from "./placeholder";
 import { pairOf, type Pair } from "./rules/model";
-import { Ablations, HowRulesWork, RuleTable, Sensitivity } from "./rules/sections";
+import { Ablations, HowRulesWork, RuleTable } from "./rules/sections";
 
 /** A body that needs both strategies' rules. */
 function withPair(rules: RulesFile, body: (pair: Pair) => ReactNode) {
@@ -50,11 +51,6 @@ export function Rules() {
           note: "quant with one layer switched off",
           caption: <>Each ablation is quant with the rule shown replaced or removed, and nothing else.
             The comparison page has their results.</> },
-        { ...panel("sensitivity", "Sensitivity", W_HALF,
-                   whenLoaded(rules, (r) => <Sensitivity rules={r} />)),
-          note: "each run against the strategy it varies",
-          caption: <>Robustness checks, not optimization: every run is published and none is
-            picked as best. The methodology page has their results.</> },
       ]}
     />
   );

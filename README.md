@@ -35,7 +35,7 @@ A symbol-agnostic backtester for the **Poor Man's Covered Call** (PMCC): a deep 
   - 15 invariant tests gate CI: cash, NAV, coverage, look-ahead, margin, reproducibility and more.
   - The accounting invariants are also checked on every bar of every backtest.
 - **Uncertainty is shown.** Small-sample statistics carry bootstrap confidence intervals. Sensitivity results are published in full, never as a best-case pick.
-- **Every number traces back.** Each result carries a manifest (git commit, config hash, data hash, lockfile hash), shown in the footer of every page.
+- **Every number traces back.** Each result carries a manifest (git commit, config hash, data hash, lockfile hash) in its results file.
 
 ## Requirements
 

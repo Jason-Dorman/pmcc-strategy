@@ -104,14 +104,6 @@ describe("the panels", () => {
     expect(within(await panel("Purpose")).queryByText(/^\[\d+\]$/)).toBeNull();
     expect(within(await panel("Ablations")).getByText("[4]")).toBeDefined();
   });
-
-  it("shows both runs' manifests in the footer", async () => {
-    renderComparison();
-    await loaded();
-    const footer = screen.getByRole("contentinfo");
-    expect(within(footer).getByText("NVDA baseline_pmcc")).toBeDefined();
-    expect(within(footer).getByText("NVDA quant_pmcc")).toBeDefined();
-  });
 });
 
 describe("the purpose", () => {
