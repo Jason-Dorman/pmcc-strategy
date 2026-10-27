@@ -1,0 +1,190 @@
+# The wheel (docs/WHEEL-SPEC.md › Trade rules): sell a cash-secured weekly put; if it's assigned,
+# sell weekly covered calls on the shares; if they're called away, start again. Loaded by
+# pmcc.wheel.config.
+#
+# Each rule has the spec's `id`, a `name`, `params` holding every threshold, and its write-up:
+# `title` and `summary`, the rule in plain words, every threshold in the summary; `condition` and
+# `action`, the rule stated exactly; `rationale`, its reasoning. Placeholders are param names:
+# `{target_delta:.2f}`. A blank line between paragraphs becomes one newline. No text names a rule
+# by its ID.
+
+id: wheel
+name: Wheel
+
+# $25,000 secures one put at any strike NVDA's 0.30-delta put reached in the window (PO, WD-10).
+starting_cash: 25000.00
+
+# Every option fill is at the decision bar's mid (PO, WD-23); no fees (PO, WD-19). The friction
+# runs set spread_capture to 0.25 and 0.50.
+fill_model:
+  spread_capture: 0.0
+  fee_per_contract: 0.00  # dollars per contract
+
+rules:
+  # ── Entry ────────────────────────────────────────────────────────────────────────────────────
+  - id: W-T1
+    name: Entry trigger
+    params: {max_spread: 0.10}
+    title: When in the session do we sell?
+    summary: >-
+      On the first hourly bar of the week's first session where the option we picked has both a
+      bid and an ask, and its spread is no wider than {max_spread:.0%} of mid.
+    condition: >-
+      The selected option has a valid bid and ask on the bar, and its spread is at most
+      {max_spread:.0%} of its mid
+    action: >-
+      Sell on the first bar of the week's first session where the condition holds; if none does,
+      sell nothing that week
+    rationale: >-
+      Liquidity decides when we trade, not a clock, and every fill is modeled at the mid, so a
+      wide market would make that assumption unsafe. A week with no liquid bar is skipped rather
+      than traded at a worse price.
+
+  # ── The put ──────────────────────────────────────────────────────────────────────────────────
+  - id: W-P1
+    name: Put timing
+    params: {}
+    title: When do we sell a put?
+    summary: At the start of every week in which we hold only cash.
+    condition: The week's first session, holding cash and no shares or options
+    action: Sell one put, chosen by the put expiry and strike rules, once the entry trigger passes
+    rationale: >-
+      The wheel's first leg: we're paid to agree to buy the stock lower down. Selling at the
+      start of the week gives the put the whole week's time value.
+
+  - id: W-P2
+    name: Put expiry
+    params: {}
+    title: Which expiry do we sell the put in?
+    summary: That week's last trading session.
+    condition: The put is being selected
+    action: Use the expiry on the week's last trading session (a Thursday in a holiday week)
+    rationale: >-
+      Weekly options decay fastest in their last days, and a week-long put gives about 26 cycles
+      in the backtest window, enough to judge the results.
+
+  - id: W-P3
+    name: Put strike
+    params: {target_delta: 0.30}
+    title: Which put strike do we sell?
+    summary: >-
+      The out-of-the-money put whose delta is closest to −{target_delta:.2f}.
+    condition: >-
+      Puts with a strike below the stock's price on the bar and a delta solved from their mid
+    action: >-
+      Choose the put whose delta is nearest −{target_delta:.2f}; a tie goes to the lower strike
+    rationale: >-
+      A delta near −{target_delta:.2f} puts the strike a little below the stock: a premium worth
+      collecting, and roughly a {target_delta:.0%} chance of being assigned the shares.
+
+  - id: W-P4
+    name: Cash-secured
+    params: {contracts: 1}
+    title: How much do we sell, and how is it secured?
+    summary: >-
+      {contracts} contract, sold only if cash covers buying the shares at the strike.
+    condition: >-
+      Cash after the sale is at least the strike × 100 × {contracts} contract
+    action: >-
+      Sell {contracts} contract and set that cash aside until the put expires or is assigned;
+      otherwise sell nothing that week
+    rationale: >-
+      A cash-secured put can always be paid for if it's assigned: no margin, no leverage. The
+      cash set aside earns nothing here.
+
+  # ── The call ─────────────────────────────────────────────────────────────────────────────────
+  - id: W-C1
+    name: Call timing
+    params: {}
+    title: When do we sell a covered call?
+    summary: At the start of every week in which we hold the shares and no call.
+    condition: The week's first session, holding 100 shares and no option
+    action: Sell one call, chosen by the call expiry and strike rules, once the entry trigger passes
+    rationale: >-
+      The wheel's second leg: once we own the shares, we're paid to agree to sell them higher up.
+
+  - id: W-C2
+    name: Call expiry
+    params: {}
+    title: Which expiry do we sell the call in?
+    summary: That week's last trading session.
+    condition: The call is being selected
+    action: Use the expiry on the week's last trading session (a Thursday in a holiday week)
+    rationale: Weekly, like the put, so each week is one decision.
+
+  - id: W-C3
+    name: Call strike
+    params: {target_delta: 0.30}
+    title: Which call strike do we sell?
+    summary: >-
+      The out-of-the-money call whose delta is closest to {target_delta:.2f}, but never below what
+      the shares cost us, less the premiums collected since.
+    condition: >-
+      Calls with a strike above the stock's price on the bar, at or above the cost basis (the put
+      strike less the put's credit and every call credit since, per share), and a delta solved
+      from their mid
+    action: >-
+      Choose the call whose delta is nearest {target_delta:.2f}; a tie goes to the higher strike.
+      If no call qualifies, sell none that week
+    rationale: >-
+      Being called away below the cost basis would lock in a loss, so the floor comes first and
+      the delta second. When the stock has fallen far below the basis, that can mean no call, or
+      a small premium far out of the money.
+
+  # ── Expiry ───────────────────────────────────────────────────────────────────────────────────
+  - id: W-X1
+    name: Put expires
+    params: {}
+    title: What if the put finishes out of the money?
+    summary: It expires worthless; we keep the premium and sell a new put next week.
+    condition: >-
+      At the expiry session's close, the stock's last trade is at or above the put's strike
+    action: Record the put as expired at $0 and release the cash set aside
+    rationale: The best outcome for a put seller.
+
+  - id: W-X2
+    name: Put assigned
+    params: {}
+    title: What if the put finishes in the money?
+    summary: We're assigned and buy 100 shares at the strike with the cash set aside.
+    condition: >-
+      At the expiry session's close, the stock's last trade is below the put's strike
+    action: >-
+      Record the assignment and buy 100 shares per contract at the strike; the cost basis is the
+      strike less the put's credit
+    rationale: >-
+      The second leg starts: we now own the shares, bought lower than the price when we sold
+      the put, and we sell calls on them from next week. There's no early assignment.
+
+  - id: W-X3
+    name: Call expires
+    params: {}
+    title: What if the call finishes out of the money?
+    summary: It expires worthless; we keep the premium and the shares, and sell a new call next week.
+    condition: >-
+      At the expiry session's close, the stock's last trade is at or below the call's strike
+    action: Record the call as expired at $0; keep the shares
+    rationale: The premium lowers the cost basis of the shares we keep.
+
+  - id: W-X4
+    name: Called away
+    params: {}
+    title: What if the call finishes in the money?
+    summary: The shares are called away at the strike, and we start again with a put.
+    condition: >-
+      At the expiry session's close, the stock's last trade is above the call's strike
+    action: >-
+      Record the assignment and sell the 100 shares per contract at the strike; next week, sell a
+      put again
+    rationale: >-
+      The wheel completes a turn: the shares go at a price at or above the cost basis, so the
+      cycle as a whole is profitable. There's no early assignment.
+
+  - id: W-X5
+    name: End of backtest
+    params: {}
+    title: What happens at the end of the backtest?
+    summary: Everything still held is valued at its last mid; nothing is sold.
+    condition: The backtest's last bar
+    action: Mark every position at the bar's mid; no forced liquidation
+    rationale: Selling at the end would add a trade the strategy never chose.

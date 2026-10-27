@@ -497,3 +497,11 @@ def test_wd_11_wheel_bands_follow_each_weeks_own_open() -> None:
     plan = plan_wheel_puts(CAL, tape, *WINDOW)
     assert min(b.low for b in plan.unit("chains/2026-08-07_P").bands) == P("120")
     assert min(b.low for b in plan.unit("chains/2026-07-31_P").bands) == P("80")
+
+
+def test_wd_11_wheel_band_reads_the_week_open_session_not_the_rest_of_the_week() -> None:
+    # Wednesday falls to $90: the put is sold Monday, so the band stays at 80% of Monday's low.
+    tape = [SessionRange(r.day, P("90"), r.high, r.close) if r.day == date(2026, 7, 8) else r
+            for r in RANGES]  # fmt: skip
+    unit = plan_wheel_puts(CAL, tape, *WINDOW).unit("chains/2026-07-10_P")
+    assert min(b.low for b in unit.bands) == P("80")

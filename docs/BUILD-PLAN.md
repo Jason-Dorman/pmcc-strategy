@@ -16,8 +16,8 @@ Oct 26, 2026 · from the [Wheel spec](WHEEL-SPEC.md) · **due Sun Nov 1 2026, 11
 | Phase | Dates | Exit criteria | Status |
 | --- | --- | --- | --- |
 | W0 Docs and thesis | Mon Oct 26 | Wheel spec, decisions and backlog live; PMCC docs archived; thesis fixed | Done 2026-10-26: thesis fixed (WD-21), due date (WD-13), fills at mid (WD-23) |
-| W1 Data | Mon Oct 26 – Tue Oct 27 | NVDA weekly puts cached; S&P closes committed | In progress: W1-01 and W1-02 done 2026-10-26 (26 weeks of puts cached, 100% quoted at the −0.30-delta strike); W1-03 waits on WD-17 |
-| W2 Engine and rules | Tue Oct 27 – Thu Oct 29 | The wheel runs on NVDA: blotter, ledger, NAV, gate log; invariants hold; one cycle hand-audited | In progress: W2-01 done 2026-10-26 (WD-24); W2-02 waits on WD-14 to WD-19 |
+| W1 Data | Mon Oct 26 – Tue Oct 27 | NVDA weekly puts cached; S&P closes committed | Done 2026-10-26: 26 weeks of puts cached, the −0.30-delta strike validly quoted on 93.6% of bars to expiry (W1-02); S&P closes committed (W1-03) |
+| W2 Engine and rules | Tue Oct 27 – Thu Oct 29 | The wheel runs on NVDA: blotter, ledger, NAV, gate log; invariants hold; one cycle hand-audited | In progress: W2-01 and W2-02 done 2026-10-26 (WD-24, WD-25); W2-03 (`pmcc wheel`, the result file, the audit) next |
 | W3 Results and analytics | Fri Oct 30 | Wheel result and friction runs committed and verified; metrics and benchmarks | Not started |
 | W4 Site | Sat Oct 31 | Wheel pages live on GitHub Pages; thesis verdict shown | Not started |
 | W5 Release | Sun Nov 1 | Reproduced from a clean tree; submitted by 18:00 (deadline 23:59 ET) | Not started |
@@ -30,8 +30,6 @@ Oct 26, 2026 · from the [Wheel spec](WHEEL-SPEC.md) · **due Sun Nov 1 2026, 11
 
 | When | Asks |
 | --- | --- |
-| W1-03 | WD-17 (S&P source) |
-| W2-02 | WD-14 (entry trigger), WD-15 (expiry and early assignment), WD-16 (r), WD-18 (dividends, interest), WD-19 (fees) |
 | W3-01 | WD-20 (metrics) |
 | W4-01 | WD-22 (pages) |
 | any time | WD-02's confirmation (weekly, expected 2026-10-27) |
@@ -51,28 +49,28 @@ Oct 26, 2026 · from the [Wheel spec](WHEEL-SPEC.md) · **due Sun Nov 1 2026, 11
   - A fetch plan for the wheel's weekly puts (WD-11's band), written to `data_cache/NVDA/wheel/` with its own manifest, reusing the PMCC's fetch loop, RIC builder and cache format. `--plan-only` prints the estimate. The PMCC's plan and cache are untouched.
   - Done when: tests cover the band, the unit dates and the separate manifest; the estimate is shown to the PO.
   - Needs: W0-01
-- [x] **W1-02 · Pull NVDA's weekly puts** **[Workspace]** **[PO]** — done 2026-10-26; 26 units in 14 min, 1.3 MB in `data_cache/NVDA/wheel/` (the PO commits it); the −0.30-delta put quoted on 100% of its session bars to expiry, spreads 0.5–2.7%, never near the band's floor (WD-11)
+- [x] **W1-02 · Pull NVDA's weekly puts** **[Workspace]** **[PO]** — done 2026-10-26; 26 units in 14 min, 1.3 MB in `data_cache/NVDA/wheel/` (the PO commits it); the −0.30-delta put validly quoted on 93.6% of its session bars to expiry (the rest zero bids late in the week, marked stale), spreads 0.5–2.7% at entry, never near the band's floor (WD-11)
   - Run the pull after the PO approves the estimate. Report coverage: for each week, the share of bars with a valid quote at the strikes near −0.30 delta.
   - Done when: every weekly expiry's puts are cached, coverage is reported, and the cache is committed (by the PO).
   - Needs: W1-01
-- [ ] **W1-03 · S&P 500 closes** **[PO]**
-  - Ask first: WD-17.
+- [x] **W1-03 · S&P 500 closes** **[PO]** — done 2026-10-26; `configs/benchmarks.yaml` (FRED SP500: 6,368.85 on Mar 27, 7,743.41 on Sep 25) and its reader `pmcc/wheel/benchmarks.py`, which checks the closes bracket the window; 7 tests
+  - Ask first: WD-17 (settled 2026-10-26: FRED SP500).
   - Done when: the two closes are committed with their citation and loaded by a tested reader.
   - Needs: W0-01
 
 ### W2 — Engine and rules
 
-- [x] **W2-01 · Accounting for puts and shares** — done 2026-10-26; the wheel's own book and valuation, `pmcc/wheel/book.py` (WD-24), beside the PMCC's, which is untouched; `RuleId` takes `W-` IDs (WD-12); 25 unit tests (`tests/unit/wheel/test_wheel_book.py`) and a hypothesis walk (55% of runs reach expiry, 47% a put assignment, 10% a call-away). Its questions moved to W2-02, which is the first item that needs them
+- [x] **W2-01 · Accounting for puts and shares** — done 2026-10-26; the wheel's own book and valuation, `pmcc/wheel/book.py` (WD-24), beside the PMCC's, which is untouched; `RuleId` takes `W-` IDs (WD-12); 23 unit tests (`tests/unit/wheel/test_wheel_book.py`) and a hypothesis walk (55% of runs reach expiry, 47% a put assignment, 10% a call-away). Its questions moved to W2-02, which is the first item that needs them
   - A wheel book holds one short put (cash-secured) or 100 shares with one covered call, enforcing invariants 5–7; `ASSIGN` books shares at the strike. The PMCC's book rules still apply to PMCC runs.
   - Done when: hypothesis property tests hold invariants 1, 2, 5, 6 and 7 over random event sequences; every PMCC test still passes.
   - Needs: W0-01
-- [ ] **W2-02 · Wheel config and rules**
-  - Ask first: WD-14, WD-15, WD-16, WD-18, WD-19.
+- [x] **W2-02 · Wheel config and rules** — done 2026-10-26; `configs/wheel.yaml`, `pmcc/wheel/config.py`, `rules.py`, `engine.py`, `market.py` (WD-24); 27 config and rule tests at their boundaries and 15 scenarios; on NVDA it runs in 0.2 s with every invariant held. WD-25's rule details put to the PO. Then an adversarial review of W0-01 to W2-02 (4 reviewers, 2 skeptics per finding; WD-24): 8 confirmed and 2 plausible findings, all fixed, with the unverified lows. Nothing high: the PMCC's results and the wheel's NVDA numbers stood. The fixes add the runtime checks module and the market's missing-week check, mark assigned shares at the closing trade (WD-25 #4), let a W-P4 refusal retry on later bars, and add tests for every gap the review's surviving mutants showed: 13 more scenarios (28), 7 runtime-check tests that make each invariant fire, and unit tests for the OTM call filter, the stale flags, the missing-week check, late benchmark dates and the week-open band. The wheel now has 102 tests, and the 22 mutants re-run against them (the review's survivors and their kin) are all killed
+  - Ask first: WD-14, WD-15, WD-16, WD-18, WD-19 (all settled 2026-10-26, as recommended).
   - `configs/wheel.yaml`: every rule (W-T1 … W-X5) with its thresholds and write-up text; the state machine; the put and call selectors; expiry settlement; the gate log.
   - Done when: each rule has tests at its boundaries, and a synthetic market drives the wheel through every state and transition.
   - Needs: W2-01
 - [ ] **W2-03 · Run the wheel on NVDA** **[PO]**
-  - `pmcc run --symbol NVDA --config configs/wheel.yaml`, then check the call coverage of every strike the wheel picked, and hand-audit a full cycle against the raw quotes with the PO.
+  - A `pmcc wheel --symbol NVDA` command (the PMCC's `pmcc run` rejects the wheel's config: WD-24) that writes `results/NVDA/wheel.json` with its run manifest; then check the call coverage of every strike the wheel picked and of every week skipped under W-C3, and hand-audit a full cycle against the raw quotes with the PO.
   - Done when: the result passes every invariant and the audit.
   - Needs: W1-02, W2-02
 
@@ -109,4 +107,4 @@ Oct 26, 2026 · from the [Wheel spec](WHEEL-SPEC.md) · **due Sun Nov 1 2026, 11
 - **Tenor changes (WD-02).** If monthly is chosen, W1-01's band and dates, the call coverage, and W-P2/W-C2 change; only about 5–6 cycles fit the window.
 - **Put coverage.** Weekly puts may be sparse away from the money; W1-02 reports it before the rules depend on it.
 - **Call coverage.** The cached calls were fetched for the PMCC's 0.30-delta shorts; a call at or above a cost basis well above spot may fall outside them. W2-03 checks every pick; a gap means a call pull.
-- **Engine generality.** The PMCC's book refuses puts by design; W2-01 must widen it without changing any PMCC result.
+- **Engine generality.** The PMCC's book refuses puts by design, so the wheel has its own book, config and loop beside it (WD-24), and the PMCC's results must keep matching: after the review's fixes, a scratch batch of all 24 PMCC runs matched all 31 committed result files (WD-24).

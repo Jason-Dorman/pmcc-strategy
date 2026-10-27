@@ -1,0 +1,11 @@
+# The wheel's market benchmark (WD-03, WD-17): the S&P 500's price return over the backtest
+# window, compared as a return, not charted. Loaded by pmcc.wheel.benchmarks, which checks that
+# `start` is the last close before the window (configs/universe.yaml) and `end` its last close.
+# Closes are quoted strings so they're read as exact decimals.
+sp500:
+  series: SP500
+  start: {day: 2026-03-27, close: '6368.85'}  # Fri: the last close before Mon Mar 30
+  end: {day: 2026-09-25, close: '7743.41'}    # Fri: the window's last session
+  source: >-
+    S&P Dow Jones Indices LLC, S&P 500 [SP500], retrieved from FRED, Federal Reserve Bank of
+    St. Louis, https://fred.stlouisfed.org/series/SP500 (read 2026-10-26)

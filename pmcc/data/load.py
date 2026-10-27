@@ -87,6 +87,27 @@ def load_symbol(root: Path, symbol: str, calendar: SessionCalendar) -> SymbolDat
     )
 
 
+@final
+@dataclass(frozen=True, slots=True)
+class LoadedChains:
+    """A cache's chain units, loaded, and the units they came from (for a data-manifest hash)."""
+
+    chains: Mapping[tuple[date, Right], pl.DataFrame]
+    units: tuple[CachedUnit, ...]
+
+
+def load_chains(cache: SymbolCache, calendar: SessionCalendar) -> LoadedChains:
+    """Every chain unit in `cache`, a symbol's cache or a part of it (WD-11), verified and loaded
+    as `load_symbol` loads them. Raises `CacheError` as `load_symbol` does."""
+    chains: dict[tuple[date, Right], pl.DataFrame] = {}
+    units: list[CachedUnit] = []
+    for unit in verified_units(cache):
+        if unit.expiry is not None and unit.right is not None:
+            chains[unit.expiry, unit.right] = _load_unit(cache, unit, calendar)
+            units.append(unit)
+    return LoadedChains(chains, tuple(units))
+
+
 def cached_stock(cache: SymbolCache) -> tuple[CachedUnit, RawHistory]:
     """The cached stock unit and its bars as the provider returned them (long rows, unquantized),
     so a resumed fetch plans from the very tape it cached. Raises `CacheError` if there is no stock

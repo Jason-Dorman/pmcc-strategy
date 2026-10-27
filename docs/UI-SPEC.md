@@ -30,7 +30,7 @@ No rounded corners, no shadows, no floating cards, no whitespace gaps. shadcn/ui
 
 - **Numbering:** panels holding a figure or table are numbered `[1]`, `[2]`, … in page order, computed at render time. Prose panels are unnumbered.
 - **Breakpoints:** ≥ 1400px the full 10-column grid; 1101–1399px two columns; ≤ 1100px one column.
-- **Copy:** a rule is named by what it does ("Put assigned"), never by its ID; IDs appear only in ID columns. Greeks are named in words, never symbols.
+- **Copy:** a rule is named by what it does ("Put assigned"), never by its ID; IDs appear only in ID columns. Greeks are named in words, never symbols. These two, and rule cells in plain words (§5), are the PMCC PO's content choices carried over, not styling: the wheel's PO confirms them at W4-01 (WD-22).
 
 ## 3. Tokens
 

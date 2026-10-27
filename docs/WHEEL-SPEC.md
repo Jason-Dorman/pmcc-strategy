@@ -37,22 +37,22 @@ The site states the thesis first, then each claim's verdict from the results, me
 - **Calls:** the cached weekly calls, used for covered calls. Coverage of each strike the wheel picks is checked once the run exists.
 - **Puts:** a new pull of weekly puts, needed because the cache holds puts only for each week's first session near the money (WD-06). For each weekly expiry in the window: every session from the week's first through expiry, strikes from 80% of the first session's low up to two increments above its high, in two bands that each measure their own strike step (WD-11). `pmcc fetch --wheel` pulls them. Fetching ranges from the window's prices is allowed; selection only ever sees data up to its decision time.
 - **Cache:** the wheel's puts go in their own folder with their own manifest (`data_cache/NVDA/wheel/`), so the PMCC's cache and its results' data hash are untouched (WD-11). Never overwritten; an outage aborts and writes nothing.
-- **S&P 500:** **ASK** (WD-17). Recommended: FRED's `SP500` daily closes, Fri Mar 27 and Fri Sep 25 2026, as a committed two-row file with its citation.
-- **Risk-free rate:** **ASK** (WD-16). Recommended: 3.71% continuously compounded, from the 3-month Treasury yield (FRED DGS3MO, 3.73%) at the last close before the window.
+- **S&P 500:** FRED's `SP500` daily closes, Fri Mar 27 and Fri Sep 25 2026, price return, as a committed two-row file with its citation (PO, WD-17).
+- **Risk-free rate:** 3.71% continuously compounded, from the 3-month Treasury yield (FRED DGS3MO, 3.73%) at the last close before the window (PO, WD-16).
 
 ## Conventions
 
 - **Time:** America/New_York. LSEG stamps hourly bars at their start with end-of-bar quotes, so a bar is known at its end: every decision happens at a bar's end, using only data stamped at or before it. The engine's `MarketView` raises on any request for later data.
 - **Week:** a week opens on its first trading session and its options expire on its last trading session.
 - **Greeks:** Black-Scholes, implied vol solved from the bar's mid, dividend yield 0. A contract whose IV can't be solved on a bar can't be selected on that bar.
-- **Dividends and interest:** **ASK** (WD-18). Recommended: NVDA's $0.01 quarterly dividend is ignored, and cash earns no interest. Both are stated on the site.
-- **Early assignment:** **ASK** (WD-15). Recommended: none before expiry.
+- **Dividends and interest:** NVDA's $0.01 quarterly dividend is ignored, and cash earns no interest. Both are stated on the site (PO, WD-18).
+- **Early assignment:** none before expiry (PO, WD-15).
 
 ## Fill model
 
 - **Base:** every option entry and exit fills at the decision bar's mid, (BID + ASK) ÷ 2 (PO, WD-23). No BID or no ASK on that bar means no fill; a print is never invented. Under hold-to-expiry (WD-09) the only option fills are the put and call sales: an option leaves the book by expiring at $0 or by assignment at its strike, never by a buy-back.
 - **Friction:** a `spread_capture` parameter in [0, 1]: a sell fills at mid − capture × half-spread, a buy at mid + capture × half-spread. The reported run is at 0, so at mid; sensitivity runs at 0.25 and 0.50 only show how much of the result survives paying part of the spread (WD-23).
-- **Fees:** a per-contract fee parameter, base $0. **ASK** (WD-19).
+- **Fees:** a per-contract fee parameter, $0 in every run (PO, WD-19).
 - **Justification with data (requirement 3):** for every option the wheel traded, each bar with a trade print plots the print against the bar's mid, with the fitted line, R², and where the prints fall within the spread. The friction runs show how much of the result survives paying part of the spread. Assignment and call-away fills are at the strike, which is contractual, not an assumption.
 
 ## Trade rules
@@ -70,7 +70,7 @@ The wheel is always in exactly one state. Each state allows one kind of short op
 
 | ID | Rule | Definition |
 | --- | --- | --- |
-| W-T1 | Entry trigger | **ASK** (WD-14). Recommended: sell on the first bar of the week's first session where the selected contract has a valid bid and ask and a spread ≤ 10% of its mid |
+| W-T1 | Entry trigger | Sell on the first bar of the week's first session where the selected contract has a valid bid and ask and a spread ≤ 10% of its mid; if none passes, the week is skipped (PO, WD-14) |
 | W-P1 | Put timing | Each week's first session, in the Cash state |
 | W-P2 | Put expiry | That week's last trading session |
 | W-P3 | Put strike | The OTM put whose delta is nearest −0.30 (WD-07) |
@@ -84,10 +84,11 @@ The wheel is always in exactly one state. Each state allows one kind of short op
 | W-X4 | Called away | Call ITM at expiry: `ASSIGN` the call and sell 100 shares at the strike → Cash |
 | W-X5 | End of backtest | Mark everything at the final bar; no forced liquidation |
 
+- **Picking (WD-25):** the pick is made afresh on each bar of the week's first session until one sells, so a put the cash couldn't secure on one bar may still sell on a later one; a tie in delta goes further out of the money (the lower put strike, the higher call strike).
 - **Hold to expiry:** no option is bought back early, and there are no rolls (WD-09). The blotter's trade types are therefore opens, expiries, assignments and call-aways; a week's new sale is the next cycle, not a roll.
-- **ITM at expiry:** **ASK** (WD-15). Recommended: judged by the stock's last trade in the bar ending at the 16:00 close; a put is ITM if that price is below its strike, a call if above.
+- **ITM at expiry:** judged by the stock's last trade in the bar ending at the session's close (16:00 ET, 13:00 on a half-day), or, if that bar had none, the session's last trade before it; a put is ITM if that price is below its strike, a call if above; at the strike, neither (PO, WD-15; the fallback, WD-25).
 - **Cost basis:** the assigned put's strike, minus that put's credit and every call credit received since, per share, net of fees.
-- **Skips:** a week with no sale gets one gate-log row with its reason: no valid quote all session (W-T1), not enough cash (W-P4), or no call strike at or above cost basis (W-C3).
+- **Skips:** a week with no sale gets one gate-log row with its reason: not enough cash (W-P4); no call at or above the cost basis with a quote on any bar (W-C3); otherwise no liquid bar (W-T1) (WD-25).
 
 Every threshold lives in YAML under its rule ID, and every blotter and gate-log row carries the ID of the rule that produced it.
 
@@ -103,7 +104,7 @@ Cash moves only on blotter rows. Money is an integer count of $0.0001.
 NAV = cash + shares × stock price − short put MV − short call MV
 ```
 
-Option marks at mid; a bar without a bid or ask carries the last valid mid, flagged stale, and a stale mark never fills.
+Option and share marks at mid; a bar without a valid bid and ask carries the last valid mid, flagged stale, and a stale mark never fills. A holding with no mid yet on the bar it was filled is marked stale until one arrives: shares bought on assignment at the closing trade that assigned them, anything else at its fill (WD-25).
 
 **Portfolio at any point in time (requirement 2):** the site lets a reader pick any bar and shows that bar's ledger row as a portfolio: cash (reserved and free), shares, the short put, the short call, each with its mark, and NAV. **ASK** at the UI item (WD-22).
 

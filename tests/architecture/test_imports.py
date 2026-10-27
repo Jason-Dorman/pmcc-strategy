@@ -36,9 +36,10 @@ def _rule_2(importer: str, imported: str) -> bool:
 
 
 def _rule_3(importer: str, imported: str) -> bool:
-    """`pmcc.strategy` never imports `engine`, `data`, `accounting` or `export`."""
+    """`pmcc.strategy`, and the wheel's selectors `pmcc.wheel.rules` (WD-24), never import
+    `engine`, `data`, `accounting` or `export`: rules see the market only through MarketView."""
     banned = ("pmcc.engine", "pmcc.data", "pmcc.accounting", "pmcc.export")
-    return _within(importer, "pmcc.strategy") and _within(imported, *banned)
+    return _within(importer, "pmcc.strategy", "pmcc.wheel.rules") and _within(imported, *banned)
 
 
 def _rule_4(importer: str, imported: str) -> bool:
@@ -148,6 +149,8 @@ PLANTED = [
         "pmcc/strategy/gates.py",
         "from typing import TYPE_CHECKING\nif TYPE_CHECKING:\n    from pmcc.export import models\n",
     ),
+    (3, "pmcc/wheel/rules.py", "from pmcc.data.load import load_symbol\n"),
+    (3, "pmcc/wheel/rules.py", "from pmcc.engine.market_view import MarketData\n"),
     (4, "pmcc/accounting/book.py", "from pmcc.config import models\n"),
     (4, "pmcc/pricing/iv.py", "import pmcc.strategy\n"),
     (5, "pmcc/analytics/performance.py", "from pmcc.engine.loop import run\n"),

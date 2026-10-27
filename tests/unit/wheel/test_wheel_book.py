@@ -197,6 +197,13 @@ def test_winv_02_flags_a_stale_mark() -> None:
     assert value(sold_put(), marks).stale_flags == ("stale_put",)
 
 
+def test_winv_02_flags_a_stale_call_and_stale_shares() -> None:
+    marks: Marks = {CALL: Mark(D("0.40"), MON, stale=True), STOCK: Mark(D("205"), MON, stale=True)}
+    assert value(sold_call(), marks).stale_flags == ("stale_call", "stale_stock")
+    fresh: Marks = {CALL: Mark(D("0.40"), MON, stale=False), STOCK: Mark(D("205"), MON, stale=True)}
+    assert value(sold_call(), fresh).stale_flags == ("stale_stock",)
+
+
 def test_winv_02_refuses_a_held_instrument_with_no_mark() -> None:
     with pytest.raises(EngineError, match="mark"):
         value(sold_put(), {})

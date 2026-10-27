@@ -66,7 +66,7 @@ Universe = Annotated[Path, typer.Option(help="Universe YAML.")]
 
 
 def _not_built(item: str) -> NoReturn:
-    typer.echo(f"Not built yet: see docs/BUILD-PLAN.md {item}.", err=True)
+    typer.echo(f"Not built yet: see docs/archive/pmcc/BUILD-PLAN.md {item}.", err=True)
     raise typer.Exit(code=1)
 
 
