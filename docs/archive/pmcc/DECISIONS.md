@@ -1,0 +1,3277 @@
+# Decisions and Spec Clarifications
+
+Sep 25, 2026 · companion to the [System Spec](PMCC-Backtest-System-Spec.md), the source of truth for this build
+
+The user is the product owner (PO). This log tracks what the spec leaves open or what conflicts with it.
+
+Open questions are asked **just in time**, when the backlog item that needs the answer is picked up, so nothing here needs answering up front. [BUILD-PLAN §2](BUILD-PLAN.md#2-questions-for-the-po) lists when each question comes up.
+
+| Status | Meaning |
+| --- | --- |
+| `ASK` | Open question, with a recommendation. Asked when the item under **Ask at** starts. Nothing that depends on it is built before the answer. |
+| `VERIFY` | A fact to measure in P1. The result is reported to the PO; if it contradicts the spec, the entry becomes `ASK`. |
+| `SETTLED` | Decided. **Basis** is the spec or a dated PO answer. |
+| `ENG` | An engineering choice within the spec and the engineering principles: how, not what. Recorded so the PO can see it and overrule it. It becomes `ASK` if it turns out to change behaviour, results, scope or the UI. |
+
+**Maintenance:**
+- Record each PO answer or probe result under **Outcome**, with the date and evidence, and update the status.
+- If an answer changes what the spec says, update the spec in the same commit, citing the entry.
+- Never delete an entry. A new entry takes the next free number in its section.
+
+Short names: **Spec** = the System Spec; **LDG** = `LSEG-DATA-GUIDE.md`; **DG** = `DESIGN-GUIDE.md`; **EP** = `docs/ENGINEERING-PRINCIPLES.md`.
+
+## Index
+
+| ID | Decision | Status | When |
+| --- | --- | --- | --- |
+| DEC-01 | RIC day field: padded or not | SETTLED (PO) | — |
+| DEC-02 | Fetch environment | SETTLED (PO) | — |
+| DEC-03 | Light theme | SETTLED (PO): none, the baseline look unchanged | — |
+| DEC-04 | Chart colour roles | SETTLED (PO): as recommended | — |
+| DEC-05 | LSEG terms: raw cache and derived series | SETTLED (PO) | — |
+| DEC-06 | Bar timestamps, decision time, session bars | SETTLED (PO) | — |
+| DEC-07 | Backtest window | SETTLED (PO) | — |
+| DEC-08 | Long-dated coverage | VERIFY: NVDA measured (P1-09) and its results reviewed (P5-05); QQQ, TSLA at P1-10 | P1-10 (paused, DEC-15) |
+| DEC-09 | Live-contract RIC form | SETTLED (spec, probed) | — |
+| DEC-10 | Reg T and FINRA 4210 citations | SETTLED (PO): hedged short stock after X-S5 · citations found and re-read (P7-04) · off the site (DEC-116) | — |
+| DEC-11 | Risk-free rate | SETTLED (PO) | — |
+| DEC-12 | Per-symbol identifiers, splits, max strike | SETTLED (PO) | — |
+| DEC-13 | Hourly field availability | SETTLED (spec, probed) | — |
+| DEC-14 | Strike increments | ENG method · values probed · unmeasured anchor SETTLED (PO) | — |
+| DEC-15 | Universe size | SETTLED (PO): NVDA only for now; QQQ and TSLA commented out; one comes back without touching NVDA's cash (DEC-30) | — |
+| DEC-16 | Fetch coverage summary | SETTLED (PO) | — |
+| DEC-20 | Week-open session and order of operations | SETTLED (PO) | — |
+| DEC-21 | Selection freeze and E-T1 | SETTLED (PO) | — |
+| DEC-22 | Gates and the gate log | SETTLED (PO) | — |
+| DEC-23 | Spot, close, ITM at expiry | SETTLED (PO) | — |
+| DEC-24 | Time to expiry and Greek units | SETTLED (PO) | — |
+| DEC-25 | ATM strike, ATM IV, expected move | SETTLED (PO) | — |
+| DEC-26 | RV20 | SETTLED (PO) · a missing close: ASK | asked 2026-09-29 (P2 review) |
+| DEC-27 | Greeks for held contracts; fresh quotes only | SETTLED (PO) | — |
+| DEC-28 | Exits without a valid quote; when the long is checked | SETTLED (PO) | — |
+| DEC-29 | Tie-breaks | SETTLED (PO) | — |
+| DEC-30 | Starting capital (E-L4) | SETTLED (PO): each symbol's own (2026-10-05); NVDA's $15,000, final (P5-01) | a symbol that returns calibrates its own (L-03, DEC-118) |
+| DEC-31 | Entry-timing sensitivity | SETTLED (PO) | — |
+| DEC-32 | Point-in-time listing | SETTLED (PO) | — |
+| DEC-33 | Expiry calendar | SETTLED (PO) | — |
+| DEC-34 | Rule stamping for multi-rule events | SETTLED (PO) | — |
+| DEC-35 | Rule write-up: names and rationales | SETTLED (PO) | — |
+| DEC-40 | Source of truth | SETTLED (PO) | — |
+| DEC-41 | Frontend stack follows the spec | SETTLED (spec) | — |
+| DEC-42 | Python environment | ENG | — |
+| DEC-43 | Packages added to the spec layout | ENG | — |
+| DEC-44 | Money as integer units | ENG | — |
+| DEC-45 | RIC form policy | SETTLED (PO) | — |
+| DEC-46 | Cache layout | SETTLED (PO) | — |
+| DEC-47 | Fetch dates are inclusive | ENG · probed (LSEG's date edges) | — |
+| DEC-48 | Fetch plan and band-edge guard | ENG · the guard is a by-hand review (PO, 2026-10-01, at P5-05) | — |
+| DEC-49 | Failure taxonomy | ENG | — |
+| DEC-50 | Canonical results and INV-13 | SETTLED (PO) | — |
+| DEC-51 | Invariants in CI without data | ENG | — |
+| DEC-52 | Rule text rendered from parameters | ENG | — |
+| DEC-53 | Composition over flags | ENG | — |
+| DEC-54 | Result detail levels and report sections | SETTLED (PO) | — |
+| DEC-55 | Dividends | SETTLED (spec) | — |
+| DEC-56 | Raw cache: NVDA's committed, the rest local | SETTLED (PO, DEC-05) | — |
+| DEC-57 | Reference files stay in place | ENG | — |
+| DEC-58 | Windows and Ubuntu parity | ENG | — |
+| DEC-59 | Git and GitHub belong to the PO | SETTLED (PO) | — |
+| DEC-60 | Returns and performance definitions | SETTLED (PO): as recommended | — |
+| DEC-61 | Bootstrap | SETTLED (PO): as recommended | — |
+| DEC-62 | Cycle definitions | SETTLED (PO): as recommended, two details too | — |
+| DEC-63 | Attribution conventions | SETTLED (PO): as recommended | — |
+| DEC-64 | Fill-assumption check | SETTLED (PO): as recommended | — |
+| DEC-65 | Robustness tables: references, dispersion, columns | SETTLED (PO) | — |
+| DEC-66 | Suitability screen: the sample, the contracts, the credit, G-3 | SETTLED (PO): as recommended | — |
+| DEC-67 | Entry timing: when dispersion is "fragility" | SETTLED (PO): as recommended | — |
+| DEC-70 | Design tokens | ENG | — |
+| DEC-71 | shadcn/ui restyled | ENG | — |
+| DEC-72 | Fonts self-hosted | ENG | — |
+| DEC-73 | Routing and base path | ENG | — |
+| DEC-74 | Synthetic-data banner | ENG | — |
+| DEC-75 | Data page | ASK | P7-06 |
+| DEC-76 | Greek attribution display | SETTLED (PO): as recommended | — |
+| DEC-77 | Quality-gate configuration | ENG | — |
+| DEC-78 | justfile conventions | ENG | — |
+| DEC-79 | CI workflow conventions | ENG | — |
+| DEC-80 | Logging setup and the import-boundary test | ENG | — |
+| DEC-81 | Domain value types | ENG | — |
+| DEC-82 | RIC module | ENG | — |
+| DEC-83 | History port, LSEG adapter and batched requests | ENG · error codes verified | — |
+| DEC-84 | Calendar, chain discovery and the fetch plan | ENG | — |
+| DEC-85 | Probe design | ENG | — |
+| DEC-86 | Universe config and strict YAML | ENG | — |
+| DEC-87 | Cache writes, sidecars and the loader | ENG | — |
+| DEC-88 | The fetch command: plan, estimate, unit loop | ENG | — |
+| DEC-89 | Pricing: Black-Scholes, the IV solver, measures, the chain pricer | ENG | — |
+| DEC-90 | Strategy config: kinds, the loader and the config hash | ENG | — |
+| DEC-91 | MarketView, synthetic market, accounting, fills, rules, engine loop | ENG · 3 edge cases put to the PO | handover 2026-09-30 |
+| DEC-92 | Results: models, canonical JSON, the manifest and `pmcc run` | ENG | — |
+| DEC-93 | `pmcc calibrate`: the starting-cash block and its two passes | ENG | — |
+| DEC-94 | The baseline on NVDA: the run, the hand audit and the committed cache | ENG | — |
+| DEC-95 | The quant layer: selectors, gates G-3 to G-5, the quant and ablation configs | ENG · the three items put to the PO settled (PO, 2026-09-30) | — |
+| DEC-96 | Export and verify: result models at schema 2, JSON Schema, `pmcc verify`, `pmcc export` | ENG | — |
+| DEC-97 | The web scaffold: packages, tokens and shell, types, loader, routes, tests | ENG · packages approved, React's types included (PO, 2026-09-30) | — |
+| DEC-98 | Pages deploy: the CI `web` and `deploy` jobs and the dist guard | ENG · live site checked | — |
+| DEC-99 | The Playwright smoke test (INV-15) | ENG | — |
+| DEC-100 | Sensitivity variants, the run matrix and `pmcc batch` | ENG · universe files at P6, coverage at P5-03 (PO, 2026-09-30); full batch run at P5-04 (2026-10-01) | — |
+| DEC-101 | The analytics: performance, cycles, bootstrap CIs, robustness tables | ENG | — |
+| DEC-102 | Attribution: what the engine records for it, the leg and Greek modules | ENG | — |
+| DEC-103 | The fill-assumption check: its sample, exact fit, files and size limit | ENG · the file's size put to the PO | handover 2026-10-01 |
+| DEC-104 | The suitability screen: the module, the batch's hand-back, the file | ENG | — |
+| DEC-105 | P6-09: the re-run with analytics, and what the site reads where | ENG | — |
+| DEC-106 | P7-01: the strategy page, its charts and tables | ENG · the gate log's Selected column put to the PO | handover 2026-10-01 |
+| DEC-107 | Filter buttons say what happened, not a rule ID | SETTLED (PO) | — |
+| DEC-108 | The blotter's Trade P&L | SETTLED (PO) | — |
+| DEC-109 | The backtest's limits, stated on the site; a long-only run and another regime later | SETTLED (PO) · the two additions deferred | P7-02, P7-04; later if time allows |
+| DEC-110 | P7-02: the comparison page | ENG · the limit sentence's wording where a run doesn't bear it out put to the PO | handover 2026-10-02 |
+| DEC-111 | The headline return and an annualized Sharpe, for an institutional reader | SETTLED (PO) | P7-02 |
+| DEC-112 | P7-03: the Trade rules page and its traceability links | ENG · the rule tables' height SETTLED (PO); its copy amended by DEC-113 | P7-03 |
+| DEC-113 | No rule IDs in the copy: rules named by what they are | SETTLED (PO) | P7-03 |
+| DEC-114 | The Trade rules page in plain words: each rule's title, summary and Why | SETTLED (PO) · the exits' merged column put to the PO | handover 2026-10-03 |
+| DEC-115 | P7-04: the Methodology page | ENG · amended by DEC-116 · the half-width robustness tables put to the PO | handover 2026-10-04 |
+| DEC-116 | Methodology: the limits first, three panels dropped | SETTLED (PO) | P7-04 |
+| DEC-117 | P7-05: the Universe page | ENG | P7-05 |
+| DEC-118 | L-03: each symbol's own starting cash | ENG · E-L4's reworded text put to the PO | handover 2026-10-05 |
+| DEC-119 | LSEG's request cap, and QQQ's fetch deadline | SETTLED (PO): keep pulling; drop QQQ if not in by the due date | P1-10 |
+| DEC-120 | The lecture's Greeks on the site: position Greeks, both pages' Greek attribution, Discovery | SETTLED (PO) | L-04 |
+| DEC-121 | Site trims: Greeks in words, no sensitivity or friction table, fewer Methodology panels, no footer | SETTLED (PO) | L-05 |
+
+---
+
+## A. Raised during planning
+
+### DEC-01 — RIC day field: zero-padded or not
+**Status:** SETTLED · **Basis:** PO, 2026-09-26, on the earlier project's measurements (LDG §3) · **Affects:** P1-02, P1-04, INV-11, Spec › RIC builder
+
+- **Conflict:** Spec › RIC builder says "Day not zero-padded", and INV-11 cites `AAPLF52619000.U^F26`. LDG §3, measured in Aug–Sep 2026, says the opposite: the day is always two digits (`05`), and unpadded RICs didn't resolve. `lseg_client.build_option_ric` pads the day, and its parser rejects `AAPLF52619000.U^F26` (checked Sep 25).
+- **Recommendation:** P1-04 probes both spellings of the same expired contract (`AAPLF52619000.U^F26` vs `AAPLF052619000.U^F26`), and the result goes to the PO.
+  - The builder emits whichever spelling resolves (padded, if the guide is right). The parser accepts both.
+  - If the padded form wins, amend the spec's RIC line and INV-11 to four checks:
+    1. The spec's examples parse to the correct contract.
+    2. The builder emits the verified spelling.
+    3. Building then parsing round-trips the canonical form.
+    4. Live contracts get no caret.
+- **Outcome:** 2026-09-25 (interim, asked at P1-02, since the probe comes later) — PO: "Padded, provisional."
+  - The builder emits the padded spelling (`AAPLF052619000.U^F26`), and the parser reads both. The spec's unpadded example is tested to parse to the right contract, not to rebuild as written (`tests/unit/data/test_ric.py`).
+  - The spec's RIC line and INV-11 stay as written until the P1-04 probe settles this entry. If the probe shows the unpadded spelling resolves instead, the builder changes in one place, `_day_field` in `pmcc/data/ric.py` (DEC-82).
+- **Outcome:** 2026-09-26 — PO: "yes the work from the previous project covered it and I know it works - maybe we just make a note in case something breaks."
+  - Settled as zero-padded, with no probe; P1-04 no longer checks the spelling. Spec › RIC builder and INV-11 are amended to the four checks above.
+  - **If it breaks:** a wrong day spelling shows up as every strike of an expiry dated the 1st–9th coming back unanswered, while expiries dated the 10th or later answer. Check the spelling first. It is set in one place, `_day_field` in `pmcc/data/ric.py`, and the parser already reads both spellings.
+
+### DEC-02 — Fetch environment
+**Status:** SETTLED · **Basis:** PO, 2026-09-25 · **Affects:** P0-01, DEC-58
+
+- **Finding (Sep 25):** WSL2 was in `nat` networking mode, and `curl http://localhost:9000/api/status` from WSL got no answer. NAT-mode WSL can't reach the Workspace proxy on Windows `localhost:9000`.
+- **Decision:** the project runs from **Git Bash on Windows**, on the same machine as Workspace, so the proxy is reachable directly. P0-01 confirms it:
+  - `curl -s http://localhost:9000/api/status` returns `ST_PROXY_READY`
+  - the one-liner in LDG §4.2 prints `Opened`
+- **Consequence:** development is on Windows and CI is on Ubuntu (DEC-58).
+- **Outcome:** 2026-09-25 — PO: "I'll reopen this project from git bash so we have proper access to LSEG."
+
+### DEC-03 — Light theme
+**Status:** SETTLED · **Basis:** PO, 2026-09-30, at P4-06 · **Affects:** P4-06, P7-07, P7-08, UI-SPEC §2, §3, §10, Spec › Frontend constraints, Spec › Charts
+
+- **Conflict:** Spec › Frontend constraints requires light and dark themes, but the baseline look (DG §1, `theme.py`) is dark only. On a light ground, amber type (`#FFB000`) is about 1.9:1, and the cyan and magenta data hues fall below 3:1.
+- **Recommendation:**
+  - Dark stays the default, since it is the terminal identity.
+  - The light theme keeps every token name and hue family and only adjusts lightness, e.g. amber type darkened to about `#8A5A00` (≈5.9:1 on white).
+  - Every text pairing must reach ≥ 4.5:1 and every data mark ≥ 3:1, both in the contrast test.
+  - A toggle in the command bar switches themes and is remembered per browser.
+- **Note:** the palette is a baseline the PO may change.
+- **Outcome:** 2026-09-30 — PO, at P4-06: **no light theme.** The site's styling is to be identical to what the previous project provided, as `DESIGN-GUIDE.md` and `theme.py` describe it: one theme, dark, and no toggle. The PO asked where the light theme came from: the spec itself, "light and dark themes" under Frontend constraints and "theme-aware" charts. The Styling line now says one dark theme, the baseline look unchanged, and the Charts line says styled from the design tokens; both cite this entry. PRD FR-S10, UI-SPEC §2, §3 and §10, P7-07 and P7-08 follow. `web/src/theme/tokens.css` holds `theme.py`'s values unchanged, and the contrast test checks the one theme (DEC-97).
+
+### DEC-04 — Chart colour roles
+**Status:** SETTLED · **Basis:** PO, 2026-10-01, at P7-01 · **Affects:** P7-01, P7-02, UI-SPEC §3, §4; DEC-106
+
+The baseline palette never had two option legs in one chart or two NAV series on one page (DG §7 leaves the leg colours to the PO).
+
+| Role | Recommendation (reuses the baseline palette) | Alternative |
+| --- | --- | --- |
+| Long call value | `NAV_LINE` violet (it's the asset) | `POSITIVE` |
+| Short call value | `MARK` cyan (a quoted mark) | `NEGATIVE` (reuses up/down, which tables already give to BUY/SELL) |
+| Quant NAV (comparison) | `NAV_LINE` violet, solid | — |
+| Baseline NAV (comparison) | `MARK` cyan, solid (no mid or print series on that page) | `TEXT_MUTED` dashed (reads as a reference) |
+| Available funds (NAV chart, lower pane) | `TEXT` line; the region below zero shaded `NEGATIVE` | — |
+
+Whichever is chosen becomes named tokens (`--long-leg`, `--short-leg`, `--strategy-quant`, `--strategy-baseline`, `--available-funds`), never hex values in chart code.
+
+**Outcome:** 2026-10-01 — PO, at P7-01: **as recommended.**
+- `web/src/theme/tokens.css` defines each role as the palette colour it names, never a hex value:
+  `--long-leg: var(--nav-line)`, `--short-leg: var(--mark)`, `--strategy-quant: var(--nav-line)`,
+  `--strategy-baseline: var(--mark)`, `--available-funds: var(--text)`. Funds below zero are
+  shaded `--negative-shade`, NEGATIVE at 30%, beside the warning ground's 14%.
+- `tokens.ts`'s `ROLE_TOKENS` holds the same map; `contrast.test.ts` pins both to this answer and
+  holds each role's colour to 3:1 on the plot grounds.
+- In the same message the PO also approved `@tanstack/react-virtual`, the one package P7-01 adds
+  that the spec's stack list doesn't name (the spec asks for virtualized tables; ARCHITECTURE §13
+  names TanStack Virtual). Built at P7-01 (DEC-106).
+
+### DEC-05 — LSEG terms and what gets published
+**Status:** SETTLED · **Basis:** PO, 2026-09-30, at P3-10 · **Affects:** P3-10, P5-04, P6-07, `.gitignore`, `.pre-commit-config.yaml`; DEC-15, DEC-56, DEC-64, DEC-94
+
+- **Spec open item:** may the raw cache be committed to a public repo? The default is no: commit derived results only (DEC-56).
+- **Extension:** some derived outputs embed raw values. Ledger marks and blotter limits are mids of held contracts, and the fill-assumption scatter publishes every TRDPRC_1/mid pair. Confirm these may be public.
+- **Recommendation if they may not:** the scatter publishes binned points plus the fit statistics, while marks and limits stay, because they are the backtest's own valuation.
+- **Outcome:** 2026-09-30 — PO:
+  - **Derived outputs: all public.** Ledger marks, blotter limits and the audit's bid and ask are published as they are, and P6-07's fill-assumption scatter publishes every TRDPRC_1/mid pair, not bins.
+  - **The raw cache: committed.** The PO isn't concerned about LSEG's terms; other projects keep such data in git. Asked what keeping it private risks, the PO was told:
+    - **Loss.** LSEG's hourly history is a rolling window (DEC-07), and NVDA's probe on Sep 27 reached back only to Dec 22 2025, so Mar 30 2026 could fall out of reach around late December 2026. The laptop's `data_cache/` was the only copy.
+    - **Reproducibility.** Without the cache, no one else (a grader, CI, another machine) can run `just reproduce` or re-check INV-13 on real data.
+    - **The cost of committing:** NVDA's cache is 7.1 MB in 127 files, the largest 1.1 MB, so no Git LFS.
+  - **NVDA only, for now.** Asked how to treat the other symbols' files, since an untracked cache file makes a run's tree dirty (DEC-50), the PO chose NVDA's cache alone and set the rest aside: NVDA may be the only symbol, and more are added at the end if time allows (DEC-15). `.gitignore` ignores `data_cache/*` except `data_cache/NVDA/`, so TSLA's partial cache and the probe reports stay on disk, untouched and uncommitted. Adding a symbol later adds its directory to that exception.
+  - **The window stays.** The PO added that a shorter backtest, about 3 months, would do if reaching back were a problem. With the cache committed it isn't, so DEC-07's 26 weeks stand.
+  - **Guards:** `end-of-file-fixer` skips `data_cache/`, so no hook rewrites the cache, and `data_cache/` gets its own 2 MB large-file limit, like `results/` (DEC-92). `tests/unit/test_repo_policy.py` pins both, and which paths git ignores (DEC-94).
+  - Spec › Cache, its layout line and the open item now cite this entry.
+
+## B. Facts to verify in P1
+
+The results are reported to the PO at P1-05. A result that contradicts the spec becomes an `ASK`.
+
+### DEC-06 — Bar timestamps, decision time, session bars
+**Status:** SETTLED · **Basis:** PO, 2026-09-28, on the P1-04 probes · **Affects:** loader, MarketView, every rule
+
+- **Known (LDG §4.8–4.9, measured):**
+  - Intraday bars arrive tz-naive UTC, stamped at the bar's start. BID/ASK are the bar's final values.
+  - Tapes run past 16:00 ET, and the latest bar of a session is a post-close stub, not the close.
+- **Recommendation, presented with the probe result:**
+  - `bar_end = bar_start + 1h` is the only timestamp used after load, and decision time = `bar_end`.
+  - Session bars are the bars whose ET start is 09:00–15:00 (ends 10:00–16:00). On a half-day they end at 13:00.
+  - Extended-hours bars and the options' 16:00 stub are kept for provenance only. They never drive decisions, marks, or ledger rows.
+- **Verify, on QQQ and NVDA over at least 3 sessions:**
+  1. The hourly bar whose TRDPRC_1 equals that session's daily close starts at 15:00 ET, which proves start stamping.
+  2. An option's BID/ASK in that 15:00 bar equals its daily closing BID/ASK, which proves end-of-bar quotes.
+- **Outcome:** 2026-09-27 — probed on all 12 symbols over the last 5 sessions, Sep 21–25 2026. Daily bars came back for Sep 22–25 only (DEC-47), so 48 sessions were compared. Reports are in `data_cache/probes/` (DEC-85).
+  1. **Bars are stamped at their start.** Every option's hourly bars start 09:00–16:00 ET, and every Nasdaq stock's (`.O`) start 04:00–19:00. That is the 09:30–16:00 option session plus a stub, and the 04:00–20:00 extended stock session. End stamps would read 10:00–17:00 and 05:00–20:00.
+  2. **Quotes are end-of-bar values.** The daily closing BID/ASK equals the final quote of the bar starting 16:00 in 48 of 48 sessions, because the day's last quote comes at or after 16:00. For single-stock options it also equals the final quote of the bar starting 15:00 in 16 of 28 sessions (AMD 4/4, NVDA 3, TSLA 3, JPM 3, AAPL 2, COIN 1, META 0), which a start-of-bar value couldn't. ETF options (SPY, QQQ, IWM, TLT, XLE) trade until 16:15, so their closing quote always falls in the stub (0 of 20 in the 15:00 bar).
+  3. **Check 1 fails as written: the official close is not the close bar's last trade.** The daily TRDPRC_1, the closing auction, equals the last trade of the bar starting 15:00 in only 9 of 48 sessions. The two differ by up to 0.09% (JPM), most by under 0.03%. Points 1 and 2 still prove start stamps and end-of-bar quotes.
+- **For the PO at P1-05:** the recommendation stands: `bar_end = bar_start + 1h`, decisions at `bar_end`, session bars ending 10:00–16:00 (13:00 on a half-day), and the 16:00 stub kept for provenance only. Point 3 also goes to DEC-23 (closing spot, ITM at expiry): the close bar's last trade sat up to $0.40 from the official close (META; AMD $0.33, JPM $0.31, TSLA $0.27), and that close decides exercise.
+- The probe used the first stock suffix that answered (DEC-85). For SPY, IWM and XLE that was the NYSE venue (`.N`, bars 07:00–16:00), not their Arca primary (`.P`), so their stock-side spans are that venue's.
+- **Outcome:** 2026-09-28 — PO, asked at P1-05, confirmed the recommendation as it stands above.
+  - `bar_end = bar_start + 1h` is the only timestamp after load, and decisions happen at `bar_end`.
+  - Session bars end 10:00–16:00 (13:00 on a half-day).
+  - The 16:00 stub is kept for provenance only. ETF options quote until 16:15, so their closing quote falls in the stub and never drives a decision, mark or fill.
+  - The domain's session model (P1-01, DEC-81) already follows this, so no code changes.
+
+### DEC-07 — Backtest window
+**Status:** SETTLED · **Basis:** PO, 2026-09-28, on the P1-04 probes · **Affects:** `configs/universe.yaml`, fetch plan, Spec › Universe
+
+- **Spec:** one window for all symbols, as long as hourly option history allows and at least 10 weeks.
+- **Recommendation:**
+  - Probe how far back hourly BID/ASK goes, per symbol, for expired near-the-money weeklies and for live long-dated calls.
+  - **Start:** the first week-open session by which all 12 symbols have data.
+  - **End:** the final session of the last complete week before the universe fetch begins.
+  - Fix both in `universe.yaml` before the first published run.
+- **Outcome:** 2026-09-27 — probed on all 12 symbols, sampling weeks 1–18 months back (DEC-85):
+  - **Hourly history ends somewhere between Sep 26 and Oct 27 2025, the same for every symbol.** Of the 11 symbols with 10- and 11-month samples (NVDA ran the first version, which had none), all had stock bars in the week of Oct 27 2025 (11 months back), and none had any bars in the week of Sep 22 2025, 366–370 days before the probe. The samples bound the edge but don't place it. They fit a rolling 365-day limit, under which the oldest data moves forward a day each day.
+  - **Not every leg reaches that far.** The week of Oct 27 2025 had a weekly call with valid mids for 10 of those 11 (XLE's didn't), and a long call for 10 (SPY's didn't). NVDA is shown back to the week of Dec 22 2025 only. `back_to` in each report is the reach with no gap in any more recent sample: long calls reach no sample for SPY, JPM and XLE, because of the gaps below.
+  - **The gaps.**
+    - Long calls: SPY, JPM and XLE one month back (the Feb 19 2027 monthly, not yet listed at 179 DTE), SPY 10–11 months back, QQQ 4 months back. These look like monthlies not yet listed.
+    - TLT's weekly 3 months back did answer but had no valid mid on any session bar: a quote gap, not a listing gap.
+    - XLE's weekly 10–11 months back, and its long call 10 months back, didn't answer because the probe asked the wrong strikes: LSEG's daily closes are split-adjusted (DEC-12), so for weeks before XLE's 2-for-1 split on Dec 5 2025 the $10 anchor from the adjusted close ($40) was about half the traded price. These samples say nothing about XLE's history there. Any fetch reaching before the split must ask unadjusted (2x) strikes.
+    - DEC-08 and DEC-32 cover how listing and quote gaps reach the rules.
+- **For the PO at P1-05:** the spec asks for the longest window the history allows, and at least 10 weeks. The limits:
+  - history back to somewhere between Sep 26 and Oct 27 2025 (proven only from Oct 27, and for NVDA only from Dec 22), moving forward a day each day;
+  - the stock's 30-session warm-up before the start;
+  - XLE's split on Dec 5 2025: a window starting after it avoids adjusted contracts;
+  - fetch volume, which grows with the window. ARCHITECTURE §6.3 estimates ~700 requests (~16 min) per symbol for 11 weeks; a 40-week window is roughly 4 times that.
+- **Outcome:** 2026-09-28 — PO, asked at P1-05: **Mon Mar 30 2026 to Fri Sep 25 2026, 26 weeks and 125 sessions**, in `configs/universe.yaml`.
+  - **The choice.** The PO was offered three windows:
+    - Dec 8 2025, 42 weeks. The longest the proven history allowed, and the recommendation.
+    - Jan 12 2026, 37 weeks.
+    - Mar 30 2026, 26 weeks. The question put its fetch at about two-thirds of the 42-week one, at the cost of 16 weeks of sample.
+
+    The PO took the shortest. Spec › Universe said "as long as LSEG hourly option history allows"; it now names this window and cites this entry.
+  - **End:** Fri Sep 25 2026, the final session of the last complete week before the universe fetch (P1-09 onward).
+  - **What the window avoids:** the stock tape's 30-session warm-up starts Fri Feb 13 2026. That is 10 weeks after XLE's split and 3½ months inside the history's edge. So it doesn't matter exactly where the edge falls, or whether LSEG's hourly stock bars are split-adjusted like its daily ones (DEC-12).
+  - **Checked** in `tests/unit/config/test_universe_file.py` (DEC-86):
+    - the start is a week-open session and the end a week-final one;
+    - 26 weekly expiries;
+    - the real fetch planner, run over the window, asks for nothing outside `configs/calendar.yaml`: its expiries run to the Jun 17 2027 monthly, the last within 270 DTE of Sep 25.
+  - r for this window: DEC-11.
+
+### DEC-08 — Long-dated coverage
+**Status:** VERIFY · **Verify at:** P1-04, P1-09, P1-10 · **Affects:** E-L3 candidate sets, Methodology
+
+- **Measure per symbol:**
+  - Share of session bars with a valid mid for 0.70–0.90 delta monthly calls at 120–270 DTE.
+  - Median spread %.
+  - Count of IV failures. A deep ITM mid below `S − K·e^(−rT)` has no IV (see DEC-27).
+- Sparse data means fewer candidates and more E-T1 retries. That is reported on the Methodology page. The rules stay unchanged.
+- **Outcome:** 2026-09-27 (P1-04's sample; the full measure is P1-09's) — calls on the Mar 19 2027 monthly (175 DTE), at strikes spanning about δ 0.90–0.70 (Black-Scholes with r = 0 and 60-session realized volatility), over the last 20 sessions. That is 75 contracts across the 12 symbols, 140 session bars each.
+  - **Every contract had a valid mid on every session bar** (10,500 of 10,500). TLT got one strike ($75): the probe took the strike step measured at 0.8 × spot ($5), while the same expiry lists $1 strikes nearer the money, so this says nothing about how many TLT strikes are listed.
+  - **Median spread as a % of mid:** QQQ 1.4, NVDA 1.4, TSLA 2.1, META 2.7, AAPL 2.7, AMD 3.002, IWM 3.2, SPY 3.5, JPM 4.6, COIN 6.3, XLE 7.5, TLT 9.6. E-T1 allows a long entry only at ≤ 3%, so on 7 of the 12 (AMD just over) the median long candidate fails E-T1. Expect retries and fewer E-L3 candidates there (R-03, R-14). The rules stay unchanged, as above.
+  - **Below intrinsic** (mid < S − K, a lower bound on IV failures): 1 bar (TLT).
+  - Not every monthly that is 120–270 DTE is listed at every date: SPY's Feb 2027 monthly had no bars in the week of Aug 24 2026 (179 DTE); the probe asked Jan 2027 only in the week of Jul 27 2026, where it answered (DEC-07's gaps).
+- **Outcome:** 2026-09-28 — reported to the PO at P1-05, with no question, since the spec fixes the rules.
+  - On the 7 symbols whose median long spread exceeds 3%, expect late long entries, and perhaps none on TLT or XLE.
+  - Measured in full over the window's own monthlies (Aug 2026 – Jun 2027, DEC-07): NVDA at P1-09, the other 11 at P1-10.
+- **Outcome:** 2026-09-28 — the PO cut the universe to QQQ, NVDA and TSLA (DEC-15), the three with the tightest long-leg spreads (1.4%, 1.4%, 2.1%). NVDA is measured at P1-09, QQQ and TSLA at P1-10.
+- **Outcome:** 2026-09-28 — **NVDA, measured in full at P1-09**, on the cached chain (63 units, fetched Sep 29 01:54–02:34 UTC).
+  - **What was measured:** every answered monthly call on every session bar of the window (875) where it is 120–270 DTE and its Black-Scholes delta is 0.70–0.90. The delta uses r = 0.0371 (DEC-11), T = DTE ÷ 365, and σ = RV20 as of the prior session. The pricer is P2's, so the band is an estimate; it doesn't depend on the contract's own quote, so a contract that didn't quote is still counted. This was a one-off script over `load_symbol`, not a command.
+  - **Every session bar has at least one in-band long candidate with a valid mid** (875 of 875), across 10 monthlies from Aug 2026 to Jun 2027.
+  - **Valid mid:** 90.7% of 47,787 contract-bars (DEC-16's denominator: a bar that never came back counts as no mid). Counted from each contract's first LSEG bar, **100%** (43,327 of 43,327). The whole gap is contracts not listed yet, not missing quotes:
+    - **Feb 19 2027** is a candidate from May 26 and first traded Jun 30. **Apr 16 2027** is a candidate from Jul 20 and first traded Sep 11.
+    - **May 21 2027** is a candidate from Aug 24 and **wasn't listed by Sep 25**. All 39 strikes and all 9 step anchors came back "not found" (codes 70005 and 90001, as for a never-listed strike). The Jun 17 2027 unit, fetched next in the same session, answered 38 of 38. The unit is cached empty and the coverage summary flags it.
+    - Strikes on the near monthlies (Aug–Oct 2026) that NVDA's rise added partway through.
+    - This is DEC-32's point-in-time listing, which MarketView must honour (P3-02).
+  - **Median spread:** 1.52% of mid; 89.6% of valid bars are within E-T1's 3%. By expiry, the median runs from 1.10% (Jan 2027) to 3.25% (Apr 2027, in its first two weeks of listing).
+  - **Below S − K·e^(−rT):** 0 bars, so no IV failures from the no-arbitrage floor. The chain pricer counts the rest (P2-04, DEC-16).
+  - Expect E-L3 to find candidates on every week-open session. E-T1 retries will be rare, and most likely on a newly listed expiry.
+- **Outcome:** 2026-10-01 — **NVDA's data completeness review (P5-05)**, over P5-04's 24 runs and `coverage.json`. It was done with one-off scripts that re-ran the runs in memory and wrote nothing, as at P1-09. **Nothing needs refetching, and no run is re-run.**
+  - **Band edges (DEC-48): none.** Every pick in the 24 runs was checked against the strikes requested for its expiry (the unit's sidecar, answered or not) and the strikes quoting on its bar: 7 long entries, 135 short entries and the 151 picks of weeks a gate skipped, 293 distinct picks in all. None is the top or bottom strike requested. Short picks sit at least 7 strikes above the bottom (the Apr 2 weekly on Mar 30) and 16 below the top, and at least 6 below the highest strike quoting on the bar. Long picks sit at least 10 strikes from either end. Every pick quoted on its own bar.
+  - **Stale marks:** `coverage.json`'s rate is 0: no held mark in the baseline or quant was ever carried. Of the summary runs, only A5 has any: 16 bars flagged `stale_short`, all on the expiry days of the 4 shorts it lets expire (X-S4), once a far out-of-the-money call stops quoting. Its summary's `flag_counts` discloses them.
+  - **IV failures:** 8.3% of priced contract-bars (31,966 below the floor, 437 no convergence; DEC-16). None removed a contract a selector could pick. On each of the 142 distinct entry picks' bars: the 7 long picks' expiries had no failed contract with a valid quote between the eligible δ 0.90 and δ 0.70 strikes. Every failure on a short pick's expiry was below the floor, so in the money (the floor S − K·e^(−rT) is positive only for K < S·e^(rT)), where no short selector picks.
+  - **Unanswered contracts:** weekly calls 881 of 993 answered (valid mid on 82.9% of calendar session bars), monthly calls 431 of 515 (91.4%), merged weekly + monthly units 115 of 138 (80.1%), puts 354 of 355 (100%), the stock 100%. No field went missing. As P1-09 found above, the gaps are strikes not yet listed, mostly ones NVDA's rise added partway through, and the May 21 2027 monthly. That one was never a pick: quant's long is the shortest eligible monthly (123–144 DTE). It was a candidate only from Aug 24, at 270 DTE. A refetch can't add bars from before it listed.
+  - **Skip reasons** (first gate to fire): the baseline skips 11 of 26 weeks on G-2 (t4–t7: 12). Quant skips on G-4 11 times, G-2 5 and G-3 2. The other variants differ as DEC-100's notes give. No run has a G-1, a G-5 or an E-S1 skip (no long held): every frozen short passed E-T1, and a long was always held. E-T1 retries: only quant's long and its variants retry, one bar on May 26 and on Jul 20 (DEC-95). No short retry occurs in any run.
+
+### DEC-09 — Live-contract RICs
+**Status:** SETTLED · **Basis:** Spec › RIC builder, confirmed by the P1-04 probes and reported to the PO at P1-05 (2026-09-28) · **Affects:** P1-02, P1-03
+
+- Long legs still listed at fetch time must resolve in the live form (no caret). LDG §4.13 and §6.3 say they do. Confirm on 3 symbols.
+- **Outcome:** 2026-09-27 — confirmed on all 12 symbols:
+  - Every live monthly the coverage check asked (75 contracts) answered in the live form, the only form asked.
+  - A live contract asked in the caret form never answered: `TS.Intraday.UserRequestError.90001`, 12 of 12.
+  - Weeklies expired 9 days earlier answered in the caret form, 12 of 12 (DEC-14's check).
+
+### DEC-10 — Reg T and FINRA 4210 citations
+**Status:** SETTLED (the short stock after X-S5: PO, 2026-09-29) · citations found · quoted on the Methodology page (P7-04, 2026-10-04) · **Affects:** P3-04, Methodology page, Spec › NAV and Reg T
+
+- **Confirm and cite:**
+  - A long listed option with 9 months or less to expiry has no loan value (paid in full).
+  - A short call is covered at $0 by a long call with a lower or equal strike and a later or equal expiry.
+  - Short stock needs 150% initial (proceeds plus 50%) and 30% maintenance.
+- **Candidate sources:** Reg T (12 CFR §220.12), FINRA Rule 4210(c) and (f)(2), and Cboe margin rules. Quote the exact paragraphs on the Methodology page.
+- **Outcome:** 2026-09-28 — researched at P1-05 in the primary sources. P7-04 re-reads the live text before quoting it.
+  - **Sources:**
+    - eCFR, 12 CFR 220.12, read through eCFR's API because the page sits behind a bot check. Title 12 was current to 2026-09-24, and §220.12 is unchanged since 1998.
+    - FINRA Rule 4210, from the Internet Archive copy of 2026-08-30, spot-checked against the live page. Its latest amendment is SR-FINRA-2025-017, effective June 4 2026.
+    - The Cboe Options rule book, updated Sep 21 2026.
+
+  | Claim | Finding | Citation |
+  | --- | --- | --- |
+  | A long listed option with ≤ 9 months to expiry is paid in full | Confirmed. Reg T leaves listed options to the exchange and FINRA rules, and keeps long options out of its 50% rule. FINRA: "…expires in nine months or less, initial margin must be deposited and maintained equal to at least 100 percent of the purchase price". Cboe says 100% of current market value. Over 9 months it's 75%, a 25% loan value | 12 CFR 220.12(a), (f)(1); FINRA 4210(f)(2)(D); Cboe 10.3(c)(4)(A)–(B) |
+  | E-L2's 270 DTE is always within 9 months | Confirmed. Neither rule defines "nine months" in days, and the shortest span of 9 calendar months is 273 days | FINRA 4210(f)(2)(D); Cboe 10.3(c)(4) |
+  | A short call is covered at $0 by a long call with a lower or equal strike and a later or equal expiry | Confirmed, as a spread. The conditions: same underlying, all listed, all American (or all European), equal aggregate underlying value, the short expiring on or before the long. The short's margin is the lesser of its naked requirement and the spread's maximum loss, which is $0 here, and "'Long' options must be paid for in full". Spreads need a margin account | FINRA 4210(f)(2)(A)(xxxii), (f)(2)(H)(i), (f)(2)(N)(ii); Cboe 10.3(a)(5)(E), 10.3(c)(5)(C)(v)(a) |
+  | Short stock: 150% initial, 30% maintenance | Confirmed for plain short stock. Initial is "150 percent of the current market value". Maintenance is the greater of $5.00 a share and 30%; 30% governs above $16.67, as it does for all 12 symbols | 12 CFR 220.12(c)(1); FINRA 4210(c)(3) |
+  | …but X-S5's short stock | **Contradicts the spec's table.** X-S5 sells the stock short by assignment while the long call is held, and the long's strike is below the sale price (the short strike). Reg T then asks "100 percent of the current market value", the proceeds alone. FINRA asks 10% of the call's aggregate exercise price plus its out-of-the-money amount, capped at the (c) amount. E.g. META at $750 against a $600 long needs $6,000 of maintenance, not $22,500 | 12 CFR 220.12(c)(2); FINRA 4210(f)(2)(H)(v)a; Cboe 10.3(c)(5)(C)(iv)(a) |
+
+  - **Also for the Methodology page:**
+    - Brokers may require more than these minimums (FINRA 4210(d)(1)(B); Cboe 10.3(c)).
+    - A margin account needs $2,000 of equity (4210(b)(4)).
+    - FINRA's intraday margin rule, which replaced pattern day trading on June 4 2026, isn't modelled.
+    - Interpretation 4210(b)(4)/051 lets an assigned short be closed the same day by exercising the long.
+- **Question for the PO at P3-04** (the accounting core, which builds Reg T): after X-S5, which requirement does the short stock carry?
+  - **Recommendation:** the hedged requirement the rules give while the long call is held.
+    - Initial: the sale proceeds, with no additional 50% (220.12(c)(2)).
+    - Maintenance: 10% of the long's strike × shares, plus the long's out-of-the-money amount, capped at the greater of $5 × shares and 30% of the short's value (4210(f)(2)(H)(v)a).
+    - Plain 150%/30% would apply only if the long were gone. Under DEC-20's recommended order the cover comes before any long exit, so it never is.
+  - **Alternative:** keep 150%/30% as a conservative simplification, and reword the site's negative-funds statement. Otherwise the site would say a position couldn't have been held when the rules allow it.
+  - Either way, Spec › NAV and Reg T changes in the commit that answers this.
+- **Outcome:** 2026-09-29 — PO, asked at P3-04: **the hedged requirement**, as recommended. Spec › NAV and Reg T now has a row for it.
+  - **While long calls covering the shares are held:** no initial requirement beyond the sale proceeds. Maintenance is 10% of the long calls' aggregate exercise price plus their out-of-the-money amount at the stock's mark, capped at the greater of $5 a share and 30% of the short stock's market value.
+  - **Without such a long:** the spec's 150% initial (proceeds plus 50%) and 30% maintenance.
+  - Built in `pmcc/accounting/regt.py` (P3-04, DEC-91). A requirement that isn't a whole $0.0001 is rounded up, never down.
+- **Outcome:** 2026-10-04 — P7-04 re-read the live text and quotes it on the Methodology page's Reg T treatment (DEC-115).
+  - **Sources, as read 2026-10-04:** 12 CFR 220.12 from eCFR's versioner API (Title 12 current to 2026-10-01; the section's history still ends at 63 FR 2827, Jan 16 1998); FINRA Rule 4210 from finra.org, whose latest amendment is still SR-FINRA-2025-017, effective June 4 2026. Every passage this entry cited reads as it did on 2026-09-28.
+  - **Quoted word for word:** 4210(f)(2)(D) (a long option of nine months or less, 100% of its purchase price); 4210(f)(2)(H)(i) (a spread's short at the lesser of its naked margin and the maximum potential loss; "'Long' options must be paid for in full"); 12 CFR 220.12(c)(2) (short stock against a long call struck at or below the sale price: 100%, the proceeds); 4210(f)(2)(H)(v)a (its maintenance: 10% of the aggregate exercise price plus the out-of-the-money amount, capped by (c)). **Quoted in a sentence:** 220.12(a) and (f)(1), 4210(f)(2)(A)(xxxii)e, 220.12(c)(1), 4210(c)(3), (d)(1)(B) and (b)(4); (d)(2) is named as not modelled.
+  - **Cboe 10.3 isn't quoted:** the spec asks for the Reg T and FINRA 4210 text, and the Cboe rule book wasn't re-read; its citations stay in this entry.
+  - **Figures the treatment reads from the results:** the longest any long had left when bought (NVDA: 179 days, within the 273 of the shortest nine calendar months), the missed assignments (none, so neither short-stock row applied) and the starting cash against 4210(b)(4)'s $2,000.
+- **Outcome:** 2026-10-04 — PO, reading P7-04's page: the Reg T treatment panel is dropped (DEC-116). The quotes above stay the record; the requirements themselves stay in Spec › NAV and Reg T and `pmcc/accounting/regt.py`.
+
+### DEC-11 — Risk-free rate
+**Status:** SETTLED · **Basis:** PO, 2026-09-28 · **Affects:** pricing, eligibility, Methodology, `configs/universe.yaml`
+
+- The spec asks for the source and value of r to be chosen.
+- **Recommendation:** use the 3-month US T-bill yield on the window's start date, as one continuously compounded constant.
+  - **Source:** LSEG (`US3MT=RR`, RIC to be confirmed), cross-checked against FRED DTB3.
+  - **Storage:** `configs/universe.yaml` with its source and date, and shown on the site.
+- r changes eligibility: a deep ITM mid below `S − K·e^(−rT)` has no IV. Fix r before any run.
+- **Outcome:** 2026-09-28 — PO, asked at P1-05: the 3-month Treasury yield from FRED at the last close before the window, continuously compounded.
+  - **The quote:** DGS3MO (H.15's 3-month constant maturity, investment basis) was 3.73% on Fri Mar 27 2026, the last close before the window (DEC-07).
+  - **The rate:** converted over a 91-day bill, r = ln(1 + 0.0373 × 91/365) × 365/91 = 0.037128, used and stated as **0.0371** (4 decimals).
+  - **Why this, not the recommendation above:** at P1-05 the recommendation became FRED, not LSEG. It is public, so any reader can check r, and it needs no extra LSEG pull. The question also offered LSEG's `US3MT=RR` and a window-average yield, which isn't point-in-time. DTB3 (discount basis) gives 0.0369 for the same day.
+  - **Point in time:** the quote was known before the first decision (Mon Mar 30, 10:00). The 3-month yield then rose to 4.24% by Sep 24 2026; the spec's single constant doesn't follow it, and Methodology states r with its date.
+  - **Stored** in `configs/universe.yaml` (`risk_free_rate`), with the quote, series, date and source. The loader refuses a value that isn't the quote converted (DEC-86).
+
+### DEC-12 — Per-symbol identifiers, splits, max strike
+**Status:** SETTLED · **Basis:** PO, 2026-09-28 (stock RICs); the P1-04 probes and the P1-05 split check · **Affects:** `configs/universe.yaml`, P1-02, P1-08
+
+- **Confirm for each universe symbol:**
+  - **Stock RIC with its exchange suffix.** LDG verified only `QQQ.O` and `UUUU.K`.
+  - **Option root.**
+  - **No split in the window,** since a split changes the root (LDG §3).
+  - **Max strike needed ≤ $999.99,** the 5-digit strike field. If any symbol needs more, that's an `ASK`.
+- **Outcome:** 2026-09-27 — probed on all 12 symbols (DEC-85):
+  - **Stock RICs.** Each suffix was asked alone:
+    - Nasdaq listings answer `.O`, and also the venue RICs `.N`, `.P`, `.A` and `.Z`.
+    - The NYSE Arca ETFs (SPY, IWM, XLE) and JPM (NYSE) have no `.O`.
+    - No symbol answers `.K`.
+    - The venues' last closes differ: by cents for most, and by up to $0.94 across AMD's and $0.63 across META's.
+  - **Recommendation for `configs/universe.yaml` (P1-05): each primary listing:** SPY.P, QQQ.O, IWM.P, AAPL.O, NVDA.O, AMD.O, META.O, TSLA.O, COIN.O, JPM.N, TLT.O, XLE.P. The probe used the first suffix that answered, so its SPY, IWM and XLE stock bars are the NYSE venue's (`.N`), not Arca's.
+  - **Option roots** are the tickers: every symbol's weeklies and monthlies answered under its ticker.
+  - **Splits: LSEG's daily history is split-adjusted**, so the probe's check (the largest daily moves, none of which looked like a split) can't see a split. **XLE split 2-for-1 on Dec 5 2025** (OCC Information Memo #57734; State Street's announcement of Nov 20 2025), and its daily bars show no jump. A web search found no split announced for the other 11 in 2025–2026, but that isn't proof. Confirm them against OCC memos at P1-05, and choose the window with XLE's split in mind (DEC-07).
+  - **Max strike:** the top of the weekly call band over the last year (high + 2.5 EMest, DEC-48) fits the $999.99 field for all 12. META is closest ($973.51), then AMD ($922.78).
+  - **Calendar:** every symbol's daily bars match `configs/calendar.yaml` from Jan 2 2025 to Sep 25 2026, including the unscheduled closure on Jan 9 2025 (DEC-33).
+- **Outcome:** 2026-09-28 — PO, asked at P1-05: each symbol at its primary listing, as recommended. In `configs/universe.yaml`:
+
+  | RIC | Symbols |
+  | --- | --- |
+  | Arca, `.P` | SPY, IWM, XLE |
+  | Nasdaq, `.O` | QQQ, AAPL, NVDA, AMD, META, TSLA, COIN, TLT |
+  | NYSE, `.N` | JPM |
+
+  - Option roots are the tickers.
+  - SPY.P, IWM.P and XLE.P answered daily bars, but their hourly fields weren't probed (DEC-13 used `.N`). Each unit's sidecar records the fields that came back (P1-07).
+- **Outcome:** 2026-09-28 — splits and contract adjustments, checked at P1-05 for Aug 1 2025 to Sep 27 2026. Sources: OCC's series search for all 12 (read 2026-09-28), OCC memos, issuer filings and news.
+  - **XLE's is the only event:** 2-for-1, ex Fri Dec 5 2025 (OCC #57734). The root stayed XLE, strikes were halved, contract counts doubled, and the deliverable stayed 100 shares. It falls before the window and its warm-up (DEC-07).
+  - **Halved strikes.** Contracts listed before the split carry halved strikes. DEC-14's offsets read a halved $1 or $5 grid ($0.50 or $2.50) as it is, but would read a halved $0.50 grid ($0.25) as $0.50. In this window, only XLE monthlies listed before Dec 5 2025 can carry them.
+  - **Nothing for the other 11,** and no split announced before Oct 9 2026.
+    - The series search lists no adjusted root (like `COIN1`) and no reduced strike for any of them, so adjusted contracts are ruled out positively.
+    - A whole-number split keeps its root, so "no split" rests on issuer documents and dated news, the latest from Sep 17 and Sep 23 2026.
+    - COIN's reincorporation in Texas (Dec 15 2025, 1:1) and QQQ's conversion to an open-end fund (Dec 22 2025) changed no option contract.
+  - **QQQ's Dec 18 2026 monthly,** a long candidate, also lists strikes reduced by $0.21584 (e.g. $599.78), left by a Dec 2023 special dividend (OCC #53847). The fetch's integer-cent ladders never ask them, so E-L3 never sees them; the standard strikes beside them are asked.
+  - **Why it matters past the window.** LSEG's daily history is split-adjusted. If its hourly history is too, a split between the window's start and the fetch would restate the tape against unadjusted strikes. None is announced before Oct 9, and the universe fetch is planned to finish by Oct 3.
+
+### DEC-13 — Hourly field availability
+**Status:** SETTLED · **Basis:** Spec › Fields and bars, confirmed by the P1-04 probes on every symbol kept (DEC-15) · **Affects:** fetch field lists
+
+- A field the RIC doesn't carry raises `LDError` for the whole request (LDG §4.6).
+- **Probe:** each field from Spec › Fields and bars, paired with TRDPRC_1, on hourly option and stock RICs.
+- **Fetch and records:**
+  - The fetch requests only the fields that exist.
+  - Dropped fields are recorded in each unit's sidecar and on the Methodology page.
+  - The stock also needs BID/ASK, for the stock fills after X-S5.
+- **Outcome:** 2026-09-27 — for all 12 symbols, hourly bars carry all 8 fields, on the options and on the stock (for SPY, IWM and XLE, on the NYSE venue's `.N`, not the Arca primary DEC-12 recommends, which wasn't field-probed), each asked paired with TRDPRC_1: BID, ASK, TRDPRC_1, OPEN_PRC, HIGH_1, LOW_1, ACVOL_UNS, NUM_MOVES. The fetch can ask for all of them; no field is dropped. LSEG doesn't refuse a field a RIC lacks, it leaves it out of the answer (DEC-83). So a unit's sidecar should record the fields asked and the fields that came back (P1-07).
+- **Outcome:** 2026-09-28 — reported to the PO at P1-05. The PO then chose the Arca primaries for SPY, IWM and XLE (DEC-12), whose hourly fields weren't probed, so the entry stays VERIFY: it settles when the fetches of those three (P1-10; NVDA's at P1-09 is on the probed `.O`) show all 8 fields in their sidecars, stock BID/ASK included (the X-S5 stock fills need them). The adversarial review of P1-05 caught this entry first marked SETTLED on a probe basis, which the legend doesn't allow.
+- **Outcome:** 2026-09-28 — the PO then cut the universe to QQQ, NVDA and TSLA (DEC-15). All three use `.O`, whose hourly fields the probes checked (all 8, options and stock), so nothing is left to verify: settled on the spec, as the probes confirmed it.
+
+### DEC-14 — Strike increments
+**Status:** ENG (method) · values probed at P1-04, reported to the PO at P1-05 · an unmeasured anchor SETTLED (PO, 2026-09-28) · **Affects:** P1-06, P1-08
+
+- **Method:** per expiry and per region (near the money for weeklies, deep ITM for monthlies), probe one session with 5 strikes in a single batch.
+  - The strikes are an anchor `A` (a multiple of $10 near the region's centre) plus `A+0.50`, `A+1`, `A+2.50` and `A+5`.
+  - The smallest offset that answers is the increment. If none answers, the increment is $10.
+- **Recording:** increments are recorded per expiry in the sidecar. They can differ by region, e.g. $1 near spot and $5 deep ITM on the same monthly (LDG §6.2).
+- **Outcome:** 2026-09-27 — measured with the method above, on daily bars for one session per region (DEC-85). In cents:
+
+  | Symbol | Next weekly, near money | Expired weekly, near money | Monthly (Mar 2027), near money | Monthly, deep ITM (0.8 × spot) |
+  | --- | --- | --- | --- | --- |
+  | SPY, QQQ, IWM | 100 | 100 | 500 | 500 |
+  | AAPL | 250 | 250 | 1,000 | 1,000 |
+  | NVDA, META, TSLA, JPM | 250 | 250 | 500 | 500 |
+  | AMD | 250 | 250 | none answered | 1,000 |
+  | COIN | 250 | 250 | 1,000 | 500 |
+  | TLT | 50 | 50 | 100 | 500 |
+  | XLE | 50 | 100 | 100 | 100 |
+
+  - The increment differs by region and by expiry, as LDG §6.2 said, so the fetch measures it per unit and per band (DEC-84).
+  - 1,000 means no offset answered but the anchor did: a $10 grid, or wider.
+  - **AMD's near-money monthly answered no strike at all** around its $630 anchor, so its $10 is DEC-14's default, not a measurement. The fetch (P1-08) should treat an unanswered anchor as no measurement, record it in the sidecar, and not trust the default.
+- **Outcome:** 2026-09-28 — PO, asked at P1-08: what the fetch does when a band's anchor doesn't answer. Offered: try the neighbouring anchors (recommended); take the probe report's step at once; stop the unit. The PO chose the neighbours:
+  - Ask the anchors $10 below and $10 above, each with its four offsets, in one request. If either answers, take the finer step they show.
+  - If none answers, the band takes the probe report's step for its symbol and region, and is flagged: `probe_report` in the unit's sidecar, a `fetch.increment.unmeasured` log event, and a line in the coverage summary (DEC-16).
+  - Built in `pmcc/data/pull.py` (`measure_step`, DEC-88).
+- **Outcome:** 2026-09-28 — NVDA's fetch (P1-09) measured 83 of its 86 bands. Near the money every band was $2.50 (53). Deep in the money the bands were $5 (24), $2.50 (3) and $1 (3). The 3 unmeasured bands are all on May 21 2027, which wasn't listed in the window (DEC-08), so they took the probe report's $5 as designed. The daily step asks' date edges (DEC-47) held on LSEG.
+
+### DEC-15 — Universe size
+**Status:** SETTLED · **Basis:** PO, 2026-09-28 · **Affects:** Spec › Universe, `configs/universe.yaml`, P1-10, P3-09, P5, P6 (pooled statistics), P7-05; the cut list
+
+- **Question (raised by the PO after P1-05):** is the 12-symbol universe too big, for GitHub Pages or for the timeline?
+- **The assessment given:**
+  - **Pages:** not a limit. The site holds results JSON only, about 1 MB per symbol by estimate (~875 hourly ledger rows per full run); Pages allows 1 GB. The raw cache never leaves the machine (DEC-56; since DEC-05, NVDA's is committed to the repo, not the site).
+  - **Timeline:** the code is the same for 1 symbol or 12, so each symbol costs fetch time (roughly 40 min, with Workspace signed in), a coverage review, and its own data quirks. The probes put 7 of the 12 long legs over E-T1's 3% spread (DEC-08), so several could come back with few or no trades. The build is also about a day behind.
+  - Options offered: all 12; 3 (QQQ, NVDA, TSLA, recommended: the tightest long-leg spreads, and realized volatility of about 20%, 40% and 55%); 5 (adding META, AAPL); 1–2 (NVDA, perhaps QQQ).
+- **Outcome:** 2026-09-28 — PO: "ok lets do qqq, nvda, tsla".
+  - `configs/universe.yaml` lists QQQ.O, NVDA.O and TSLA.O (DEC-12's primary listings); Spec › Universe, its build order and its cut list are amended to cite this entry.
+  - **What goes:** the diversifying drivers (financials, Treasuries, energy). SPY, IWM and XLE's unprobed `.P` RICs (DEC-13), XLE's halved strikes (DEC-12) and QQQ's dividend-reduced strikes remain facts about the probes; only QQQ's still reaches the fetch.
+  - **What stays:** pooled statistics across three symbols (DEC-61), the Universe page and the suitability screen, now over three. The cut list's universe cut (#4) is taken early.
+  - **Fetch:** roughly 2–2.5 h for the three over the 26-week window (ARCHITECTURE §6.3), before DEC-48's wider long bands.
+- **Update:** 2026-09-30 — PO, at P3-10 (DEC-05): QQQ and TSLA are set aside for now, and the PO leans towards NVDA as the only symbol. More symbols are added at the end if the build is done and time allows. P1-10 is paused: TSLA's partial cache stays on disk, uncommitted, and QQQ isn't fetched. `configs/universe.yaml` still lists the three; whether it shrinks is settled at P5-01, before the batch needs every symbol's cache.
+- **Outcome:** 2026-09-30 — PO, at P5-01: **calibrate on NVDA only for now; keep QQQ and TSLA in the universe file, commented out, not removed.** The universe is NVDA alone until the PO brings either back.
+  - `configs/universe.yaml` lists NVDA; the QQQ and TSLA lines stay in place as comments, with a note on what bringing one back takes. Spec › Universe is amended to cite this outcome.
+  - **Bringing one back means recalibrating** (the PO asked to be reminded), in this order: delete the final `starting_cash` block, its header comment included (the file refuses a final block that lacks a listed symbol, and `pmcc fetch` reads this file, so it would stop); uncomment the symbol; finish its fetch (P1-10: show the PO the estimate first); run `just calibrate`; then re-run every result (`just batch`), since the value may change; then repeat P5-05's band-edge check on the new symbol's runs before committing them (DEC-48). `pmcc calibrate` never replaces a final block (DEC-30). A symbol commented out is refused by `pmcc fetch` too, so the reminder applies to resuming P1-10 as well. DEC-93's partial-cache question comes back with it: a symbol cached in part runs some strategies and fails others.
+  - Pooled statistics (DEC-61), the Universe page and the suitability screen run over one symbol until then.
+- **Update:** 2026-10-05 — PO, asked to pull QQQ's data: each symbol now has its own starting cash (DEC-30), so **bringing one back no longer recalibrates the others.** The order is now: uncomment the symbol (no block to delete first: the file lets a listed symbol wait for its cash); finish its fetch (P1-10: show the PO the estimate first); `just calibrate`, which calibrates only the symbols without a final value; `just batch`; then P5-05's band-edge check on the new symbol's runs before committing them (DEC-48). NVDA's $15,000 and its results' numbers stay as they are. DEC-93's partial-cache question still comes back with it (DEC-118).
+
+### DEC-16 — Fetch coverage summary
+**Status:** SETTLED · **Basis:** PO, 2026-09-28 (asked at P1-08, and after its review; IV failures built at P2-04) · **Affects:** P1-08, P1-09, P1-10, P2-04, ARCHITECTURE §6.1
+
+- **The gap:** ARCHITECTURE §6.1 step 5 asked the fetch to print "% session bars with a valid mid, unanswered counts, IV-failure counts". Two points were open:
+  - **IV failures** need the IV solver (P2-02), which isn't built. Offered: count bars whose mid is below S − K·e^(−rT), the no-IV condition of DEC-08 and DEC-27, as a lower bound (recommended); leave them out until P2-02; build P2-02 first.
+  - **The valid-mid denominator.** Offered: every session bar the calendar has over each answered contract's unit dates, so a bar that never came back counts as no mid (recommended); only the bars LSEG returned.
+- **Outcome:** 2026-09-28 — PO:
+  - **IV failures: left out for now.** The summary says so. HR-8's disclosure of IV failures on the Methodology page is unaffected, since it comes from the runs. They join the fetch summary with the chain pricer, whose done-when already asks for them (P2-04), not with the solver alone (P2-02), as this entry first said.
+  - **Denominator: calendar session bars,** as recommended. A valid mid is BID > 0, ASK > 0 and ASK ≥ BID (ARCHITECTURE §6.5).
+  - **Reported:** per kind (stock, weekly calls, monthly calls, weekly + monthly calls, puts) on screen, and per unit in the log (`fetch.coverage.unit`), with contracts requested, answered and unanswered. **Near-the-money weekly calls** get their own line: calls whose strike lies inside the unit's stock range, the near-money band before padding. That is P1-09's ≥ 90% measure.
+  - **Flags:** bands whose step wasn't measured (DEC-14), units that answered nothing (DEC-83's residual risk), and fields that never came back (DEC-13).
+  - Built in `pmcc/data/coverage.py`. It reads the cache through `load_symbol`, after the LSEG session has closed (DEC-88).
+- **Outcome:** 2026-09-28 — PO, asked after P1-08's review: which dates the near-the-money line counts for a **merged unit**, a monthly Friday that is also a weekly expiry. In the PO's window the Aug 21 and Sep 18 2026 units run from Mar 30, their first long-candidate session, so their near-money strikes were counted over about five months, not the weekly's two weeks. Offered: the weekly part only (recommended); the whole unit, as built. The PO chose the **weekly part only**: from the prior week's first session to the expiry (or the window's end), the dates a weekly unit covers. The per-kind table still counts the whole unit. `weekly_dates` in `pmcc/data/discovery.py` gives those dates to both the planner and the summary.
+- **Outcome:** 2026-09-28 — **IV failures joined the summary at P2-04**, as settled above. `coverage()` prices the cache with the chain pricer at the universe's r (DEC-11) and prints one line: the share of session contract-bars with a valid quote, before the expiry close, whose IV failed, with the count by reason (below the floor, above the cap, no convergence, no spot). Each unit's log line carries `iv_priced` and `iv_failed`. A bar with no valid quote is the valid-mid line's, not an IV failure, and the expiry session's close bar isn't priced (DEC-89). NVDA: 8.3%, 32,403 of 390,652 (31,966 below the floor, 437 no convergence).
+
+## C. Rule interpretations
+
+Each of these decides trading behaviour the spec leaves open, so each goes to the PO.
+
+### DEC-20 — Week-open session and order of operations
+**Status:** SETTLED · **Basis:** PO, 2026-09-29 (asked at P3-07, with P3-02 to P3-06) · **Affects:** P3-07, every rule
+
+- **Recommendation:** "Monday" in E-S1, X-L1, X-L2, the gates and the gate log means the **week-open session**: the first trading session of the calendar week (Tuesday after a Monday holiday).
+- **Recommendation:** within each decision bar, in this order:
+  0. Cover short stock left by X-S5 (at the first valid bar of the next session).
+  1. Long exits X-L1/X-L2, on the week-open session only, then re-entry.
+  2. Long entry if flat (E-L1–E-L4).
+  3. Short exits X-S1, X-S2, X-S3.
+  4. Short entry, on the week-open session only.
+  5. Expiry resolution X-S4/X-S5 on the close bar of the short's expiry session.
+  6. Marks, the ledger row, and runtime invariants.
+- This extends the spec's order (long exits → short exits → short entry) without changing it.
+- **Outcome:** 2026-09-29 — PO: as recommended, both parts. Built in `pmcc/engine/loop.py` (P3-07, DEC-91). The spec is unchanged: this settles what it leaves open. When the long is checked within the week-open session is DEC-28's.
+
+### DEC-21 — Selection freeze and E-T1
+**Status:** SETTLED · **Basis:** PO, 2026-09-29 (asked at P3-07) · **Affects:** G-1, P3-07
+
+- **Recommendation (short):** on the week-open session, the first bar where the short selector returns a contract freezes that contract for the rest of the session.
+  - E-T1 is checked on that bar and on each later bar; the first pass is the **decision bar**.
+  - If no bar passes, G-1 fires.
+  - The engine never re-selects or substitutes a strike (Spec › Trade rules: entry).
+- **Recommendation (long):** the same freeze applies within a session. If E-T1 never passes, E-L1 retries the next session with a fresh selection.
+- **Eligibility:** selectors consider only contracts that are eligible on that bar (valid quote and a successful IV solve).
+- **Outcome:** 2026-09-29 — PO: as recommended. Built in `pmcc/engine/legs.py` (P3-07, DEC-91). The spec is unchanged: this settles what it leaves open.
+
+### DEC-22 — Gates and the gate log
+**Status:** SETTLED · **Basis:** PO, 2026-09-29 (asked at P3-07) · **Affects:** P4-02, INV-09
+
+- **Recommendation (evaluation):**
+  - G-2–G-5 are evaluated at the decision bar. Every gate the strategy has is evaluated and recorded (pass or fire, with values).
+  - The outcome is the first gate, in spec order, that fired.
+  - If G-1 fires, the other gates are `not_evaluated`.
+- **Recommendation (missing inputs):** a gate whose inputs are unavailable (e.g. the next-week ATM call has no quote) records `n/a`. It does not fire, and its reason is logged.
+- **Recommendation (rows):** one gate-log row per strategy per week-open session.
+  - A week with no long held logs outcome `E-S1`.
+  - A week blocked by an unfinished long reset logs `X-L1` or `X-L2`.
+- **Outcome:** 2026-09-29 — PO: as recommended. Built in `pmcc/engine/legs.py` and `pmcc/strategy/gates.py` (P3-06, P3-07, DEC-91). A week whose long couldn't be checked logs `E-S1` too (DEC-28's outcome). The spec is unchanged: this settles what it leaves open.
+- **Outcome:** 2026-09-30 — G-3, G-4 and G-5 built at P4-02, each `n/a` with its reason when an input is missing; each fires in a full run on its synthetic market (DEC-95).
+
+### DEC-23 — Spot, close, ITM at expiry
+**Status:** SETTLED · **Basis:** PO, 2026-09-28 (asked at P2-03) · **Affects:** P2-03, P3-02, P3-06, X-S4, X-S5
+
+- **Recommendation:**
+  - **Spot** at a decision bar is the underlying's TRDPRC_1 (last trade) in that bar.
+  - **Closing spot** is the spot of the session's close bar (16:00 ET, or 13:00 on a half-day).
+  - **ITM at expiry (X-S4/X-S5):** the short is ITM if and only if closing spot > strike. OCC auto-exercises at $0.01 ITM, so equal counts as OTM.
+- **Outcome:** 2026-09-28 — PO: as recommended. The P1-04 evidence went with the question: the close bar's last trade matched the official closing auction in 9 of 48 sessions and sat up to 0.09% from it (JPM), with the largest dollar gaps on META ($0.40) and TSLA ($0.27) (DEC-06, R-21). The close bar's last trade is kept, since the cache holds only the hourly tape; the gap is for the Methodology page.
+  - Built in `pmcc/pricing/measures.py`: `session_close` (the close bar's TRDPRC_1, keyed by `bar_end`) and `itm_at_expiry` (DEC-89). Spot itself is MarketView's accessor (P3-02), and the chain pricer reads it the same way. The spec is unchanged: this settles what it leaves open.
+- **Outcome:** 2026-09-29 — PO, asked while building P3-07, two inputs the spec leaves open. Both taken as recommended:
+  - **The stock's mark** (StockMV, only after X-S5) is its BID/ASK mid, like an option's. Without a valid quote, the last valid mid is carried and flagged stale (`stale_stock`).
+  - **The closing spot when the close bar has no trade** (X-S4/X-S5) is the last TRDPRC_1 on a session bar at or before the close bar in that session. With no trade in the whole session, the run stops with an `EngineError` rather than guess. NVDA trades on every session bar (P2-04), so it doesn't arise there.
+  - Built in `pmcc/engine/legs.py` (the stock's first mark), `pmcc/accounting/marks.py` (carrying it stale) and `pmcc/engine/loop.py` (`closing_spot`) (P3-07, DEC-91). The spec is unchanged: this settles what it leaves open.
+
+### DEC-24 — Time to expiry and Greek units
+**Status:** SETTLED · **Basis:** PO, 2026-09-28 (asked at P2-01) · **Affects:** P2-01, P2-04, E-L2, X-L2, P6-04
+
+- **Recommendation:**
+  - **T:** calendar time from the decision time to the expiry session's close (16:00 ET, or 13:00 on a half-day), in years, ACT/365 (seconds ÷ 31,536,000).
+  - **Units:** δ per $1; Γ per $1²; θ per year (Δt in years); ν per 1.00 of volatility (Δσ in vol units). Attribution uses the same units.
+  - **DTE (E-L2, X-L2):** calendar days from the decision date to the expiry date.
+- **Outcome:** 2026-09-28 — PO: as recommended. Built in `pmcc/pricing/expiry.py` (`years_to_expiry`, `days_to_expiry`) and `pmcc/pricing/black_scholes.py` (DEC-89). T is elapsed time, measured in UTC, so a clock change between the decision and the expiry counts its hour; the first version subtracted two ET times, which Python does by wall clock, and a test across the Nov 1 2026 change caught it. The decision date for DTE is the ET date. The spec is unchanged: this settles what it leaves open.
+
+### DEC-25 — ATM strike, ATM IV, expected move
+**Status:** SETTLED · **Basis:** PO, 2026-09-28 (asked at P2-03) · **Affects:** P2-03, E-S3 (quant), G-3, G-4, X-S3
+
+- **Recommendation:**
+  - **ATM strike:** the listed strike nearest spot (tie → the lower strike).
+  - **ATM IV (G-3, G-4):** the IV of the ATM **call**. Under the spec's q = 0 assumption, an American call is priced exactly by Black-Scholes, so calls avoid the early-exercise bias that puts carry.
+  - **EM:** ATM call mid + ATM put mid for the front week, at the decision bar. Both quotes must be valid. Otherwise EM is unavailable, and quant E-S3 can't select on that bar.
+- **Outcome:** 2026-09-28 — PO: as recommended. Built in `pmcc/pricing/measures.py` (`atm_strike`, `atm_iv`, `expected_move`; DEC-89).
+  - Distances to spot are compared in $0.0001 units, so a tie is exact.
+  - Each mid is `Quote.mid`, rounded half-even to $0.0001 as a fill at mid would be (DEC-44), so EM is a `Price`.
+  - ATM IV is unavailable when the ATM call has no row on the bar or its IV fails. Which strikes are listed is MarketView's (DEC-32, P3-02). The spec is unchanged: this settles what it leaves open.
+- **Outcome:** 2026-09-30 — read through the MarketView by `pmcc/strategy/measures.py` for quant E-S3 (EM at the selection bar), G-3 and G-4 (ATM IV at the decision bar) and X-S3 (EM at short entry) (P4-01, P4-02; DEC-95).
+
+### DEC-26 — RV20
+**Status:** SETTLED, except a missing close (ASK, 2026-09-29) · **Basis:** PO, 2026-09-28 (asked at P2-03) · **Affects:** P2-03, G-4
+
+- **Recommendation:** RV20 at a decision bar is the sample standard deviation of the last 20 daily log returns × √252. The returns come from the 21 most recent completed session closes before the current session. A session close is the TRDPRC_1 of the close bar.
+- **Fetch:** the fetch already pulls 30 warm-up sessions (DEC-48), which covers any reasonable answer.
+- **Outcome:** 2026-09-28 — PO: as recommended. Built in `pmcc/pricing/measures.py` (`rv20`, `realized_vol`; DEC-89). The 21 sessions come from the calendar (`sessions_before`), so the current session's bars never count, even at its close; a half-day's close is its 13:00 bar. The spec is unchanged: this settles what it leaves open.
+- **Not asked, so not settled:** what RV20 is when one of the 21 closes is missing (the close bar has no trade). The code makes RV20 unavailable rather than compute it from fewer closes, so G-4 can't evaluate for the next 21 sessions. That changes when a gate evaluates, so it goes to the PO; the P2 review found it recorded above as the PO's answer. **Asked 2026-09-29, answer pending.** NVDA's stock has a trade on every session bar (P2-04), so it doesn't arise there.
+
+### DEC-27 — Greeks for held contracts; fresh quotes only
+**Status:** SETTLED · **Basis:** PO, 2026-09-28 (asked at P2-04) · **Affects:** P2-04, P3-02, P3-07, X-S2, X-L1
+
+- **Selection:** an IV failure makes a contract ineligible (spec).
+- **Recommendation (held contracts):** if the mid is below the no-arbitrage floor, `mid < max(0, S − K·e^(−rT))`, the contract gets δ := 1.0 (the σ → 0 limit for an ITM call), Γ = ν := 0, θ := −r·K·e^(−rT). X-S2 and X-L1 therefore still see a deep ITM leg.
+- **Recommendation (fresh quotes only):** rules evaluate only on bars where the contract has a fresh valid quote. Stale carried marks value the book, but they never trigger a rule or a fill.
+- **Outcome:** 2026-09-28 — PO: as recommended.
+  - **Built** in `pmcc/pricing/chain.py` (DEC-89): a call below its floor gets the limit Greeks and stays ineligible. The limit is a call's, and only calls are ever held, so a put below its floor gets no Greeks. Every other failure (above the cap, no convergence, no spot) leaves the Greeks unknown.
+  - **Fresh quotes only** is MarketView's and the engine's (P3-02, P3-07). The pricer prices only the rows a bar has, and a bar without a valid quote is `NO_QUOTE`, so it never supplies Greeks from a stale mark.
+  - **Measured on NVDA (P2-04):** 31,966 of 390,652 quoted session contract-bars before expiry are below the floor, 8.2%. They are very deep in the money: 83% have K/S ≤ 0.6, and at 120–270 DTE all but 16 of 13,084 do (the 16, on 11 contracts, reach K/S 0.66), far below the 0.70–0.90 delta band, where 51,889 contract-bars are eligible. Nearer the money they come from contracts close to their own expiry. A long held while NVDA rallies can reach them, which is the case this rule covers.
+  - **Open for P3:** a held call whose IV fails another way has no delta on that bar, and P3-06/P3-07 must say what X-S2 and X-L1 do then:
+    - **no convergence:** on NVDA, 437 contract-bars, all deep ITM calls within a week of their expiry (297 on expiry day, 140 one to seven days before);
+    - **no spot:** never on NVDA;
+    - **the expiry session's close bar:** T = 0, so every contract there is `EXPIRED` and a held short has no delta on the bar where DEC-20 still runs short exits before X-S4/X-S5. This happens to every short, every week (found by the P2 review).
+  - The spec is unchanged: this settles what it leaves open.
+- **Outcome:** 2026-09-29 — PO, asked at P3-06/P3-07, the open item above: **a rule that needs a delta the bar doesn't have doesn't fire, and it is logged** (`engine.exit.unevaluated`, with the rule, the contract and the IV code). So X-S2 doesn't fire on a short with no delta; X-S3 still checks it at the Friday check, and on the expiry close bar X-S4/X-S5 decide. X-L1 doesn't fire on a long with no delta; X-L2 still checks its DTE. The alternative, reading a missing delta as 1 when the contract is in the money, was declined. Built in `pmcc/strategy/exits.py` (DEC-91).
+
+### DEC-28 — Exits without a valid quote
+**Status:** SETTLED · **Basis:** PO, 2026-09-29 (asked at P3-07) · **Affects:** X-S3, X-S5, X-L1, X-L2, P3-07
+
+- **X-S1, X-S2:** their conditions need a fresh quote, so a trigger can always fill.
+- **Recommendation (X-S3):** if it triggers on the check bar with no valid quote, the close fills at the first later bar of that session that has one. The row is still ruled `X-S3`, noted "delayed fill". If there is none before the close, X-S4/X-S5 resolve the short at the close.
+- **Recommendation (X-L1/X-L2):** the sale fills at the first bar of the week-open session with a valid long quote. Short entry waits for the reset and re-entry to complete.
+  - If the reset doesn't complete in session, there is no short that week (gate log `X-L1`/`X-L2`).
+  - The pending reset carries to the next session.
+- **Recommendation (X-S5 cover):** fills at the first bar of the next session with a valid stock BID/ASK.
+- **Outcome:** 2026-09-29 — PO: as recommended.
+- **Outcome:** 2026-09-29 — PO, asked while building P3-07: **when the long is checked.** DEC-27 lets a rule run only on a fresh quote, so X-L1 and X-L2 can't be checked on a bar where the long has none. Recommended and taken:
+  - X-L1 and X-L2 are checked once a week, at the first bar of the week-open session where the long has a fresh quote, and a sale fills on that bar. So the sale never waits for a quote; "a reset that doesn't complete" is a re-entry that doesn't pass E-T1 in the session, which E-L1 retries next session.
+  - Short entry waits until that check has passed, since a reset later in the session would leave the short uncovered.
+  - If the long has no fresh quote on any bar of the week-open session, it isn't checked that week and no short is sold. The gate log's outcome is `E-S1`, noted "long not checked: no fresh long quote".
+  - Built in `pmcc/engine/legs.py` (DEC-91). The spec is unchanged: this settles what it leaves open.
+
+### DEC-29 — Tie-breaks
+**Status:** SETTLED · **Basis:** PO, 2026-09-29 (asked at P3-06) · **Affects:** P3-06, P4-01
+
+| Rule | Recommended tie-break order |
+| --- | --- |
+| E-L2 baseline (nearest 180 DTE) | later expiry |
+| E-L3 baseline (delta nearest 0.80) | lower spread %, then lower strike |
+| E-L3 quant (lowest extrinsic ÷ delta) | lower spread % (spec), then earlier expiry, then lower strike |
+| E-S3 baseline (delta nearest 0.30) | lower spread %, then higher strike |
+| ATM strike | lower strike |
+
+Distances are compared in integer price units, so float noise can't create or break a tie.
+
+**Outcome:** 2026-09-29 — PO: as recommended, the quant row included (built at P4-01). Built in `pmcc/strategy/selectors.py` (P3-06, DEC-91): DTE is whole days and strikes are integer units, so those ties are exact; spread % is compared as an exact fraction of the integer BID and ASK. A delta is a float from the IV solve, so its distance to the target is rounded to 9 decimal places before comparing: without that, 0.85 and 0.75 aren't equally far from 0.80 in binary floating point, and float noise would break the tie the PO settled (a unit test caught it). The spec is unchanged: this settles what it leaves open.
+
+**Outcome:** 2026-09-30 — the quant row built at P4-01, in `CheapestReplacement` (DEC-95). Extrinsic ÷ delta is rounded to 9 places, like a delta distance, so 1.70 ÷ 0.85 and 1.40 ÷ 0.70 tie at 2 and go to the lower spread.
+
+### DEC-30 — Starting capital (E-L4)
+**Status:** SETTLED (PO, 2026-09-30; the cash source at P3-08, the calibration at P3-09) · **Affects:** P3-08, P3-09, P3-10, P5-01; DEC-93
+
+- **Recommendation:**
+  - `pmcc calibrate` runs every universe symbol under `baseline_pmcc` and `quant_pmcc` at `spread_capture` 0, with provisional cash.
+  - It records each run's first long-leg entry cost: fill × 100 × qty + fees.
+  - It sets `starting_cash = ceil(2 × max ÷ 5,000) × 5,000`.
+  - The value is written to `configs/universe.yaml` with its basis (symbol, strategy, cost) and committed before the first published run. Every strategy, ablation and sensitivity run uses it unchanged.
+  - P3 uses a provisional value from the symbols cached so far, labelled provisional.
+- **Outcome:** 2026-09-30 — partly answered, at P3-08 (the calibration itself is still asked at P3-09). PO: `pmcc run` reads the starting cash only from `configs/universe.yaml`, with no CLI override, so no published run can use another figure. Until P3-09 writes the value, `pmcc run` stops with a message naming P3-09. `Universe.starting_cash` is optional until then (DEC-92).
+- **Outcome:** 2026-09-30 — settled by the PO at P3-09, taking every recommendation, with the scope narrowed:
+  - **Scope for now: NVDA only.** TSLA's cache has no long-leg monthlies yet and QQQ isn't fetched (P1-10); `quant_pmcc` isn't built (P4-01 to P4-03). So the provisional value comes from NVDA under `baseline_pmcc`. P5-01 calibrates all 3 symbols × 2 strategies for the final value.
+  - **The rule, per the spec:** 2 × the most expensive *first* long-leg entry cost (E-L1: fill × 100 × qty + fees, at `spread_capture` 0), rounded up to the nearest $5,000. The PO declined the alternative of the most expensive entry of any kind, which would have amended E-L4.
+  - **Measure, then verify.** The PO noted that the starting cash must cover the entries, and that a $1,000,000 balance would skew NAV. So $1,000,000 is only the measuring runs' cash (`calibration_cash`), large enough that E-L4 never blocks; nothing from those runs is kept but each one's first entry. Each run is then repeated at the chosen value, and calibration fails if E-L4 blocks any entry, long or short, re-entries included. The published starting cash is the calibrated value, never the calibration cash.
+  - **Recorded in the universe file:** `pmcc calibrate` writes a `starting_cash` block into `configs/universe.yaml`: `value`, `provisional`, `calibration_cash` and each run's first entry (symbol, strategy, time, contract RIC, cost). It replaces a provisional block but never a final one, which is only removed by hand. `pmcc calibrate --check` recomputes the block and fails on any difference, so the value is reproducible.
+  - **Provisional, labelled:** `provisional` is true exactly while a universe symbol lacks either strategy. `pmcc run` accepts a provisional value and prints a note saying so; the result format doesn't change, since P5-01 re-runs everything with the final value.
+  - **The provisional value: $10,000.** NVDA's first long entry is the Sep 18 2026 $135 call (`NVDAI182613500.U^I26`) on Mon Mar 30 2026 at 10:00, filled at $41.425: $4,142.50 with no fee. 2 × $4,142.50 = $8,285, rounded up to $10,000. The verify pass ran NVDA's baseline at $10,000 with no E-L4 block; its later long entries, $5,125.00 on Jun 22 and $5,032.50 on Sep 21, are covered. Implementation: DEC-93.
+- **Outcome:** 2026-09-30 — three questions from P3-09's adversarial review, settled by the PO:
+  - **The rule lives in YAML under E-L4** (recommended). The 2× and the $5,000 are E-L4's params `cash_multiple` and `cash_round_to` in `configs/_shared.yaml`, not code constants (CLAUDE.md: every threshold in YAML under a rule ID).
+    - E-L4's action text now states the rule, so the Trade rules page publishes it: "Every account starts with 2× the most expensive first long-leg cost in the universe, rounded up to the nearest $5,000". This extends DEC-35's E-L4 text.
+    - Calibrate reads the rule from the configs and refuses configs that disagree.
+    - The baseline's `config_hash` changes; no results were committed yet. The spec's E-L4 wording is unchanged: the YAML now carries what it says.
+  - **Negative available funds are reported, not refused** (recommended). E-L4 guards entries, and the site already reports Reg T breaches. For each run at the value, calibrate prints the lowest available funds and the number of bars below zero. NVDA's baseline at $10,000: lowest $4,978.50 on Jun 8, none below zero.
+  - **A partial cache: NVDA only for now.** No completeness check is added at P3-09. P5-01 takes it up once QQQ and TSLA are cached (DEC-93).
+- **Outcome:** 2026-09-30 — PO, at P4-04, as recommended: **recalibrate to $15,000 with quant built** (put to the PO at P4-03's handover, DEC-95). `pmcc calibrate --symbol NVDA` ran both strategies: quant's first long, the Aug 21 2026 $115 call (`NVDAH212611500.U^H26`) on Mar 30 at 10:00, costs $5,630.00 against the baseline's $4,142.50, so 2 × $5,630 = $11,260, rounded up to $15,000. The value stays provisional until QQQ and TSLA are calibrated (P5-01). At $15,000 no entry is blocked; the lowest available funds are $9,978.50 for the baseline (Jun 8, 14:00) and $8,330.00 for quant (May 14, 10:00), none below zero. The baseline's trades are the same as at $10,000 (E-L4 blocked none there), so only its cash and NAV move up by $5,000. `results/NVDA/baseline_pmcc.json` is re-run at the new value with the quant runs (P4-04), from a tree where this block is committed. The $10,000 figures above are P3-09's and P3-10's record.
+- **Outcome:** 2026-09-30 — **final, at P5-01** (PO, DEC-15: the universe is NVDA alone for now). With QQQ and TSLA commented out, nothing is missing, so `just calibrate` wrote the block with `provisional: false`: still $15,000, from the same two first entries (baseline $4,142.50, quant $5,630.00, both Mar 30 at 10:00), and the same lowest available funds ($9,978.50 baseline, $8,330.00 quant; none below zero). `just calibrate --check` reproduces it byte for byte. The committed results were run at $15,000 and their format doesn't record whether the value was provisional, so they stand; P5-04 re-runs everything anyway.
+  - **How:** the provisional block was deleted by hand first, its header comment with it. The universe file refuses a provisional block once nothing is missing, so calibrate couldn't load it, and `with_block` refuses a header with no block after it (DEC-93). The block calibrate then appended is the old one with `provisional` flipped.
+  - **If QQQ or TSLA come back,** the final block is deleted by hand and the whole universe recalibrated (DEC-15). *(Superseded by the 2026-10-05 outcome below.)*
+- **Outcome:** 2026-10-05 — **PO: each symbol calibrates its own starting cash** (asked when the PO picked QQQ back up). The PO's point: the backtests are each symbol's own account, not a portfolio, so one value across the universe isn't needed.
+  - **The case put to the PO:** E-L4 trades 1 contract and cash earns nothing, so one value set by the dearest symbol (QQQ's first long, perhaps $13k, would set about $30k) would leave NVDA's account about 80% idle. Its return on starting NAV would shrink, and its Sharpe and Sortino would fall against r, from the cash setting rather than the strategy. Sized to its own long, each account starts with about the same share of its cash in the position, so percentage returns compare across symbols and the pooled CI (DEC-61), an equal-weight mean of weekly returns, means more. Adding a symbol also stops restating NVDA's results. One value bought nothing: no shared margin, no portfolio NAV, and dollar P&L doesn't compare across symbols at 1 contract anyway. The $5,000 rounding still leaves some unevenness (NVDA's $11,260 rounds up to $15,000, about 37% deployed at entry).
+  - **The rule, approved as recommended:** each symbol's starting cash is 2 × **that symbol's** most expensive first long-leg cost across both strategies, rounded up to the nearest $5,000: the same rule, per symbol. A symbol's value is provisional until it is calibrated under both strategies, final after, and a final one is still only ever removed by hand.
+  - **When, as recommended:** built first, as the first step of bringing QQQ back (L-03), so pulling QQQ means calibrating QQQ alone.
+  - **Spec amended:** Spec › E-L4 ("Each symbol's account starts with its own cash balance … 2× that symbol's most expensive first long-leg cost"), the strategies line ("every run on a symbol from that symbol's own starting capital") and Spec › Universe. E-L4's rule text in `configs/_shared.yaml` says the same, so the Trade rules page publishes it.
+  - **NVDA is unchanged:** its value was set by NVDA alone, so it stays $15,000, final, from the same two entries (baseline $4,142.50, quant $5,630.00, both Mar 30 at 10:00) with the same lowest available funds ($9,978.50 and $8,330.00; none below zero). The old block was removed by hand, as this entry requires of a final one, and `just calibrate` wrote NVDA's in the new shape; `just calibrate --check` reproduces it byte for byte. How it is built: DEC-118.
+
+### DEC-31 — Entry-timing sensitivity
+**Status:** SETTLED · **Basis:** PO, 2026-09-30 (asked at P5-02) · **Affects:** P5-02, P6-06; DEC-100
+
+- **Recommendation for variant `t{k}`, k = 1…7 (the session bars of the week-open session):**
+  - The short's decision bar is fixed at bar k.
+  - At bar k the selector runs, and the selected contract must have a valid quote and pass the E-T1 spread threshold. Otherwise G-1 fires.
+  - Other bars are never scanned.
+- **Everything else is unchanged,** including long entry. The fixed-bar trigger replaces E-T1 under the same rule ID.
+- **Ready for it (P3-07, DEC-91):** E-T1 is a port, `EntryTrigger`, with `can_decide(view, leg)` and `check(view, option, leg)`. The loop selects and freezes a contract only on a bar the trigger `can_decide`, so a fixed-bar trigger selects at bar k, as recommended, with no change to the loop.
+- **Outcome:** 2026-09-30 — PO, at P5-02: **as recommended.** Status SETTLED.
+  - **Built (DEC-100):** the kind `fixed_bar_trigger` (E-T1; params `bar` 1–7, `long_max_spread`, `short_max_spread`), `FixedBarTrigger` in `pmcc/strategy/trigger.py`, and `baseline_pmcc--t1` … `--t7` in `configs/sensitivity.yaml`, each replacing E-T1 under its own ID with E-T1's spread limits (a test holds them equal). The engine loop is unchanged.
+  - **Bar k** is the k-th session bar of the week-open session: bar 1 ends at 10:00, bar 7 at 16:00 (DEC-06). A session with fewer bars (a half day) never reaches a bar past its count, so G-1 skips that week; the PO's window has no half-day week-open session.
+  - **A week with a long held and checked whose short can't be decided on bar k is a G-1 skip:** the bar's quote fails the spread test ("never passed E-T1"), or the long was bought or checked only after bar k, so no short was selected (DEC-28 makes the short wait for the long's check; "no short selected"). A week with no long held, or a long never checked, is logged as in the baseline (E-S1, or the reset rule; DEC-22). The timing runs keep a summary (DEC-54), so the gate log isn't published.
+  - **On NVDA** (P5-03's trial batch, not published): t1 matches the baseline exactly, as every NVDA week decides on its first bar (DEC-95); t2 to t7 end between $17,788.00 and $19,332.50 against the baseline's $18,672.50; G-1 never fires.
+
+### DEC-32 — Point-in-time listing
+**Status:** SETTLED · **Basis:** PO, 2026-09-29 (asked at P3-01 for P3-02) · **Affects:** E-S3 (quant), ATM strike, P3-02
+
+- **Recommendation:**
+  - A contract is "listed" at time t once it has had a valid quote at or before t.
+  - Chain snapshots, "lowest listed strike" and the ATM strike use only listed contracts.
+  - The fetch band can include strikes that are listed later, and MarketView hides them until their first quote.
+- **Evidence (P1-09, 2026-09-28):** NVDA's cache shows listing happening inside the window. Whole long-dated expiries appear late: Feb 2027 from Jun 30, Apr 2027 from Sep 11, and May 2027 not by Sep 25, although each is 120–270 DTE earlier. New strikes also appear on the near monthlies as the stock moves. Before its first bar, a contract has no rows at all in the cache (DEC-08).
+- **Outcome:** 2026-09-29 — PO, asked early while P3-01 was built: as recommended. The PO first wrote "contracts take the mid", then, asked to clarify, chose "listed once it has had a mid" over "listed only on bars with a mid". So a contract is listed at t once it has had a valid BID/ASK on any session bar at or before t, and it stays listed. Built in `pmcc/engine/market_view.py` (P3-02, DEC-91): chain snapshots and the listed expiries show only listed contracts. The spec is unchanged: this settles what it leaves open.
+
+### DEC-33 — Expiry calendar
+**Status:** SETTLED · **Basis:** PO, 2026-09-27 · **Affects:** P1-06, P1-07, P1-08, P3-02, E-L2, E-S1, E-S2
+
+- **Weekly expiries:** the last trading session of each week, from the stock tape (spec).
+- **Recommendation (monthly):** the third Friday, or the prior session if that Friday is an NYSE holiday. Holidays come from `configs/calendar.yaml` (NYSE holidays and early closes for 2026–2027, with the source cited). Holidays derived from the tape must match the table (a P1-06 check).
+- **Recommendation (reference data):** the calendar is published in advance, so MarketView exposes it without the as-of restriction.
+- **Known cases:**
+  - Fri Jul 3 2026 is closed, so that week expires Thu Jul 2.
+  - Mon Sep 7 2026 (Labor Day) moves week-open to Tue Sep 8.
+  - Fri Jun 19 2026 is closed, so that week expires Thu Jun 18.
+  - Juneteenth 2027 is observed Fri Jun 18, so the June 2027 monthly expires Thu Jun 17 (verify).
+- **Outcome:** 2026-09-27 — PO, asked at P1-06, took every recommendation:
+  1. **Monthlies** expire on the third Friday, or on the session before it when that Friday is an NYSE holiday. **Weeklies** expire on each calendar week's final session (Spec).
+  2. **The table covers 2025–2027**, widened from 2026–2027 in case the probed window starts in 2025. It lists NYSE full closures and 13:00 early closes, cited to nyse.com and NYSE Group's calendar releases. It includes the unscheduled closure on Thu Jan 9 2025 (National Day of Mourning for President Carter). Checked on nyse.com on 2026-09-27: Juneteenth 2027 is observed Fri Jun 18, so the June 2027 monthly expires Thu Jun 17; Jul 3 2026 is closed, and Jul 2 2026 is a full day.
+  3. **The tape must match the table.** A day with regular-hours bars that the table closes, or a table session with no bars, raises `CalendarMismatchError` naming the days. The table is then fixed, with a source, or the data gap is investigated; nothing is patched quietly.
+  4. **MarketView exposes the calendar** as reference data, without the as-of gate.
+- **Outcome:** 2026-09-27 — implemented in P1-06 (DEC-84). All four known cases pass (`tests/unit/config/test_calendar_file.py`). The P1-04 probes then checked the table against each symbol's LSEG daily bars, Jan 2 2025 to Sep 25 2026 (DEC-85): see DEC-12's outcome.
+
+### DEC-34 — Rule stamping for multi-rule events
+**Status:** SETTLED · **Basis:** PO, 2026-09-29 (asked at P3-07) · **Affects:** INV-09, P3-07
+
+| Event | Blotter rows | Recommended rule |
+| --- | --- | --- |
+| Long entry | `BUY` | `E-L1`; notes carry the E-L2/E-L3 selection values and the E-T1 spread |
+| Short entry | `SELL` | `E-S1`; notes carry the E-S3 strike logic, the E-T1 spread and the E-S5 terms |
+| Short exit | `BUY` | the exit rule (`X-S1`, `X-S2`, `X-S3`) |
+| Long reset / roll | `SELL`, then re-entry `BUY` | `X-L1`/`X-L2`; the re-entry is `E-L1`, noted "re-entry after X-L1" |
+| OTM expiry | `EXPIRE` at $0 | `X-S4` |
+| Missed assignment | `ASSIGN` + stock `SELL` at the strike, then the next session's stock `BUY` | `X-S5` on all three |
+| End of backtest | no rows; final ledger marks | `X-E1` |
+
+**Outcome:** 2026-09-29 — PO: as recommended. Built in `pmcc/engine/legs.py` (P3-07, DEC-91). An entry row's notes and audit carry the selection's values from the bar it froze on (with `selected_at`), the E-T1 spread on the decision bar (`e_t1_spread`), and for the short the E-S5 terms (`strike_gap`, `net_debit`). The freeze bar's own mid and spread are left out, since the row's Limit and the E-T1 spread replace them. The adversarial review found the first version left them out (DEC-91). The spec is unchanged: this settles what it leaves open.
+
+### DEC-35 — Rule write-up: names and rationales
+**Status:** SETTLED · **Basis:** PO, 2026-09-29 (asked at P3-01) · **Affects:** P3-01, P4-03, P7-03 (Trade rules page)
+
+Every rule in the YAML carries a `rationale` (Spec › Rule write-up source), but the spec explains only some of them: E-S5, G-1, G-3, and the three "why" paragraphs under the exits. BUILD-PLAN put those paragraphs into "the X-S3, X-S5 and no-roll rationales", and no rule is named for rolls.
+
+- **Asked:** which rules carry the spec's "Why there are no rolls" paragraph, and what the other rules' rationales say.
+- **Outcome:** 2026-09-29 — PO:
+  - **Rationales come from the spec,** in the PO's plain-language summary of its entry, skip-week and exit tables. Both strategies use the same entry timing and exits and differ only in selection and skips, so any difference in results comes from selection, not trade management. No PO decision so far changes these rules.
+  - **The no-roll paragraph goes on all five short exits, X-S1 to X-S5,** word for word as their first paragraph. The PO's summary heads the short-call exits with "there are no rolls, and the plan is never to get assigned", and that line opens the paragraph. X-S3 then carries the Friday-buffer paragraph and X-S5 the never-exercised one.
+- **Built** in `configs/_shared.yaml` and `configs/baseline_pmcc.yaml` (P3-01):
+  - Names follow the spec's tables. X-S4, unnamed there, is "Expires out of the money", as in the PO's summary.
+  - Rationales state only what the spec does, in the PO's wording where the summary has it.
+  - A threshold in a rationale is a placeholder, like one in a condition, so it can't drift from the param (DEC-52).
+  - A test holds the five no-roll paragraphs identical.
+  - The spec is unchanged: this settles what it leaves open.
+  - *Amended by DEC-114 (2026-10-03):* the rules gain a plain-language title and summary, and the
+    rationales are rewritten in the PO's draft words; the no-roll paragraph becomes one concise
+    note, still opening every short exit word for word, and the rule above (only what the spec or
+    the PO says) still holds.
+- **Outcome:** 2026-09-29 — the adversarial review of P3-01 (DEC-90) found the text not yet as settled. Fixed, with tests:
+  - **E-S2 was wrong:** "a holiday week expires on Thursday". Only a week whose Friday is closed does; the Memorial Day and Labor Day weeks lose their Monday and still expire on Friday. It now reads "a holiday week never gets an invented Friday expiry: when the Friday is a holiday, it expires on Thursday".
+  - **Claims the spec doesn't make are gone:** E-T1 (a tight spread making mid "a realistic fill"), E-L1 ("invested from the start", "rather than paying a wide spread"), E-L3 ("a fraction of the price of 100 shares"), E-L4 ("keeps results comparable"), X-S1 ("most of the premium is already earned"), X-L1 ("no longer does that well") and X-E1 ("no trade the rules didn't call for"). Each now says what the spec or the PO's summary says.
+  - **Wording follows the spec's tables exactly** where they have it: every rule's name, G-1's and G-2's conditions, and every exit's action (X-S5, X-L1 and X-L2 had been reworded). Tests read these from the spec file and compare, and another reads the spec's no-roll paragraph from it and checks all five short exits open with it word for word.
+
+## D. Architecture and environment
+
+### DEC-40 — Source of truth
+**Status:** SETTLED · **Basis:** PO, 2026-09-25
+
+1. **The spec is the source of truth for this build**, as amended by the PO answers recorded here.
+2. The derived docs (PRD, ARCHITECTURE, TEST-STRATEGY, UI-SPEC, BUILD-PLAN) elaborate the spec. A derived doc that disagrees with it gets fixed.
+3. EP says how code is written.
+4. Reference material, not authority:
+   - **LDG and `lseg_client.py`:** practical know-how for getting data out of LSEG, so it isn't relearned. LSEG behaviour that contradicts the spec goes to the PO.
+   - **DG and `theme.py`:** the baseline look (palette, type, terminal layout). The PO may change it.
+
+**Outcome:** 2026-09-25 — PO: "the spec should be the source of truth for this build … the other docs … gave us a baseline."
+
+### DEC-41 — Frontend stack follows the spec
+**Status:** SETTLED · **Basis:** Spec › Stack
+
+- DG §4 describes a Python/Plotly page builder (`page_shell.py`, which isn't in this repo).
+- The spec's stack is used instead: Vite, React, TypeScript, Tailwind, shadcn/ui, TanStack Table, and ECharts via `echarts-for-react`.
+- The baseline look is carried over through tokens, the terminal layout, and the panel, table and chart rules (UI-SPEC).
+- `theme.py` is never imported.
+
+### DEC-42 — Python environment
+**Status:** ENG
+
+- uv with a committed `uv.lock` (the spec's choice).
+- Python 3.12.
+- `lseg-data==2.1.1` (the version LDG used).
+- **pandas:** pinned, and imported only in `pmcc/data/lseg/`, where lseg-data hands back pandas and it is converted to polars at once. LDG notes pandas 3.0 changed datetime and string dtypes.
+- **tzdata:** a runtime dependency, because Windows has no system time-zone database for `zoneinfo` (DEC-58).
+- **Playwright:** never install the Python `playwright` package in this env; it bumps `pyee` and breaks lseg-data. The e2e test uses Node Playwright in `web/`.
+- **Typing:** a minimal local stub in `typings/lseg/` keeps pyright strict usable. It covers only what `pmcc/data/lseg/` calls (`open_session`, `close_session`, `get_history`, `session.get_default().open_state`, `OpenState`, `errors.LDError`) and grows with it.
+- **pandas == 2.3.3:** the newest version lseg-data 2.1.1 allows (it caps pandas below 3.0), and the version the known-good conda `algo` env runs (P0-03).
+- **Packaging:** the `uv_build` backend, with `pmcc/` at the repo root (`module-root = ""`), so `pmcc` is an installed console script. Other runtime deps take lower bounds; `uv.lock` pins them exactly.
+
+### DEC-43 — Packages added to the spec layout
+**Status:** ENG
+
+- **`pmcc/domain/`:** value objects and the time model, at the bottom of the dependency graph.
+- **`pmcc/config/`:** pydantic config models, the loader, hashing and rule text, also at the bottom.
+- **`pmcc/strategy/ports.py`:** owns the `MarketView` protocol, so strategy code never imports the engine (EP › Dependency Inversion).
+- **Enforcement:** import boundaries are checked by `tests/architecture/test_imports.py` (ARCHITECTURE §3.3).
+
+### DEC-44 — Money as integer units
+**Status:** ENG
+
+- **Units:** accounting and fills hold prices and cash as integers in units of $0.0001 (`Price`, `Money`).
+- **Quantizing:** quotes are quantized once, at load (round half-even), and `spread_capture` fills at the fill boundary.
+- **Why:** invariants 1–2 then hold exactly, with no float tolerance, and results stay byte-stable.
+- **Floats:** Greeks, IV and analytics stay float64.
+- **JSON:** dollars are exported to 4 decimals.
+
+### DEC-45 — RIC form policy
+**Status:** SETTLED · **Basis:** PO, 2026-09-26 (with DEC-01), on the earlier project's measurements (LDG §3)
+
+- **Unexpired contracts:** an expiry on or after the fetch date uses the live form only (Spec › RIC builder).
+- **Expired contracts:** ask the caret form first, then the live form for whatever didn't answer. The changeover takes days (LDG §3). Record `ric_form_used`.
+- **Puts:** put carets use the **call** month letter (`^F26` for a June put).
+- **Strike limit:** a strike above $999.99 raises.
+- **OCC symbols:** follow `occ_symbol()`.
+- **Outcome:** 2026-09-26 — implemented in `pmcc/data/ric.py` (P1-02, DEC-82). `forms_to_ask()` gives the forms in asking order, `build_ric()` raises above $999.99, and `occ_symbol()` matches LDG §3.
+- **Outcome:** 2026-09-26 — PO, in the DEC-01 answer: the call-letter caret for puts and the caret-then-live order for expired contracts come from the earlier project's measurements, so both are now in Spec › RIC builder. The status was ENG until then.
+
+### DEC-46 — Cache layout
+**Status:** SETTLED · **Basis:** PO, 2026-09-28 (asked at P1-07) · **Affects:** P1-07, P1-08, P3-08, Spec › Cache
+
+- The spec says "parquet per instrument". The recommendation stores one parquet per underlying (`{SYM}/stock.parquet`) and one per option chain unit (`{SYM}/chains/{expiry}_{C|P}.parquet`). The chain unit is the fetch unit and is written atomically.
+- A per-RIC manifest (`{SYM}/manifest.json`) keeps the spec's fields (RIC, fetch time, row count, hash) and adds the form, status, and first and last bar.
+- Each unit has a sidecar per LDG §5.
+- **Data-manifest hash:** the one in a run manifest is the sha256 of the symbol's manifest content, excluding fetch times. Re-fetching identical data doesn't change it, and fetching another symbol never does.
+- **Outcome:** 2026-09-28 — PO, asked at P1-07 as three questions; each recommendation was taken:
+  - **Layout: per fetch unit.** One parquet for the stock tape and one per expiry and right, each with its sidecar; not one per RIC. Spec › Cache now says "per fetch unit", citing this entry.
+  - **The hash ignores the RIC form.** An expired contract can answer under the caret form on one pull date and the live form on another (DEC-45), with identical bars. The hash covers each contract's identity (its OCC symbol, or the stock's RIC), unit, status, row count, first and last bar, and a sha256 of its bars (the RIC left out). It leaves out the RIC spelling, the form and the fetch time, which the manifest and sidecar still record. This was the point DEC-82's review raised for this entry.
+  - **Re-pull: move the unit's two files.** The parquet and sidecar are the record. `manifest.json` is rebuilt from the sidecars after every write, so moving a unit's two files aside (e.g. into `{SYM}/superseded/`) makes the next fetch pull it again. Code never edits or deletes an old file.
+- **Outcome:** 2026-09-28 — built in P1-07 (`pmcc/data/cache.py`, `pmcc/data/load.py`, `pmcc/data/files.py`); the engineering choices are in DEC-87. One of them departs from the recommendation's wording:
+  - **Manifest entries are per contract, not per RIC.** LDG §5 counts answered + unanswered = requested per contract, and one contract can be asked under both forms. So each entry is a contract asked, and it keeps the RIC that answered. The RICs asked for an unanswered contract, with each one's reason, are in the sidecar. It is an ENG choice, so the PO can overrule it.
+
+### DEC-47 — Fetch dates are inclusive
+**Status:** ENG
+
+- `pmcc fetch --start/--end` take inclusive dates, as the spec's example implies.
+- The fetch passes `end + 1 day`, because LSEG's end is effectively exclusive (LDG §2).
+- **Outcome:** 2026-09-26 — the provider port takes an exclusive end (`end_exclusive`, DEC-83) and passes it to LSEG unchanged, so the day is added by `pmcc fetch` (P1-08), not by the adapter as this entry first said.
+- **Outcome:** 2026-09-27 — how LSEG reads the dates, from the P1-04 probes on 11 symbols (DEC-85):
+  - **Hourly bars behave as `[start, end)` over whole days, as assumed.** On every symbol, a one-session window returned that session and a week returned its five. In late September every bar from 04:00 to 19:00 ET falls on the same UTC date as its ET date, so this can't tell whether LSEG cuts days at ET or UTC midnight; either way no session bar is cut. The fetch is hourly, so this entry holds.
+  - **Daily bars don't, and the edges depend on the request.**
+    - For one RIC, a daily window behaved as `(start, end]`: [Mon Sep 21, Tue Sep 22) returned Tuesday's bar, [Fri Sep 25, Sat Sep 26) returned nothing, and the week returned Tuesday to Friday.
+    - A daily batch of 5 option RICs returned both edge days: [Sep 14, Sep 15) gave Sep 14 and Sep 15.
+  - Nothing in the backtest reads daily bars. Anything that does (the probes, or a daily increment check in P1-08) shouldn't rely on a daily request's first or last day: ask a day wider on each side and filter by date.
+
+### DEC-48 — Fetch plan and band-edge guard
+**Status:** ENG · the guard a review, not code (PO, 2026-10-01, at P5-05) · **Affects:** P1-06, P5-05; DEC-08, DEC-15
+
+- **Plan:** units and bands follow ARCHITECTURE §6.3.
+  - The stock tape gets a 30-session warm-up.
+  - Each weekly call band starts at the **prior** week-open session, so G-3 has next-week IV.
+  - Each week gets an ATM put band on its week-open session, for EM.
+  - Monthly long-candidate bands cover the whole window.
+- **Bands:** built from regular-session highs and lows, padded; they err wide (LDG §4.10).
+- **Band-edge guard:** if a selection lands on the top or bottom strike fetched, the run flags it and the unit is re-fetched wider.
+- **Outcome:** 2026-09-27 — the plan is built in P1-06 (`plan_symbol` in `pmcc/data/discovery.py`, DEC-84). Two changes to ARCHITECTURE §6.3, both of which only widen what is fetched:
+  - A monthly is a long candidate on **any** session of the window, not only on week-open sessions, since E-L1 retries daily and X-L1/X-L2 re-enter. Its unit runs from the first session it is a candidate on to its expiry or the window's end, whichever comes first. §6.3 said window start to window end, which can't hold for a monthly expiring inside a long window.
+  - The weekly after the window (G-3's next week) is fetched only up to the window's end.
+- **Outcome:** 2026-09-27 — after the adversarial review of P1-04 and P1-06 (DEC-84):
+  - **The long band's top is now the week's high, at the money.** The old top, weekHigh·e^(−0.3σ̂√T), sat near δ 0.72–0.77 on the probed volatilities, not the ≈0.65 claimed, because a bigger σ̂ moves a delta-based edge deeper, and the e^(σ²T/2) term was left out. So strikes near δ 0.70, quant E-L3's edge, weren't fetched. A strike at δ 0.70 is below spot for any σ and T, so an at-the-money top always holds it.
+  - **The long band is split into 3 bands of equal price ratio,** each with its own increment probe (DEC-14). One increment at the band's centre took the deep grid ($5) and would miss finer strikes near the money.
+  - **Every week with a session in the window gets its weekly calls and its week-open put,** even when the window ends mid-week; the next weekly follows the last one. Before, a window ending before its last week's final session got no put for that week-open and no next weekly.
+  - The band-edge guard stays with P5-05.
+- **Outcome:** 2026-10-01 — **P5-05: the guard is a review, not code.** NVDA's 24 runs have no pick on the top or bottom strike requested (DEC-08 has the numbers), so nothing is refetched. The automatic flag this entry describes was never built. Asked whether to build it into `pmcc batch` (a band-edge list in each `coverage.json`) or record the review instead, the PO said to build it only if it is truly needed. It isn't: the spec doesn't ask for it, HR-8's disclosure doesn't include it, and P5-05's done-when holds without it. So no flag is written. The check is repeated by hand, over every run's picks and the sidecars' requested strikes, whenever a symbol is added or refetched (QQQ or TSLA coming back, DEC-15), before its results are committed.
+
+### DEC-49 — Failure taxonomy
+**Status:** ENG
+
+| Class | Example | Handling |
+| --- | --- | --- |
+| Unanswered contract | the service answers a RIC, asked alone, with a no-data code (never listed; a field it doesn't carry) or with no bars in the window | Soft: empty series, manifest `unanswered`, log event `fetch.ric.unanswered`. A RIC that doesn't come back with bars in its batch is asked again alone first, since only a single-RIC answer settles it (LDG §4.4) |
+| Transient provider error | timeout; refused connection; an HTTP status or permission code; an answer that can't be read | Ask the same request again: 3 attempts, with backoff (2 s, 4 s); a failure that persists is an outage |
+| Outage | session not `Opened`; a failure that persists through 3 attempts | Fail loud: abort the unit, write nothing, exit non-zero (LDG §4.3) |
+| Engine error | look-ahead request; uncovered short; quantity mismatch | Crash the run; nothing written |
+| Invariant violation | NAV doesn't reconcile | Run exits non-zero; no result file |
+
+- **Outcome:** 2026-09-26 — the data-layer classes are implemented in P1-03 as `NoDataError`, `UnreadableAnswerError`, `TransientError` and `ProviderOutageError` (`pmcc/data/provider.py`). DEC-83 records exactly which errors fall in each class and how each is retried. Two rows changed from the first version of this table:
+  - "Batch rejected whole" was a transient error, retried as a batch. A batch is now split instead, and each RIC is settled on its own.
+  - An HTTP status, a permission code, and a single RIC's answer that can't be read are now failures that are retried and then fail loud. They were never meant as "no data", but lseg-data reports them in the same `LDError` as a never-listed RIC, and the P1-03 review found the first version filing them as unanswered (DEC-83).
+- **Outcome:** 2026-09-27 — the P1-04 probes found that LSEG doesn't refuse a field a RIC doesn't carry: it leaves the field out of the answer (DEC-83). So the "Unanswered contract" row's "a field it doesn't carry" never produces a no-data code. Such a field comes back with no values; the RIC answers with its other fields.
+
+### DEC-50 — Canonical results and INV-13
+**Status:** SETTLED · **Basis:** PO, 2026-09-30 (asked at P3-08) · **Affects:** P3-08, P4-05, P8-01, Spec › Run manifest, INV-13
+
+- **Conflict inside the spec:** INV-13 demands byte-identical results on re-run, but the run manifest also carries a run timestamp.
+- **Recommendation:**
+  - Results are written as canonical JSON: sorted keys, fixed rounding per value type, UTF-8, `\n` line endings.
+  - INV-13 compares whole files after removing `manifest.run_timestamp`, the only volatile field.
+  - Each run records `git_sha` and `git_dirty` (the dirty check ignores `results/`). `pmcc verify` rejects committed results with `git_dirty: true`, so every published number traces to a commit. Consequence: commit the code before a publishable run.
+- **Outcome:** 2026-09-30 — PO, asked at P3-08: as recommended, with two follow-ups also as recommended:
+  - **A dirty tree runs.** `pmcc run` doesn't refuse a dirty tree: it records `git_dirty: true` and says to commit before a publishable run. `pmcc verify` rejects dirty results (P4-05).
+  - **What counts as dirty:** a tracked file modified, staged or deleted, or an untracked file git doesn't ignore, anywhere but `results/`. An untracked config or module can change a run, so it counts; a run's own results don't.
+  - **Starting cash** (asked with it, recorded under DEC-30): `pmcc run` reads it only from `configs/universe.yaml`, with no CLI override.
+  - The spec's Run manifest paragraph and invariant 13 now say this. Built in P3-08 (DEC-92): `pmcc/export/canonical.py`, `manifest.py`, and INV-13's test, which runs the same config twice in two fresh processes with different hash seeds and compares the files once the timestamp is dropped.
+- **Outcome:** 2026-09-30 — PO, on a finding of P3-08's adversarial review: INV-13 also drops `git_sha`. A publishable result records the clean commit it ran from, and committing the results makes a newer commit, so a re-run from any later checkout (P8-01's clean clone) records another SHA and INV-13 on real data could never hold. Every other byte must still match: the config, data and lockfile hashes, `git_dirty`, and every number. Invariant 13 in the spec says so; built as `canonical.drop_volatile` (DEC-92).
+
+### DEC-51 — Invariants in CI without data
+**Status:** ENG
+
+CI has neither the cache nor credentials, so "the CI build fails if any invariant fails" (Spec › Invariant tests) is met three ways:
+
+1. **Runtime:** checks run in every backtest, and a failure writes nothing.
+2. **`pmcc verify` in CI:** re-derives INV-01, 02, 03, 05, 06, 07, 08, 09 and 10 from committed results. Blotter and gate-log rows carry the audit fields this needs.
+3. **Tests:** unit, property and scenario tests on a synthetic market cover INV-04, 11, 12 and 13.
+
+INV-14 and INV-15 run in the web job.
+
+- **Outcome:** 2026-09-30 — built at P4-05 (DEC-96): `pmcc/export/verify.py` and `rederive.py`, run in CI's `python` job after pytest. A summary run has no rows, so for it verify checks that its summary records every runtime invariant as held.
+
+### DEC-52 — Rule text rendered from parameters
+**Status:** ENG
+
+- Each YAML rule carries `id, name, kind, params, condition, action, rationale`.
+- `condition` and `action` are templates (`"short delta > {max_delta}"`) rendered from `params` at load.
+- A config test fails if a placeholder is unresolved or a param is never referenced, so the published text can't drift from the thresholds the engine uses.
+- **Outcome:** 2026-09-29 — built in P3-01 (`pmcc/config/rule_text.py`, DEC-90). The loader enforces both checks, and the tests run them on the shipped files. `rationale` is a template too, so a threshold it quotes can't drift either (DEC-35).
+
+### DEC-53 — Composition over flags
+**Status:** ENG
+
+- A strategy is a set of ordered rule lists, built from YAML by `kind` through a registry.
+- "Off" means absent from the list, never a boolean passed into rule logic (EP › Low coupling).
+- Variants use `extends` plus `overrides` keyed by rule ID (`params` patch, `replace`, or `remove`).
+- Rules shared by both strategies live once, in `configs/_shared.yaml`.
+- **Outcome:** 2026-09-29 — built in P3-01 (`pmcc/config/kinds.py`, `extends.py`, `strategy.py`; DEC-90). A kind names the one rule ID it implements, and the rules a variant may remove are G-3, G-4, G-5 and X-S1; every other spec rule is required.
+
+### DEC-54 — Result detail levels and report sections
+**Status:** SETTLED · **Basis:** PO, 2026-09-30 · **Affects:** P4-05, P4-06, P5-02, P5-03, P7-01
+
+- **Recommendation (detail levels):**
+  - **Full detail** (`baseline_pmcc`, `quant_pmcc`): blotter, ledger, gate log, cycles, attribution.
+  - **Summary** (ablation and sensitivity runs): metrics, cycle stats, exit mix, skips by rule, session-close NAV, weekly returns, invariant results.
+- **Recommendation (report sections):** each strategy YAML declares which sections its page shows (`report.sections`). Quant declares `gate_log` and `greek_attribution`; baseline doesn't. One component tree then renders both pages (Spec › Site and UI), and the difference lives in config.
+- **Outcome:** 2026-09-30 — PO, at P4-04's handover: as recommended.
+- **Outcome:** 2026-09-30 — PO, at P4-05, on what the summary holds before P6: **its analytics stay null until P6.** Metrics, cycle statistics, exit mix, skips by rule, session-close NAV and weekly returns are in the model but null; P4-05 records only the invariants the run held and the ledger's flag counts, since the rest depend on DEC-60 and DEC-62, asked at P6. The ablation files carry few numbers until P6-09 re-runs everything; the P4-04 review notes stay in BUILD-PLAN and DEC-95.
+- **Built at P4-05 (DEC-96):** each strategy YAML has a `report` block: `detail` (`full` or `summary`) and `sections` (`gate_log`, `greek_attribution`). Like `id` and `name`, it is never inherited: a file without one keeps a summary, so every variant (the ablations, and P5-02's sensitivity runs) is a summary unless its own file says otherwise. The ablations also say so explicitly; the test harness's variants ask for `full`. Sections need full detail. (P4-05 first made it inherited; the review found that P5-02's variants would then have published full detail, contrary to this entry.) The block is part of the config and so of its hash. A summary result keeps no blotter, ledger or gate log: over NVDA's 26 weeks the quant file is about 430 KB and A4's summary about 23 KB.
+- **Amended 2026-10-05 (PO, DEC-120):** the baseline declares `greek_attribution` too, and both strategies a third section, `position_greeks`; only quant's page shows the gate log.
+
+### DEC-55 — Dividends
+**Status:** SETTLED · **Basis:** Spec › Overview and scope
+
+- Out of scope. This supersedes LDG §6's advice to pull dividend data.
+- The Methodology page states q = 0, notes that early exercise ahead of ex-dividend dates isn't modelled, and names which universe symbols pay dividends (public information, no data pull).
+
+### DEC-56 — Raw cache not committed
+**Status:** SETTLED · **Basis:** Spec › Cache (the default) until 2026-09-30; since then the PO's answer to DEC-05
+
+- This was the spec's default, and it superseded LDG §5 ("commit the data").
+- **Since DEC-05 (PO, 2026-09-30):** NVDA's raw cache is committed. Other symbols' caches, the probe reports and the fetch logs stay local.
+- LDG's other cache rules still apply unchanged: never overwrite, keep a sidecar, write only after success, and check the counts.
+
+### DEC-57 — Reference files stay in place
+**Status:** ENG
+
+- `LSEG-DATA-GUIDE.md`, `DESIGN-GUIDE.md`, `theme.py` and `lseg_client.py` stay at the repo root as read-only references, excluded from ruff, pyright and pytest.
+- `lseg_client.py` is ported into `pmcc/data/` (typed, polars-based), never imported.
+- Changes to the look go into `web/src/theme/`, not `theme.py`.
+
+### DEC-58 — Windows and Ubuntu parity
+**Status:** ENG · **Affects:** P0-02, P0-03, P0-05, P3-08
+
+Development runs in Git Bash on Windows (DEC-02) and CI runs on Ubuntu. Both must produce the same bytes and the same behaviour.
+
+- **Line endings:** `.gitattributes` sets `* text=auto eol=lf` and `*.parquet binary`.
+  - Git for Windows would otherwise check files out with CRLF.
+  - Committed results must compare byte for byte (INV-13, P8-01), so LF is required on Windows too.
+- **Python writers** pass `newline="\n"`. Paths go through `pathlib`, and no Python code depends on the shell.
+- **Time zones:** `tzdata` is a runtime dependency, because Windows has no system time-zone database for `zoneinfo`.
+- **just:** recipes run under bash (`set shell := ["bash", "-cu"]`), which is Git Bash locally and bash on the runners.
+- **Node:** 22 LTS on both machines, pinned by `.nvmrc` and `engines`.
+- **Location:** the project lives on a Windows path, not `\\wsl.localhost\…`, because uv, node and file watching are slow or broken over that share.
+
+### DEC-59 — Git and GitHub belong to the PO
+**Status:** SETTLED · **Basis:** PO, 2026-09-25 · **Affects:** every item that commits or pushes (P0-02 onward), CLAUDE.md, BUILD-PLAN
+
+- **Decision:** the PO does every git and GitHub action for the whole project: creating the repo, `git init`, staging, committing, pushing, branches, tags, and GitHub settings (Pages, secret scanning, Actions).
+- **The agent may** run read-only git commands (`status`, `diff`, `log`, `show`, `ls-files`, `check-ignore`) to check done-when lines and draft commit messages.
+- **The agent never** runs a git or gh command that changes the repo or GitHub (`init`, `add`, `commit`, `push`, `branch`, `tag`, `stash`, `reset`, `checkout`, `gh repo`, `gh api` writes, and so on).
+- **Workflow:** the agent finishes an item's work, docs and tick in the working tree, then hands the PO the list of files and a proposed commit message (`P0-03: python project`). "Commit" and "push" anywhere in the docs mean the PO's action.
+- **Outcome:** 2026-09-28 — PO: all of P2 (P2-01 to P2-04) is built in one pass and goes in as **one commit**, not one per item as CLAUDE.md's backlog rule says. The PO will give the reason later. The four items are still ticked separately in BUILD-PLAN. This applies to P2 only.
+- **Outcome:** 2026-09-30 — PO, at P4-05 and P4-06: **two commits, pushed together.** P4-05 moves results to schema 2, so NVDA's committed results are re-run from a clean tree once the code is committed (as at P4-04). Commit 1 holds P4-05's and P4-06's code, tests, docs and `web/`; NVDA's seven runs are then re-run from that commit, verified and exported, and commit 2 holds the regenerated results with both items' ticks. Pushed together, CI runs on the green head; commit 1 alone would fail `pmcc verify` on the old results.
+
+### DEC-77 — Quality-gate configuration
+**Status:** ENG · **Affects:** P0-04, P0-05, P0-06
+
+- **Hook versions:** ruff and pyright run in pre-commit as local hooks through `uv run --frozen`, so the hooks, `just check` and CI all use the versions pinned in `uv.lock`. There are no separately pinned mirror repos to drift. Only `pre-commit-hooks` (check-yaml, end-of-file-fixer, check-added-large-files, detect-private-key) comes from a pinned remote repo.
+- **Reference files (DEC-57):** excluded twice, by ruff's `extend-exclude` with `force-exclude = true` (pre-commit passes file names explicitly, which otherwise bypasses the exclude) and by a global `exclude` in `.pre-commit-config.yaml`, so no hook ever checks or rewrites them. pyright checks only `pmcc` and `tests`.
+- **ruff rules:** `E W F I B UP SIM N PT RUF C90`, mccabe max complexity 10, line length 100. `›` is an allowed confusable, because the docs cite with it (Spec › CLI).
+- **pyright:** strict, over `pmcc` and `tests`, with stubs from `typings/`.
+- **pytest:** `--strict-markers --strict-config`, `xfail_strict`. The hypothesis profile comes from `HYPOTHESIS_PROFILE` (`dev` by default, `ci` in CI).
+- **No network:** an autouse fixture in `tests/conftest.py` makes socket connect, `create_connection` and `getaddrinfo` raise, localhost included, since LSEG's proxy listens on `localhost:9000`.
+- **Credentials hook:** a `language: fail` hook rejects any file named `lseg-data.config.json`, at any path.
+- **Outcome:** 2026-09-25 — `pre-commit run --all-files` passes. A planted complexity-11 function (C901) and a fake `lseg-data.config.json` were both rejected, then removed.
+- **Outcome:** 2026-09-25 — PO: "I'll handle everything with github - setting up the repo, initializing, and committing and pushing - and that will remain true for the remainder of the project." Read-only git allowed (PO, same day).
+- **Outcome:** 2026-09-27 (P1-06) — both hypothesis profiles now run with `deadline=None`. Under a full-suite run on Windows, one example of a P1-03 property test (a whole fetch through pandas frames) took 404 ms, against hypothesis's 200 ms default, so the test failed at random. A wall-clock limit makes a pass depend on machine load, which TEST-STRATEGY §1 rules out.
+
+### DEC-78 — justfile conventions
+**Status:** ENG · **Affects:** P0-05, P0-06, P4-06
+
+- **Tools:** every Python tool and `pmcc` command runs through `uv run --frozen`, and `setup` uses `uv sync --frozen`, so recipes never rewrite `uv.lock` (DEC-77).
+- **Stubs:** recipes call the real `pmcc` commands, whose stubs already exit 1 naming their backlog item, so no recipe needs its own stub.
+- **Web before P4-06:** until `web/package.json` exists, `setup` and `check` skip their npm steps with a printed note, and `web-dev`, `web-build`, `e2e` (and so `reproduce`) fail naming P4-06. The web steps switch on by themselves when the scaffold lands.
+- **Extra recipes:** `test *ARGS` (TEST-STRATEGY §7 uses it) and `fetch … *ARGS`, so `--plan-only` can be passed; `default` lists the recipes.
+- **Test:** `tests/unit/test_justfile.py` checks the bash shell setting and the §14 recipe names by reading the file, so it runs in CI without `just` installed.
+- **Outcome:** 2026-09-25 — `just --list` shows every recipe; `just check` green in Git Bash (pre-commit, 15 tests, web steps skipped).
+- **Outcome:** 2026-09-30 — the web steps are on (P4-06). `setup` runs `npm ci`. `check` writes the JSON Schemas (`pmcc export --schema-only`, which needs no results) and then runs the web lint, typecheck and Vitest, whose types come from those schemas. `web-dev` and `web-build` depend on `export`. `e2e` runs `npm run e2e`, a stub that exits 1 naming P4-08 until the smoke test lands. The `_need-web` guard is gone.
+
+### DEC-79 — CI workflow conventions
+**Status:** ENG · **Affects:** P0-06, P4-05, P4-07
+
+- **Trigger:** every push and pull request. Read-only token (`contents: read`), and a newer push to the same ref cancels the older run.
+- **Steps call tools directly, not `just`:** the `python` job runs the same commands as `just check` (`uv sync --frozen`, `pre-commit run --all-files`, `pytest`) through `uv run --frozen`, so the runner needs no `just` install and uses the `uv.lock` versions (DEC-77).
+- **Credentials guard:** the first step fails if `git ls-files` lists `lseg-data.config.json` at any path (ARCHITECTURE §15), before anything is installed.
+- **Caches:** setup-uv's uv cache, and `~/.cache/pre-commit` keyed on `.pre-commit-config.yaml`. Python comes from `.python-version`.
+- **Actions:** pinned to major tags (`actions/checkout@v5`, `astral-sh/setup-uv@v6`, `actions/cache@v4`).
+- **Staging:** `pmcc verify results/` joins the `python` job with P4-05, once the command and committed results exist. The `web` and `deploy` jobs arrive with P4-07.
+- **Test:** `tests/unit/test_ci_workflow.py` reads `ci.yml` and checks the triggers, the Ubuntu runner, the frozen install, pre-commit on all files, pytest under the `ci` profile, the credentials guard, and that CI never runs `pmcc fetch` or `pmcc probe`.
+- **Outcome:** 2026-09-30 — P4-05 adds `uv run --frozen pmcc verify results/` as the `python` job's last step, after pytest; the workflow test holds it there.
+- **Outcome:** 2026-09-30 — P4-07 adds the `web` and `deploy` jobs (DEC-98).
+
+### DEC-80 — Logging setup and the import-boundary test
+**Status:** ENG · **Affects:** P0-07, P1-03, P1-08, P3-07
+
+- **Where:** `pmcc/log.py` holds `configure_logging(command, log_dir=Path("logs"))`. A command calls it once at startup; every other module logs through `structlog.get_logger()` and never imports `pmcc.log`, so `accounting` and `pricing` can log without breaking ARCHITECTURE §3.3 rule 4. A new rule 7 enforces this.
+- **Sinks:** each event is one JSON line (`sort_keys`), printed to stderr and appended to `logs/{command}_{UTC yyyymmddThhmmssZ}.jsonl`. The file is opened per event with `newline="\n"` (DEC-58), so a crash never loses a buffered line and Windows writes LF. No stdlib `logging` handlers: `FileHandler` can't be told to write LF on Windows.
+- **Fields:** `event`, `level`, `timestamp` (ISO 8601, UTC, `Z`), `command`, plus the call's keyword fields; exceptions render as text under `exception`. Level INFO and up.
+- **Wiring:** the command stubs don't configure logging yet. Each command calls `configure_logging` when its backlog item builds it (first `pmcc probe`, P1-04, and `pmcc fetch`, P1-08).
+- **Import test:** `tests/architecture/test_imports.py` parses every module under `pmcc/` with `ast`, resolves relative imports, and treats `from a import b` as importing `a.b`, so `from pmcc import data` counts as `pmcc.data`. Imports inside functions and `TYPE_CHECKING` blocks count. Dynamic imports (`importlib`) are not scanned.
+- **Outcome:** 2026-09-25 — logging tests pass (stderr and file carry the same events, LF only). A `pandas` import planted in `pmcc/engine/` failed the import test with `rule 1: pmcc.engine.planted imports pandas`, then was removed.
+
+### DEC-81 — Domain value types
+**Status:** ENG · **Affects:** P1-01, and every package that uses `pmcc.domain`
+
+- **Modules:** `money` (`Price`, `Money`), `instruments` (`OptionId`, `Right`, `Side`), `rules` (`RuleId`), `clock` (ET, `bar_end`), `sessions` (`Session`, `session_of`). `pmcc.domain` re-exports them.
+- **`Price` and `Money`** are frozen dataclasses around one `int` of $0.0001 units (DEC-44), not bare ints, so they can't be mixed by accident: `Price + Money` and `Money * 1.5` raise `TypeError`, and a float for units is refused. `Price.notional(multiplier, qty)` is the only way from a price to cash, and it's exact.
+- **Quantizing:** `from_dollars` rounds half-even, in exact arithmetic (a `Fraction`), so no decimal context can round twice.
+  - A float (numpy's `float64` included) is read by its shortest repr. So `1.23445` is quantized as the printed quote, a tie, to `1.2344`. Its binary value, `1.23445000000000004…`, sits just above the tie and would round up to `1.2345`.
+  - The P1-07 loader's vectorized quantizing must agree with this function, and is to be tested against it.
+- **Dollars out:** `to_dollars()` is exact and always has 4 decimal places, whatever the decimal context.
+- **`OptionId`:** root, expiry, right, strike. The strike is a `Price` in whole cents (the RIC encodes cents); the $999.99 RIC limit is the RIC builder's check (DEC-45), not this type's.
+- **`RuleId`:** a `str` subclass that accepts only the spec's shape (`E-T1`, `G-3`, `X-S5`, …: one digit 1–9). Whether the config defines the ID is checked there (INV-09).
+- **Sessions (DEC-06):** a `Session` is a day and its close (16:00, or 13:00 on a half-day). Its session bars end on the hour from 10:00 through the close. `session_of(bar_end, sessions)` returns `None` for extended-hours bars, the post-close stub and non-trading days. This follows DEC-06's recommendation; the P1-04 probe verifies it. Which days trade and which are half-days comes from the calendar (P1-06).
+- **`bar_end`:** a naive start is LSEG's UTC stamp. The hour is added in UTC, then converted to ET, so it is elapsed time even across a DST change.
+- **Outcome:** 2026-09-25 — domain tests pass, including half-even ties, money arithmetic, `bar_end` under EDT, EST and the fall-back hour, and session-bar classification on a regular day and a half-day.
+- **Outcome:** 2026-09-25 — an adversarial review (4 reviewers, 2 skeptics per finding) confirmed 4 defects, all fixed with regression tests: `np.float64` was rejected by `from_dollars`; ruff failed on the new files; the §4.1 table in ARCHITECTURE was broken; and this entry described the float's binary value the wrong way round. Also fixed from its plausible findings: double rounding past 28 significant digits, `to_dollars` losing its 4 decimal places on huge amounts, and a missing test for a non-UTC aware `bar_end` start.
+  - Process gap: `pre-commit run --all-files` skips files git doesn't track, so `just check` passed before the new files were staged. Until that's closed, run `uv run --frozen ruff check pmcc tests` and `uv run --frozen ruff format --check pmcc tests` before handover.
+
+### DEC-82 — RIC module
+**Status:** ENG · **Affects:** P1-02, and the code that builds or reads RICs (P1-03, P1-04, P1-07, P1-08, the blotter's instrument column)
+
+- **API (`pmcc/data/ric.py`):**
+  - `build_ric(option, form)`, and `parse_ric(ric)` → `ParsedRic(option, form)`.
+  - `forms_to_ask(expiry, fetch_date)` is the DEC-45 policy, returned as the forms to ask in order: `(live,)` when the expiry is on or after the fetch date, otherwise `(expired, live)`.
+  - `occ_symbol(option)`, and `MAX_STRIKE` ($999.99).
+  - `RicForm` is `live` or `expired`, the values recorded as `ric_form_used`. `build_ric` also takes the value as text, as a manifest stores it, and raises on anything else rather than quietly building the live form.
+- **Day spelling:** the builder zero-pads the day (DEC-01). The parser reads both spellings: 8 digits after the month letter are an unpadded one-digit day, 9 are a two-digit day.
+- **The parser is strict.** Anything else raises `ValueError`, so a malformed RIC can't pass for a contract:
+  - upper case and ASCII digits only, `.U` required, no surrounding whitespace
+  - the date must exist, and the strike must be at least $0.01
+  - a caret must be the expiry's call letter and year, so a put-letter caret (`^R26`, which returned no puts in LDG §3) is refused
+- **Roots:** whatever `OptionId` allows (upper-case letters and digits, starting with a letter). The month letter is always the last letter before the RIC's digits, so digits in a root can't make a parse ambiguous.
+- **Two-digit years:** both builders raise for an expiry outside 2000–2099 rather than wrap the year.
+- **OCC symbol:** the root is at most 6 characters and the strike at most 8 digits of $0.001 ($99,999.99); anything wider raises.
+- **Outcome:** 2026-09-26 — the INV-11 tests pass (`tests/unit/data/test_ric.py`, 92 tests, including hypothesis round-trips over random contracts under the `dev` and `ci` profiles). Two one-off checks outside the suite:
+  - a sweep of 609,000 build-then-parse round-trips: every calendar day of 2000–2099 × both rights × both forms, with digit roots and more strikes on the 1st–3rd of each month, and every day under 10 also parsed unpadded
+  - every one of the 2,399 wrong caret suffixes the grammar allows, refused for both a call and a put
+- **Outcome:** 2026-09-26 — an adversarial review (4 reviewers, 2 skeptics per finding; 12 unique findings) confirmed 2 defects and rated 7 plausible. All 9 are fixed, with regression tests:
+  - **Confirmed:** the tests pinned only 6 of the 24 month letters. Build and parse share one table, so a round-trip couldn't see a transposed letter, and January and December (the LEAPS months) were unpinned. Every letter and caret is now checked against the grammar spelled out independently in the test. Also, this entry and a code comment said the month letter is the RIC's last letter; it is the last letter before the digits.
+  - **Plausible:** `build_ric` quietly built the live form for a form passed as text (`"expired"` read back from a manifest). It now reads the text value and raises on anything else. New tests cover trailing whitespace, a separator other than a dot, non-ASCII digits in every field, float-truncated strikes, and every field of the OCC symbol. PRD FR-D3 now names the tests behind the caret-then-live order. This entry's caret figure covered only 71 suffixes and is now exhaustive.
+  - The review's surviving mutants, plus a few more (17 in all), were re-run against the new tests. All are killed except one equivalent mutant: `\d` in the caret group still refuses non-ASCII digits, because the caret must equal the ASCII suffix exactly.
+  - 3 findings were refused by both skeptics and left as they are. One of them, about how RIC forms interact with the DEC-46 hash, is worth raising when DEC-46 is asked at P1-07.
+
+### DEC-83 — History port, LSEG adapter and batched requests
+**Status:** ENG · error codes verified at P1-04 (see the last outcome) · **Affects:** P1-03, P1-04, P1-07, P1-08, DEC-47, DEC-49
+
+- **Where things live.** ARCHITECTURE §3.3 rule 2 lets only `fetch` and `cli` import the adapter, so the parts that don't talk to LSEG sit outside it:
+  - **`pmcc/data/provider.py`:** the `HistoryProvider` port, `RawHistory`, `Interval` and the four failure classes. There is no LSEG code here, so `fetch` can catch the failures without importing the adapter.
+  - **`pmcc/data/lseg/`:** `api.py` (`LsegApi`, the slice of `lseg.data` that is called), `session.py` (`lseg_session`), `shapes.py` (`to_long`) and `provider.py` (`LsegProvider`).
+  - **`pmcc/data/fetch.py`:** batches, verdicts, retries, the caret→live fallback and diagnostics (`fetch_rics`, `fetch_contracts`). None of it depends on LSEG, so it goes in `fetch.py` (ARCHITECTURE §3.1) rather than under `lseg/`, where the P1-03 item first put it. P1-08 adds unit orchestration and resume to the same module. (It couldn't: `cache` imports `fetch`, so the loop is in `pull.py`; DEC-87, DEC-88.)
+- **Rows:** long `(bar_start, ric, field, value)`, one row per non-empty cell, sorted by RIC, field and time. `bar_start` is LSEG's own stamp, unshifted: a UTC datetime for hourly bars and a date for daily ones. `bar_end` is added at load (P1-07).
+- **What lseg-data 2.1.1 does.** Read in its source, and pinned by `tests/unit/data/test_lseg_contract.py`, which runs the library's own code offline:
+  - `get_history` asks the historical-pricing service once per RIC, in parallel, and hourly requests page.
+  - A transport failure in any RIC's request fails the whole call. lseg-data keeps only the exception's text and raises a new `LDError(message=…)`: no class, no cause, no code.
+  - If no RIC answered, it raises an `LDError` whose text starts "No data to return" and lists each distinct failure once: a service code such as `TS.Intraday.UserRequestError.90001` (a never-listed RIC), or an HTTP status (a failing or signed-out Workspace). Each message is cut at its first dot, so a RIC loses its `.U`.
+  - A desktop session never leaves Opened on its own. A dead Workspace shows up only as failing requests.
+  - **Frames:**
+    - One RIC gives flat field columns.
+    - Several RICs give a `(RIC, field)` MultiIndex when the first RIC to answer carries two or more fields. When it carries one, they give flat RIC columns named after the last RIC's field. A RIC whose answer carries more fields then spills into its neighbour's column, or the build raises (`IndexError`, `ValueError`).
+    - An hourly batch holding a RIC that failed can't be built: a failed page leaves a raw with no headers, which raises the `UniverseContainer` TypeError of LDG §4.4. A daily batch answers without the failed RIC and raises nothing.
+- **Failure classes (how DEC-49 is applied).** They share no base class, so nothing can catch an outage by accident.
+  - **`NoDataError` (soft):** an `LDError` whose every code is a no-data code, `TS.*.UserRequestError.*`. It carries the codes.
+  - **`UnreadableAnswerError`:** any other class of error from `get_history` (raised while lseg-data builds its frame), or a frame whose columns can't be attributed. A batch is split. A single RIC can't be, so its unreadable answer is asked again like a transient failure and ends as an outage.
+  - **`TransientError`:** any other `LDError` (a flattened transport failure, an HTTP status, a permission code, a failure with no code), or an unwrapped `TimeoutError`, `ConnectionError` or httpx `TransportError`. It gets 3 attempts in all, 2 s and then 4 s apart, and then counts as an outage.
+  - **`ProviderOutageError` (loud):** the config is missing, opening raises, or the session isn't Opened before a request (Pending counts as not open); any error raised once the session is no longer open; any failure that persists through 3 attempts.
+- **A RIC is unanswered only on the service's word, given to that RIC alone.**
+  - `fetch_rics` asks in batches of 25, and every RIC that doesn't come back with bars is asked again on its own.
+  - A RIC's verdict is its bars, a no-data code (`MissReason.NO_DATA`, with the codes), or no bars in the window (`MissReason.EMPTY`).
+  - A rejected batch's codes don't say which RIC got which, so a batch never settles a RIC.
+  - **Cost:** one extra request for each RIC that doesn't answer in its batch. An hourly batch holding a missing RIC costs 1 + 25 requests, as it did in the earlier project.
+- **Answers that can't be attributed are rejected, not guessed.** How the port departs from LDG's `to_long`:
+  - Flat RIC columns are trusted only when a single field was asked, and only under that field's name. LDG's filed unnamed ones under the first field asked, and trusted the name, which lseg-data takes from the last RIC.
+  - Field columns for several RICs, columns that match no RIC or field asked, and a MultiIndex with no level holding an asked RIC are rejected. LDG's dropped the first and guessed the other two.
+  - Columns for RICs nobody asked for are dropped. LDG's kept them under LSEG's spelling.
+  - An answer that isn't a DataFrame is rejected. LDG's treated it as empty.
+- **Session:**
+  - `lseg_session()` yields an `LsegProvider`, not the module.
+  - The config is found at the repo root and passed to `open_session(config_name=…)`. lseg-data reads it; pmcc only checks that it exists.
+  - `lseg.data` is imported only when a session opens, so importing pmcc stays offline. A test checks this in a fresh interpreter.
+- **Counting and logs:**
+  - A `RicsResult` refuses to exist unless every RIC asked is answered or missed, never both (LDG §5). `fetch_contracts` counts per contract. A hypothesis test covers both forms and live-only contracts.
+  - `fetch_rics` logs each unanswered RIC once as `fetch.ric.unanswered`, with `ric`, `form` (for an option RIC), `reason`, `codes` and `message`. A caret miss is logged even when the live form then answers: it is a fact about that RIC.
+  - `fetch.batch.rejected` and `fetch.retry` are logged as they happen. `symbol` and `unit` join the events when P1-08 binds them.
+- **Test double and contract test:**
+  - `FakeLseg` (`tests/fakes/lseg.py`) ports what lseg-data does with the service's answers: per-RIC answers, the flattening of transport failures, the `validate_responses` message, and `HistoricalBuilder` with its quirks. `fake_provider(fake)`, the real `LsegProvider` over it, is the FakeProvider of TEST-STRATEGY §6.
+  - `tests/unit/data/test_lseg_contract.py` feeds the fake's answers to lseg-data's own code: its builder, `validate_responses`, paging and `get_hp_data`. The library runs in a separate interpreter with sockets blocked and its config lookup pointed at an empty folder, and it must give the same frames, messages and raws. An lseg-data upgrade that changes any of it fails there.
+  - Tests import pandas to build frames, and import lseg.data only in that separate interpreter. The import rules of ARCHITECTURE §3.3 cover `pmcc/` (DEC-80). Tests import the fake as `tests.fakes`, so pytest gets `pythonpath = ["."]`.
+- **pandas typing:**
+  - pandas has no type stubs, and pyright strict can't see through its return types. The four files that handle pandas frames (`pmcc/data/lseg/shapes.py`, `tests/fakes/lseg.py`, `tests/unit/data/test_lseg_provider.py`, `tests/unit/data/test_lseg_contract.py`) turn off pyright's unknown-type and missing-stub reports at file level. Everything else stays strict.
+  - In `shapes.py`, `to_long` checks the frame and reads its column labels, and `_wide` and `_stamps` convert it. The alternative, `pandas-stubs`, would be a new dependency and needs the PO.
+- **Verify at P1-04:**
+  - lseg-data itself names 90001 as "universe is not found". The daily never-listed code, the missing-field code and what a signed-out Workspace returns are assumptions in the fake.
+  - The probes record the real `LDError` text for a never-listed RIC (hourly and daily, both forms), a field the RIC doesn't carry, and an hourly batch holding one of each.
+  - If a guessed RIC comes back with a code that isn't a `UserRequestError` code, the fetch stops as an outage rather than record the RIC as unanswered. Widening the no-data codes is then a decision recorded here.
+- **Residual risks,** which `get_history` doesn't let the adapter see:
+  - A transport error whose text is empty makes lseg-data return an empty frame, which reads as `EMPTY`. httpx's transport errors carry text, and P1-08's coverage summary flags a unit with no answers.
+  - An hourly RIC whose later page fails over HTTP comes back truncated but answered. The window's ~800 hourly bars per contract are expected to fit one page.
+- **Outcome:** 2026-09-26 — first version: 63 tests, INV-12 included; 15 planted mutants killed.
+- **Outcome:** 2026-09-26 — an adversarial review (4 reviewers, then 2 skeptics per finding) found 38 findings, 24 of them unique. The 12 most severe were verified: 9 confirmed, 2 plausible, 1 refuted. All 11, and the 12 unverified low findings, are fixed with regression tests; the design above is the result.
+  - **Confirmed, high:** real lseg-data flattens transport failures into bare `LDError` text and never moves a desktop session out of Opened. So a dead or signed-out Workspace was filed as "no data", against LDG §4.3 and the CLAUDE.md hard rule. The first version classified by exception class and by `open_state`, and the fake raised shapes lseg-data never produces.
+  - **Confirmed, high:** lseg-data names flat RIC columns after the last RIC's field and spills values across RICs, so the port could file one field's values under another.
+  - **Confirmed, medium:**
+    - a flat-RIC test couldn't tell the columns' name from the first field asked;
+    - `fetch_rics` logged nothing for an unanswered RIC;
+    - outages during the one-at-a-time asks and between form rounds were untested;
+    - this entry handed the real-error check to P1-04 with no step there;
+    - the fake's outages were ones lseg-data can't produce.
+  - **Confirmed, low:** the log's `forms` key against ARCHITECTURE §15's `form`, and this entry undercounting how the port departs from LDG's `to_long`.
+  - **Plausible:** Pending was untested; the "raises only `ProviderOutageError`" docstrings were false; `Retry(attempts=0)` faked an outage.
+  - **Refuted:** pandas in tests. The import rules cover `pmcc/`.
+  - **Now:** 110 tests in the four P1-03 files (362 in the suite). Another 16 mutants planted in the new guards were all killed: the no-data code rule twice, the `LDError` match, closed-during-a-call, Pending, settling left-out RICs, splitting and retrying unreadable answers, filtering unasked RICs, single-RIC batches, zero attempts, the log event and its form, the sort, and both flat-RIC checks.
+- **Outcome:** 2026-09-27 — verified by the P1-04 probes on all 12 symbols (DEC-85). Every symbol answered the same way:
+  - **A never-listed RIC is no data, hourly and daily, in both forms.**
+    - Hourly: `TS.Intraday.UserRequestError.90001`, with the RIC in the message up to its `.U`.
+    - Daily: `TS.Interday.UserRequestError.70005`, "The universe is not found", with no RIC named. A wrong stock suffix (`NVDA.K`) gets the same daily answer.
+    - Both codes match `NO_DATA_CODE`, so the no-data codes don't need widening. The fake had assumed 90001 for daily; it now uses 70005 and the real message, and the contract test still passes.
+  - **A live contract asked in the caret form** is a never-listed RIC (90001).
+  - **A field the RIC doesn't carry is not an error,** contrary to LDG §4.6 and the fake. `SETTLE`, and a field name no service knows (`PMCC_NO_SUCH_FIELD`), each paired with TRDPRC_1, came back answered with TRDPRC_1 only.
+    - The fake now leaves such a field out of the RIC's answer (`carried`). Its `FIELD_NOT_CARRIED` code is gone, and the two tests that used it now check the real behaviour.
+    - A RIC asked only for fields it doesn't carry is still an assumption: the fake answers it with no bars.
+  - **Batches:**
+    - An hourly batch holding a listed and a never-listed RIC can't be read (the `UniverseContainer` TypeError).
+    - The daily batch answers without the never-listed RIC.
+    - An hourly pair asked for BID and SETTLE comes back as flat RIC columns, which the reader refuses as `Unattributable`.
+
+    All three are as the fake and the contract test had them, and `fetch_rics` splits the batch and settles each RIC alone.
+  - **Still assumptions:** the permission code, and what a signed-out Workspace returns. No probe can safely produce either.
+
+### DEC-84 — Calendar, chain discovery and the fetch plan
+**Status:** ENG · **Affects:** P1-06, P1-07, P1-08, P3-02 (`MarketView.calendar`), P5-05
+
+- **Where things live:**
+  - **`pmcc/domain/calendar.py`:** `SessionCalendar`, which gives sessions and their closes, week-open and week-final sessions, weekly and monthly expiries, and the sessions before a day. It sits in `domain`, not in `data` where ARCHITECTURE §3.1 first put it: `MarketView` (`strategy/ports.py`) returns it, and `strategy` may not import `data` (ARCHITECTURE §3.3 rule 3). Standard library only.
+  - **`pmcc/config/calendar.py`:** `configs/calendar.yaml`, validated by pydantic into a `SessionCalendar`. The file is found from the module, not the working directory. Unknown keys, unnamed or repeated days, weekend closures and days outside the span are refused.
+  - **`pmcc/data/calendar.py`:** the tape check (DEC-33): `tape_days`, `check_trading_days`, `sessions_from_tape` and `CalendarMismatchError`. A trading day is an ET date with a bar starting 09:00–15:00 ET; extended-hours bars alone never make one. A tape can't show a 13:00 close (post-market trading carries on), so early closes come from the table.
+  - **`pmcc/data/discovery.py`:** increments (DEC-14), `Band` and `Pad` ladders in integer cents, `session_ranges`, `band_vol`, `nearest_monthly` and `plan_symbol` (a `FetchPlan` of `Unit`s).
+- **A day outside the table raises** rather than being guessed. The table covers 2025–2027, so a window or a long-leg expiry past 2027 needs it extended first.
+- **How the plan reads ARCHITECTURE §6.3.** These choices size what is fetched; they never decide what a rule sees.
+  - **DTE and T:** DTE is in calendar days, and a band's T is calendar days ÷ 365. These follow DEC-24's recommendation, but since they only size fetches they don't wait for DEC-24's answer. They reproduce §6.3's example: the Jul 6 – Sep 18 2026 window needs the Nov 2026 – May 2027 monthlies (a test).
+  - **Band volatility:** σ̂ = 1.25 × the highest RV20 in the window. RV20 here is the sample standard deviation of 20 daily log returns of session closes × √252, taken at every close from the last one before the window to its end. Pricing's RV20 is DEC-26's.
+  - **Long candidates:** a monthly is a candidate on any session of the window. Its unit runs from the first such session to its expiry or the window's end, whichever comes first. Its band is the union over those weeks, from weekLow·e^(−2σ̂√T) up to the week's high, split into 3 bands of equal price ratio, each probed for its own increment (DEC-48's outcomes).
+  - **Weeks:** every calendar week with a session in the window gets its weekly calls, and a put on its week-open session if that session is in the window; the next weekly follows the last.
+  - **Pads and anchors:** EMest takes the unit's high as spot, which errs wide. A monthly's outer edges are padded 2 steps, and its 3 bands overlap by 1 step at each cut. The increment anchor is the nearest multiple of $10, ties going up, and never below $10.
+  - **The estimate (P1-08):** a `FetchPlan` holds bands, not strikes; a ladder needs the band's increment, which only an option request can measure. So the estimate printed before any option request has to assume increments, from the probe reports' DEC-14 values, and say so.
+  - **One unit per expiry and right:** a monthly Friday in the window can be both a weekly expiry and a long candidate. The unit then spans both date ranges and keeps every band, and the increment is probed per band (DEC-14's regions). A unit's sidecar therefore records a step per band.
+- **Session ranges** come from session bars only (DEC-06), so extended-hours ticks stay out (LDG §4.10). A trade print widens the range too. The close is the close bar's TRDPRC_1.
+- **Outcome:** 2026-09-27 — P1-06's tests pass: `tests/unit/domain/test_calendar.py`, `tests/unit/config/test_calendar_file.py`, `tests/unit/data/test_tape_calendar.py` and `tests/unit/data/test_discovery.py`, 86 tests, including a hypothesis property that every ladder is an integer-cent grid covering its padded range. One bug was caught while writing them: a monthly expiring inside a long window was banded over weeks after its expiry (T < 0). That led to the change recorded in DEC-48's outcome.
+- **Outcome:** 2026-09-27 — an adversarial review of P1-04 and P1-06 (4 reviewers, 2 skeptics per finding; 44 findings, 34 unique, the 12 most severe verified: 10 confirmed, 2 plausible, none refuted). For P1-06:
+  - **Confirmed, high:** the long band's top sat near δ 0.72–0.77, so δ 0.70 strikes weren't fetched. It now reaches the money (DEC-48).
+  - **Plausible, high:** one increment probed at the long band's centre took the deep grid and would miss finer strikes near the money. The band is now 3 bands, each probed (DEC-48).
+  - **Confirmed, medium:** a window ending mid-week lost its last week's put and next weekly (fixed); the tests couldn't tell which RV20s `band_vol` reads (three new tests kill the "skip the last close", "skip the pre-window close" and "start one late" mutants); no test covered the put on the window's first week-open (added).
+  - **Unverified, fixed anyway:** the monthly pads are now pinned by a test.
+  - **Now:** 97 tests in the four P1-06 files; 527 in the suite.
+
+### DEC-85 — Probe design
+**Status:** ENG · **Affects:** P1-04, P1-05, P1-08; DEC-06–09, DEC-12–14, DEC-47, DEC-83
+
+- **Where:** `pmcc/data/probe/`, one module per check:
+  - `identifiers`: DEC-12, plus the table against LSEG's daily bars (DEC-33)
+  - `errors`: DEC-83
+  - `bars`: DEC-06
+  - `edges`: DEC-47
+  - `fields`: DEC-13
+  - `increments`: DEC-14
+  - `coverage`: DEC-08 and DEC-09
+  - `depth`: DEC-07
+  - `runner`: sequences them and writes the report
+
+  The probes ask through the `HistoryProvider` port; `pmcc.cli` hands them an LSEG session (ARCHITECTURE §3.3 rule 2).
+- **Report:** one JSON file per symbol and day, `data_cache/probes/{SYM}_{YYYYMMDD}.json`, with sorted keys, LF endings and NaN written as null. It is written whole through a temporary file and never over an existing one; to probe again, rename the old report. `requests` counts every request made.
+- **Order:** stock RIC, then daily bars, then the error answers, then the checks that read quotes (increments, bars, edges, fields, coverage, depth). A never-listed RIC must come back with a no-data code. If one answers anyway (with bars, or an answer that can't be read), the report stops after the error answers and says why, and the command exits 1. If it fails any other way, that failure is asked again like any fetch and persists as an outage. An outage writes nothing.
+- **Asking:** the stock-suffix candidates, the error answers, the fields and the date edges go through `ask`, which records what the service answered: bars, a no-data code, or (for a batch) an answer that can't be read. Anything else (a transient failure, or a single RIC's unreadable answer) is asked again with DEC-49's 3 attempts and then raises an outage, because a dead or signed-out Workspace shows up only as transient failures (DEC-83). The other checks ask through `fetch_rics` and `fetch_contracts`, as the fetch will.
+- **Methods:**
+  - Option strikes are $10 anchors near spot, or near 0.8 × spot for a long, so they are listed on any grid up to $10.
+  - The δ 0.90–0.70 strikes come from Black-Scholes with r = 0 and a 60-session realized volatility, because the pricer (P2) isn't built. Below-intrinsic with r = 0 is a lower bound on DEC-08's IV failures.
+- **Tests:** `tests/unit/data/test_probe.py` runs the whole probe over `FakeMarket` (`tests/fakes/market.py`). That fake is a `HistoryProvider` over a synthetic market and fails as the port does over lseg-data (DEC-83): a dying Workspace is a transient failure, never an outage raised by the port, and there are no bars on or after its `today`. The CLI tests swap it in for `lseg_session`.
+- **Outcome:** 2026-09-27 — all 12 symbols probed in about 20 minutes. NVDA took 89 requests (the first version); the rest took 94–105 each, about 100 s. No symbol stopped, and no request needed a retry.
+  - **Added after NVDA,** before the other 11 ran: the DEC-47 date edges, 10- and 11-month depth samples, and a field name no service knows (because `SETTLE` hadn't been refused). NVDA's report predates these.
+  - **One check turned out blind:** LSEG's history is split-adjusted, so the largest daily moves can't show a split (DEC-12).
+  - **Tests:** `tests/unit/data/test_probe.py` (40) and the CLI's probe tests (4) in `tests/unit/test_cli.py`.
+- **Outcome:** 2026-09-27 — an adversarial review of P1-04 and P1-06 (4 reviewers, 2 skeptics per finding; see DEC-84's outcome for the totals). For P1-04:
+  - **Confirmed, high:** a Workspace dying during the DEC-83 asks got a report written that blamed LSEG's codes, because `ask` recorded transient failures instead of retrying them. `ask` now retries, and a persisting failure is an outage that writes nothing. `FakeMarket` had raised `ProviderOutageError` from the port, which `LsegProvider` can't do for a desktop session, so no test took the real path; it now fails with transient errors, and the probe is tested dying at 9 points.
+  - **Confirmed, medium:**
+    - the date-edge check asked for sessions not yet traded when run before a week's final session; it now uses the latest complete week, and the expired weekly is the latest at least a week back;
+    - the calendar check was tested only on a tape that matches; a mismatching tape is now tested;
+    - DEC-07 overstated how far every leg reaches and misread XLE's pre-split samples (split-adjusted closes gave wrong strikes); DEC-07 is corrected.
+  - **Plausible, medium:** the stop gate was tested only with every never-listed ask failing; each interval is now tested alone.
+  - **Unverified, fixed anyway:**
+    - tests for an empty field, a split-like move, a band top past $999.99, a quote matching on one side only, `last_session` at the close, on a holiday and on a half-day, and the first-suffix choice with several suffixes answering;
+    - stale docstrings about a field a RIC doesn't carry;
+    - the doc figures above (request counts, AMD's 3.002%, TLT's one strike, the Jan 2027 claim, the close and venue gaps, the edge's precision, DEC-13's `.N` caveat, DEC-49's row, DEC-83's status line).
+  - **Now:** 63 probe tests and 5 CLI probe tests. The reports already written stand. The fixes change what a failing run writes and which week the date edges use, not what these successful runs recorded.
+
+### DEC-86 — Universe config and strict YAML
+**Status:** ENG · **Affects:** P1-05, P1-08, P3-01 (`RunConfig`), P3-09, P4-05 (`index.json`), P6-05
+
+- **Where:** `pmcc/config/universe.py` validates `configs/universe.yaml` with pydantic.
+  - `read_universe_file()` checks the file on its own.
+  - `load_universe(calendar)` also checks the window's sessions.
+  - The file is found from the module, like the calendar.
+  - Both config files are read by `pmcc/config/yaml_file.py`'s `read_yaml`: safe YAML that refuses a mapping key given twice. `yaml.safe_load` keeps the last of two equal keys without a word, so a second `stock_ric:` in an entry, or a second `closed:` list in the calendar, would quietly replace the first.
+- **What it holds now:**
+  - `window` (DEC-07);
+  - `risk_free_rate` (DEC-11): the value used, plus the quote, series, date and source it came from;
+  - `symbols` (DEC-12): symbol, stock RIC and option root.
+
+  `starting_cash` joined, optional, at P3-08, and P3-09 sets its value (DEC-30, DEC-92); the bootstrap seed joined at P6-05: `bootstrap: {seed}`, required, above the `starting_cash` block (DEC-61, DEC-101). Any other unknown key is refused.
+- **What it refuses:**
+  - a window that doesn't run from a week-open session to a week-final session, spans fewer than 10 weekly expiries (Spec › Universe), or falls outside the calendar;
+  - an r quoted on or after the window's first day, which the first decision couldn't have known;
+  - an r that isn't its quote converted. `value` must equal ln(1 + y·91/365)·365/91 rounded to 4 decimals, so a typo in either number fails at load;
+  - a symbol listed twice, or a stock RIC that names another symbol or has no venue suffix;
+  - a root `OptionId` would refuse. The pattern is copied from `OptionId`; a test builds a RIC from every shipped root, and another feeds the same odd roots (digits first, a dot, a space, a trailing newline, non-ASCII) to both and requires the same answer;
+  - an empty `series` or `source`, and a key given twice anywhere in the file.
+- **Calendar coverage:** a test runs the real fetch planner (`plan_symbol`) over the window on a synthetic tape. So every calendar date the fetch will ask for, from the warm-up (Feb 13 2026) to the last long candidate (Jun 17 2027), is inside `configs/calendar.yaml`. It uses the planner's own constants rather than copies. `config` can't import `data` (ARCHITECTURE §3.3), so this check lives in the test.
+- **Outcome:** 2026-09-28 — 28 tests in `tests/unit/config/test_universe_file.py`. 14 planted mutants were all killed: each refusal above, the bill's term and its year basis, the calendar check, and unknown keys.
+- **Outcome:** 2026-09-28 — an adversarial review of P1-05 (4 reviewers, 2 skeptics per finding; 14 findings, 11 unique, all verified: 1 confirmed, 6 plausible, 4 refuted). No finding showed a bug in the shipped code or a misrecorded PO answer; all 7 are fixed.
+  - **Confirmed, low:** the only refusal of a bad r was 2 bp off, and the quote was never wrong, so a 1 bp tolerance in the check survived. Now refused: 1 bp high and low, and a quote 0.01 off either way.
+  - **Plausible, medium:** the own-RIC rule was tested only on an unrelated ticker, so a prefix check survived (`SPY` with `SPYG.P`). Now tested both ways (`SPYG.P`, and `AMDL` with `AMD.O`).
+  - **Plausible, low:**
+    - unknown keys were tested only at the top level; now in the window, the rate and a symbol entry too;
+    - an empty `source` or `series` was never tried (the "no source" case removed the key);
+    - `yaml.safe_load` let a key given twice overwrite silently, in both config files; `read_yaml` now refuses it;
+    - nothing tied the root and venue patterns to `OptionId`'s rule; now a shared-inputs test and venue cases (`SPY.p`, `SPY.PQX`);
+    - DEC-13 had been marked SETTLED on a probe basis, which the legend doesn't allow while the `.P` primaries are unprobed; back to VERIFY.
+  - **Refuted:** the fetch's stock-RIC source isn't named in ARCHITECTURE §6.1 (P1-08 will read `Universe`); the conversion assumes investment basis whatever `series` says (documented, and DGS3MO is investment basis); the spec's "back to late Oct 2025" (DEC-07's own headline); the README's Jul 6 – Sep 18 fetch example (the spec's CLI example).
+  - **Now:** 54 tests in `test_universe_file.py` and 18 in `test_calendar_file.py`. 30 mutants re-run against them, the 14 above plus the 16 the review showed or suggested would survive (tolerances, prefix checks, looser patterns, `extra="ignore"` per model, empty strings, a lax YAML reader in either loader): all killed.
+
+### DEC-87 — Cache writes, sidecars and the loader
+**Status:** ENG · **Affects:** P1-07, P1-08, P3-02, P3-08
+
+- **Where:**
+  - `pmcc/data/files.py`: `write_new` (a `.partial` file hard-linked into place, which fails if the target exists) and `replace_file` (for the manifest, a derived index). The probe report writer uses `write_new` too.
+  - `pmcc/data/cache.py`: `UnitPull`, built by `chain_pull` or `stock_pull` from `fetch_contracts` or `fetch_rics` results, and `SymbolCache` (`write_unit`, `has_unit`, `units`, `orphans`, `rebuild_manifest`).
+  - `pmcc/data/load.py`: `load_symbol` → `SymbolData`, plus `quantize`.
+- **Dependency direction:** `cache` imports `fetch`'s result types. So P1-08's unit loop, which fetches and then writes, sits above both, not inside `fetch.py` as ARCHITECTURE §3.1 first said; P1-08 names its module.
+- **A unit exists once its sidecar does.** The parquet is written first and the sidecar last.
+  - A write that fails before the sidecar is written removes the parquet it just wrote.
+  - A process killed between the two leaves a parquet with no sidecar (an orphan). `write_unit` refuses to replace it, and `load_symbol` refuses to load until it is moved aside.
+  - Temp files are named `{file}.{random}.partial`, so one a killed write left never blocks a later write, and nothing reads it.
+  - `write_unit` reads every sidecar before writing anything, so an unreadable one stops it first. Once the sidecar is written the unit is cached; if rebuilding `manifest.json` then fails, the index stays stale until the next write.
+  - A sidecar must record the unit its path names. A unit's pair renamed in place inside `chains/` is refused (`CacheError`), not read as the unit it records: moving aside means into `superseded/`.
+- **One manifest entry per contract asked,** not per RIC asked, so answered + unanswered = requested counts contracts (LDG §5). `chain_pull` refuses a result that doesn't cover exactly the contracts requested, or a contract outside the unit's expiry and right.
+- **Parquet:** `bar_start_utc`, `ric`, `expiry`, `strike_cents`, `right`, then one float64 column per field requested, in request order. A field no RIC returned is an all-null column, and the sidecar's `fields_returned` says so. Rows are one per RIC and bar, sorted.
+- **The bars hash** is over each bar's start and its fields' values (sorted by field name; `float.__repr__`; empty cells as empty), in time order.
+- **Loader:**
+  - It reads the sidecars, never `manifest.json`. It checks every parquet's sha256 against its sidecar, and refuses a missing or changed file, an orphan, or a symbol with no stock unit.
+  - It checks the stock tape's trading days against the calendar over the stock unit's dates (DEC-33).
+  - Prices (`BID`, `ASK`, `TRDPRC_1`, `OPEN_PRC`, `HIGH_1`, `LOW_1`) become Int64 $0.0001 units, exactly as `Price.from_dollars` would give them (DEC-44). The scaling is vectorized, and a value within 1e-6 of a half unit, or of $100,000 or more, goes through `Price.from_dollars` itself. Hypothesis tests compare the two on floats within ±$1M and on five-decimal half-unit values within ±$100M (sampled, not exhaustive), plus fixed cases above $1M where plain float scaling rounds wrongly. Volumes (`ACVOL_UNS`, `NUM_MOVES`) stay float64.
+  - It adds `bar_end` (Datetime, America/New_York), `session_bar` (the bar ends on one of its session's bar ends, 10:00 to the close) and `valid_quote` (BID > 0, ASK > 0, ASK ≥ BID; a missing side is invalid).
+  - `SymbolData.chains` is keyed by (expiry, right).
+- **Outcome:** 2026-09-28 — 60 tests (`test_cache.py` 34, `test_load.py` 21, `test_files.py` 5). The P1-07 done-when cases are all among them. 19 planted mutants were all killed. The one that survived the first run (a bars hash reading only the first bar) led to three direct hash tests.
+- **Outcome:** 2026-09-28 — an adversarial review of P1-07 (4 reviewers, 2 skeptics per finding): 29 findings, 21 unique; the 12 most severe verified as 10 confirmed, 1 plausible and 1 refuted; 9 low ones unverified. All 11 confirmed or plausible are fixed, and so are the 9 unverified ones:
+  - **Confirmed, medium:**
+    - a unit's pair renamed in place inside `chains/` was still read as the unit its sidecar records; it double-counted in the manifest and changed the hash of identical data. A sidecar must now record the unit its path names, or it is refused.
+    - test gaps: `OPEN_PRC`, `HIGH_1` and `LOW_1` quantizing and float volumes; session bars over more than one day (now across the Nov 1 clock change); the bars hash on `BID`, `TRDPRC_1` and sub-cent digits; per-contract entries with two contracts answered.
+    - stale docs: ARCHITECTURE §6.1 step 4 still skipped units "already in the manifest", and TEST-STRATEGY §5 described the synthetic cache as "parquet schema and manifest".
+  - **Confirmed, low:**
+    - `write_unit` could raise after the unit was cached (a failed manifest rebuild), against "a write that raises leaves no file". Every sidecar is now read before anything is written, and the docs say what a failed rebuild leaves.
+    - a `.partial` left by a killed write made the next write fail once. Temp files now have unique names. Writing the new tests also found that a failed temp write couldn't remove its file on Windows (an open handle); it is now closed first.
+    - DEC-46 said "per-RIC manifest" though entries are per contract; now noted in DEC-46.
+  - **Plausible, medium:** no put unit or two units of one expiry was cached or loaded; now tested, with a contract of another expiry refused.
+  - **Unverified, low, fixed:** the stock unit's sha and missing-file checks; a tape missing its first session; quantizing above $1M; the hash's independence from entry order; the `UnitPull` guards and the `empty` miss reason; ARCHITECTURE §4.2's `bar_start` row and §6.1's resume note on orphans; `fetch.py`'s docstring; this entry's wording on the quantize tests.
+  - **Refuted:** the sidecar can't record an increment anchor that didn't answer (DEC-14). That is P1-08's to add, when it probes increments.
+  - **Now:** 90 tests (`test_cache.py` 51, `test_load.py` 32, `test_files.py` 7). The review's 25 surviving mutants, plus the 19 above, re-run against them: all 44 killed (one more, `%g` formatting in the bars hash, needed a seventh-digit case).
+
+### DEC-88 — The fetch command: plan, estimate, unit loop
+**Status:** ENG · **Affects:** P1-08, P1-09, P1-10; DEC-14, DEC-16, DEC-46, DEC-47, DEC-83, DEC-87
+
+- **Where:**
+  - `pmcc/data/pull.py`: `prepare` (the stock tape and the plan) and `pull_units` (the unit loop), with `pull_unit` and `measure_step`. It sits above `fetch` and `cache`, as DEC-87 said it must.
+  - `pmcc/data/estimate.py`: the steps taken from the probe report, and the estimate.
+  - `pmcc/data/coverage.py`: the summary (DEC-16).
+  - `pmcc fetch` in `pmcc/cli.py`.
+
+  ARCHITECTURE §3.2's `fetch_symbol()` became `prepare` and `pull_units`, so the command can print the estimate between them.
+- **Target:** the symbol must be in `configs/universe.yaml`, which gives its stock RIC and option root (DEC-12). `--start` and `--end` are the window's first and last sessions, inclusive (DEC-47). They don't have to be the universe's window, but both must be sessions and the start no later than the end, or the command stops before asking anything: a band's step is measured on its unit's last session, often the window's end, and a weekend or holiday there left every such band unmeasured (the review, below).
+- **The plan comes from the stock tape.**
+  - If the stock unit is cached, the plan is built from it (its sha256 checked) with no request, and its dates must be the ones this window needs. Otherwise the tape is one hourly request.
+  - So a resumed run plans exactly what the first run planned.
+  - The tape's trading days must match the calendar (DEC-33).
+- **The cache must match the plan.** Every cached chain unit must be one the plan would write, with the same dates and bands (region, low, high). If one isn't, the command stops before any option request and names the units to move into `superseded/` (DEC-46). This catches a fetch of another window, or a planner change, over an old cache.
+- **`--plan-only` writes nothing.** It asks for the stock tape (1 request) if it isn't cached, prints the estimate, and stops. A full run prints the same estimate, then writes the stock unit and the chain units in plan order.
+- **The estimate:**
+  - It takes its steps from the symbol's newest probe report (`data_cache/probes/{SYM}_{YYYYMMDD}.json`): the finest step measured per region, from records whose anchor answered. Near the money comes from the two weekly records, deep ITM from the two monthly ones. The long bands are deep ITM by region, but the top one reaches the money, so both monthly records count for them; that is how DEC-14's "the probe report's step for its region" is read for the long bands.
+  - With no probe report, or with a newest one that stopped early or can't be read, the command stops before asking anything. It doesn't fall back to an older report: a stopped probe says something about LSEG changed.
+  - Requests: the low figure is the strikes (the union of each pending unit's band ladders) + 5 per band, for the step asks. An hourly batch holding one unlisted strike is asked again one RIC at a time (DEC-83), and a recently expired contract can be asked in both forms (DEC-45), so the high figure is three times the low one. The review measured fetches on the fake market at 2.3 to 2.5 times the low figure, and an NVDA-sized plan at 1.9 times; the first version printed the low figure alone. Minutes assume 44 RIC requests a minute (LDG §4.15). Cached units are left out.
+  - The printed text is ASCII only: Git Bash on Windows prints it in cp1252 (DEC-58).
+- **Strike steps (DEC-14):**
+  - Each band's step is measured on its unit's last session, by which every strike the unit lists is listed. A monthly still live at the window's end is asked on the window's last session.
+  - It asks the unit's own right, for daily BID and ASK, a day wider on each side, and counts only bars dated that session (DEC-47).
+  - The PO's neighbour anchors are asked together in one request.
+  - The sidecar records, per band, the session, the anchors asked, the strikes that answered, and the source: `measured`, `neighbour` or `probe_report`. This closes DEC-87's note that an unanswered anchor couldn't be recorded. `CachedUnit` reads the bands back, with the fields asked and returned.
+- **A unit's fetch:** the union of its bands' ladders (the overlapping cuts ask a strike once), hourly, all 8 fields (DEC-13), through `fetch_contracts`. The fetch date for DEC-45 is the run's date in ET.
+- **Resume:** units are written one at a time. An outage raises and loses only the unit in flight; the command exits 1 and says to run it again. `fetch.unit.start|done`, `fetch.ric.unanswered`, `fetch.retry` and `fetch.batch.rejected` carry `symbol` and `unit` (`stock` for the tape), bound through structlog's contextvars (DEC-83). New events: `fetch.plan`, `fetch.increment.unmeasured`, `fetch.coverage`, `fetch.coverage.unit`.
+- **The strike field:** once planned, a band whose ladder on a $10 step (the widest DEC-14 can find) would pass $999.99 stops the command before any option request, as a question for the PO (DEC-12). It errs on the side of stopping; DEC-12 found every symbol fits. The first version left this to `build_ric`, which raises only after the unit's step asks.
+- **Tests:** the unit loop runs over `FakeMarket` (DEC-85), which answers a whole symbol's dated requests at the port as FakeProvider does. It gains two hooks: `unlisted` (strikes no expiry lists) and `listed_days`.
+- **Outcome:** 2026-09-28 — 55 new tests: `test_pull.py` 24, `test_estimate.py` 8, `test_coverage.py` 5, the CLI's fetch tests 7, and 11 across `test_discovery.py`, `test_load.py` and `test_cache.py`. 726 in the suite.
+  - **P1-08's done-when:** after an outage at any of five points (the first step ask, the second, and three points mid-run), a resume asks only for the missing units and leaves the cached files byte-identical. The estimate prints before the first option request, and `--plan-only` asks only for the stock tape.
+  - **Mutants:** 25 planted in the new guards: the pending filter, the cached tape, the plan checks, the neighbour anchors and the finer step, the day filter and the widening, the estimate's steps and requests, the report choice, the coverage denominator, near the money, quote validity, missing fields, the estimate's place in the command, the sidecar record, and `unit_kind`. The first run left 3 alive: no bar with an invalid quote, a missing-fields check that matched only a prefix, and no test of a unit that is both a weekly and a monthly. With tests added for each, all 25 are killed.
+  - **Found while building:** once `fetch` was built, the CLI's stub test for it opened a real LSEG session. The suite's network guard blocked it, so nothing was asked. That stub case is gone, and the fetch tests swap in `FakeMarket`.
+- **Outcome:** 2026-09-28 — an adversarial review of P1-08 (4 reviewers, 2 skeptics per finding): 34 findings, 28 unique. The 12 most severe were verified: 10 confirmed, 1 plausible, 1 refuted; 16 low ones went unverified. All 10 confirmed, the plausible one and all 16 low ones are fixed, most with regression tests:
+  - **Confirmed, medium:**
+    - **A window ending on a weekend or holiday** left every unit ending there (the next weekly and every monthly) measured on a day with no bars, so their bands took the probe report's step and were cached that way. The window's ends must now be sessions, checked before any request.
+    - **A probe report that stopped early**, which `pmcc probe` writes on purpose, or one that can't be read, ended the command with a traceback. It now stops with a message, before asking anything.
+    - **The README** still said only `pmcc probe` works.
+    - **Test gaps** that let plausible bugs through: the region of an unmeasured band's fallback; near-the-money on a merged unit, on deep bands and at the band's top; the fetch date that picks the RIC form (DEC-45); the 8 fields asked; which neighbour's step is taken (the finer one, never the unanswered anchor's offsets); coverage counting a bar outside the session or a day early; the estimate's per-kind rows and its "to write" count.
+  - **Plausible, medium:** the near-the-money line counted a merged unit's near strikes over its whole span. Put to the PO, who chose the weekly part only (DEC-16).
+  - **Refuted:** that DEC-16 recorded ENG choices as the PO's answer. Per-unit coverage does reach the screen, through the log.
+  - **Unverified, low, fixed:**
+    - a reversed window asked for the stock tape first; now refused before any request;
+    - this entry's $999.99 claim was wrong (the step asks came first); the plan is now checked (above);
+    - the estimate understated the re-asks, so it now prints a low and a high figure (above); its docstring's "errs high" was false;
+    - the stock tape's log events had no `symbol` or `unit`;
+    - the printed estimate held `§`, which Git Bash on Windows shows garbled (DEC-58); the estimate and the summary are now ASCII, and tested so;
+    - the CLI tests left structlog configured for later tests; it is reset after each;
+    - tests for: the sidecar's anchors and answers on a neighbour or fallback band, both neighbours asked in one request, a neighbour band not flagged, the kind table's unit counts, a cached unit with the same bands but other dates, and the command handing the probe report's steps over as the fallback;
+    - docs: `--plan-only` does ask LSEG for the tape (README); FakeMarket serves puts and the daily step asks, and stands in for FakeProvider in P1-08's done-when (TEST-STRATEGY); DEC-83's note on where the loop lives; IV failures join at P2-04, not P2-02 (DEC-16).
+    - The deep-ITM fallback drawing on both monthly records is kept, and its reading of DEC-14 is written down above.
+  - **Now:** 77 new tests in P1-08 (`test_pull.py` 37, `test_estimate.py` 13, `test_coverage.py` 6, the CLI's fetch tests 10, and 11 across `test_discovery.py`, `test_load.py` and `test_cache.py`), 748 in the suite. **Mutants:** 51 re-run on the reviewed code (round 1's 23 whose code is unchanged, and 28 for the review's findings and fixes, the reviewers' surviving mutants included). One survived, a strike check on too fine a step, and was killed by a new test: all 51 are killed.
+
+### DEC-89 — Pricing: Black-Scholes, the IV solver, measures, the chain pricer
+**Status:** ENG · **Affects:** P2-01 to P2-04, P3-02, P3-06, P3-07; DEC-16, DEC-23 to DEC-27, DEC-44
+
+- **Where:** `pmcc/pricing/`, one module per job:
+  - `black_scholes.py`: `price`, `greeks` (both check their inputs) and `price_vega` (the solver's unchecked inner loop).
+  - `expiry.py`: T and DTE (DEC-24).
+  - `iv.py`: `implied_vol` and the `IvCode`s.
+  - `measures.py`: spot and close, ATM, EM, RV20 (DEC-23, DEC-25, DEC-26).
+  - `chain.py`: `price_quotes` (one bar) and `price_symbol` → `PricedSymbol` (a whole symbol, memoized).
+  - `pmcc/domain/quotes.py`: `Quote`, a valid BID/ASK and its mid, which MarketView's `quote()` will return (P3-02).
+- **Dependencies:** `pricing` still imports only `pmcc.domain` from the package (ARCHITECTURE §3.3 rule 4). Outside it, it uses numpy, scipy (`scipy.special.ndtr` for N) and polars: `chain.py` reads the loader's frames by their columns (`bar_end`, `strike_cents`, `BID`, `ASK`, `valid_quote`, `session_bar`, `TRDPRC_1`) without importing `pmcc.data`. `pmcc.data.coverage` now imports `pricing` for the IV-failure line (DEC-16). pyright gets minimal scipy stubs in `typings/scipy/` (`ndtr`; `brentq` for the tests), like the lseg ones (DEC-42).
+- **Black-Scholes:** ARCHITECTURE §7's formulas with q = 0, vectorized; every argument broadcasts. A put uses N(−d) directly rather than parity, which would lose precision to cancellation on a tiny, far out-of-the-money put.
+- **The IV solver:**
+  - **Codes, in the order they're checked:** `EXPIRED` (T ≤ 0), `NO_QUOTE`, `NO_SPOT`, `BELOW_FLOOR`, `ABOVE_CAP`, `NO_CONVERGENCE`.
+    - `NO_SPOT` is new to ARCHITECTURE §7's list: a bar where the underlying didn't trade has no spot (DEC-23), so nothing on it can be priced.
+    - `NO_QUOTE` outranks `NO_SPOT`, so an IV failure always means the contract itself had a valid quote. The coverage line counts it that way.
+  - **A put's bounds** are European: floor max(0, K·e^(−rT) − S), cap K·e^(−rT). Puts feed only EM, which uses their mids; no rule reads a put's IV.
+  - **Tolerance:** ARCHITECTURE §7 said stop at |model − mid| < 1e-6·max(1, mid). P2-02's done-when asks for |Δσ| < 1e-6, and a price tolerance of 1e-6 gives that only when vega exceeds max(1, mid), which a deep ITM long-dated call often doesn't. The solver stops at 1e-9·max(1, mid), or when its bracket is narrower than 1e-12. That pins σ to 1e-6 wherever vega ≥ 1e-3·max(1, mid). Where the price barely moves with vol the solved vol is looser, though it still reprices the mid: 719 of NVDA's solved lanes, off `brentq` by up to 3e-5 of vol, with a delta difference under 1e-8.
+  - **Method:** Newton, safeguarded. Each lane keeps a bracket known to hold its root, starting at [1e-4, 5.0]. A step that would leave the bracket, or a vega under 1e-8, bisects instead. The start is Manaster and Koehler's vol, where vega peaks.
+  - **`NO_CONVERGENCE`** means no vol in [1e-4, 5.0] prices the mid (checked before iterating), or 100 iterations ran out. On NVDA all 437 are the first kind: deep ITM calls within a week of their expiry (297 on expiry day, 140 one to seven days before), whose extrinsic no vol up to 500% explains.
+  - **A mid exactly on the floor** solves at a vol near zero; only a mid under it is `BELOW_FLOOR`.
+- **The chain pricer:**
+  - **Mid:** a contract's IV comes from (BID + ASK) / 2 exactly, not the $0.0001-rounded `Quote.mid` that fills and EM use (DEC-44). The difference is at most $0.00005.
+  - **Eligible** means the IV solved (Spec › Greeks and pricing). DEC-27's limit Greeks go on calls below their floor, which stay ineligible.
+  - **Columns per contract:** mid, spread % of mid, IV, code, δ, Γ, θ, ν, and extrinsic: mid − max(0, S − K) for a call (Spec › E-L3), mid − max(0, K − S) for a put.
+  - **A whole symbol:** `price_symbol` prices each unit's session bars in one vectorized pass. It joins the stock's TRDPRC_1 on the same `bar_end` and takes T from `years_to_expiry` per bar, so it has one source for T. `PricedSymbol.snapshot(bar_end, expiry, right)` slices a bar and keeps it, and `codes(expiry, right)` counts the unit's outcomes.
+  - ARCHITECTURE's `price_chain(snapshot, spot, now, r)` became `price_quotes` (one bar's arrays) plus `price_symbol` and `PricedSymbol.snapshot` (the memo), so a batch prices a symbol once and every run shares it.
+- **Measures:** `atm_strike` takes the strikes it's given; which are listed is MarketView's (DEC-32). `atm_iv` takes that strike and a priced call chain. `expected_move` takes two `Quote`s or None and returns a `Price`. `rv20` takes the calendar, the decision time and the close-bar trades by `bar_end`.
+- **Tests:** 110 new, 858 in the suite (`tests/unit/pricing/`, `tests/unit/domain/test_quotes.py`, two in `test_coverage.py`, one in `test_cli.py`), after the review below.
+  - The Black-Scholes reference values were computed once with mpmath at 50 digits (run in a throwaway environment, not a dependency) and agree with Hull's worked example (15.6) to its four decimals.
+  - Hypothesis checks put–call parity, each Greek against a central difference, the solver against scalar `brentq` where the mid pins the vol down, and a solved vol repricing its mid everywhere else. Its spot step scales with S·σ·√T, since a fixed step blurred short, calm options.
+- **Outcome:** 2026-09-28 — P2's done-when lines hold.
+  - **P2-01:** the reference values match to 1e-8, and parity and the finite-difference Greeks hold (300 derandomized examples, plus 8 random seeds).
+  - **P2-02:** |Δσ| < 1e-6 against `brentq` where solvable, and each code has a test.
+  - **P2-03:** a missing put quote leaves EM unavailable, and RV20 ignores the current session's bars, even at its close.
+  - **P2-04:** NVDA's full window (400,784 session contract-bars) prices in 1.4 s, after a 0.6 s load (limit 10 s). The coverage summary shows IV failures: 8.3%, 32,403 of 390,652 (DEC-16, DEC-27).
+  - **Found while building:**
+    - T across a clock change was an hour short, because Python subtracts two times in the same zone by wall clock; now in UTC (DEC-24).
+    - NVDA's empty May 2027 unit (DEC-08) crashed the pricer; an empty unit now prices to nothing, with a test.
+- **Outcome:** 2026-09-29 — an adversarial review of P2 (4 reviewers, 2 skeptics per finding): 28 findings, 18 unique. The 12 most severe were verified: 10 confirmed, 1 plausible, 1 refuted; 6 low ones went unverified. All the confirmed and plausible ones and all 6 low ones are fixed or put to the PO:
+  - **Confirmed, medium:**
+    - **Test gaps** that let plausible bugs through: the coverage line's denominator (an expiry-close bar counted, or a no-spot bar dropped); DEC-27's limit Greeks spread to no convergence, no spot or the expiry close; `pmcc fetch` pricing the summary at the wrong r; the snapshot memo keyed without right or expiry. Each now has a test.
+    - **Wrong NVDA figures in the docs:** the 437 no-convergence bars aren't all on expiry day (297 are; 140 fall one to seven days before), and 16 below-floor bars at 120–270 DTE, not one, exceed K/S 0.6. Corrected in DEC-27, here and in BUILD-PLAN.
+    - **ARCHITECTURE §5.2's MarketView** didn't match the measures: `spot()` couldn't say there was no trade, and `session_closes(n)` can't feed `rv20`. §5.2 now sketches `spot() -> Price | None` and `close_trades()`, still indicative until P3-02.
+    - **A held short has no delta on its expiry close bar,** where DEC-20 still runs short exits. Added to DEC-27's open items for P3.
+  - **Confirmed, low:** the 1e-6 vol guarantee holds only where vega ≥ 1e-3·max(1, mid) (qualified above, in ARCHITECTURE §7 and in `iv.py`); the EM rounding test couldn't tell each mid rounded from the straddle rounded (a test now can).
+  - **Plausible, medium:** `snapshot()` read a naive time in the machine's zone, so Windows and Ubuntu CI would pick different bars (DEC-58). It now refuses a naive time, as `to_et` does.
+  - **Refuted:** that the float spread % misjudges E-T1's 3% and 10% limits at the boundary. No rule compares it yet; E-T1 and DEC-29 are P3-06's.
+  - **Unverified, low, fixed:** tests for the IV coming from the exact mid, an option bar the stock tape lacks (a left join, so it is `NO_SPOT`), and the solver's bisection fallback (from three starts where Newton alone fails); DEC-23 now credits the 0.09% gap to JPM (DEC-06); this entry's reason for pricing puts directly. And DEC-26's missing-close rule, recorded as the PO's answer though it was never asked, is now put to the PO (DEC-26).
+  - **Mutants:** the 14 the reviewers left alive, re-run on the fixed code, are all killed.
+
+### DEC-90 — Strategy config: kinds, the loader and the config hash
+**Status:** ENG · **Affects:** P3-01, P3-05, P3-06, P3-08, P4-03, P4-05, P5-02; DEC-44, DEC-52, DEC-53
+
+- **Where:** `pmcc/config/`, one module per job:
+  - `kinds.py`: the kind registry, `SPEC_RULE_IDS` (the spec tables' order) and `OPTIONAL_RULE_IDS`.
+  - `extends.py`: the `extends` chain and `overrides`, over raw rules.
+  - `rule_text.py`: placeholders and rendering (DEC-52).
+  - `strategy.py`: `Rule`, `FillModel`, `StrategyConfig`, `RunConfig`, `load_strategy()`, `load_run_config()`.
+  - `fields.py`: pydantic field types for dollars (`Price`, `Money`), an ET clock time and a rule ID.
+- **Kinds:**
+  - A kind implements exactly one spec rule ID. `nearest_delta_short` and `expected_move_strike` are both E-S3, so A2 swaps the kind under the same ID. A rule whose kind implements another ID is refused, and so is any ID outside the spec, since no kind implements one.
+  - Each kind has a params model: strict (the string "0.3" and `true` aren't numbers), closed to unknown keys, and range-checked (deltas and spread limits in (0, 1), DTE ≥ 1, min ≤ max).
+  - Money thresholds (G-5's $0.10, the fee) are held as `Price` and `Money` (DEC-44), written in YAML as a dollar number. They're strict like the rest: a string is refused unless it is the `"0.1000"` form they serialize to, and an amount not exact to $0.0001 is refused rather than rounded (a $0.00005 G-5 would round to $0 and never fire). A clock time (X-S3's 15:00) must be a quoted `"HH:MM"`: unquoted, YAML 1.1 reads `15:00` as the integer 900.
+  - A params error names the rule and the param: `X-S2 params: max_delt: Extra inputs are not permitted`.
+  - The params models live in `config`, because `config` can't import `strategy` (ARCHITECTURE §3.2). `strategy/registry.py` (P3-06) maps each kind to its code, and a test will hold the two key sets equal.
+  - All 26 kinds are registered now, the quant ones included, since each is a params model and the spec fixes its rule. `quant_pmcc.yaml` uses them at P4-03; the fixed-bar trigger (DEC-31) joins at P5-02.
+- **Required rules:** every spec rule except G-3, G-4, G-5 and X-S1, the layers the spec's strategies and ablations switch off. A strategy without any other rule fails at load. "Off" is absence (DEC-53).
+- **The loader:**
+  - A file extends at most one parent, by a relative path with forward slashes to a `.yaml` file, so a config means the same on every machine (DEC-58). An absolute path, a drive, a backslash or another suffix is refused; a missing file or a directory raises `FileNotFoundError` on both OSs. A cycle is refused.
+  - A child adds rules the parent doesn't define. Redefining one is refused: it must use `overrides`, keyed by rule ID, with exactly one of `params` (a non-empty patch), `replace` (a whole rule, same ID; nothing is filled in from the old one) or `remove: true`. An override of a rule no parent defines, including one the same file defines, is refused.
+  - `fill_model` is patched field by field. `id` and `name` are never inherited, so the file loaded names the strategy, and `_shared.yaml` alone isn't one.
+  - Rules come out in the spec's order, whatever the files' order. A strategy's `rule_ids` are the valid stamps for its blotter and gate log (INV-09).
+- **The fill model** (`spread_capture`, `fee_per_contract`) is in the strategy config, beside the rules, since the friction runs vary it (Spec › Sensitivity checks). It is not a rule, so it has no rule ID: a fill carries the ID of the decision that made it.
+- **Rule text:**
+  - A placeholder is a bare param name with an optional format spec. An attribute or index lookup, a conversion or a positional field is refused.
+  - `rationale` is rendered like `condition` and `action`, so a threshold quoted in it (X-S3's 0.25 × EM) can't drift.
+  - Every param must appear in the condition or the action; the rationale alone doesn't count.
+- **The config hash:**
+  - It covers `RunConfig`: the resolved strategy (id, name, fill model, each rule's kind, params and templates) plus the universe's window and r. It is the sha256 of `canonical_json()`: `model_dump(mode="json")` as JSON with sorted keys, no whitespace, non-ASCII kept, in UTF-8.
+  - Only resolved content counts, so the same rules spread across `extends` or flattened into one file hash the same.
+  - The symbol list is left out: the symbol is a run's input, recorded in its manifest, so every symbol run on one config shares a hash.
+  - `starting_cash` stays out of it: it lives in the universe file, and each result records it beside the hash (DEC-92). Report sections (DEC-54) join at P4-05.
+- **JSON Schema:** each kind has its own params model, so `Rule.params` is described as what every dump holds, a map of names to numbers or strings, rather than as the empty base model pydantic would emit. P4-05 exports the schema.
+- **Lint:** ruff's `allowed-confusables` adds `×` and `−` to `›`: the spec writes rule text with them (`spot ≥ short strike − 0.25 × EM`), and the YAML and its tests quote it.
+- **For P5-02:** `configs/sensitivity.yaml` lists many variants in one file (ARCHITECTURE §10), and `load_strategy` resolves one strategy per file. P5-02 adds the entry point that folds each listed variant onto its parent.
+- **Tests:** 286 new, 1144 in the suite: `tests/unit/config/test_baseline_config.py` (the shipped files, read against the spec's tables), `test_strategy_loader.py`, `test_rule_text.py` and `test_kinds.py`.
+- **Outcome:** 2026-09-29 — P3-01's done-when holds: the config tests pass for unique IDs, resolving placeholders, referenced params, and every spec rule the baseline runs (all but G-3 to G-5).
+  - 28 planted mutants were run: each refusal above, the spec order, the hash's coverage, strictness and ranges, and three changes to the shipped YAML. Three survived at first:
+    - a check that a rule ID is in the spec, redundant with the kind check, so it was removed;
+    - the model's duplicate-ID check, which the loader can't reach, now tested on the model itself, as a config read back from JSON would reach it;
+    - cycle detection, which a depth limit also passed, now pinned to the chain it names.
+  - All are now killed.
+- **Outcome:** 2026-09-29 — an adversarial review of P3-01 (4 reviewers, 2 skeptics per finding): 40 findings, 27 unique. The 12 most severe were verified: 8 confirmed, 3 plausible, 1 refuted; 15 low ones went unverified. Every confirmed and plausible finding, and the unverified ones, is fixed:
+  - **Confirmed, high:** the new files failed ruff with 16 errors: E501, RUF001/RUF002 (`×`, `−`), RUF043 and SIM905. `just check` stayed green because `pre-commit run --all-files` lints only tracked files, and these were untracked. Fixed, and the confusables allowed as above. Ruff and pyright now run clean over `pmcc` and `tests` directly.
+  - **Confirmed, medium:** the E-S2 rationale was wrong about holiday weeks (DEC-35). Six test gaps, each now tested:
+    - the hash's coverage of the fill model, window, id and name;
+    - the fill model's strictness, extra keys and [0, 1] range;
+    - `match="id"`, which matches any pydantic "valid"/"validation" message;
+    - `match="X-S2|remove"`, which a both-operations override removing X-S1 would pass;
+    - `replace` as a whole rule;
+    - a dollar param rendered through `Rule.text()`.
+  - **Plausible, medium:**
+    - the JSON Schema typed params as an empty object (fixed as above);
+    - names, conditions and actions weren't pinned to the spec, and the no-roll paragraph wasn't checked against the spec's words. Both are now read from the spec file (DEC-35).
+  - **Refuted:** E-L4 lacks the starting-cash multiplier and rounding. That is DEC-30's, asked at P3-09.
+  - **Unverified, low, fixed:**
+    - `extends` took an absolute path, any suffix, or a directory, which raised a different error on each OS;
+    - an empty `params` patch was accepted;
+    - dollar params took any numeric string and rounded below $0.0001;
+    - the canonical hash form, a parent-only override, override extra keys, min = max bands, frozen params and `ConfigError`'s file name weren't pinned;
+    - rationale claims beyond the spec (DEC-35);
+    - BUILD-PLAN §2 had no DEC-35 row;
+    - ARCHITECTURE §16's new-kind steps and §10's "unreferenced placeholder" were stale;
+    - the BUILD-PLAN tick miscounted the mutation fixes;
+    - `sensitivity.yaml` needs a P5-02 entry point (noted above).
+  - **Mutants:** 41 are killed: every survivor the reviewers reported, and 7 against the new checks. The first 28 still are, except the 2 whose code is gone.
+
+### DEC-91 — MarketView, the synthetic market, accounting, fills, rules and the engine loop
+**Status:** ENG, with three edge cases put to the PO (below) · **Affects:** P3-02 to P3-07, P3-08, P4-01, P4-02, P4-05; DEC-10, DEC-20 to DEC-23, DEC-27 to DEC-29, DEC-32, DEC-34, DEC-44, DEC-49
+
+- **Where (ARCHITECTURE §3.1):**
+  - `pmcc/strategy/`: `ports.py` (the `MarketView` protocol, `LookAheadError`, and the values rules return), `selectors.py` (E-L2/E-L3, E-S2/E-S3), `trigger.py` (E-T1), `gates.py` (E-S5, G-1, G-2), `exits.py` (X-S1 to X-S3, X-L1, X-L2, the X-S4/X-S5 resolver), `registry.py` (kinds → code, `build_strategy`).
+  - `pmcc/engine/`: `market_view.py` (`MarketData`, `HistoricalView`), `fills.py`, `legs.py` (`Trader`: the leg state machines and the gate log), `loop.py` (`run_backtest`), `invariants.py`.
+  - `pmcc/accounting/`: `events.py`, `book.py`, `marks.py`, `valuation.py` (new beside ARCHITECTURE's list, so NAV has one home), `regt.py`, `ledger.py`.
+  - `pmcc/domain/errors.py`: `EngineError`, so accounting can raise it without importing the engine (ARCHITECTURE §3.3 rule 4).
+- **MarketView (P3-02):**
+  - Every accessor takes an optional `at` (default `now`) and goes through one `_as_of` gate, so the done-when's "every accessor raises for t > now" is literal, and a rule can read an earlier bar. It adds `stock_quote()` (the X-S5 cover and stock marks, DEC-28, DEC-23) and `root` (to name contracts).
+  - `MarketData.build` takes the loader's frames, not `SymbolData`, so `engine` doesn't import `data`. It prices the symbol once (`price_symbol`), indexes each contract's first valid session quote for DEC-32's listing, and memoizes each listed snapshot, so every run over a symbol shares it.
+  - `PricedQuotes` gains the integer `bid`, `ask` and `valid` columns and `quote(row)`, so `quote()` returns the exact quote the fill uses, not a float mid. The IV is still solved from the exact float mid (DEC-89).
+  - An expiry is listed once one of its calls is. `expiries(WEEKLY)` includes the third Fridays, since a monthly expiry is also its week's final session.
+- **The synthetic market (P3-03, TEST-STRATEGY §5):** `tests/fixtures/synthetic/market.py` writes a symbol through `SymbolCache.write_unit`, so `load_symbol` reads it as it reads LSEG's. It uses the shipped calendar, and spot is a seeded walk or scripted knots. Quotes are Black-Scholes from an IV surface, rounded out to cents, with hooks for holes, wide spreads and missing rows. `scenarios.py` holds 19 builder functions (25 entries in `BUILDERS`, counting variants such as the delayed X-S3 fill), and the session-scoped `synthetic` fixture (`store.py`) generates each market once per test run. `extended_hours` also writes a pre-market and a post-close bar each session, so a test can check that no read comes from them.
+  - **Found while tuning:** at one IV for both legs, the baseline's E-S5 fails every week. A 0.80-delta 180-DTE long carries more extrinsic than a 0.30-delta weekly's out-of-the-money distance plus its premium: at 30% IV, a $17 gap against a $17.90 debit. The scenario markets therefore price monthlies at 20% and weeklies at 40%. Real data may show many G-2 weeks; P3-10 will tell.
+- **Accounting (P3-04):**
+  - An `Event` checks its own Cash Δ against its fill, quantity and fee when it's made. `EXPIRE` fills at $0 and `ASSIGN` has no fill; both have no cash and no fee. The fee is per option contract, so stock rows have none.
+  - `Book.apply` is the only mutator. It refuses a flip (a sale bigger than the long), an expiry or assignment off the expiry day, puts, and any book leaving a short uncovered (strike, expiry, quantity) or unequal to the long (INV-05, INV-10), raising `EngineError`.
+  - Reg T follows the spec and the PO's DEC-10 answer. A requirement that isn't a whole $0.0001 is rounded up. `funds_after(book, marks, event)` values the book after an entry, with the new leg marked at its limit: it is E-L4's check, and the audit's `funds_after` (INV-08).
+- **Fills (P3-05):** mid ± capture × half-spread, worked out exactly (the capture read as its decimal) and rounded half-even once. So capture 0 fills at exactly `Quote.mid`, the Limit column. The audit carries BID, ASK and the capture, so `pmcc verify` can re-derive the fill.
+- **Rules (P3-06):**
+  - E-T1 compares (ASK − BID) ≤ limit × mid exactly; a spread on the limit passes.
+  - The DEC-29 ties are exact. A delta distance is rounded to 9 places, since 0.85 and 0.75 aren't equally far from 0.80 in binary floating point (DEC-29).
+  - X-S1 runs until X-S3's check time, read from X-S3's params, so moving the check moves both. X-S3 fires on spot alone; only its fill needs a quote (DEC-28).
+  - The registry maps all 26 kinds. The quant kinds raise `NotBuiltError` naming P4-01 or P4-02 until then, and E-L1, E-S1, E-S4, X-S4, X-S5 and X-E1 are markers the loop enforces.
+  - E-T1 is a port, `EntryTrigger` (`can_decide`, `check`), not the concrete `SpreadTrigger`, so DEC-31's fixed-bar trigger swaps in by kind (DEC-31).
+- **The engine (P3-07):**
+  - `run_backtest(data, run_config, strategy, starting_cash)` walks the window's session bars in DEC-20's order and returns the blotter, the ledger (one row per bar) and the gate log. Starting cash is an argument until P3-09 settles it (DEC-30).
+  - A long bought on a week-open session needs no reset check, so the short can be sold on the same bar, in DEC-20's order. At most one short is sold per week: a short closed early isn't replaced until the next week-open session (Spec › X-S1, X-S2).
+  - The runtime invariants run on every event and bar (ARCHITECTURE §8.4). A failure logs `invariant.failed` and raises `InvariantViolation`, an `EngineError`.
+  - A new log event, `engine.exit.unevaluated`, records a rule that couldn't evaluate, with the rule, the contract and the IV code (DEC-27).
+  - Entry rows carry DEC-34's values: the selection's (with `selected_at`), the decision bar's E-T1 spread, and the short's E-S5 terms.
+  - An unfinished reset's gate-log row says why: the re-entry didn't pass E-T1, E-L4 blocked it, or no long was selected.
+  - A chain lists every listed contract, including one with no row on the bar (no quote, `NO_QUOTE`), so a listed ATM strike without a quote makes EM unavailable rather than silently moving to its neighbour (DEC-25, DEC-32).
+- **Put to the PO at handover (2026-09-30):** three edge cases the answers so far don't settle. They're built as recommended here, and each is a one-line change if the PO decides otherwise:
+  1. **X-S3 without an EM at entry** (the ATM put or call had no quote on the short's entry bar): X-S3 can't evaluate, so it doesn't fire and it's logged, as the PO's DEC-27 answer does for a missing delta. X-S4/X-S5 still resolve the short at the close.
+  2. **A short entry that would leave available funds negative** (possible after an X-S5 loss): no short that week, and the gate log's outcome is `E-L4`, noted "available funds would go negative" (INV-08; Spec › E-L4 "no entry (logged)").
+  3. **The stock's first mark after X-S5** when the stock has no valid quote on the assignment bar: the closing spot, flagged stale, until its next valid mid.
+- **Tests:** 259 new, 1,403 in the suite, after the review below: `tests/property/test_market_view.py` (INV-04), `tests/unit/engine/` (views, fills, invariants), `tests/unit/fixtures/`, `tests/property/test_accounting_invariants.py` (INV-01, 02, 08, 10), `tests/unit/accounting/`, `tests/unit/strategy/` (every rule at its boundaries, on the stub view `tests/fakes/view.py`), and `tests/scenario/` (42 full runs).
+- **Outcome:** 2026-09-30 — P3-02 to P3-07's done-when lines hold; `just check` is green, and pre-commit passes on the new files.
+  - **P3-02:** every accessor raises for a time after `now`. A hypothesis test finds no answer that depends on data after `now` (a view over the whole market against one cut off at `now`). Unlisted strikes and expiries stay hidden.
+  - **P3-03:** the same seed writes byte-identical files, and each builder has a smoke test.
+  - **P3-04:** the property tests for INV-01, 02, 08 and 10 pass over random fills, expiries, assignments, covers and stale marks (every path is reached: 14% of examples assign). An uncovered short raises `EngineError`.
+  - **P3-05:** INV-03 holds, fills at capture 0, 0.25 and 0.50 are exact in `Price` units, and the fee applies per contract.
+  - **P3-06:** every rule has boundary tests.
+  - **P3-07:** every baseline scenario passes, with the runtime INV-01 to INV-10 checked on every bar. G-3, G-4 and G-5 have their market builders now, but their engine scenarios wait for their code (P4-02's done-when now names them).
+- **Outcome:** 2026-09-30 — an adversarial review of P3-02 to P3-07 (4 reviewers, 2 skeptics per finding): 34 findings, 19 unique. The 12 most severe were verified: 11 confirmed, 1 plausible, 0 refuted; 7 low ones went unverified. Every one is fixed, with regression tests:
+  - **Confirmed, high:** entry notes broke DEC-34. They carried the freeze bar's mid and spread (40% on a short that filled at 5.4%) and no E-T1 spread or E-S5 terms, and the short's audit had no `e_t1_spread`. Fixed as above.
+  - **Confirmed, medium:**
+    - Nothing tested DEC-21's freezes or DEC-28's check-once: re-selecting the long or the short every bar, or checking the long on every week-open bar, passed the suite. New scenarios move spot after the freeze (`short_frozen_then_rally`, `long_frozen_then_rally`) and after the check (`long_falls_after_check`).
+    - Nothing tested the short's E-L4 skip, the stale stock mark or the unfinished-reset row. Each now has a scenario (`surge_no_stock_quote`, `reset_reentry_wide`, `long_delta_drop` with little cash).
+    - The G-3 to G-5 engine scenarios were deferred to P4-02, but P4-02's done-when didn't say so. It does now.
+    - E-T1 was typed as the concrete `SpreadTrigger`, so DEC-31's fixed-bar trigger couldn't swap in by kind. It's a port now (above).
+  - **Confirmed, low:**
+    - `exit_pending` stayed on the bar where X-S4/X-S5 resolved the short. The flag now comes from the bar's end state only.
+    - `engine.exit.unevaluated` lacked the contract and the IV code.
+    - An unfinished reset was always noted "didn't pass E-T1", even when E-L4 blocked the re-entry.
+    - DEC-23 cited `pmcc/engine/marks.py`, which doesn't exist.
+    - The builder count matched neither the functions nor `BUILDERS`.
+    - Two scenario assertions couldn't fail: a NAV check that reduced to nav == nav, and a date-only INV-07 check.
+  - **Plausible, medium:** a listed strike with no row on a bar dropped out of the chain, which DEC-32 says can't happen, so the ATM strike and EM could shift to a neighbour (81 listed NVDA contract-bars have no row). Fixed as above.
+  - **Unverified, low, fixed:**
+    - nothing tested that MarketView reads session bars only (`extended_hours` markets now do);
+    - the runtime INV-03 check was never failed for stock rows, zero bids or a wrong Limit;
+    - `close_trades` values were never checked;
+    - DEC-20's cover-before-check order and X-L1 over X-L2 on the same bar were untested;
+    - TEST-STRATEGY §5 had X-L2's `min_dte` the wrong way round;
+    - PRD FR-R2 still said the gates stop at the first fire.
+  - **Mutants:** the reviewers' surviving mutants (both freezes, the check-once, the reset row, the session-bar filter) now fail. One survives because it's equivalent: seeding the stock's first mark as fresh instead of stale, which the same bar's carry-forward marks stale anyway.
+
+### DEC-92 — Results: the models, canonical JSON, the manifest and `pmcc run`
+**Status:** ENG · **Affects:** P3-08, P3-09, P3-10, P4-05, P4-06, P5-03; DEC-30, DEC-49, DEC-50
+
+- **Where (ARCHITECTURE §3.1):**
+  - `pmcc/export/`: `canonical.py` (canonical JSON, `drop_volatile`, `verbatim_floats`), `models.py` (the pydantic result models), `manifest.py` (git, lockfile and version provenance), `results.py` (`write_result`).
+  - `pmcc/runner.py` (new, beside `cli.py`): `run_symbol` loads a cache, runs the engine and builds the `RunResult`. It needs the loader, the engine and `export`, and `export` doesn't run the engine or load a cache (it uses only `data.files` for whole-file writes, §3.2), so the runner sits above them.
+  - A symbol is priced once: `Market.prepare(loaded, root, r)` builds `MarketData` (every chain priced) and the RIC names, and `run_market(market, config, …)` runs one config on it. `run_loaded` does both for one run. `pmcc calibrate` and `pmcc batch` prepare each symbol once and run every config on it (ARCHITECTURE §11); `run_market` refuses a config whose r isn't the one the market was priced at (`MarketData.rate`).
+  - **A window the cache doesn't cover (PO, 2026-09-30):** `check_covers` refuses a run, with `CacheError`, unless the cached stock tape has session bars on every session of the window, naming the gap and `pmcc fetch`. Without it, a cache narrower than the window ran to a result of empty 'no long held' weeks and exited 0.
+- **The result file (provisional until P4-05):** `results/{SYM}/{run_id}.json` holds `schema_version` (1), `manifest`, `config` (the resolved `RunConfig`, dumped exactly as its hash covers it), `rule_text` (each rule's rendered condition, action and rationale), `starting_cash`, `blotter`, `ledger` and `gate_log`. The summary, cycles and attribution join at P4-05 and P6, with the JSON Schema.
+  - An instrument is `{ric, occ, kind, expiry, strike}`. `ric` is the RIC the cache answered with (the expired `^` form for a contract fetched after expiry), read from the chain frames, so a blotter row leads straight to its raw quotes (TEST-STRATEGY §8). The stock is its tape's RIC, with `occ`, `expiry` and `strike` null.
+  - The blotter's audit and the gate log's values pass through as the engine records them; the audit's `bid`, `ask` and `funds_after` stay in $0.0001 units (DEC-91), which `pmcc verify` reads.
+  - **Dollars in those value maps (PO, 2026-09-30):** exact 4-dp strings (`"82.9900"`), as the engine records them; the typed fields (fills, cash, NAV, marks, strikes) are 4-dp numbers. The selector's `mid` was the one exception, a float rounded to 4 dp that could differ from the fill's half-even mid; it is now the quote's exact mid as a 4-dp string.
+  - A value in those maps must be exactly a JSON scalar type (`ScalarMap`): pydantic's strict float would otherwise take a `Decimal`, a numpy number or a numpy bool as a float.
+  - `run_id` is the config's `id`; `strategy_id` is the part before `--` (`quant_pmcc--a3` → `quant_pmcc`).
+- **Canonical JSON (DEC-50):**
+  - One line, no whitespace, sorted keys, UTF-8 with non-ASCII kept, one final newline.
+  - Result dollars are `Decimal` and print as 4-dp JSON numbers (`1234.5000`); the config section keeps its own dump, dollars as `"0.1000"` strings and floats unrounded (`verbatim_floats`), because that is what `config_hash` covers, so the file's config always rehashes to `manifest.config_hash`.
+  - Other floats round to 6 dp and print by shortest repr. NaN and infinities print as `null`, −0.0 as `0.0`, and a naive time is refused.
+  - Arrays come only from lists and tuples, so `bytes` or a set is refused rather than printed as numbers.
+  - `loads` keeps each number's text, so reading a canonical file and dumping it again gives back its bytes, and `drop_volatile` (INV-13's comparison: without `run_timestamp` and `git_sha`, PO, DEC-50) is exact.
+- **Provenance:** git runs read-only (`rev-parse`, `status --porcelain` with `--no-optional-locks`), with `results/` excluded by pathspec (DEC-59). `lock_hash` is the sha256 of `uv.lock`, which is LF on every OS; `pmcc_version` is the installed package's. No git, no commit, or no lockfile fails the run before anything is written.
+- **`pmcc run --symbol S --config C [--cache data_cache] [--out results]`:**
+  - The window, r and starting cash come only from `configs/universe.yaml`, found from the package, not the working directory (PO, DEC-30). There is no `--universe` option.
+  - `data_source` is `lseg`: the runner's caller says where the data came from, since a synthetic cache looks the same on disk. Tests and P4's sample site pass `synthetic`.
+  - `run_timestamp` is the start of the run, in ET.
+  - A re-run replaces its file whole (`replace_file`). A cache, calendar, provenance or engine error (a failed invariant included), a window the cache doesn't cover, a quant kind not built yet (`NotBuiltError`, gone since P4-03 built them all, DEC-95) or a runner `ValueError` exits 1 with nothing written (DEC-49), and a bad universe or config file (missing, bad YAML, a value refused) exits 1 naming the file.
+  - It prints the trade, bar and week counts, the final NAV and the path, and says to commit first when the tree is dirty. Log events: `run.done` and `run.abort`.
+- **`Universe.starting_cash`:** optional until P3-09 writes it with its basis (DEC-30); since P3-09 it is the calibrated block, and `pmcc run` takes its `value` (DEC-93). It isn't in `config_hash`, which covers the strategy, the window and r (DEC-90); the result records it as `starting_cash`.
+- **The large-file hook:** a 26-week full result is about 0.5 MB (575 bytes per ledger bar on the synthetic market; NVDA's window has 875 bars), at pre-commit's default 500 KB `check-added-large-files` limit, which would stop the PO's P3-10 commit. `results/` now has its own 2 MB limit; every other path keeps 500 KB. Checked in a throwaway repository: a 1 MB result passes, a 3 MB result and a 600 KB file elsewhere fail.
+- **Tests (78 new, 1,481 in the suite):**
+  - `tests/unit/export/`: canonical JSON, including a hypothesis round trip, and provenance on a throwaway git repository (`tests/fakes/git_repo.py`). It lives in pytest's temporary directory, with the global and system git config shut out; the project's repository is only read.
+  - `tests/scenario/test_run_result.py`: every blotter, ledger and gate-log row mirrors the engine's; RICs; the manifest; the file's config hashes to its `config_hash`; a dirty tree records `git_dirty: true`.
+  - INV-13: `random_walk`, and `friday_unquoted_at_check` without X-S1, cached once, then run by `tests/scenario/inv13_run.py` in two fresh processes with different run timestamps and commits and `PYTHONHASHSEED` 2 and 6. The second market's ledger has rows with two flags (`exit_pending`, `stale_short`), the one array a result builds from a set, and those seeds put the two in opposite set orders; so an unsorted flags tuple fails the test (checked with the mutant planted). The files differ, and are byte-identical once `run_timestamp` and `git_sha` are dropped.
+  - `tests/unit/test_cli_run.py`: `pmcc run` end to end on the synthetic cache, the P3-09 stop, a dirty tree, an engine error and a bad config writing nothing.
+- **Outcome:** 2026-09-30 — P3-08's done-when holds: INV-13 passes on synthetic data, and a dirty tree records `git_dirty: true`.
+- **Outcome:** 2026-09-30 — an adversarial review of P3-08 (4 reviewers, 2 skeptics per finding): 27 findings, 19 unique. The 12 most severe were verified: 11 confirmed, 0 plausible, 1 refuted; 7 low ones went unverified. All 11 and the 7 are fixed, with regression tests (34 new, 1,515 in the suite):
+  - **Confirmed, medium:**
+    - The config section's floats were rounded to 6 dp, so a param like 0.1234567 was published as 0.123457 and the file's config no longer hashed to `manifest.config_hash`. Now printed unrounded.
+    - `pmcc run` wrote a result of empty weeks, exit 0, for a window its cache didn't cover. Now refused (PO).
+    - INV-13's market never had a ledger row with two flags, so the hash seeds couldn't expose a set-order leak. It now runs a second market that does, with seeds that order its flags oppositely.
+    - `pmcc run`'s `--universe` let starting cash come from any file, against the PO's DEC-30 answer, and its default was relative to the working directory; a bad universe file, a quant kind and a runner `ValueError` ended in a traceback. The option is gone, and each exits 1 with a message.
+    - DEC-86 and DEC-90 still said `starting_cash` joins at P3-09 and the config hash. Fixed.
+    - The RIC test only checked that each RIC parses to the right contract; it now compares the chain frame's RIC.
+    - The mirror tests skipped stock ledger rows, limit ≠ fill, fees, gate reasons and rule actions. They now run four markets that reach each, and check each.
+    - The selector's `mid` was a float among 4-dp dollar strings (above, PO).
+    - INV-13 could never hold on real data, since `git_sha` changes once results are committed. It now drops `git_sha` too (PO, DEC-50).
+    - `run_loaded` re-priced every chain on every run, against ARCHITECTURE §11's price-once batch. Split into `Market.prepare` and `run_market`.
+  - **Refuted:** that the serialization JSON Schema types money as strings (P4-05 generates the schema from these models and owns that).
+  - **Unverified, low, fixed:** the provenance, calendar and refused-rule error paths untested; no test for `status.showUntrackedFiles=no`; 4-dp padding never exercised; ARCHITECTURE §3.2's runner dependencies; DEC-30's status line and `universe.py` citing DEC-50; value maps silently turning `Decimal` and numpy values into floats.
+  - **Unverified, low, not changed:** `pmcc run` always records `data_source: lseg`, so P4's synthetic sample site needs its own entry point that passes `synthetic` to the runner; that is P4-06's to build.
+
+### DEC-93 — `pmcc calibrate`: the starting-cash block and its two passes
+**Status:** ENG · **Affects:** P3-09, P3-10, P4-03, P5-01, P6-05, P7-03; DEC-30, DEC-35, DEC-90, DEC-92
+
+- **Where (ARCHITECTURE §3.1):**
+  - `configs/_shared.yaml`: E-L4's params hold the rule, `cash_multiple: 2` and `cash_round_to: 5000`, beside `contracts: 1`. E-L4's action text states it (PO, DEC-30), so the Trade rules page shows it. The `fixed_contracts` kind (`pmcc/config/kinds.py`) requires both: an int of at least 1, and dollars above $0.
+  - `pmcc/config/capital.py`: `starting_cash_for(costs, multiple, round_to)` (integer ceiling division on $0.0001 units), the models (`StartingCash`, `CalibrationEntry`), `CALIBRATED_STRATEGIES` (`baseline_pmcc`, `quant_pmcc`), `missing_pairs`, and the block writer (`render_block`, `with_block`).
+  - `pmcc/calibration.py` (beside `runner.py`, which it runs):
+    - `calibrate` returns a `Calibration`: the `StartingCash`, and each run's `RunFunds`.
+    - The helpers are `cash_rule`, `measure`, `first_long_entry`, `verify`, `run_funds`, `blocked_entries` and `CALIBRATION_CASH` ($1,000,000).
+  - `pmcc/runner.py` gains `run_output(market, config, cash)`, the engine's whole `RunOutput` after the r and window-cover checks; `run_market` now builds its result from it.
+- **The rule comes from the configs:** every config calibrated must give E-L4 the same `cash_multiple` and `cash_round_to`, or calibration stops. The block records both, as part of its basis.
+- **The block is validated whenever the universe loads:**
+  - `value` must equal the recorded rule applied to the entries, so a hand edit to any of them fails the load.
+  - Each symbol and strategy pair appears once, and the strategies are the two in `CALIBRATED_STRATEGIES` (never a variant). Every cost, the multiple and the step are above zero.
+  - Every entry's symbol is in the universe, and `provisional` is true exactly while a universe symbol lacks either strategy. A bare `starting_cash: 10000` is refused: the value always carries its basis.
+- **Writing it:**
+  - The block is the file's last key, after a marker comment. `with_block` keeps every byte before the marker and replaces the rest, or appends the block if there is none.
+  - It refuses a `starting_cash` with no marker (set by hand) and any key after the block, since replacing either would lose something. So keys added later, like P6-05's bootstrap seed, go above the block.
+  - The new file is loaded and its window checked against the calendar (`validate_universe`) before it replaces the old one whole (`replace_file`). A failed replace, like a locked file, exits 1 with a message. `pmcc calibrate` never replaces a final block.
+  - Dollars are written as exact 4-dp strings and the entry time as New York time with its offset, so the block reads back exactly.
+  - Entries follow the universe's symbol order, then the strategy ID, whatever order `--symbol` and `--config` came in, so equal calibrations write the same bytes.
+- **The first entry** is the earliest E-L1 buy (`first_long_entry`), never a later re-entry after X-L1 or X-L2, however much more it costs (PO, DEC-30).
+- **Blocked entries:** a long blocked by E-L4 sets its bar's `entry_blocked` flag; a short blocked by E-L4 is its week's gate-log row with rule `E-L4` (DEC-91). `blocked_entries` collects both. The measuring pass fails on any block even at the calibration cash; the verify pass fails on any block in any run at the value, naming the first.
+- **Funds, reported (PO, DEC-30):** for each run at the value, `verify` returns its lowest available funds, the bar it came on (the first, on a tie), and how many bars went below zero. Calibrate prints them and logs `calibrate.verified`, but never fails on them. NVDA's baseline at $10,000: lowest $4,978.50 on Jun 8 at 14:00, no bar below zero.
+- **Refused before any run:** a config that isn't one of the two strategies (a variant or ablation), and configs that disagree on E-L4's rule. **Refused runs:** a run with no E-L1 entry in the window, and a config with `spread_capture` other than 0.
+- **`pmcc calibrate [--symbol S]… [--config C]… [--check] [--cache data_cache]`:**
+  - It defaults to every universe symbol and both strategy configs. Until QQQ and TSLA are cached and P4-03 writes `configs/quant_pmcc.yaml`, only a narrowed call runs: `just calibrate --symbol NVDA --config configs/baseline_pmcc.yaml`. (P4-03 wrote it on 2026-09-30, DEC-95. With both strategies NVDA gives $15,000, so the committed $10,000 is reproduced only with `--config configs/baseline_pmcc.yaml`; the value is with the PO, DEC-95. The PO chose $15,000 at P4-04 (DEC-30): `just calibrate --symbol NVDA` wrote it, and reproduces it with `--check`.)
+  - Each symbol is loaded and priced once, then every config runs on it (ARCHITECTURE §11). It writes nothing to `results/`.
+  - A cache, calendar, engine or calibration error exits 1, with `configs/universe.yaml` unchanged. Log events: `calibrate.measured`, `calibrate.verified`, `calibrate.done`, `calibrate.abort`.
+  - `--check` recomputes the block and compares byte for byte what calibrate would write with the file, header comment included. It exits 1 on any difference, including the same value or instant written another way, or on a missing or hand-set block. It writes nothing.
+  - The just recipe is `calibrate *ARGS`; its old `--universe` argument is gone, since the universe is always `configs/universe.yaml` (DEC-30).
+- **A partial cache (PO, 2026-09-30: NVDA only for now):** `load_symbol` loads whatever option units are cached, and `check_covers` checks only the stock tape. So calibrating TSLA today, which has no long-leg monthlies, fails with an X-L2 engine error, not a message naming the missing units. P5-01 takes this up once QQQ and TSLA are cached. **P5-01 (2026-09-30):** set aside with them. The universe is NVDA alone (PO, DEC-15), so no symbol is partly cached; the question comes back with QQQ or TSLA.
+- **`pmcc run`:** takes `starting_cash.value`, and prints a note when it's provisional. Without a block it stops, saying to run `pmcc calibrate`.
+- **Tests (1,591 in the suite; 76 more than P3-08's 1,515):**
+  - `tests/unit/config/test_capital.py`:
+    - the rule's rounding at and past each $5,000 step, and under other params;
+    - the block's refusals (a value off its recorded rule, a zero step or multiple);
+    - missing pairs, and the block's YAML round trip;
+    - appending, replacing, idempotence, and refusing a hand-set value or keys after the block.
+  - `tests/unit/config/test_kinds.py` and `test_baseline_config.py`: E-L4's new params, their refusals, and E-L4's rendered text stating the rule.
+  - `tests/scenario/test_calibration.py`, on synthetic markets:
+    - the first entry's cost and RIC, the value by the rule, and provisional until both strategies are in, including on part of a larger universe;
+    - the first entry, not the later re-entry (`long_delta_drop`), and `first_long_entry` against a dearer later buy;
+    - the fee in the cost;
+    - the rule from E-L4's params, configs that disagree, and a variant refused before any run;
+    - order-independent entries, and reproducibility;
+    - `blocked_entries` on a blocked first long, a short skipped as E-L4, and a re-entry blocked after X-L1;
+    - verify failing on a later run, not only the first;
+    - the funds report, including a calibration that goes below zero and still succeeds (`late_friday_surge` at $1,300, to its Friday);
+    - each refused run.
+  - `tests/unit/test_cli_calibrate.py`, end to end on the synthetic cache:
+    - the block written after the untouched file, times in New York time, the funds printed, and identical bytes on a second run;
+    - `--check` passing, and failing on five edits that still load (a cost, the calibration cash, the same instant in UTC, the value as a number, the header comment), or on no block;
+    - the real calendar validation refusing before any write, and a locked file failing cleanly;
+    - a final block, or one set by hand, left alone;
+    - the default configs failing until P4-03 (since P4-03, the test expects both strategies calibrated, DEC-95);
+    - a symbol outside the universe, no cache, and a value that blocks entries each writing nothing.
+  - `tests/unit/config/test_universe_file.py`:
+    - the shipped block: NVDA's baseline, $10,000, provisional, E-L4's rule, its time as written, and byte for byte what `render_block` gives;
+    - refusals of a bare figure, a stranger symbol, and `provisional` wrong either way, including a final value missing a symbol.
+  - `tests/unit/test_cli_run.py`: the provisional note, silence for a final value, and the stop without a block.
+- **Outcome:** 2026-09-30 — `just calibrate --symbol NVDA --config configs/baseline_pmcc.yaml` wrote $10,000, provisional, in about 7 s (DEC-30); `--check` confirms it.
+- **Outcome:** 2026-09-30 — an adversarial review of P3-09 (4 reviewers, 2 skeptics per finding): 21 findings, 15 unique. The 12 most severe were verified: 6 confirmed, 6 plausible, 0 refuted; 3 low ones went unverified. All are fixed with regression tests, and the three that changed behaviour or the published rules went to the PO (DEC-30):
+  - **Confirmed, medium:**
+    - No test told the first E-L1 entry from the last or the most expensive; on NVDA either mutant gives $15,000.
+    - The universe loader's checks on the block (strangers, `provisional` either way) were untested. The table of refusals I meant to add hadn't been written, and the old cash cases passed only because a figure isn't a block.
+    - `--check` compared parsed models, not bytes, against the docs' "byte for byte".
+    - No test verified more than one run with a later run blocked.
+  - **Confirmed, low:** the bare-value refusal was untested; the README's narrowed call lacked `--symbol NVDA`.
+  - **Plausible:**
+    - The real calendar validation was never exercised (a stand-in replaced it).
+    - The rule's 2× and $5,000 were code constants, not YAML under E-L4. The PO moved them into E-L4's params.
+    - No test covered the fee in the cost.
+    - A locked universe file ended in a traceback.
+    - The block depended on `--symbol` order.
+    - Nothing tested a drifted calibration cash.
+  - **Unverified, low:**
+    - ARCHITECTURE §15 lacked the calibrate events. Fixed.
+    - Verify ignored bars with negative funds. The PO chose to report them, not refuse them.
+    - A partial cache fails with a misleading engine error. The PO deferred this to P5-01.
+  - Found while fixing: calibrate refused a variant config only after running everything. It now refuses one up front.
+  - 21 planted mutants, one per finding and per new behaviour, are all killed.
+
+### DEC-94 — The baseline on NVDA: the run, the hand audit and the committed cache
+**Status:** ENG · **Affects:** P3-10, P4-04, P5-01, P5-04; DEC-05, DEC-15, DEC-50, DEC-92, DEC-93
+
+- **The run:** `just run NVDA configs/baseline_pmcc.yaml` from a clean tree at `de368fd`, before any P3-10 edit, so the result records `git_dirty: false`; about 9 s. `results/NVDA/baseline_pmcc.json` is 430,751 bytes, and its `data_manifest_hash` (`5ada2fde…`) is the committed cache's.
+  - 35 trades over 875 bars and 26 weeks. NAV goes from $10,000 (provisional, DEC-30) to $13,672.50, ranging $9,890.00 (Mar 30, 16:00) to $15,489.00 (May 14, 15:00). Lowest available funds: $4,978.50 on Jun 8 at 14:00; no bar below zero, no stale mark, no ledger flag.
+  - **Longs:** 3 E-L1 buys and 2 X-L2 rolls: the Sep 18 2026 $135 call (Mar 30), the Dec 18 2026 $174 call (Jun 22) and the Mar 19 2027 $185 call (Sep 21).
+  - **Shorts:** 15 sold (E-S1). 9 closed by X-S1 and 6 by X-S2; none reached the Friday check, expired or was assigned. Net, the short leg lost $490.00, so the gain is the long's.
+  - **G-2 skipped 11 of 26 weeks,** including every week a long was bought (Mar 30, Jun 22, Sep 21), where the new long's debit exceeds the strike gap: all 7 from Jun 22 to Aug 3, and Mar 30, Aug 24, Sep 14 and Sep 21. DEC-91 predicted many G-2 weeks on real data. G-1 never fired.
+- **The hand audit (TEST-STRATEGY §8):** a script outside the repo re-derived four weeks from the raw parquet with polars and its own Black-Scholes (ACT/365 to the 16:00 close, q = 0, r = 0.0371, spot = the bar's TRDPRC_1 per DEC-23), sharing no code with `pmcc`. 122 checks, 0 discrepancies:
+  - **Mar 30:** E-L1 at 10:00. E-T1's 2.5% spread passes on the session's first bar. E-L2 picks Sep 18 (172 DTE; Oct 16 is 200). E-L3 picks $135 at δ 0.796 (next, $130 at 0.822). The fill $41.425 = (40.90 + 41.95) / 2. Then G-2: the $170 short (δ 0.307, the nearest 0.30) gives a strike gap of $35.00 against a debit of $41.425 − $1.325 = $40.10, so it fires.
+  - **Apr 6:** E-S1 sells the Apr 10 $180 at $1.41 (a 5.7% spread; E-S5's gap $45.00 > $40.015). Every bar to Wed 10:00 has δ ≤ 0.60 and mid > 25% of the credit; at Wed 10:00 δ = 0.689, and X-S2 buys it back at $3.875.
+  - **Apr 20:** E-S1 sells the Apr 24 $205 at $1.26. Nothing fires until Thu 14:00, when the mid is $0.165 ≤ $0.315; X-S1 buys it back.
+  - **Jun 22:** X-L2 at 88 DTE (95 on Jun 15). It sells the $135 at $80.05, and E-L1 buys the Dec 18 (179 DTE) $174 at δ 0.801 for $51.25, with funds after of $8,195. G-2 fires on the $217.50 short: a gap of $43.50 against a debit of $49.32.
+  - **Each fill:** the RIC is the cache's, the audit's bid and ask are the raw quote in $0.0001 units, and cash moves by fill × 100.
+  - **Each ledger row checked:** cash, NAV = cash + long MV − short MV, IM = the long's MV, and available funds = NAV − IM (Spec › Reg T). All 137 marks traced in those weeks equal the raw mid.
+  - The script's first pass took spot as the stock's mid and flagged 3 spots; DEC-23 defines spot as TRDPRC_1, which the engine uses. That was the script's error.
+- **INV-01–10 and 13:** the runtime invariants run on every bar, and both runs finished. INV-13 on real data: a second run with `PYTHONHASHSEED=12345` is byte-identical once `drop_volatile` drops `run_timestamp` and `git_sha`.
+- **The PO restated that every fill is at the mid:** the headline runs are at `spread_capture` 0, and the audit checks each fill against the raw mid. Asked whether P5's friction runs (0.25, 0.50) stay, the PO kept them as sensitivity only. Spec › Fill model is unchanged.
+- **What git ignores (DEC-05):** `data_cache/*` except `data_cache/NVDA/`, then `logs/`. So TSLA's partial cache and the probe reports stay on disk and out of git. As ignored files, they don't make a run dirty (DEC-50). Adding a symbol later is one more `!data_cache/{SYM}/` line, and until it's committed, its fetch makes the tree dirty, as it should.
+- **Hooks:** `end-of-file-fixer` skips `data_cache/`, since no tool may rewrite the cache. `data_cache/` has its own `check-added-large-files` entry at 2 MB, like `results/`, and the default 500 KB entry skips both. NVDA's largest files are the Dec 18 chain (1.1 MB) and the manifest (0.8 MB). The cache's JSON has no CR bytes, and `*.parquet` is binary, so a Windows checkout reproduces the hashed bytes.
+- **Tests (13 new):** `tests/unit/test_repo_policy.py` asks `git check-ignore --no-index`, which reads the patterns only, whether NVDA's cache is kept and whether other symbols, probe reports, a look-alike sibling (`data_cache/NVDA.moved/`), logs and credentials are ignored. Units moved aside under `data_cache/NVDA/superseded/` (DEC-46) are committed, as the record. It also checks that results are kept and parses `.pre-commit-config.yaml` for the two hook rules.
+
+### DEC-95 — The quant layer: selectors, gates G-3 to G-5, the quant and ablation configs
+**Status:** ENG; the three items put to the PO were settled at P4-04 (PO, 2026-09-30; last outcome below) · **Affects:** P4-01 to P4-04, P5-01, P5-02, P7-03; DEC-30, DEC-21, DEC-22, DEC-25, DEC-26, DEC-29, DEC-32, DEC-34, DEC-35, DEC-53, DEC-90, DEC-91
+
+- **Where:**
+  - `pmcc/strategy/selectors.py`: `DteRangeExpiry` (E-L2 quant), `CheapestReplacement` (E-L3 quant) and `ExpectedMoveStrike` (E-S3 quant), beside the baseline's.
+  - `pmcc/strategy/gates.py`: `EventRatioGate` (G-3), `VrpGate` (G-4) and `MinPremiumGate` (G-5).
+  - `pmcc/strategy/measures.py` (new): the ATM strike and IV, EM and RV20, read through the `MarketView` on its bar. E-S3, G-3, G-4 and the engine's EM at short entry (X-S3) share it, so the engine's own copy of the EM read is gone.
+  - `registry.py` maps every kind, so `NotBuiltError` is gone from the registry, `pmcc run` and `pmcc calibrate`.
+  - `configs/quant_pmcc.yaml` and `configs/ablations/a1.yaml` to `a5.yaml`.
+- **How each rule reads, within the settled answers:**
+  - **E-L2 quant:** every listed monthly with 120 ≤ DTE ≤ 270, both ends included (Spec: "120–270 DTE").
+  - **E-L3 quant:** eligible calls with 0.70 ≤ δ ≤ 0.90 across those expiries. Extrinsic = the quote's exact mid − max(0, spot − strike) in $0.0001 units, with spot the bar's TRDPRC_1 (DEC-23). The lowest extrinsic ÷ δ wins; ties follow DEC-29's quant row. Each call's delta is rounded to 9 places before it's compared with the band's edges (0.70 and 0.90, as written), and so is the score, as delta distances are (DEC-29). Without a spot, nothing is selected.
+  - **E-S3 quant:** EM is the E-S2 expiry's ATM straddle mid (DEC-25) on the bar the selector runs, which is the freeze bar (DEC-21).
+    - The threshold spot + k × EM is exact, with k read as its decimal (like E-T1's limits), and rounded up to $0.0001.
+    - The pick is the lowest **eligible** strike at or above it, since selectors consider only contracts eligible on the bar (DEC-21). So a listed strike with no quote on the bar is passed over for the next one up.
+    - Without a spot or an EM, nothing is selected on that bar, and the freeze waits for a bar that has both.
+  - **G-3:** the front week is the short's expiry. The next week is the following calendar week's final session (Thursday when Friday is closed). Each week uses its own ATM strike (the listed call strike nearest spot, DEC-25). `n/a` when either ATM IV is unavailable, which includes a next week not listed yet (DEC-32).
+  - **G-4:** front-week ATM IV ÷ RV20 (DEC-26). `n/a` without either. When a close is missing, RV20 is unavailable, so G-4 is `n/a`: that is DEC-26's pending question, and an answer there changes RV20, not the gate. An RV20 of exactly 0 (flat closes) makes the ratio unbounded, so the gate passes; only synthetic flat markets produce it.
+  - **G-5:** the decision bar's exact mid < $0.10, in $0.0001 units.
+  - **IV ratios** are rounded to 6 places before they're compared: the places a result file prints a float to (DEC-50). So a ratio on its threshold but for float noise compares equal to it (0.342 ÷ 0.285 is 1.2000000000000002 in floats, and a G-3 ratio of 1.20 doesn't fire), and the ratio a gate row publishes is the one its status was decided on, which P4-05's `pmcc verify` can re-derive. It was 9 places until the review below.
+- **What the gate log and blotter record:**
+  - **G-3:** both expiries, ATM strikes and IVs, the ratio and `max_ratio`.
+  - **G-4:** the ATM strike and IV, RV20, the ratio and `min_ratio`.
+  - **G-5:** the mid and `min_mid`.
+  - **`n/a` reasons** (in the gate row's `reason`): "no front-week ATM IV", "no next-week ATM IV" and "no RV20".
+  - **Entry notes (DEC-34):** the quant long carries `extrinsic`, `extrinsic_per_delta` and `candidates` (how many calls were in the band); the quant short carries `spot`, `em`, `k` and `min_strike`.
+  - **The baseline's notes are unchanged:** NVDA's baseline, re-run in memory, matches `results/NVDA/baseline_pmcc.json` byte for byte outside the manifest, and its config hash is the same.
+- **The configs (P4-03):**
+  - `quant_pmcc.yaml` extends `_shared.yaml` and adds the six quant rules. Every other rule and the fill model are the shared file's, the same as the baseline's (a test).
+  - **Rule text:**
+    - Names and the three gate conditions are the spec's words, and the tests read them from its tables.
+    - G-3's rationale is the spec's paragraph, word for word.
+    - E-L2's, E-L3's and E-S3's actions restate the spec's quant column; E-S3's `{k}` renders "1.0", as the spec writes it.
+    - The spec gives no reasons for E-L2, E-L3, E-S3, G-4 or G-5, so their rationales were written to DEC-35's rule (say only what the spec does). The review below found E-L3's and G-4's went further (why dividing by delta is right; what the short is sold for), so they, and E-S3's "the move the options market prices", now restate the rule. They go on the Trade rules page (P7-03), so they were put to the PO at handover.
+  - **Ablations:**
+    - A1 replaces E-L2 and E-L3 with the baseline's rules, and A2 replaces E-S3 with the baseline's, word for word (a test holds them equal).
+    - A3, A4 and A5 remove G-3, G-4 and X-S1.
+    - Run IDs are `quant_pmcc--a1` to `--a5` (ARCHITECTURE §11).
+  - **`pmcc calibrate`** with no `--config` now runs both strategies, still only on NVDA until QQQ and TSLA are cached (DEC-15). The committed provisional block (NVDA's baseline, DEC-30) is unchanged and is reproduced only by `pmcc calibrate --symbol NVDA --config configs/baseline_pmcc.yaml --check`; with both strategies the rule gives another value (below).
+- **Put to the PO: the provisional starting cash with quant built.** DEC-30 took the provisional value from NVDA's baseline alone because `quant_pmcc` wasn't built. It is now, and quant's first long on NVDA, the Aug 21 2026 $115 call (`NVDAH212611500.U^H26`) on Mar 30 at 10:00, costs $5,630.00 against the baseline's $4,142.50. E-L4's rule then gives 2 × $5,630 = $11,260, rounded up to $15,000. `pmcc calibrate --symbol NVDA --check` (both strategies) says so and fails against the committed $10,000. Nothing was recalibrated: a new value changes NVDA's committed baseline result, so it is the PO's call. At $10,000, E-L4 blocks no entry in quant or A1–A5 on NVDA (the review's in-memory runs).
+- **Put to the PO: G-5 can fire only on a locked quote.**
+  - E-T1 passes a short only if its spread is at most 10% of mid. Quotes are in whole cents, so a spread is at least $0.01, and 10% of mid ≥ $0.01 means mid ≥ $0.10, which is G-5's threshold.
+  - A short with a mid under $0.10 therefore passes E-T1 only when BID = ASK. Otherwise G-1 skips the week before G-5 is evaluated, so G-5's weeks show up as G-1.
+  - Built as specified. The synthetic `tiny_premium` market uses a locked quote to make G-5 fire.
+- **Found in the synthetic market:** Fri Sep 18 2026 is a third Friday, which the synthetic market prices at the monthly IV (20%) against the weeklies' 40%. So G-3 fires in week 2 of every quant scenario on the default surface. It's a fixture effect, noted in TEST-STRATEGY §5, and the gate scenarios assert on week 1.
+- **Quant on NVDA:** an in-memory run (nothing written) completes the window with every runtime invariant held. Running and reviewing all six configs is P4-04.
+- **Tests:** `tests/unit/strategy/test_quant_selectors.py` and `test_quant_gates.py` (every boundary, tie and missing input, on the stub view, which now serves close trades for RV20), `tests/unit/config/test_quant_config.py` (the spec's thresholds, names, gate conditions and G-3 paragraph; the config-diff test), `tests/unit/strategy/test_registry.py` (the quant strategy and each ablation build, each ablation as quant but for its layer), and `tests/scenario/test_scenario_quant.py`: G-3, G-4 and G-5 each skip week 1 of their market, `n/a` in a full run (`next_week_unquoted`, new), G-1 leaving the quant gates `not_evaluated`, the quant entries' notes, A3 selling the event week, and quant plus A1–A5 running clean on `random_walk`. `tiny_premium` was rebuilt around a locked quote (above).
+- **Outcome:** 2026-09-30 — P4-01 to P4-03's done-when lines hold.
+- **Outcome:** 2026-09-30 — an adversarial review of P4-01 to P4-03 (4 reviewers, 2 skeptics per finding): 17 findings, 13 unique. The 12 most severe were verified: 10 confirmed, 1 plausible, 1 refuted; 1 low one went unverified. Every confirmed and plausible finding, and the unverified one, is fixed:
+  - **Confirmed, medium:**
+    - The provisional starting cash with quant built (above): DEC-95 and DEC-93 said the block stays and that the symbols alone narrow calibrate, and nothing went to the PO. Now put to the PO, and both entries corrected.
+    - DEC-29's quant tie order wasn't pinned: the spread test used one expiry and the expiry test identical rows, so putting the expiry before the spread, or the strike before the expiry, passed. Two tests now cross expiries.
+    - The 9-place rounding of the score and the ratios was untested: every boundary input was exact in floats. Tests now use 0.50 ÷ 0.90 against 0.45 ÷ 0.81 (5/9 both, one bit apart in floats), 0.342 ÷ 0.285 and a G-4 ratio of 1 − 10⁻¹².
+    - The EM test couldn't tell a neighbour: its put chain had only the ATM strike, so an ATM taken from quoted calls, or from the puts, passed. Two tests now add a quoted $99 straddle and a nearer $100.50 put.
+    - E-L3's and G-4's rationales went beyond the spec (above).
+  - **Confirmed, low:**
+    - E-S3's rounding up wasn't pinned: the only fractional threshold ended in .75, which `round` also takes up. A threshold of 100.750025 now needs the ceiling.
+    - `candidates` and G-4's `front_atm_strike` weren't asserted: an out-of-band eligible call and G-4's full values now are.
+    - The scenario harness crashed on an ablation with overrides (it copied only two files, so `extends: ../quant_pmcc.yaml` couldn't resolve), and its docstring said it ran only the baseline or quant. It now copies the configs tree, and A3 with X-S1 removed runs as a scenario.
+    - P4-01's tick and DEC-95 said the band's edges were rounded; each call's delta is.
+    - `tests/scenario/test_calibration.py` still said quant was 'not built until P4-03'.
+  - **Plausible, low:** DEC-92 and DEC-93 still described `NotBuiltError` and a failing default calibration in the present tense. Both are annotated.
+  - **Refuted:** that the E-S3 reading (passing over an unquoted strike) should have been put to the PO. It applies DEC-21 and is recorded here as ENG.
+  - **Unverified, low, fixed:** a G-3 or G-4 ratio was compared at 9 places but a result prints it at 6, so a firing 1.2000005 would be published as 1.2. Ratios are now compared at 6 (above), with a test either side.
+  - **Mutants:** the 10 reviewers' survivors (both tie orders, the unrounded score and ratio, 9-place ratios, `round` for the ceiling, `candidates`, G-4's strike, an ATM from quoted calls or from the puts) now fail.
+- **Outcome:** 2026-09-30 — the three items put to the PO, settled at P4-04 as recommended:
+  - **Starting cash:** recalibrated to $15,000, provisional (DEC-30).
+  - **G-5 fires only on a locked quote:** kept as the spec defines it, and disclosed on the Trade rules page. The NVDA runs bear it out: G-5 never fired in quant or A1–A5, and the lowest short mid on a decision bar was $0.315 (Apr 6). The disclosure is G-5's rationale in `configs/quant_pmcc.yaml`, which the Trade rules page renders (DEC-52): "Quotes are in whole cents, so below $0.10 a short's spread is wider than E-T1's 10% of mid unless its bid equals its ask. This gate therefore fires only on such a locked quote; otherwise G-1 skips the week first." The text names E-T1's threshold, so a test holds the claim to both params: G-5's `min_mid` × E-T1's `short_max_spread` must be exactly one cent, and the rationale must print E-T1's percentage (`test_config_g_5_rationale_locked_quote_claim_holds_at_e_t1s_threshold`). Quant's `config_hash` changes; its results are first written at P4-04, after this.
+  - **The five rationales the spec doesn't give** (E-L2, E-L3, E-S3, G-4, G-5): approved as written, G-5's with the sentence above added.
+- **Outcome:** 2026-09-30 — P4-04: quant and A1–A5 run on NVDA and reviewed with the PO.
+  - **Runs:** `results/NVDA/` holds `baseline_pmcc.json` (re-run at $15,000) and `quant_pmcc.json`, `quant_pmcc--a1.json` to `--a5.json`, each from a clean tree at `90753bb` (`git_dirty: false`). Every run held the runtime INV-01–10. INV-13 held on quant: a second run in a fresh process with another hash seed was byte-identical once `run_timestamp` and `git_sha` were dropped. The trades and gate log of each run are the same as at $10,000 (the review's first runs), and every ledger NAV is $5,000 higher.
+  - **End NAV from $15,000** (short-leg net: every short trade's cash): baseline $18,672.50 (−$490.00), quant $18,303.50 (−$1,651.50), A1 $18,597.50 (−$565.00), A2 $18,381.00 (−$1,574.00), A3 $18,426.50 (−$1,528.50), A4 $18,049.00 (−$1,906.00), A5 $18,373.50 (−$1,581.50). Lowest available funds: quant $8,330.00, A4 $7,898.00; no bar below zero in any run.
+  - **Gates:** quant skips 18 of 26 weeks, G-4 first 11 times, G-2 5 and G-3 2, and sells 8 shorts. G-4 fires 13 times in all, 4 of them at a ratio between 0.96 and 0.997. G-1 never fires in any run. G-5 never fires: the lowest decision-bar mid is $0.315 (Apr 6). Removing G-4 (A4) costs $254.50; removing G-3 (A3) gains $123.00.
+  - **Exit mix:** quant X-S1 4, X-S2 4; A4 X-S1 11, X-S2 7, X-S3 1; A5 (no X-S1) X-S4 4, X-S2 4. Half of quant's shorts are closed by X-S2 in rallies (Mar 31, May 7, May 14, Aug 5).
+  - **E-T1 retries:** every short decides on its week's first bar (G-1's `bars_checked` is 1 in all 26 weeks of every run). Two longs wait one bar: the Oct 16 $160 call on May 26 and the Nov 20 $150 call on Jul 20, whose 10:00 spreads were 3.81% and 3.18% of mid against E-T1's 3%, both filling at 11:00. No long waits for a later session. R-14 (quant's long keeps failing E-T1) didn't occur: its fills' spreads were 0.9–2.5%.
+  - **The quant long rolls as expected:** E-L3 picks the shortest monthly at or above 120 DTE each time (Aug 21 at 144 DTE, Oct 16 at 143, Nov 20 at 123, Jan 15 at 144), because extrinsic grows with time, and the deepest call in the band (δ 0.89–0.90), because extrinsic ÷ δ falls as δ rises. X-L2 rolls it after 8, 8 and 5 weeks: 3 rolls against the baseline's 2. Quant's long leg made about $790 more than the baseline's (A1), and its short leg lost about $1,160 more. G-2 fires in 5 weeks of June and July: the $61.775 Oct 16 long makes E-S5's net debit about $60, more than the strike gap once NVDA fell.
+  - **For P5-05:** NVDA's May 21 2027 monthly returned no data (TS.Intraday.UserRequestError.90001) for every strike fetched. It was 270 DTE on Aug 24, inside E-L2's range, but not a pick there, since the shortest eligible expiry wins.
+
+### DEC-96 — Export and verify: result models at schema 2, JSON Schema, `pmcc verify`, `pmcc export`
+**Status:** ENG · **Affects:** P4-05, P4-06, P5-03, P6, P7; DEC-50, DEC-51, DEC-54, DEC-79
+
+How P4-05 builds the results contract (ARCHITECTURE §12). None of it changes what a run computes; the PO's answers it rests on are DEC-54's.
+
+- **Models:** `pmcc/export/base.py` (the strict frozen `Model`, `Dollars`, the scalar value maps, `SCHEMA_VERSION`), `models.py` (the run's file), `analytics_models.py` (a run's P6 sections, the per-symbol files `robustness`, `fill_check` and `coverage`, the universe files `pooled`, `headline` and `suitability`), `site_models.py` (`index.json`, `rules.json`).
+  - **Schema version 2:** a result gains `summary` (always) and `cycles` and `attribution` (full detail, null until P6), and its blotter, ledger and gate log are null for a summary run (DEC-54). Every file carries `schema_version`, and a model refuses another.
+  - **The P6 models are shapes, not definitions:** their fields follow Spec › Analytics and UI-SPEC §6's panels, so the site is typed against every file it will read, but how each number is computed is DEC-60 to DEC-64 and DEC-76, asked at P6. P6 may reshape a model when it builds it; the regenerated schema then shows the site what changed (ARCHITECTURE §16).
+  - `RUNTIME_INVARIANTS` (`pmcc/engine/invariants.py`) names what every run checks; a summary records each as held, since a run that breaks one writes nothing (DEC-49).
+- **JSON Schema** (`pmcc/export/schema.py`): pydantic's, in serialization mode, so it describes files as written. Dollars are `{"type": "number"}` (canonical JSON prints them as 4-dp numbers). A result's `config` is `RunConfig`'s own schema: the `field_serializer` that dumped it is gone, and `results.to_bytes` puts the config's JSON dump in place, as its hash covers it. Every field is required, defaults included (`json_schema_serialization_defaults_required`), since every file writes every field, so the site's types have no optional fields. One schema file per model, sorted keys, LF.
+- **`pmcc verify`** (`pmcc/export/verify.py`) validates with the pydantic models, so it needs no JSON Schema validator (no new dependency) and a file that passes matches the published schema. Every file under `results/` must be one the pipeline writes where it writes it (`layout`). A run's file must also:
+  - be canonical, byte for byte (`canonical`);
+  - sit at its manifest's symbol and run ID (`manifest`);
+  - come from a clean tree (`git_dirty`);
+  - hash its config to `manifest.config_hash` (`config_hash`);
+  - carry the rule text its config renders (`rule_text`, DEC-52);
+  - record every runtime invariant as held (`summary`).
+  A full run also holds the invariants re-derived from its rows (`rederive.py`). The re-derivation has its own arithmetic, not the engine's, so a bug there can't hide:
+  - **INV-01:** each row's Cash Δ from fill, quantity and fee, and cash walked from the starting cash bar by bar;
+  - **INV-02:** NAV summed from cash and the marks;
+  - **INV-03:** Limit = the audit quote's mid, and Fill = mid ± capture × half-spread, both rounded half-even;
+  - **INV-05, INV-10:** strike, expiry and quantity per bar;
+  - **INV-06:** E-S5 against the long's entry fill, and the audit's recorded terms compared by value;
+  - **INV-07:** the bar's ET date against the short's expiry;
+  - **INV-08:** the audit's funds ≥ 0, and, with no stock held, equal to cash − short call MV (NAV − IM, since the long's requirement is its whole value);
+  - **INV-09:** every blotter, outcome and gate rule ID in the config.
+  At most three findings print per check and file, then a count.
+- **`pmcc export --results results --out web/public/data`** (`pmcc/export/site.py`):
+  - refuses results that fail verify, except `git_dirty`: a local preview works on dirty results and names them unpublishable, while CI's verify step keeps them off the published site;
+  - rebuilds the export directory whole (after refusing one it didn't write), writes the schemas, and copies every results file byte for byte;
+  - derives `index.json` and `rules.json`:
+    - **index:** per symbol, its runs with detail, sections, path, data source, config hash and commit, and the analytics files present; plus the window, r and starting cash, which every run must share, and the exporter's version;
+    - **rules:** per run ID, the config it ran with (one config per run ID across symbols, or export refuses), its params as dumped, its rendered text, and a variant's changes against its strategy (`added`, `removed`, `replaced`, `params`, `text`).
+  - Neither file is committed under `results/` (ARCHITECTURE §12 had listed them there): derived at export, they can't disagree with the runs.
+  - `--schema-only` writes just the schemas, which the site's types need, so `just check` needs no results.
+- **Logging:** `export.done`, `export.abort`, `verify.done`, `verify.failed`; `run.done` gains `detail`.
+- **Outcome:** 2026-09-30 — on dirty-tree runs of NVDA's baseline, quant and A4 at schema 2, verify found only `git_dirty` (one INV-06 false positive, the audit's `"45.0000"` against a Decimal read back as `45`, fixed by comparing values). Every hand-corrupted copy fails on the invariant it targets and no other (`tests/scenario/test_verify.py`).
+- **Outcome:** 2026-09-30 — NVDA's seven results re-run from the code commit `69c01b2` on a clean tree (DEC-59). The baseline's and quant's blotter, ledger, gate log, starting cash and rule text are identical to P4-04's (end NAV $18,672.50 and $18,303.50); the ablations are summaries of 23 KB. `pmcc verify results/` passes all 7, and `pmcc export` and `npm run build` run on them.
+- **Outcome:** 2026-09-30 — An adversarial review of P4-05 and P4-06 (4 reviewers, 2 skeptics per finding) confirmed 7 findings and rated 5 plausible; all 12 are fixed, with the clear ones of the 22 left unverified:
+  - **Export's directory guard (high):** `_clear` treated any directory holding `index.json` or a `schema/` folder as an earlier export and ran `rmtree` on it, and `--schema-only` planted `schema/` anywhere, so `pmcc export --schema-only --out .` then `pmcc export --out .` would have deleted the repo root. Now both refuse a directory holding any file an export doesn't write (`check_export_dir`), and an `--out` that is a file.
+  - **Verify judges a row by what it does:** the blotter is walked holding each position, so a row opening a short must be an E-S1 sale that satisfied E-S5, and a row opening a long an E-L1 buy, whatever label it carries (INV-06, INV-08). INV-08's exact funds check now runs whenever no stock is held at the entry, so on X-S5's cover bar too. A new `positions` check holds the ledger's legs and stock to the rows booked. INV-03's exemption is only X-S5's stock sale, at the strike of the call assigned on the same bar. A row missing a value a check needs is a `rows` finding, not a crash. Analytics files must be canonical and under their own symbol, and a symbol with analytics files but no runs is indexed.
+  - **`report` is no longer inherited (DEC-54):** otherwise P5-02's sensitivity variants would have published full detail.
+  - **Tests:** the review's surviving mutants now fail: E-S5's terms, the change kinds `replaced`, `params`, `text` and `added`, INV-03 with friction, the synthetic banner's absence, the Data page on github.io, the remembered symbol and the symbol select, and more. The committed NVDA results verify unchanged, since no fix changes what a run writes. 40 new pytest tests (1,872) and 40 new Vitest tests (151).
+
+### DEC-97 — The web scaffold: packages, tokens and shell, types, loader, routes, tests
+**Status:** ENG · packages approved (PO, 2026-09-30) · **Affects:** P4-06, P4-07, P4-08, P7; DEC-03, DEC-70 to DEC-74, DEC-78
+
+- **Packages (PO, 2026-09-30, approved as listed):**
+  - runtime: react, react-dom, react-router-dom (HashRouter), `@radix-ui/react-select` with clsx and tailwind-merge (shadcn/ui's Select and its `cn`), and `@fontsource` Space Grotesk, Inter and JetBrains Mono (DEC-72);
+  - dev: vite, `@vitejs/plugin-react`, typescript, tailwindcss with `@tailwindcss/vite`, eslint with `@eslint/js`, typescript-eslint and eslint-plugin-react-hooks, vitest with jsdom and `@testing-library/react` (and its `dom` peer), and json-schema-to-typescript.
+  - React's type declarations, `@types/react` and `@types/react-dom`, came with React though the list didn't name them; the review found them, and the PO approved them on 2026-09-30.
+  - ECharts and TanStack join at P7, Playwright at P4-08. `class-variance-authority` and an icon package weren't needed. No `@types/node`: the tests read files through Vite (`?raw`, `import.meta.glob`).
+  - Node 22 is pinned by `web/.nvmrc` and `engines` (DEC-58); `package-lock.json` is committed.
+- **Look:**
+  - `tokens.css` holds `theme.py`'s values unchanged, one theme (DEC-03); the contrast test holds each to `theme.py` (Vitest alone may read the repo root for it; the dev server keeps Vite's default, `web/`). Tailwind's own palette and font stacks are switched off.
+  - `shell.css` ports `theme.py`'s `PAGE_CSS` with a `pm-` prefix (the commentary grid and the Plotly menu have no counterpart here and aren't ported; the hero figure's 680 px floor, `HERO_MIN_WIDTH`, is) and the ten width classes written out (the contrast test holds them, and the breakpoints, to `tokens.ts`; DG §6). Two additions: the nav wraps, since seven pages don't fit a phone on one line (the baseline had two), and the manifest footer, which `PAGE_CSS` never had, takes the panel chrome's surface and hairline and muted mono type.
+  - Tailwind's utilities read the tokens by name (`index.css`), with radius and shadow reset.
+- **Types:** `npm run gen:types` (`scripts/gen-types.mjs`) compiles each `public/data/schema/*.schema.json` into `src/types/generated/` (gitignored), dropping pydantic's per-field titles so fields get plain types, and writes `version.ts` with the schema version. `typecheck`, `test`, `build` and `dev` run it first.
+- **Data:** `data/loader.ts` fetches `data/index.json` and each run relative to the document, caches runs by path, and refuses another schema version. `IndexContext` loads the index once, and `useRun` finds a run by symbol and run ID (missing → "No results for …").
+- **Pages:** each renders UI-SPEC §6's panels as placeholders that name the item building them. The strategy page chooses its optional panels from the run's `report.sections` (DEC-54), and panels are numbered at render time. The Data page shows "Data connection required" on github.io. The footer shows each loaded run's manifest, its commit linked to `https://github.com/Jason-Dorman/pmcc-strategy`.
+- **Tests (Vitest, `css: true` so a stylesheet read `?raw` has its text):**
+  - token lint (no hex, `rgb()`/`hsl()`, font name, px value or arbitrary Tailwind value outside `src/theme/`, with a guard that every file it reads has text);
+  - contrast (text ≥ 4.5:1 on each ground, marks ≥ 3:1, type on amber);
+  - formatters, the loader, and every route, with its banners and footer.
+  - ESLint holds complexity to 10; a planted complexity-11 function was refused, then removed.
+- **Outcome:** 2026-09-30 — `npm run build` builds from NVDA's exported results (dirty-tree runs of baseline, quant and A4), and the built `dist/` names no Google Fonts, LSEG, refinitiv or `localhost:9000` host (it does carry the footer's github.com links, library error URLs and r's FRED source, which the dist guard must allow). Headless Edge screenshots of the served build at 1500 and 1366 px show the terminal layout. Headless Edge won't lay out narrower than 496 px, so the 390 px check loads the page in a 390 px iframe; that found the nav overflowing, now wrapping. P4-08's Playwright captures the four widths properly.
+
+### DEC-98 — Pages deploy: the CI `web` and `deploy` jobs and the dist guard
+**Status:** ENG · **Affects:** P4-07, P4-08, P8-02; DEC-72, DEC-73, DEC-74, DEC-79
+
+- **`web` job** (ARCHITECTURE §14): from a clean checkout on Ubuntu,
+  - `uv sync --frozen`, then `pmcc export --out web/public/data/`, which verifies the committed results before writing anything (DEC-96), so CI never builds a site from results that fail verify;
+  - Node from `web/.nvmrc` (`actions/setup-node`, npm cache keyed on `web/package-lock.json`), `npm ci`, then `lint`, `typecheck` (which runs `gen:types` from the exported schema, INV-14), Vitest, `build` and the dist guard;
+  - on a push to `main` only, `actions/upload-pages-artifact` uploads `web/dist`.
+  - The lockfile was written on Windows, and it holds the Linux x64 native packages Vite, Tailwind and lightningcss need (checked), so `npm ci` works on the runner.
+- **`deploy` job:** on a push to `main` only, after `python` and `web` pass; `actions/deploy-pages` to the `github-pages` environment. It is the only job with `pages: write` and `id-token: write`; the workflow's default stays `contents: read`. The Pages source is GitHub Actions (P0-02).
+- **What it deploys:** the committed results, real NVDA, so no synthetic banner (PO, DEC-74). `base: './'` with HashRouter (DEC-73) serves the site under `/pmcc-strategy/`, and a deep link like `#/quant/NVDA` survives a refresh since the server only ever sees the site's root.
+- **Dist guard** (`web/scripts/dist-guard.mjs`, `npm run guard`; `just web-build` runs it too): fails on `localhost:9000`, an LSEG or Refinitiv URL, or a Google Fonts host anywhere in `web/dist`, and on an empty build. It matches hosts, not words (the results say `"data_source":"lseg"`), so the footer's github.com links, r's FRED source and React's library URLs pass. A Node script with no dependencies, tested by Vitest (`dist-guard.test.mjs`).
+- **The site's URL:** <https://jason-dorman.github.io/pmcc-strategy/>, in the README.
+- **Test:** `tests/unit/test_ci_workflow.py` holds the export before the site's checks, the order of those checks and the guard, Node from `.nvmrc`, the upload and deploy on `main` pushes only, and `pages: write` on the deploy job alone.
+- **Outcome:** 2026-09-30 — deployed from `c040e13`, checked live on 2026-09-30 in Chromium: `#/quant/NVDA` survives a reload, the pages show the committed NVDA results (the gate log's 26 weeks, the footer's commit `69c01b2`, source `lseg`) with no synthetic banner, no console error and no request to another origin, and the Data page says "Data connection required." on github.io.
+
+### DEC-99 — The Playwright smoke test (INV-15)
+**Status:** ENG · **Affects:** P4-08, P7, P7-07, P7-08, P8-02; DEC-97, DEC-98
+
+- **The package:** `@playwright/test` (Node, in `web/`; never the Python package, CLAUDE.md), in the PO's approved list as "Playwright at P4-08" (DEC-97). CI installs Chromium with its system libraries (`npx playwright install --with-deps chromium`); locally `npx playwright install chromium` once.
+- **What it runs on:** the built site, `web/dist` served by `vite preview` on 127.0.0.1 (`web/playwright.config.ts`), so it tests what Pages serves. `just e2e` exports, builds and guards first.
+- **What it checks** (`web/e2e/smoke.spec.ts`), for `#/` and every route for NVDA (compare, baseline, quant, rules, a rule, methodology, universe, data):
+  - no console error and no uncaught exception;
+  - no request to any origin but the site's own;
+  - the manifest footer is the page's `contentinfo` landmark, and no panel is still loading;
+  - at 390, 1100, 1366 and 1600 px, the page doesn't scroll sideways, and a full-page screenshot is saved (`web/test-results/screenshots/`, uploaded by CI as the `screenshots` artifact, even when the test fails, for P7-07 and P7-08's review);
+  - plus: `#/quant/NVDA` survives a reload, and real results show no synthetic banner.
+- **Placement in CI:** after the dist guard and before the Pages upload, so a failed smoke test blocks the deploy.
+- **Type-checked:** `web/tsconfig.e2e.json` (strict, DOM lib), referenced from `tsconfig.json`; ESLint lints it with the rest.
+- **Found by it:** `PageFrame` put the footer inside `<main>`, where a `<footer>` isn't the page's `contentinfo` landmark (jsdom doesn't apply that rule, so the route tests passed). The footer now follows `main`.
+- **Proved:** a planted `console.error` and a request to another origin, in a scratch build, failed it; screenshots at 390 px show a true phone layout, which headless Edge couldn't give (DEC-97).
+- **Outcome:** 2026-09-30 — 11 tests pass locally in about 11 s.
+- **Outcome:** 2026-09-30 — green in CI: the PO's push of `2dc3aa2` deployed, and Pages deploys only after the `python` and `web` jobs pass, the `web` job running INV-14's typecheck and INV-15's smoke test before the upload; the live site carries that commit's footer (a `contentinfo` landmark outside `main`, checked in Chromium on 2026-09-30).
+
+### DEC-100 — Sensitivity variants, the run matrix and `pmcc batch`
+**Status:** ENG · two scope answers SETTLED (PO, 2026-09-30); the full batch run at P5-04 (2026-10-01); P6 fills the stages and regroups the sensitivity file (2026-10-01, last outcome) · **Affects:** P5-02, P5-03, P5-04, P5-05, P6-01, P6-05, P6-06, P6-08; DEC-16, DEC-31, DEC-53, DEC-54, DEC-58, DEC-80
+
+- **PO answers at P5-03 (2026-09-30):**
+  - **The universe files wait for P6.** Every field of `universe/pooled.json`, `headline.json` and `suitability.json` is a P6 analytic whose definition is still an ASK (DEC-60, DEC-61, P6-08). So the batch has its universe-level stage now, run last, but writes no universe file; P6-01, P6-05 and P6-08 add theirs. P5-03's done-when is amended: 48 run files, plus each symbol's `coverage.json`.
+  - **The batch writes `{SYM}/coverage.json` now** (HR-8), so P5-05's completeness review reads it from results.
+- **`configs/sensitivity.yaml`** (P5-02): a `variants` list, each entry a strategy written as an ablation file is, but inline: `id`, `name`, `extends` (a strategy file, relative to `configs/`), `report: {detail: summary}` (DEC-54), and `fill_model` or `overrides` (DEC-53). A variant is composition, never a flag.
+  - **Friction:** `{baseline,quant}_pmcc--sc025` and `--sc050` patch `fill_model.spread_capture`.
+  - **Timing:** `baseline_pmcc--t1` … `--t7` replace E-T1 with `fixed_bar_trigger` (DEC-31). Their shared text is YAML aliases set in t1. YAML merge keys (`<<:`) aren't used, since the strict reader (DEC-86) doesn't construct them.
+  - **Grid:** `quant_pmcc--k075` and `--k125` (E-S3 `k`), `--g4r090` and `--g4r110` (G-4 `min_ratio`), `--g3r110` and `--g3r130` (G-3 `max_ratio`), each a `params` patch on one rule.
+- **Loading** (`pmcc/config/matrix.py`):
+  - `load_sensitivity` resolves each entry with `resolve_inline` (`pmcc/config/extends.py`), as a file in `configs/` would be, then validates it as `load_strategy` does (`load_inline`).
+  - A variant must extend a file, and its run ID must be its strategy's ID, `--`, a suffix, since the manifest's `strategy_id` is the run ID's part before `--`.
+  - `strategy_configs` is every run's strategy in ARCHITECTURE §11's order (strategies, ablations a1–a5, then the sensitivity file's order), refusing a run ID given twice; `run_matrix(universe)` adds the window and r. 24 runs per symbol.
+- **`pmcc batch`** (`pmcc/batch.py`, P5-03):
+  - **Jobs:** one `SymbolJob` per universe symbol carries everything its worker needs (cache, identifiers, calendar, r, the 24 configs, the starting cash, the stamp, the output directory). A worker reads no config or git state, so tests need no monkeypatch inside it.
+  - **Processes:** each symbol has its own single-worker `ProcessPoolExecutor`, at most one per CPU at once, so a worker that dies (an out-of-memory kill) breaks only its own symbol; a shared pool would fail every symbol with `BrokenProcessPool` (found by the review). Spawn on every OS, never fork: Windows and Linux then run alike (DEC-58), and no worker inherits the parent's polars threads, which forking can deadlock.
+  - **Per symbol:** load and price once for the runs (`Market.prepare`), then each config through `run_market` and `write_result`, exactly as `pmcc run` does; the coverage file then loads and prices the cache again, as the fetch summary does (a second ~1.4 s for NVDA). A test holds a batch run byte-identical to `pmcc run`'s; on NVDA the seven committed runs came out identical but for `run_timestamp`, `git_sha` and `git_dirty`.
+  - **Failure isolation:** a run that raises a cache, engine, value or OS error writes nothing and is reported (`run.abort`); the symbol's other runs go on. A symbol whose cache won't load is reported (`batch.symbol.abort`), and so is a worker that raises anything else or dies; its report says that runs finished before then may already be written. A coverage file that can't be written fails its symbol (`batch.coverage.abort`). The command prints each symbol's count and every failure, and exits 1 if anything failed.
+  - **Universe-level stage:** `UNIVERSE_WRITERS`, empty until P6, run in the parent after every symbol, and only if nothing failed: a pooled figure over part of the universe would be wrong. Its signature is a starting point, not a contract: P6-08's suitability screen needs each symbol's cache, and P6-06/P6-07's per-symbol files need a per-symbol stage in the worker, so P6 widens what the stage receives or adds that stage.
+  - **The stamp:** one per batch: `provenance()` once in the parent, and the batch's start time as every run's `run_timestamp` (excluded from INV-13, DEC-50).
+  - **`--universe`:** kept, since the spec's CLI names it, but optional, and anything other than `configs/universe.yaml` is refused, so every run's starting cash comes from there (DEC-30). Also `--cache` and `--out`, as `pmcc run` has.
+  - **Logging (DEC-80):** the parent logs to `logs/batch_{timestamp}.jsonl`. Each worker calls `configure_logging("batch", suffix="_worker{pid}")` from the CLI's pool initializer, so processes never append to one file. `run_batch` requires the initializer: without it structlog's default console renderer can't encode a traceback on a Windows code page, so a failed run's log line would kill its worker (found while testing the review's fixes). New events: `batch.symbol.done`, `batch.symbol.abort`, `batch.coverage.abort`, `batch.done`.
+  - **NVDA:** 24 runs and the coverage file in about 18 s.
+- **`{SYM}/coverage.json`** (the `Coverage` model, which gains `iv_priced`):
+  - `rows`: per unit kind, contracts requested, answered and unanswered, and the share of session bars with a valid mid, as the fetch summary counts them (DEC-16).
+  - `iv_priced` and `iv_failures`: session bars with a valid quote before the expiry close, and those whose IV failed, by reason (`below_floor`, `above_cap`, `no_convergence`, `no_spot`). NVDA: 31,966 + 437 of 390,652, matching DEC-16.
+  - `stale_mark_rate`: held positions' marks carried stale ÷ held positions' marks, over every bar of the full-detail runs' ledgers (the two strategies); null if nothing was held. NVDA: 0.
+  - `unavailable_fields`: fields a unit asked for that never came back (DEC-13).
+  - Written by the symbol's worker after its runs, whole (`replace_file`), as canonical JSON; `pmcc verify` checks it.
+- **Tests:**
+  - `tests/unit/config/test_sensitivity_config.py`: the 24 IDs in order; each friction, timing and grid variant against its strategy, rule by rule; the loader's refusals.
+  - `tests/unit/strategy/test_trigger.py`: the fixed bar hour by hour, the long on any bar, a half day, a UTC `now`, the spread test.
+  - `tests/scenario/test_scenario_timing.py`: the shipped t1, t2, t3 and t7 on scenario markets.
+  - `tests/unit/test_cli_batch.py`: two synthetic symbols through the real processes, as the justfile calls it (`--universe configs/universe.yaml`) and under `--out`, giving 48 runs and two coverage files that pass `pmcc verify` and match `pmcc run`; a missing symbol; the coverage file mapped field by field from the fetch summary, and a coverage write failing its symbol; the stale-mark rate; the universe stage; and in one batch a failed run, a worker that raises and a worker that dies, each isolated to its symbol.
+  - `tests/conftest.py`: an autouse guard fails any test that changes a file under the repo's `results/` or `configs/` (a stale stub test once ran the real batch from the repo directory over the committed results; restored from `HEAD`, nothing lost).
+  - A bad sensitivity variant's load error names the variant.
+- **Review:** 2026-10-01 — an adversarial review (4 reviewers, 2 skeptics per finding) of P5-01 to P5-03 found 23 unique findings and verified the 12 most severe: 12 confirmed, none refuted, all fixed. In code: a coverage write failure now fails the batch; a dying worker no longer breaks the other symbols; `pmcc fetch` reports a universe-file refusal as a message, not a traceback. In tests: a failed run, a worker crash and death, the coverage mapping, `--out`, the accepted `--universe` and DEC-31's "the selector runs at bar k" (the short's `selected_at`). In docs: the order for bringing QQQ or TSLA back, DEC-31's header, three-symbol passages in the spec and the build plan, and README's calibrate lines. Of the 11 not verified, the cheap ones are fixed too (the double load disclosed, DEC-31's G-1 wording, the variant error, the repo guard, `pmcc run`'s provisional message, the timing action text pinned whole, the P6 stage's contract, P5-01's waived need). Two are put to the PO: stale run files left in `results/` when the matrix changes, and a symbol cached in part (DEC-93).
+- **Outcome:** 2026-10-01 — **the full batch (P5-04).** `just batch` from a clean tree at `bcb6bbe` (nothing modified or untracked outside ignored paths), 30 s wall clock: 24 of 24 runs and `coverage.json` written, every run `git_dirty: false`; `just verify` passed all 25 files. The universe is NVDA alone (DEC-15), so this is every symbol and run.
+  - **The seven committed runs** came out identical but for `run_timestamp` and `git_sha` (compared with `drop_volatile`'s fields removed), and every run's `data_manifest_hash` is the committed cache's (`5ada2fde…`), so NVDA's raw cache, committed at P3-10 (DEC-05), is unchanged and goes with these results as it is.
+  - **Review notes**, end NAV from $15,000 (the 17 new runs are summary detail, so the figures come from an in-memory re-run that writes nothing; P6 puts the metrics in results): friction: baseline $18,571.79 at 0.25 and $18,471.00 at 0.50 ($18,672.50 at 0), quant $18,117.05 and $17,930.50 ($18,303.50), the same trades. Timing, the short decided only at bar k: t1 (10:00) $18,672.50, identical to the baseline, since all 26 of its weeks decide on the first bar; t2 $18,019.00, t3 $17,788.00, t4 $19,149.50, t5 $19,190.50, t6 $19,332.50, t7 $19,026.50, where t4–t7 sell 14 shorts, not 15, as G-2 fires one more week. Grid: k 0.75 $18,489.00, k 1.25 $18,330.00; G-4 ratio 0.90 $18,005.00 (13 shorts), 1.10 $19,163.50 (7); G-3 ratio 1.10 $19,103.00 (3 shorts, G-3 firing 9 weeks), 1.30 $18,303.50, identical to quant: raising G-3 from 1.20 to 1.30 changes no week's outcome.
+  - **Milestone M3** (all results JSON written and verified) reached 2026-10-01.
+- **Outcome:** 2026-10-01 — **P6 fills the stages** (DEC-101): each symbol's worker writes
+  `{SYM}/robustness.json` after `coverage.json` (P6-06), and the universe stage writes
+  `universe/headline.json` (P6-01) and `universe/pooled.json` (P6-05). The stage now receives a
+  `UniverseStage` (the outcomes, the output directory and the bootstrap seed), and a writer that
+  fails is reported and fails the batch. The suitability screen joins at P6-08, which must widen
+  the stage or the worker's results with each symbol's cache measures: `UniverseStage` holds no
+  cache. **`configs/sensitivity.yaml` is now three lists**, `friction`, `timing` and `grid`, not
+  the `variants` list above, which the loader refuses; each list is a robustness table (DEC-65).
+
+### DEC-101 — The analytics: performance, cycles, bootstrap CIs, robustness tables
+**Status:** ENG · **Affects:** P6-01, P6-02, P6-05, P6-06, P6-09; DEC-54, DEC-60 to DEC-62, DEC-65, DEC-86, DEC-100
+
+- **`pmcc/analytics/`** (P6-01, P6-02, P6-05, P6-06):
+  - `records.py`: what the analytics read from one run, as protocols (`RunRecords`, `WeekDecision`) that the engine's `RunOutput` and gate-log rows satisfy, so analytics never imports the engine (ARCHITECTURE §3.3). Session closes are each session's last ledger row; weeks are calendar weeks of those closes. A blotter row's leg follows from its rule: E-L buys and X-L sells the long, E-S1 sells the short, X-S1 to X-S5 close it; X-S5's stock rows are neither leg.
+  - `performance.py` (DEC-60), `cycles.py` (DEC-62), `bootstrap.py` (DEC-61).
+  - `run.py`: `analyze(run, seed)`, every per-run analytic at once.
+  - `scores.py`: `RunScore`, a finished run's identity and summary. The tables across runs read summaries, never re-run anything, and refuse a summary without metrics.
+  - `robustness.py` (DEC-65) and `universe.py` (headline and pooled).
+  - Floats come from exact integer money. The metrics' means and deviations use `statistics.fmean` and `stdev`, which sum exactly, so they don't depend on summation order; the CI's means are numpy's, deterministic for the same weeks in the same order (and published to 6 places). Each CI draws from a fresh PCG64, so it never depends on which CI ran before it.
+- **Analytics builds export's result models** (`pmcc/export/analytics_models.py`) instead of mirroring them in its own types, so **export never imports analytics**: import rule 5 now says so, with a planted violation (`tests/architecture/test_imports.py`).
+- **Every run gets its analytics, whatever its detail** (DEC-54): the runner computes them from the engine's output (`run_market` → `analyze` → `to_result`), the summary holds them, and a full run's file also keeps its cycles. A summary run's summary is what the robustness tables read.
+- **The seed travels beside the starting cash, not in `RunConfig`** (`run_market(…, seed=)`, and `pmcc run` and `pmcc batch` read `bootstrap.seed`), so no config hash moves. Every CI records the seed.
+- **`configs/sensitivity.yaml` is three lists**, `friction`, `timing` and `grid`, in place of one `variants` list; the runs and their order are unchanged. `run_families()` gives each run ID its family (strategy, ablation or one of the three) from where its config sits, so a table's rows never depend on parsing run-ID suffixes. Each batch job carries the families.
+- **Model reshapes:**
+  - `MeanCI` gains `weeks`; `CycleStats` gains `weeks_long_held`; `Cycle` gains `long_held` and `long_cost`.
+  - `RobustnessRow` gains `reference`, and its P&L, drawdown and difference are never null.
+  - `TimingDispersion` gains `runs`, and its `std` is a float; `Pooled` gains `symbols`.
+  - Every ratio is a fraction, whatever its name (`premium_captured_pct` 0.25 is 25%), as the models' docstring says.
+  - The schema stays at version 2: every new section is nullable, so the committed results still pass `pmcc verify` until P6-09 regenerates them.
+- **`pmcc batch`** (DEC-100):
+  - **Per symbol:** after `coverage.json`, the worker writes `{SYM}/robustness.json` from the runs in memory, only when every run succeeded. A table missing a row would mislead, and the symbol has failed anyway. A symbol is `ok` only with both files.
+  - **Universe stage:** writers take a `UniverseStage` (the outcomes, the output directory, the seed) and read each symbol's two strategy runs back from their files. A writer that raises is logged (`batch.universe.abort`), named in the summary, and fails the batch; the other writers still run.
+  - **New log events:** `batch.robustness.abort`, `batch.universe.abort`.
+- **NVDA,** run into a scratch directory from the uncommitted tree (nothing under `results/` changed): the 24 runs, coverage, robustness and both universe files in 19 s (18 s before). `pmcc verify` on that output reports only `git_dirty`, on every run. P6-09 re-runs from a clean tree and commits.
+- **Tests (76 new, 2,023 in the suite, 7 of them from the review):**
+  - **Unit, `tests/unit/analytics/`, worked by hand:**
+    - `test_performance.py`: the three-week fixture's closes, returns, Sharpe and Sortino in closed form, drawdown on an intrabar low, each underwater edge.
+    - `test_cycles.py`: credits and buybacks net of fees, X-S4, X-S5's stock apart, a week without a long, the credit-weighted premium, half-even means, the exit mix.
+    - `test_bootstrap.py`: a plain-Python oracle over the same seeded draws, on twelve irregular weeks whose resample means don't tie at either percentile, so it pins the seed and the interpolation; the pooled table resampling whole weeks (two cancelling symbols give a CI of 0); the refusals.
+    - `test_robustness.py` and `test_pooled_headline.py`.
+  - **Fixtures:** `tests/fakes/records.py` and `tests/fakes/scores.py`.
+  - **Config:** each run's family; a variant's family is its list, whatever its ID; the old `variants` key refused; the shipped seed sits above the cash block; a missing or bad seed refused.
+  - **End to end:**
+    - `tests/scenario/test_export.py`: every run carries its analytics, and on the synthetic market they reconcile with the run's own rows (the last close is the ledger's last NAV; the cycles' P&L sums to the run's; one week per gate-log row; the exit mix counts the blotter's exits).
+    - `tests/unit/test_cli_batch.py`: the robustness file equals the tables rebuilt from the written results; headline and pooled from both synthetic symbols, the pooled CI over both at once; a failing universe writer reported; a robustness file that can't be built fails its symbol. Its test universe's seed is 7, not the shipped 535, so a seed hardcoded anywhere between `universe.yaml` and a CI fails.
+- **Review:** 2026-10-01 — an adversarial review (4 reviewers, 2 skeptics per finding) found 21 findings, 19 unique, and verified the 12 most severe: 8 confirmed, 1 plausible, 3 refuted. All 9 are fixed, and so are the 7 left unverified, all low.
+  - **In code:**
+    - A week whose long is sold on its first bar by an X-L reset that never re-enters now counts as held, since a ledger row is the state after its bar's trades (DEC-62's outcome).
+    - Weekly returns are kept at the 6 places the file prints, and the CI is drawn from them. Before, 5 of NVDA's 24 runs had a CI that their own file's values didn't rebuild, so a one-symbol pooled CI could differ from the run's own in the last digit (DEC-61's outcome).
+    - The batch's help and summary line now count robustness and universe-file failures.
+  - **In tests:**
+    - the bootstrap oracle's fixture could not tell another seed or quantile method from the right one;
+    - every test used seed 535, the shipped value;
+    - nothing checked that a symbol without `robustness.json` isn't `ok`;
+    - a half-even tie that half-up rounds the same way;
+    - the dearest long was also the last;
+    - no week held a long on only some bars;
+    - no P&L tie between quant and the baseline.
+  - **In docs:**
+    - the claim that no analytics figure depends on summation order (true of the metrics, not of the CI's numpy means);
+    - DEC-100's `variants` list and its "last outcome";
+    - "Built at" for items not yet built (DEC-63, DEC-64, DEC-76);
+    - UI-SPEC's timing and grid columns;
+    - the exit mix's key order in the file;
+    - `UniverseStage` holding no cache for P6-08's suitability screen.
+  - **Refuted:**
+    - `pmcc verify` not re-deriving the analytics (never its scope; the re-derivable invariants are DEC-51's);
+    - `RunRecords` lacking what P6-03 and P6-04 need (P6-03 and P6-04 aren't built yet);
+    - the spec's undefined "fragility" (older than this change, and nothing here depends on it).
+
+### DEC-102 — Attribution: what the engine records for it, the leg and Greek modules
+**Status:** ENG · **Affects:** P6-03, P6-04, P6-09, P7-01; DEC-23, DEC-24, DEC-27, DEC-54, DEC-63, DEC-76, DEC-101
+
+- **The engine records what the Greek attribution needs, as it saw it** (ARCHITECTURE §8, §12):
+  - each ledger row holds the bar's `spot`, the stock's TRDPRC_1 (DEC-23), null without a trade;
+  - each held leg holds its `LegGreeks` (IV, δ, Γ, θ, ν), its chain row's on the bar, through
+    `pmcc/engine/greeks.py` (`leg_greeks`), which the delta already came from. None is known
+    without a valid quote, and a value pricing left NaN is null: a call under its floor keeps
+    DEC-27's Greeks with no IV;
+  - every option fill's audit holds `fill_iv`, the IV of the quote it filled at. The bar a leg
+    closes on needs it, since the ledger no longer holds the leg there.
+  - **Why the engine, not a lookup afterwards:** the analytics read only the run's records
+    (`RunRecords`, DEC-101), never the market, so the Greeks they price a bar with are the ones
+    the engine held.
+- **Results:** the published ledger is unchanged; its legs keep their delta alone. Publishing the
+  spot and the other Greeks would add a field to every ledger row, and `pmcc verify` re-writes
+  each committed file through the models (every field always written, DEC-96), so the committed
+  results would fail it, and CI with them, until P6-09 regenerates them. Option fills' audits gain
+  `fill_iv`; an audit is a free-form map, so the committed files are unchanged by it. The schema
+  stays at version 2, and `pmcc verify results/` passes on the committed results.
+- **`pmcc/analytics/`:**
+  - `attribution.py` (P6-03): `leg_attribution(run)`, in exact integer money.
+  - `greek_attribution.py` (P6-04): `greek_attribution(run)`. Each float term is summed as the
+    fraction it is (`Fraction`), so no total depends on bar order, and a leg's components add up
+    to its change exactly before they are published.
+  - `run.py`: `analyze(run, seed, report)` adds `attribute(run, report)`: by leg for a full run, by
+    Greek too where the strategy's `report.sections` lists `greek_attribution` (DEC-54), so the
+    baseline's file has no Greek table and quant's has one.
+  - `records.py` gains `cash`, `by_bar`, `leg_value`, `stock_value`, `trades_long` and
+    `trades_short`.
+  - **Δt** is `pricing.expiry.years_between`, the elapsed-time half of `years_to_expiry` split out,
+    so θΔt runs on DEC-24's UTC clock and a clock change counts its hour. The analytics now import
+    `pmcc.pricing` (that module only).
+- **Model reshapes** (`pmcc/export/analytics_models.py`):
+  - `LegAttribution` gains `short_open`; `assignment_loss` becomes `assignment_stock_pnl`, a
+    signed P&L.
+  - `GreekAttribution`'s single `bars_unattributed` becomes `legs`: per leg, its change, bars
+    held and bars unattributed.
+  - `Attribution.leg` is never null.
+- **Tests (34 new, 2,057 in the suite, 8 of them from the review):**
+  - `tests/unit/analytics/test_attribution.py` (11): a roll with fees worked by hand (each leg,
+    the intrinsic and extrinsic split, the series), X-S5's stock covered and still held, an open
+    short, the spot carried to a bar without a trade, two contracts, and the refusals.
+  - `tests/unit/analytics/test_greek_attribution.py` (16): each term over two bars, the closing
+    fill's IV, each leg's own fill IV when both close on one bar, the short's sign, shares adding
+    up to 1, a stale mark, a quote under its floor, a bar without a spot, an expiry, an assignment
+    whose stock stays out of both legs, two contracts, θ across the Nov 1 clock change (67 elapsed
+    hours, not 66), an entry's friction and fee, and a re-entry on the bar the long is sold.
+  - `tests/scenario/test_scenario_greeks.py` (6): on two synthetic markets (quant with an X-S4,
+    the baseline with an X-S5 and its stock), every ledger row's spot and every held leg's Greeks
+    are the chain's, every option fill's `fill_iv` is, and an expiry, an assignment and the stock
+    rows carry none.
+  - `tests/scenario/test_export.py`: a full run carries its attribution and only quant its Greek
+    table; and on the synthetic market the legs add up to the run's P&L, the series ends at the
+    totals, and each leg's Greek rows add up to its own P&L.
+  - `tests/scenario/inv13_run.py` gains quant on `random_walk`, so INV-13 compares the Greek
+    attribution across two processes with different hash seeds.
+  - `tests/fakes/legs.py` builds a ledger whose cash and NAV follow from its blotter;
+    `tests/fakes/records.py`'s `trade` takes a contract count.
+- **Review:** 2026-10-01 — an adversarial review (4 reviewers, 2 skeptics per finding) found 13
+  findings, 10 unique, and verified all 10: 7 confirmed, 2 plausible, 1 refuted. None changes a
+  published number; all 9 are fixed.
+  - **In tests:**
+    - nothing pinned which fill `_end_iv` reads: matching any instrument, or SELLs only, passed
+      every test, and SELLs only would move quant's short residual from +$99.72 to −$1,041.02;
+    - nothing kept X-S5's stock out of the short leg's Greek change;
+    - the scenario test's "no fill IV on stock rows" ran over a run with no stock rows;
+    - no attribution test held more than one contract (plausible: the spec fixes one);
+    - INV-13 never compared a Greek attribution across processes (plausible).
+    Each mutant the reviewers showed surviving now fails a test.
+  - **In docs:** DEC-63's outcome said none of the first five details arises on NVDA, but the
+    closing fill's IV and ΔV as the bar's P&L decide every published figure; the models'
+    docstrings lacked the carried spot and the below-floor rule; TEST-STRATEGY cited the wrong
+    file for the reconciliation and overstated the residual cases tested; ARCHITECTURE §11's
+    determinism table left out the Greek attribution's exact sums.
+  - **Refuted:** that the open details should have gone to the PO before building. The skeptics
+    found the below-floor reading is DEC-63's own wording ("a failed IV") read with DEC-27, and
+    the rest don't arise in the published runs; all are listed for the PO to change.
+
+### DEC-103 — The fill-assumption check: its sample, exact fit, files and size limit
+**Status:** ENG · the file's size put to the PO at handover · **Affects:** P6-07, P6-09, P7-04; DEC-05, DEC-16, DEC-64, DEC-92, DEC-100
+
+- **Two halves, by the import rules** (ARCHITECTURE §3.3 rule 5: analytics never imports data):
+  - `pmcc/data/fillcheck.py` (`fill_pairs`) reads the loaded cache and its sidecars' bands, and
+    returns each group's pairs as columns of $0.0001 units, ordered by bar, expiry and strike;
+  - `pmcc/analytics/fillcheck.py` fits them (`fit`) and builds the symbol's file (`fill_check`)
+    and the pooled one (`pooled_fill_check`). It reads pairs through a protocol (`FillPairs`), so
+    it never sees the data package.
+- **The fit is exact:** the OLS sums are taken over whole $0.0001 units and the slope, intercept
+  and R² as `Fraction`s; the median gap is a median of exact fractions. So no figure depends on
+  the order of the points (INV-13), and the pooled fit is the fit of every pair at once. There is
+  no fit under 2 pairs or when every mid is the same; R² is null when every trade is.
+- **Files** (`pmcc batch`, DEC-100):
+  - `{SYM}/fill_check.json`, written by the symbol's worker from the cache the runs loaded,
+    whether or not every run succeeded, since it doesn't depend on them. A file that can't be
+    written fails the symbol, as coverage does. `SymbolJob` now carries the universe's window.
+  - `universe/pooled_fill_check.json`, from a new universe writer, from each symbol's file read
+    back. It holds the fits alone; the points are each symbol's. It isn't
+    `universe/fill_check.json` because the JSON Schemas are keyed by file stem, and the two
+    would collide.
+- **Model reshapes** (`pmcc/export/analytics_models.py`, P4-05's shapes):
+  - `FillPoint` rows become `FillPoints`, three columns of one length (`mid`, `trade`, `spread`).
+    One object per pair would be 5.4 MB for NVDA; the columns are 3.9 MB. `spread` is new: it
+    lets the pooled fit and the median gap be rebuilt from the published files.
+  - `Fit` gains `locked`, and its `r2` may be null.
+  - `PooledFillGroup` and `PooledFillCheck` are new, in `UNIVERSE_FILES`, so `pmcc verify`
+    checks the file and `pmcc export` lists it in `index.json`.
+- **Size:** NVDA's file is 3,880,258 bytes, 0.83 MB gzipped (GitHub Pages serves it gzipped).
+  DEC-92's 2 MB guard on `results/` would refuse it at P6-09, so `.pre-commit-config.yaml` gives
+  `results/*/fill_check.json` its own 8 MB limit and keeps 2 MB for every other result file;
+  `tests/unit/test_repo_policy.py` pins both. **Put to the PO at handover:** publishing every
+  pair (DEC-05) costs a 3.9 MB file per symbol, and about 170,000 points across the Methodology
+  page's two scatters (P7-04).
+- **Tests (27 new, 2,084 in the suite, 1 of them from the review):**
+  - `tests/unit/analytics/test_fillcheck.py` (12): the fit worked by hand (slope 1, intercept
+    $0.025, R² 400/401), the same whatever the order, the median gap with a locked quote, every
+    quote locked, no fit without two distinct mids, R² null, the file's groups and dollars, a
+    refused set of groups, points back to their pairs, and the pooled fit equal to one over every
+    pair.
+  - `tests/unit/data/test_fill_pairs.py` (8): which bars pair, half-even mids, shorts and longs
+    split at the weekly's first date, a merged unit's strikes split by band (two near-money bands
+    and three deep ones, as fetched, so the lowest floor and the highest top are the limits), puts
+    left out, the order, and a plain-Python oracle over the `random_walk` cache.
+  - `tests/unit/test_cli_batch.py` (3 new, 1 extended): the file is the cache's pairs, fitted, as
+    canonical JSON; one that can't be written fails the symbol, and the batch's summary counts it;
+    the CLI's batch writes both files, each symbol's pairs over the universe's whole window, the
+    pooled one fitting both symbols' files together, and `pmcc verify` passes on all of it.
+  - `tests/unit/test_repo_policy.py` (3), and `tests/unit/export/test_schema.py`'s per-schema test for the new file.
+- **Review:** 2026-10-01 — an adversarial review (4 reviewers, 2 skeptics per finding) found 18
+  findings, 10 unique, and verified all 10: 9 confirmed, 1 plausible, none refuted. None changes
+  the code's output; all 10 are fixed.
+  - **A wrong number in DEC-64's outcome:** "48.9% of the shorts' prints lie outside the quote"
+    came from comparing the dollar columns as floats, which counted most prints at the bid or ask
+    as outside. In exact units it is 21.7%, against 32.2% for the longs, which reverses the
+    sentence's point. Corrected, with the at-the-touch shares; DEC-64 also now counts its 188,963
+    prints as the calls' (the puts' 2,436 hold the same).
+  - **In tests:** the merged-unit test had one band of each region, so taking the lowest deep top
+    or the highest near-money floor passed (on NVDA, the min would cut the longs to 96,961 pairs);
+    nothing checked the window the CLI hands each job (a one-day window passed); and the batch
+    summary's fill-check count and status were only asserted at zero (plausible). Each mutant now
+    fails a test.
+  - **In docs:** ARCHITECTURE §3.1's tree lacked `pmcc/data/fillcheck.py` and §14 the 8 MB guard;
+    `verify.py`'s docstring and `Index.universe`'s comment lacked the pooled file; DEC-64 said every
+    open detail was in the models' docstrings, but the merged-unit split wasn't (now in
+    `FillGroup`'s); README's status left out P6-07.
+
+### DEC-104 — The suitability screen: the module, the batch's hand-back, the file
+**Status:** ENG · **Affects:** P6-08, P6-09, P7-05; DEC-66, DEC-100, DEC-101
+
+- **`pmcc/analytics/suitability.py`** reads and summarizes the screen as the PO defined it
+  (DEC-66):
+  - `Screen.of(strategy)` takes a built strategy's long and short selectors and its G-3, and
+    refuses one without G-3. The batch builds it from the matrix's `quant_pmcc` config, so the
+    screen reads quant's rules and thresholds as they ran.
+  - `sample_bars(calendar, start, end)` is the first bar's end of each week-open session in the
+    window (Labor Day's week opens Tuesday); `read_week(view, screen)` reads one week through
+    the `MarketView` on that bar; `suitability_row` summarizes a symbol's weeks;
+    `suitability(rows)` is the universe file, symbols in order, one row each.
+  - A pick with no quote on its bar is an `EngineError`: a selector picks only an eligible
+    contract (DEC-21).
+  - Analytics now imports `pmcc.strategy` (selectors, gates, measures, ports, the built
+    `Strategy`). ARCHITECTURE §3.3 doesn't forbid it, and the engine stays out: the batch hands
+    the module each bar's view.
+- **G-3 from either side:** `EventRatioGate.check(view, front_expiry)` is the gate without a short
+  decision, and `evaluate` is now `check` on the short's expiry. The quant runs are unchanged.
+- **The batch's hand-back:** the screen needs the symbol's priced market, which only its worker
+  holds, so the worker reads its row after the fill check and hands it back in its outcome
+  (`SymbolOutcome.suitability`). It isn't written to a per-symbol file, since only the universe
+  file publishes it. A screen that can't be read is logged (`batch.suitability.abort`) and fails
+  the symbol, which stops the universe stage, as a missing symbol file does. The batch's summary
+  says, per symbol, whether its screen was read, and counts those that weren't.
+- **The file:** `universe/suitability.json` comes from a fourth universe writer,
+  `write_suitability`. `SuitabilityRow` (P4-05's shape) gains each measure's week count, the
+  weeks sampled and G-3's threshold, so a reader sees what each mean or median is over; the
+  site's types change with it (P7-05 builds the panel).
+- **Cost:** about 0.05 to 0.08 s on NVDA for its 26 weeks, on the market the runs already priced (loading and pricing the cache, which the runs do anyway, is about 2 s).
+- **Tests (24 new, 2,108 in the suite):**
+  - `tests/unit/analytics/test_suitability.py` (20): one week on a hand-made view (quant's
+    long by extrinsic ÷ delta, its short at spot + EM, the credit at the bid whatever the spread,
+    a wider EM moving the short, no long so no short, no EM so the long alone, IV ÷ RV20 needing
+    both, an RV20 of 0 left out, G-3 `n/a` without the next week, `check` equal to the gate); the screen's rules taken
+    from quant's shipped config and refused from the baseline's; the sample bars (Labor Day,
+    and a window starting mid-week); the row's means, exact medians and counts, nulls rather
+    than zeros, the same whatever the order, and on skewed weeks each measure's mean or median as
+    its name says; the file's order and a symbol given twice.
+  - `tests/unit/test_cli_batch.py` (4 new, 2 extended): the CLI's batch writes the universe file
+    as the screen read here on each symbol over the universe's whole window; a worker's row is
+    quant's rules over every week; a matrix without quant fails the symbol; a bug in the screen
+    is raised, not reported as a screen not read; the summary counts a screen not read, and not
+    a symbol that failed before it.
+- **Review:** 2026-10-01 — an adversarial review (4 reviewers, 2 skeptics per finding) found 13
+  findings, 9 unique, and verified all 9: 5 confirmed, 3 plausible, 1 refuted. None changes the
+  code's output; all 8 are fixed.
+  - **In tests:** every fixture's mean equalled its median, so swapping any measure's statistic
+    passed (the batch test rebuilds the file with the same code); an RV20 of 0, a bug in the
+    screen swallowed as a screen not read, and the summary counting a symbol that failed before
+    its screen were each untested (plausible). Each mutant now fails a test.
+  - **In docs:** this entry gave the screen's cost as about 4 s, the cost of loading and pricing
+    the cache, not of the screen; ARCHITECTURE §15's event list lacked `batch.suitability.abort`
+    (and P6-07's `batch.fill_check.abort`); DEC-66 said every build detail is in
+    `SuitabilityRow`'s docstring, but the exact fractions weren't; `analytics_models.py`'s module
+    docstring cited DEC-60 to DEC-64 for the numbers, not DEC-66 (nor DEC-65).
+  - **Refuted:** that the build log credits the PO with the E-T1 detail; the PO's answers fix the
+    bar and the contracts, and E-T1 never chooses a contract.
+
+### DEC-105 — P6-09: the re-run with analytics, and what the site reads where
+**Status:** ENG · **Affects:** P6-09, P7-01, P7-02, P7-04, P7-05; DEC-05, DEC-65, DEC-67, DEC-100 to DEC-104
+
+- **The run:** `just batch` from a clean tree at `217f676`, 2026-10-01: NVDA's 24 runs,
+  `coverage.json`, `robustness.json` and `fill_check.json`, and the universe's `headline.json`,
+  `pooled.json`, `pooled_fill_check.json` and `suitability.json`, in 39 s; every run
+  `git_dirty: false`. `just verify` passed all 31 files.
+- **Nothing the engine had written moved.** Against P5-04's committed runs, every value is the
+  same but `git_sha` and `run_timestamp`; what changed is new: each summary's analytics (null
+  until now, DEC-54), the full runs' `cycles` and `attribution`, and each option fill's
+  `audit.fill_iv` (DEC-102). Every NVDA figure DEC-60 and DEC-62 to DEC-66 quoted from the
+  uncommitted tree is the committed one. The data hash is unchanged, so the committed cache
+  stands (DEC-05).
+- **What the site reads where** (UI-SPEC §6, checked panel by panel):
+  - **Comparison:** readouts and [2] from each strategy's `summary` (or `universe/headline.json`);
+    [1] from the two full runs' ledgers, one NAV per bar; [3] `universe/pooled.json`, whose
+    `quant_beat_baseline` is empty on NVDA (quant $3,303.50, the baseline $3,672.50); [4]
+    `robustness.json`'s `ablations`.
+  - **Strategy:** [1] and [7] the ledger; [3] `summary.cycle_stats`, `exit_mix` and
+    `skips_by_rule`; [4] `attribution.leg`, its table and session series; [5] the blotter; [6] the
+    gate log; [8] `attribution.greek`, its rows, residual series and each leg's bars. The
+    readouts' **ending NAV** is the ledger's last row, and **min available funds (and when)** the
+    ledger's lowest `available_funds` and its time: P7-01 reads them from the rows rather than
+    the summary carrying a second copy. [2]'s breach count is `summary.flag_counts`'
+    `funds_negative`, absent when no bar breached (NVDA: none, either strategy).
+  - **Methodology:** [1] `coverage.json`; [2] and [3] `fill_check.json` (every pair, as columns)
+    with `universe/pooled_fill_check.json`; [4] to [6] `robustness.json`'s `friction`, `timing`
+    with `timing_dispersion`, and `grid`; [7] `config.risk_free_rate`. When the timing panel
+    calls dispersion fragile is undefined, put to the PO for P7-04 (DEC-67); the recommended rule
+    needs nothing that isn't in `robustness.json`.
+  - **Universe:** [1] `universe/suitability.json`, [2] `universe/headline.json`, [3]
+    `universe/pooled.json`.
+  - **Trade rules** read `rules.json`, and the local Data page the cache through `pmcc serve`;
+    neither is a results file.
+- **Export:** `just export` wrote the 31 files with `index.json` (each symbol's runs and its
+  coverage, robustness and fill-check files; the universe's four) and `rules.json`; none is
+  committed (DEC-96).
+
+### DEC-106 — P7-01: the strategy page, its charts and tables
+**Status:** ENG · the gate log's Selected column put to the PO at the handover, 2026-10-01 · **Affects:** P7-01, P7-02 onward (the chart and table components); UI-SPEC §3–§6.2; DEC-04, DEC-54, DEC-70, DEC-105
+
+- **Packages** (`web/package.json`): `echarts` 6.1, `echarts-for-react` 3.0, `@tanstack/react-table`
+  9.2 and `@tanstack/react-virtual` 3.14, the last approved by the PO (DEC-04). TanStack Table
+  installed at v9, whose API differs from v8's (`useTable` with explicit `tableFeatures`); the
+  site uses its sorting feature alone.
+- **Charts:**
+  - `web/src/theme/echarts.ts` registers only what the site draws (lines, grid, tooltip, legend,
+    mark lines, ARIA, the SVG renderer) and holds the base option, the insets, the type sizes and
+    the series builders; its colours and font stacks are read from `tokens.css` when a chart
+    renders (`readPalette`).
+  - **SVG, not canvas:** hairlines stay crisp at any zoom, and the chart is in the DOM for the
+    tests. jsdom has no canvas, which ECharts asks for to measure text even when it draws SVG;
+    `web/src/test/setup.ts` answers null quietly.
+  - `web/src/components/charts/`: `axis.ts` (trading time: a category axis of the result's bars or
+    sessions, ticked at each session's first point and labelled at each week's), `tooltip.ts`
+    (the axis tooltip's HTML, escaped), `account.ts`, `legs.ts`, `residual.ts` (one option builder
+    each, pure, tested against a palette that names each colour by its token), `Chart.tsx`.
+  - **Week labels:** a holiday week is narrower than its label on a narrow chart, so a label that
+    would overlap the one before it is left out (ECharts' `hideOverlap`), and the first week's
+    is always kept (`showMinLabel`). At 1366 and 1600 px every week is labelled; at 1100 px the
+    week after a short one loses its label; at a phone's minimum width about every other week.
+  - The account chart's lower pane asks ECharts for two value ticks (`splitNumber`, a hint: it
+    draws three or four), so its labels don't crowd.
+  - The region below zero is shaded at `--negative-shade`'s own strength (the area's opacity is
+    set to 1; ECharts' default of 0.7 would draw it at about 21%).
+  - Every chart's values are also in a table (UI-SPEC §10): the ledger panel for the account
+    chart, and a disclosure between the leg and residual charts and their captions.
+- **Tables** (`web/src/components/DataTable.tsx`):
+  - Every column sorts, ascending first, with a missing value last either way: a gate not
+    evaluated, a week with nothing selected. A gate column sorts by status (fire, pass, n/a),
+    then by the value its cell shows.
+  - A header keeps a lowercase Greek letter out of its capitals (`L δ`, not `L Δ`: Δ is the
+    site's sign for a change, as in `Cash Δ`).
+  - **Filters are rows of toggles** above the table, one per value the rows have, each with its
+    count; a row passes when it offers a toggled value, and with none on a filter is off.
+    Filtering happens before TanStack sees the rows, so a filter needn't be a column: the gate
+    log filters by outcome and by rule from its one Outcome column.
+  - **Virtualized** (the ledger, the blotter, the residual's values): rows a fixed 42 px
+    (`TABLE_ROW_HEIGHT`, a RIC over its OCC symbol), spacer rows for the rest. Until the scroller
+    has a size (a closed disclosure, the first paint, jsdom) the first rows render in its place,
+    so a table with rows is never empty.
+  - Key/value tables (`components/cells.tsx`'s `KeyValue`) are exempt from the 720 px minimum.
+- **The page** (`web/src/pages/Strategy.tsx`, its sections in `web/src/pages/strategy/`): one
+  tree for both strategies, its optional panels from `report.sections` (DEC-54).
+  - The readouts and the Reg T panel read the ending account and the lowest available funds (and
+    the first bar it's reached on) from the ledger's rows, as DEC-105 planned; the breach count is
+    `summary.flag_counts.funds_negative`, and the panel's warning shows when it's above 0.
+  - **Gate log:** a column per gate the log has, in its order. A gate's cell is its status and
+    the one value it's judged on, where it has one (a ratio, or G-5's mid): `pass 1.11`,
+    `FIRE 0.97`, `n/a`, `—` for not evaluated; hover shows every value, and the cell links to the
+    rule.
+  - **The Selected column shows the option** (`NVDA 2026-04-02 C 172.5000`) with its δ and mid,
+    not UI-SPEC's RIC over OCC: the gate log's `selected` holds no RIC. The spec asks only for
+    the gate results and the outcome. Put to the PO at the handover: keep it, or add the RIC and
+    OCC to the gate log at export (a schema change and a re-run of the results).
+  - **Blotter notes** are cut to one line with an ellipsis, the full text on hover, so a row stays
+    one line high (a note runs to about 250 characters).
+  - A panel's note counts its table only when the run's file keeps it, so a missing ledger shows
+    no "0 bars" above "This run's file doesn't keep it."
+  - Short stock shows its shares with a true minus (`−100 sh`), as money does.
+- **Bundle:** the build is 1.03 MB (342 kB gzipped, as Vite reports it), ECharts most of it;
+  Vite warns past 500 kB. Nothing is split yet; P7-07 can lazy-load the charts if the page is
+  slow on a phone.
+- **Tests:** 105 new Vitest tests, 268 in the web suite (163 at HEAD; the token lint's per-file
+  cases for the new source files are among them): the chart options (each role's colour,
+  reference styles, holes, the trading-time axis and its labels, the tooltip, the shade's pane
+  and strength, the shared pointer), the table (filters, number and missing-value sorting, the
+  virtual window with and without a sized scroller, scrolled and sorted), the page over two
+  full fixture runs (`web/src/test/fixtures.ts`, typed against the schema; helpers in
+  `web/src/test/page.tsx`) with its edge cases in `StrategyReview.test.tsx`, the formatters,
+  DEC-04's roles and the row height. The smoke test gains three (14): both strategy pages'
+  numbers, charts and tables; week labels that never overlap, the first week always labelled,
+  at every width; and the 875-bar ledger scrolled to its start, middle and end, its rows the
+  run's bars in order. On NVDA's committed results both pages render with no console error and
+  no sideways scroll at 390, 1100, 1366 and 1600 px, and match the committed figures: ending NAV
+  $18,672.50 (baseline) and $18,303.50 (quant).
+- **Adversarial review** (4 reviewers, 2 skeptics per finding), 2026-10-02: 24 unique findings
+  from 29; of the 12 most severe, 8 confirmed and 4 plausible, none refuted. All 24 are fixed,
+  the 12 unverified low ones with them:
+  - **Week labels** overlapped at 1100 px and at a phone's chart width, and the first week's was
+    dropped (fixed as above; the smoke test now measures them).
+  - **Missing values sorted first** in the gate log (a week G-1 fired: nothing selected, later
+    gates not evaluated), and gate columns ignored the value they show.
+  - **Test gaps:** the virtual window when scrolled; numbers sorted as text; a real breach row
+    (the funds cell and flag); the shade's pane and the shared pointer; the first of tied minimum
+    funds (quant's real ledger has 49 bars at $8,330.00); sections chosen by name rather than
+    `report.sections`; every leg row's sign with a short open and X-S5 stock; null shares, the
+    residual's times, average loss and premium captured; readouts without metrics; the loading
+    block; SELL's class, a gate's hover, ET decision times, the ledger's δ, the empty state.
+  - **Display:** the ledger's δ headers read Δ; the shade drew at 21%, not 30%; panel notes said
+    "0" for a table the file doesn't keep; short stock used a hyphen.
+  - **Docs:** this entry's test count (66 claimed; 81 then), its lower-pane ticks and the place
+    of each chart's values; ARCHITECTURE §13 listing Strategy as a placeholder; UI-SPEC §4's
+    shade token and §9's signed money and chart ticks.
+- **After the review:** the PO's plain rule names on the page (DEC-107) and the blotter's Trade
+  P&L (DEC-108). The tests are now 287 Vitest (124 new) and 15 smoke tests: the last checks, on the built site, that a sort clicked
+  as soon as the page loads takes effect. (The unit test for the same thing failed once in four
+  full runs and never in eleven more; it now waits for the sorted rows.)
+
+### DEC-107 — Filter buttons say what happened, not a rule ID
+**Status:** SETTLED · **Basis:** PO, 2026-10-02, at P7-01's review · **Affects:** P7-01, UI-SPEC §5, §6.2; DEC-35, DEC-106
+
+- **Context:** the blotter's rule filter showed buttons such as `E-L1 3` and `X-S2 6`; the PO
+  found they "don't actually tell me anything". Asked whether to lead with each rule's YAML name
+  (DEC-35) or to rename E-L1 and E-S1 there, the PO answered: "we don't need the id at all - the
+  id is meaningless to a user they should just say what they are on the frontend - the backend
+  can remain the same", and "the id is fine on the backend - can't we just manipulate the ui so
+  those buttons say "open long" "sell short"".
+- **Outcome:** 2026-10-02 — PO. A filter over rule IDs shows a plain label per rule, with no ID;
+  the results, the YAML, the rule IDs in the Rule column (linked to the Rules page) and the
+  Rules page are unchanged. `web/src/format/rule.ts` holds the labels: E-L1 Open long, E-S1
+  Sell short, X-L1 Reset long, X-L2 Roll long, X-S1 Take profit, X-S2 Defensive close, X-S3
+  Friday close, X-S4 Expired worthless, X-S5 Assigned, X-E1 End of backtest; the gates, as why
+  a week was skipped: G-1 No quote, G-2 Structure fails, G-3 Event week, G-4 Low vol premium,
+  G-5 Premium too small. A rule without a label shows its YAML name, then its ID.
+  - **Engineering choices with it:** the blotter's filter is headed "Trade" and the gate log's
+    rule filter "Reason" (the gate log's is the same component with the same problem, so it
+    changed with the blotter's); hovering a button shows the rule's condition → action from the
+    run file; buttons keep the rules' order (entries, then exits). The wording of each label is
+    the PO's to change, in that one file.
+- **Outcome:** 2026-10-02 — PO, asked where else IDs show: "yes for Cycle statistics, which reads
+  as a summary, and keeping the ID in the Rule column, which is there for tracing a trade to its
+  rule." Cycle statistics' "Skips, by reason" and "Exit mix" read in the same plain labels
+  (`Low vol premium 11`, `Take profit 4`), each still linked to its rule, the rule's text on
+  hover. The blotter's Rule column keeps the rule ID, linked to the Rules page.
+- **Outcome:** 2026-10-02 — PO, superseding the line above: "actually i want to change the names
+  in the table columns - they can still link to the rule". Asked which, the PO chose all three:
+  - **the blotter's Rule column** shows the plain label (`Open long`, `Take profit`), linked to
+    the rule, its condition → action on hover; it sorts by the label;
+  - **the gate log's Outcome cell** reads `sold` (linked to the rule that sold) or
+    `skipped · Low vol premium` (the reason linked);
+  - **the gate log's gate columns** are headed by what each gate checks: G-1 No quote, G-2
+    Structure, G-3 Event week, G-4 Vol premium, G-5 Min premium (`gateName` in
+    `web/src/format/rule.ts`; a gate without one shows its plain label, then its YAML name).
+    Their cells keep `pass 1.11` / `FIRE 0.97`, linked to the rule.
+  No rule ID shows in the blotter or the gate log now; the links still go to `#/rules/<ID>`
+  (UI-SPEC §7), and the Rules page keeps the IDs.
+
+### DEC-108 — The blotter's Trade P&L
+**Status:** SETTLED · **Basis:** PO, 2026-10-02, at P7-01's review · **Affects:** P7-01, UI-SPEC §5; DEC-44, DEC-63
+
+- **Context:** the PO asked why every "Take profit" row is negative. The blotter's Cash Δ is one
+  row's cash: a take profit buys the short back, so it's cash out (−$16.50), while the profit
+  comes from the sale that opened it (+$126.00 earlier): +$109.50 on the round trip. Nothing on
+  the page showed that. Offered a Trade P&L column (recommended), the round trip in the notes,
+  or a weekly-trades table, and asked whether the column should also cover the long's rolls,
+  the PO answered "yes". Read as yes to both: the column, on the long's closes too.
+- **Outcome:** 2026-10-02 — PO. The blotter gains **Trade P&L**, after Cash Δ, on each row
+  that closes a position: its own cash plus the cash that position was opened for, fees
+  included, green for a gain and red for a loss, with "opened <time> for <cash>" on hover;
+  rows that open are blank. Cash Δ is unchanged (it is what INV-01's cash walk adds up).
+  - **How:** `web/src/pages/strategy/tradePnl.ts` walks the blotter in order, keeping each
+    instrument's position by its RIC with the engine's signs (BUY +1, SELL −1, EXPIRE and
+    ASSIGN +1, as `pmcc/accounting/book.py`). A row that shrinks a position closes that share
+    of it, at that share of its opening cash. An expiry or an assignment closes the short call
+    with no cash, so its P&L is the credit; X-S5's stock is its own position, closed by its
+    cover. Sums run in $0.0001 units (DEC-44). The site computes it; no result changes.
+  - **Checked on NVDA's committed results:** the short leg's trade P&Ls sum to the attribution's
+    net short premium to the cent (baseline −$490.00, quant −$1,651.50; no short open at the
+    end), and the long's closes plus the open long's mark to its long-leg P&L (baseline
+    $4,132.50 + $30.00 = $4,162.50; quant $3,630.00 + $1,325.00 = $4,955.00). The baseline's
+    nine take profits run +$106.50 to +$384.50; its 17 closes win 11 times, quant's 11 win 6.
+
+### DEC-109 — The backtest's limits, stated on the site
+**Status:** SETTLED · **Basis:** PO, 2026-10-02, after P7-01 · **Affects:** P7-02, P7-04, Spec › Site and UI (Methodology), UI-SPEC §6.1, §6.4, PRD HR-11; BUILD-PLAN L-01, L-02; DEC-07, DEC-15, DEC-30, DEC-63
+
+- **Context:** reading the leg attribution with the new Trade P&L (DEC-108), the PO drew two
+  takeaways: "pnl on the baseline strategy was better than the quant strategy but the long
+  positions taken in isoltation the quant strategy did better", and "this doesn't seem like a
+  good backtest of pmcc as a strategy because the profits just came from the long in a bull
+  market - in a flat, mean reverting, bear market the outcome would probably change pretty
+  drastically". The committed NVDA results bear both out:
+  - **The long call earned more than the whole P&L, the shorts lost:** baseline long +$4,162.50,
+    shorts −$490.00, P&L +$3,672.50; quant long +$4,955.00, shorts −$1,651.50, P&L +$3,303.50.
+    The long's intrinsic part rose +$5,877.28 and +$5,964.77 (NVDA from about $166 on Mar 30 to
+    about $215 in late May); its extrinsic part fell −$1,714.78 and −$1,009.77 (DEC-63).
+  - **Rolls book the gain; they don't make it.** Each strategy's first long made nearly all of
+    it: +$3,862.50 at the baseline's Jun 22 roll, +$4,522.50 at quant's May 26 roll; quant's
+    second long lost −$1,122.50.
+  - **Quant's better long is mostly timing:** its August expiry hit the roll rule (DTE < 90) near
+    a high. A1, quant with the baseline's long selection, made $3,597.50, $294.00 more than
+    quant, so the selector itself isn't shown to help. Quant's short leg decided the ranking:
+    gates skipped 18 of 26 weeks, its credits came to $803.50, and 4 of its 8 shorts ended in
+    a defensive buyback.
+  - **The two can't be told apart:** mean weekly return, quant 0.89% (95% CI −1.01% to 2.74%),
+    baseline 0.95% (−0.89% to 2.76%).
+- **Options put to the PO:** (1) state the limits on the site; (2) a long-only reference run, the
+  same long rules with no short, to measure what the overlay added or cost; (3) a symbol that
+  fell or went sideways over the window. LSEG's hourly option history reaches back about a
+  year (DEC-07), so no bear market like 2022 is in reach.
+- **Outcome:** 2026-10-02 — PO: "lets just 1 for now - make a note to possibly add 2 later will
+  also hopefully be able to do 3".
+  - **(1), now, built at P7-02 and P7-04:**
+    - the Comparison page's purpose panel says, in a sentence, that over this window the result
+      is mostly the long call riding a rising stock, with the leg attribution as the evidence;
+    - the Methodology page gains a prose panel, **Limits of this backtest**: one symbol and one
+      26-week window, a rising one; a PMCC is net long delta, so a rally rewards the long and
+      runs over the shorts; the leg split for each strategy; what a flat or mean-reverting
+      market (the shorts become the income, the long still decays) or a falling one (the long
+      loses intrinsic value, X-L1 sells it at a loss) would likely change; that the two
+      strategies' weekly-return CIs overlap, and that quant's better long is mostly when its
+      roll fell; that the data reach back about a year, so no bear market is tested.
+    - **Every figure in that prose is read from the results when the page renders** (each run's
+      leg attribution, metrics and CI; the blotter's trade P&L), never typed in, so the text
+      can't drift from the results, and holds when another symbol joins.
+  - **(2) and (3), later if time allows:** BUILD-PLAN L-01 (a long-only reference run) and L-02
+    (a flat or falling symbol: QQQ and TSLA set aside under DEC-15; bringing one back means
+    recalibrating the starting cash first, DEC-30). Neither is started; each goes to the PO
+    with a proposal before any work.
+  - Spec › Site and UI's Methodology row now lists the backtest's limits, citing this entry.
+- **Amended 2026-10-05 (PO, DEC-120):** the panel is renamed **Discovery**, and states whether each strategy's short theta covered its long's.
+
+### DEC-110 — P7-02: the comparison page
+**Status:** ENG · the limit sentence's wording where a run doesn't bear it out put to the PO at the handover, 2026-10-02 · **Affects:** P7-02, P7-04 (the robustness table), P7-05 (the universe files); UI-SPEC §4, §6.1; ARCHITECTURE §13; DEC-61, DEC-63, DEC-65, DEC-105, DEC-109
+
+How P7-02 builds UI-SPEC §6.1. Nothing here changes a result.
+
+- **Data** (`web/src/data/`): the loader's cache now holds any results file by its index path
+  (`loadFile`; `loadRun` is that for a run), each checked for its schema version.
+  `useSymbolFile` and `useUniverseFile` find a symbol's or the universe's file by its key in
+  `index.json` (`robustness`, `pooled`), and a key the index lacks is "No results for …", as a
+  missing run is. `both()` waits on two loads, showing a file that won't come before one still
+  loading.
+- **What each panel reads** (DEC-105): the readouts and [2] from each strategy's summary
+  (payoff is `cycle_stats.payoff_ratio`, the figure `universe/headline.json` carries), [1] from
+  both full runs' ledgers, [3] `universe/pooled.json`, [4] `robustness.json`'s `ablations`.
+  Quant comes first wherever both are listed (readouts, legend, headline, pooled), as the page
+  is quant against the baseline.
+- **[1] NAV comparison:** one row per bar either run has, in time order; a bar a run lacks is a
+  hole, never filled. Its values sit in a disclosure under the chart, virtualized (875 bars on
+  NVDA), with quant less the baseline on each bar.
+- **[4] Ablations:** `web/src/components/RobustnessTable.tsx`, which P7-04's friction, timing and
+  grid tables reuse: Run · P&L · Δ vs the reference · max drawdown · payoff · mean weekly return
+  (95% CI), the reference's own row saying "reference" in the Δ column.
+- **The purpose panel's limit sentence** (DEC-109) reads each run's leg attribution as the page
+  renders. The shorts are everything but the long leg: the net short premium, less a short open
+  at the end, plus X-S5's stock (DEC-63), so long + shorts = P&L. The sentence says
+  "**mostly the long call riding a rising stock**" only where every run bears it out: the long's
+  intrinsic change is above zero (the stock rose under it) and the shorts lost, so the long made
+  more than the whole P&L. Otherwise it states the same figures without the claim. On NVDA both
+  runs bear it out: the long +$4,955.00 (quant) and +$4,162.50 (baseline), the shorts
+  −$1,651.50 and −$490.00. **Put to the PO:** whether that is the wording wanted for a symbol
+  that doesn't bear it out (only L-02 would bring one).
+- **The footer** lists the two full runs' manifests. The ablation rows come from
+  `robustness.json`, which has no manifest of its own; their runs were written by the same batch
+  at the same commit (DEC-105).
+- **On the committed NVDA results:** quant +$3,303.50, the baseline +$3,672.50, quant − baseline
+  −$369.00; quant's return on starting NAV 22.0% (return on capital deployed dropped, DEC-111); quant's weekly-return CI −1.0%
+  to 2.7% (mean 0.9%, 26 weeks); weeks traded 8 / 15; quant beat the baseline on no symbol (0 of
+  1); A1 +$294.00 against quant, A4 −$254.50.
+- **Tests:** `web/src/pages/Comparison.test.tsx` (18: readouts, panel order and numbering, the
+  limit sentence and when it makes its claim, the NAV values, the headline, pooled and ablation
+  cells, missing files and runs), the NAV chart's rows, roles and tooltip
+  (`charts.test.ts`), `loadFile` and `both()` (`loader.test.ts`), `meanCI`; the fixtures gain
+  NVDA's robustness file and the pooled universe. The smoke test checks the page on the built
+  site.
+- **A sort test's flake, fixed:** CI's first run after P7-02 failed one P7-01 test, "sorts a
+  gate by status, then by the value it shows": it read the rows unsorted. TanStack Table (v9)
+  subscribes to its state in an effect after the table first renders, so a click that lands
+  as the table appears is rendered a beat later, and the test asserted at once. DEC-106 had seen
+  it once in four runs and made one test wait; the page tests' `sortBy` helper now waits for the
+  header's `aria-sort` to change, so every sort test does. On the site the sort shows on that
+  next render (the smoke test's early sort, P7-01).
+
+### DEC-111 — The headline return and an annualized Sharpe, for an institutional reader
+**Status:** SETTLED · **Basis:** PO, 2026-10-02, at P7-02 · **Affects:** P7-02, P7-05; Spec › Performance, Spec › Site and UI (Comparison); PRD FR-M1, HR-5; UI-SPEC §6.1, §6.2, §6.5; ARCHITECTURE §12; amends DEC-60, DEC-110
+
+- **Context:** reading the Comparison page, the PO asked whether quant's 53.5% and the baseline's
+  71.7% "return on capital" were right beside a NAV gain of about 24%. They were right as
+  defined (DEC-60: P&L ÷ the dearest long entry, $6,177.50 and $5,125.00), but that is the retail
+  PMCC convention, return on the debit paid. An institutional reader takes "return on capital
+  deployed" as P&L over the capital tied up across the same period, and this one mixes 26 weeks of
+  P&L across three or four longs over one long's cost, leaves out the cash the sizing rule holds
+  back (DEC-30; lowest cash $10,027.00 and $8,330.00), and states no period. Return on the average
+  initial margin isn't a fix: a long call is paid in full and the covered short adds nothing, so
+  it gives 62.0% and 47.3%. The PO: "my audience here is not retail traders".
+- **Outcome:** 2026-10-02 — PO: "use annualised sharpe", taking every recommendation but the
+  name, and "NAV should remain the headline".
+  - **Dropped:** return on capital deployed and the peak long-leg cost, from the metrics, the
+    results and the site.
+  - **The headline return** is **return on starting NAV**: P&L ÷ the starting cash, over the
+    window, not annualized, labelled so. With no money in or out, it is the time-weighted return
+    on the capital allocated. NVDA: 24.5% (baseline), 22.0% (quant).
+  - **Sharpe, annualized:** each daily return less the risk-free rate's trading day,
+    e^(r/252) − 1 (r continuously compounded, DEC-11); the mean of those excess returns ÷ their
+    sample standard deviation, × √252; labelled with the daily returns it's from (HR-5). NVDA,
+    from 125 daily returns: 1.24 (baseline), 1.11 (quant).
+  - **Sortino** gets the same treatment (excess over r, × √252) and isn't shown (NVDA: 1.92,
+    1.70). Like Sharpe, it
+    needs two daily returns: one flat day is below the rate but no sample.
+  - **Where they show:** the Comparison readouts, each strategy's beside the other as Weeks
+    traded shows them: Return on starting NAV (Q / B) and Sharpe, annualized (Q / B) (PO,
+    2026-10-02: "it's awkward to compare the baseline and quant metrics on some metrics but not
+    on starting nav and sharpe"). The quant-only weekly-return CI readout is dropped (PO: "i
+    dont think its a headline and it only shows quant - and that information is in another
+    table"): the headline and pooled tables give both strategies'. Both figures also show in
+    the headline table (P&L · return on starting NAV · max drawdown · Sharpe (annualized) ·
+    payoff · mean weekly return (95% CI)); the strategy page's readouts, where
+    Sharpe (annualized) replaces return on capital deployed; `universe/headline.json`, so the
+    Universe page's headline by symbol (P7-05). The ablation table is unchanged: adding Sharpe
+    would change `robustness.json`.
+  - **Not added:** the account readouts of the PO's earlier stock covered-call screenshot (cash,
+    stock LMV, IM, maintenance, available funds, excess equity). In a PMCC maintenance equals IM
+    and excess equity equals available funds on every bar until a missed assignment leaves short
+    stock (none on NVDA), and the end of a backtest isn't the moment that tests the account. The
+    Reg T panel stays as it is (PO).
+- **Build:** `pmcc/analytics/performance.py` (`daily_rate`, `sharpe` and `sortino` take the day's
+  rate; `metrics` takes r, from the run's config through `analyze`); `Metrics` loses
+  `return_on_capital` and `peak_long_cost`, and `sharpe_daily`, `sortino_daily` become
+  `sharpe_annualized`, `sortino_annualized`; `HeadlineRow` swaps `return_on_capital` for
+  `return_on_starting_nav` and adds `sharpe_annualized`. Fields renamed and removed, so the schema
+  version goes to **3** (ENG): a site and data of different builds show the mismatch banner
+  rather than a blank figure. Tests worked by hand: the day's rate, Sharpe and Sortino on excess
+  returns, a day below the rate counted as downside, the three-week fixture.
+- **The results:** re-run 2026-10-02 with `just batch` from a clean tree at `9cd5dbf`, every run
+  `git_dirty: false`; `just verify` passed all 31 files. Against the v2 results nothing moved but
+  the schema version, `git_sha`, `run_timestamp` and the metrics this entry changes: every P&L,
+  row and CI is as committed at P6-09. The code commit and the results commit are pushed
+  together, since the code alone doesn't validate the v2 results.
+
+### DEC-112 — P7-03: the Trade rules page and its traceability links
+**Status:** ENG · the rule tables' height SETTLED · **Basis:** PO, 2026-10-03, at P7-03's handover (the height) · **Affects:** P7-03; UI-SPEC §5, §6.3; ARCHITECTURE §12, §13; DEC-52, DEC-65, DEC-107
+
+How P7-03 builds UI-SPEC §6.3. Nothing here changes a result; `rules.json` is rebuilt by every
+export and never committed, so it gains two fields without a schema version.
+
+- **`rules.json` gains** (`pmcc/export/site_models.py`, `site.py`):
+  - each rule's **`shown`**: every param as the rule's own text formats it, from the first
+    placeholder naming it (`{max_ratio:.2f}` → "1.20", `{long_max_spread:.0%}` → "3%"), a dollar
+    param with its `$` ("$0.10", "$5,000"), else `str` (`pmcc.config.rule_text.shown`,
+    `Rule.shown_params`). The page shows a threshold exactly as the condition beside it reads; a
+    browser can't tell 1.0 from 1 once JSON is parsed.
+  - each run's **`family`**: `strategy` for a strategy; for a variant, the robustness table that
+    holds it (`ablations`, `friction`, `timing`, `grid` in any `{SYM}/robustness.json`, its
+    reference's own row aside); null for a variant no table holds (a single `pmcc run`). It is
+    read from the results, not the configs, so it can't disagree with the runs; two symbols
+    putting one run in different tables abort the export.
+- **The page** (`web/src/pages/Rules.tsx`, `rules/model.ts`, `rules/sections.tsx`), from
+  `rules.json` alone (`useRules`), the baseline and quant set side by side:
+  - **How rules work:** the order of operations, the differences and what the ID column is
+    (as amended by DEC-113: rules named, never by ID). The sentence on how the strategies differ
+    lists the rules that do, by name and linked: entry rules both run differently ("which select
+    the contracts"), gates one runs alone, and anything else apart, in which case it no longer
+    claims every other rule is shared. On NVDA: the long leg expiry, long leg strike and short
+    leg strike rules, and the event week, volatility risk premium and minimum premium gates.
+  - **[1] Entry rules:** ID · Rule · Baseline · Quant, each the condition with "→ action" under
+    it; Quant reads "Same" where its rule's name, condition and action are the baseline's.
+  - **[2] Skip-week gates:** ID · Gate · Condition (→ action) · Baseline · Quant, a strategy's
+    cell "Off", or "On" with its `shown` values ("On · 1.20"; the param names on hover).
+  - **[3] Exit rules:** ID · Trigger (name: condition) · Action. A text the strategies don't
+    share shows each one's, labelled.
+  - **The rationale** opens under a rule's row from a leading toggle column (Why), one
+    paragraph per line of the YAML's text (the short exits' shared no-roll paragraph first), each
+    strategy's labelled where they differ.
+  - **[4] Ablations:** one row per rule an ablation changed: Ablation · Layer removed (the ID,
+    rule's name, linked; its condition → action on hover) · Replaced by (the variant's
+    action, or "nothing" for a rule removed).
+  - **[5] Sensitivity:** Check · Run (its YAML name) · Change, read from the variant against its
+    strategy: the fill model ("spread capture 0.00 → 0.25"), a replaced rule ("Entry trigger:
+    replaced by Entry trigger, fixed bar · bar 1"), a param ("Event week: max ratio 1.20 →
+    1.10"); filtered by check.
+- **Traceability** (UI-SPEC §7): the blotter, gate log and cycle statistics already link to
+  `#/rules/<ID>` (P7-01). `DataTable` now takes a `target` row: arriving at `#/rules/X-S3`
+  outlines that row in `--accent` and scrolls it into view, within the table's own scroller
+  too; an ID the results lack says so in How rules work. `DataTable` also takes a `detail` (the
+  rationale toggle) and `wrap` (prose cells wrap, top-aligned), neither with `virtual`.
+- **Look:** rule IDs no longer break at their hyphen anywhere (`.pm-rule`), and a prose panel's
+  paragraphs are spaced (`.pm-note p + p`), which the comparison page's purpose shares.
+- **Put to the PO:** UI-SPEC §5 caps every table at 420 px with its own scroll. The entry table's
+  ten rules run past it at 1600 px (E-S3 to E-S5 sit below the fold of their table), so a reader
+  scrolls inside it; the recommendation is to let the three rule tables grow to their rows.
+- **Outcome:** 2026-10-03 — PO: **as recommended**. The entry, gate and exit tables are as tall
+  as their rows (`DataTable`'s `grow`, `.pm-table-grow`); every other table, the ablations and
+  sensitivity runs included, keeps the 420 px cap (UI-SPEC §5).
+- **Tests:** `web/src/pages/Rules.test.tsx` (18: panel order and numbering, each table's cells,
+  the rationale, the target row, a missing rule, the differences sentence, ablations, sensitivity
+  and its filter, a missing `rules.json`, which tables grow), `rules/model.test.ts` (10), the
+  `DataTable` detail, target and height (6); `tests/scenario/test_export.py` (`shown`, `family` from the tables, a variant no
+  table holds, two symbols disagreeing) and `shown` itself (`test_rule_text.py`,
+  `test_quant_config.py`). The smoke test follows a gate-log link to its outlined row, in view,
+  and checks the page's tables on the built site (18 pass).
+
+- **Amended 2026-10-08 (PO, DEC-121):** the Sensitivity panel is dropped; the page ends with the ablations.
+
+### DEC-113 — No rule IDs in the copy: rules named by what they are
+**Status:** SETTLED · **Basis:** PO, 2026-10-03, reading P7-03's Rules page · **Affects:** P7-03; Spec › Trade rules (G-1, G-2, X-L1, X-L2 and the event-week paragraph), Spec › Rule write-up source; UI-SPEC §6.3; ARCHITECTURE §10; `configs/`; the results (re-run); amends DEC-112
+
+- **Context:** the PO, on the Rules page: "we cannot use the rule ID in the copy - it has to use
+  its Rule name - reading a bunch of IDs is incoherent for a human reader - the ids can stay in
+  the tables in the id columns but they need to be replaced by the rule names in all of the
+  copy". The page's own copy listed IDs (`X-S1 to X-S5`, the ID grammar, `E-L2 Long leg expiry`,
+  `G-3 max ratio …`), and about 20 sentences of the rule text in the YAML named rules by ID
+  ("otherwise G-2 skips the week", "Same as X-L1", "re-enter per E-L1 to E-L4"), as did four
+  grid runs' names ("Grid: quant with G-4 at 0.90").
+- **Asked:** whether to reword the YAML (recommended; config hashes change, so every run is
+  re-run), swap names in as the page renders (mechanical: "Eligible calls on the Long leg expiry
+  expiry", and E-S5 and G-2 share the name "Structural constraint"), or leave the rule text.
+- **Outcome:** 2026-10-03 — PO: **reword the YAML**, as recommended.
+  - **The page's copy** names each rule by its YAML name, linked to its row and set in the
+    prose's type: How rules work (the order of operations in words; the differences by name; the
+    ID column described, the ID grammar dropped), the ablations' Layer removed, the sensitivity
+    runs' changes ("Short leg strike: k 1.0 → 0.75"). A link to a rule the results lack says so
+    without echoing the ID. IDs stay in the three rule tables' ID columns, the links' targets and
+    the results.
+  - **The rule text** (`configs/_shared.yaml`, `baseline_pmcc.yaml`, `quant_pmcc.yaml`,
+    `ablations/a1.yaml`, `a2.yaml`, `sensitivity.yaml`) names a rule by what it is: "the entry
+    trigger", "the structural constraint", "a long reset or long roll", "the long leg's expiry",
+    "the no-quote gate", "the missed-assignment rule", "the long leg's entry rules". The four
+    grid runs are "Grid: quant with the event gate at 1.10" and so on. Nothing a rule does
+    changes: no kind, param or threshold moves.
+  - **The spec** gets the same wording where the YAML is pinned to it: G-1's and G-2's
+    conditions, X-L1's and X-L2's actions, the event-week paragraph; and Rule write-up source
+    states the rule. Its other prose keeps IDs, for an engineer reading the spec.
+  - **Enforced** by `tests/unit/config/test_rule_copy.py` (no rule ID in any run's name or any
+    rule's rendered text across the 24-run matrix) and the Rules page test that no ID appears in
+    its prose, notes, captions, ablations or sensitivity rows.
+- **The results:** every config hash moves, so the batch is re-run. A preview batch from the
+  uncommitted tree (into the scratchpad, compared field by field with the committed results)
+  moved only the configs' rule text and four run names, `rule_text`, the grid table's four
+  labels in `robustness.json`, `config_hash` and the provenance fields: no figure, row or CI.
+  The publishable re-run follows the code commit: `just batch` from the clean tree, `just
+  verify`, a results commit, both pushed together (as DEC-111).
+- **Re-run:** 2026-10-03, `just batch` from a clean tree at `f1d5855`, every run
+  `git_dirty: false`; `just verify` passed all 31 files. The 24 runs and `robustness.json` moved,
+  as the preview had; the coverage, fill-check and universe files didn't. The exported
+  `rules.json` holds no rule ID in any rule's text or run's name.
+
+### DEC-114 — The Trade rules page in plain words: each rule's title, summary and Why
+**Status:** SETTLED · **Basis:** PO, 2026-10-03, after reading P7-03's Rules page · **Affects:** P7-03; Spec › Rule write-up source; UI-SPEC §6.3; ARCHITECTURE §10, §12, §13; `configs/`; the results (schema version 4, re-run); amends DEC-35, DEC-112
+
+- **Context:** the PO asked for the page to be rewritten: "the logic is solid, but the current copy
+  reads more like a spec than something a person can quickly understand", with a draft that has
+  each rule answer when it happens, what we do, and why. Asked before building: the layout, where
+  the copy lives, six places the draft dropped or changed something, and the ablation and
+  sensitivity panels.
+- **Outcome:** 2026-10-03 — PO:
+  - **Layout:** keep the three tables, one row per rule, and the Why toggle. "The main row should
+    tell me quickly when the rule applies and what happens, while the expanded Why should explain
+    the reasoning." IDs stay in the ID column, not in a heading; trade links still land on and
+    outline the row. "Don't force the literal when / what / why labels into every row. That is
+    the writing principle, not necessarily the visual structure."
+  - **Where the copy lives:** in the configs, every threshold filled in from the settings, so the
+    page can't drift from what ran; re-run as needed.
+  - **Corrections, as recommended:** take profit says it fires only before the Friday check; a
+    concise "Why no rolls" on the exits, and the never-exercised reason kept under missed
+    assignment; G-5 keeps DEC-95's fact that the entry trigger's 10% spread limit already
+    filters a short under $0.10 unless its quote is locked; G-2 reads "fails the structural safety
+    check"; E-S5 keeps that it uses the long's entry fill, not its current mark. Not taken: IDs
+    in a heading.
+  - **Ablations and Sensitivity:** as they are, rules named.
+  - "Preserve all rules, thresholds, edge cases, and auditability — we're changing clarity, not
+    strategy logic."
+- **Built:**
+  - **Each rule gains `title` and `summary`** (`pmcc/config/strategy.py`), templates like the
+    rest: the title is the row's Rule column ("When do we enter?", "Event week"), the summary its
+    text in plain words. The loader refuses a summary that leaves out any param, so every
+    threshold shows in its row. `condition` and `action` stay as they were, the rule stated
+    exactly, and are the summary's hover here and the blotter's and gate log's hovers elsewhere.
+    `rationale` is rewritten as the Why. The results' `rule_text` and `rules.json` carry the
+    title and summary; new required fields, so the **schema version goes to 4** (ENG, as at
+    DEC-111).
+  - **The copy** is the PO's draft, cut to a short row and a Why. Each Why says only what the spec
+    or the PO's draft says (DEC-35's rule): claims the P3-01 review had removed ("a realistic
+    fill", "for far less capital", "results comparable", "most of the premium is already earned",
+    "no longer does that well") stay out. The no-roll note opens every short exit's Why, word for
+    word, now one sentence pair (DEC-35's paragraph, made concise by the PO). The spec's
+    paragraphs are unchanged; tests now check the Whys carry their facts rather than the spec's
+    exact words.
+  - **The page:** How rules work is the draft's: the order as three numbered steps, the first gate
+    to fire logged, and how the strategies differ ("plus three extra filters used by Quant PMCC",
+    the count read from the rules; where the rules don't bear the sentence out, each rule that
+    differs is named instead). Entry: ID · Rule (title) · Baseline · Quant (summaries; Same where
+    quant runs the baseline's rule). Gates: ID · Gate · Condition (summary) · Baseline · Quant
+    (On · threshold). Exits: ID · Rule · What happens, the Trigger and Action columns merged, since
+    a plain sentence carries both (ENG, put to the PO at the handover). Ablations' Replaced by
+    reads the variant's summary.
+  - **A bug in the type generator, fixed:** `web/scripts/gen-types.mjs` drops pydantic's
+    per-field `title` annotations, and it also deleted any field *named* `title`. It now steps
+    into a `properties` map's fields without treating the map as a schema; the regenerated types
+    differ only by the two new `title` fields.
+- **Tests:** the loader refuses a missing or blank title or summary and a summary missing a
+  param, and renders both from live values (`test_strategy_loader.py`); DEC-113's guard covers
+  titles and summaries (`test_rule_copy.py`); `rules.json` carries them
+  (`tests/scenario/test_export.py`); the Rules page's rows, hovers, numbered steps, the
+  differences sentence and its fallback, exits' columns and the ablations' summaries
+  (`Rules.test.tsx`, 20). 2,179 pytest and 354 Vitest tests pass.
+- **The results:** a preview batch from the uncommitted tree wrote all 24 runs and every analytics
+  file, and the built site passes the smoke test (18). The publishable re-run follows the code
+  commit, as at DEC-113.
+- **Re-run:** 2026-10-04, `just batch` from a clean tree at `882f32f`, every run
+  `git_dirty: false`; `just verify` passed all 31 files, now schema version 4. Against the
+  committed results only the rules' text, `rule_text`, `config_hash`, the provenance fields and
+  every file's `schema_version` moved: no figure, row or CI. Every rule in the exported
+  `rules.json` has its title and summary, and none of its text names a rule ID.
+
+### DEC-115 — P7-04: the Methodology page
+**Status:** ENG · amended by DEC-116 (three panels dropped, the limits first) · the half-width robustness tables put to the PO at the handover, 2026-10-04 · **Affects:** P7-04; UI-SPEC §4, §6.4; ARCHITECTURE §13; DEC-10, DEC-64, DEC-65, DEC-67, DEC-105, DEC-106, DEC-109, DEC-113
+
+How P7-04 builds UI-SPEC §6.4. Nothing here changes a result.
+
+- **Data** (DEC-105): [1] `coverage.json`; [2] and [3] `fill_check.json` with
+  `universe/pooled_fill_check.json`; [4] to [6] `robustness.json`'s `friction`, `timing` with
+  `timing_dispersion`, and `grid` (`RobustnessTable`, DEC-110); [7] the index's
+  `risk_free_rate`. The prose reads both full runs, `robustness.json` and `rules.json`. A route
+  without a symbol shows the index's first symbol with runs.
+- **The scatters** (`web/src/components/charts/scatter.ts`): every pair a `--mark` circle
+  (`SIZE_MARK`), the OLS fit in `--fit-line` and y = x dashed in `--identity-line` over the
+  mids' range; a point's mid and print on hover. Every pair is drawn (PO, DEC-05): NVDA has
+  46,874 shorts and 124,723 longs, so the series uses ECharts' large mode, which draws them as
+  one path, and the SVG renderer stays (DEC-106). On the built site the page settles in about
+  2 s at 1600 px with no console error. Under each scatter the fit's measures (slope,
+  intercept, R², N, the median gap and the locked quotes left out of it) sit in a table, the
+  symbol's column beside the pooled one; every pair's values (mid, print, print − mid, spread,
+  gap ÷ spread) are a virtualized table in a disclosure built only when first opened
+  (`Details`' `lazy`), so 170,000 rows cost nothing until a reader asks.
+- **Entry timing** (PO, DEC-67): `timing()` in `pages/methodology/figures.ts`; the verdict sits
+  in the dispersion's key/value table.
+- **The prose** (`pages/methodology/prose.tsx`): the data and RIC scheme (the first long bought,
+  its RIC over its OCC symbol, as the example), bar timing and MarketView, the fill model (its
+  captures and fee from `rules.json`), the Reg T treatment (DEC-10's outcome of 2026-10-04) and
+  the limits of this backtest (DEC-109). Rules are named and linked, never by ID (DEC-113). The
+  close's gap from the official close (up to 0.09% in the probes) is stated, as R-21 asked. Two
+  facts are typed rather than read, being neither results nor rules: that gap, and the data's
+  reach (late October 2025, DEC-07).
+- **The limits' figures, each read as the page renders:** the symbols and weeks; each
+  strategy's long leg with its intrinsic and extrinsic parts, its shorts and its P&L; each first
+  long's round trip from the blotter (`longTrips`, from DEC-108's trade P&L), when it was sold
+  and by which rule; quant's long against the baseline's, and the ablation that swaps only the
+  long-leg rules (found by `rules.json`'s `changes`, not by its name) against quant; both
+  weekly-return CIs and whether they overlap. As at DEC-110, a claim is made only where the
+  results bear it out: "the stock rose under every long" where every run's long intrinsic change
+  is above zero; "the long made more than the whole P&L" where every run shows it; "its long
+  selection isn't shown to help" where that ablation did at least as well as quant; "can't be
+  told apart" where the CIs overlap. On NVDA every claim holds: the long +$4,955.00 and
+  +$4,162.50, the shorts −$1,651.50 and −$490.00; the first longs +$4,522.50 (sold May 26) and
+  +$3,862.50 (Jun 22), both at the long roll; quant's long $792.50 over the baseline's, A1
+  $294.00 over quant; CIs −1.0% to 2.7% and −0.9% to 2.8%.
+- **Stated assumptions:** the spec's list (HR-9): r with its series, quote and date (its source
+  on hover), q = 0, no early assignment, Black-Scholes on American calls (with no dividend an
+  American call is worth its European value), quotes not proven to be the NBBO.
+- **Put to the PO:** UI-SPEC sets Friction and Entry timing at half width, and a table's 720 px
+  minimum then scrolls each sideways inside its panel at 1366 and 1600 px, hiding the CI column
+  until a reader scrolls. Recommendation: let those two tables span the full width.
+- **Tests:** `web/src/pages/Methodology.test.tsx` (22) and `pages/methodology/figures.test.ts`
+  (13), the scatter's option in `charts.test.ts` (4); the fixtures gain NVDA's coverage and fill
+  check, the pooled fill check and the friction, timing and grid tables. The smoke test checks
+  the page on the built site (19 pass).
+
+### DEC-116 — Methodology: the limits first, three panels dropped
+**Status:** SETTLED · **Basis:** PO, 2026-10-04, reading P7-04's page · **Affects:** P7-04; Spec › Site and UI (Methodology), Spec › Open items (Reg T text); PRD HR-8; UI-SPEC §4, §6.1, §6.4; amends DEC-10, DEC-115
+
+- **The PO:** "lose the data and ric scheme box, data coverage block, reg t treatment box, move
+  the 'limits of this backtest' box to the top of the page, move the parameter grid right below
+  the charts".
+- **The page now:** Limits of this backtest · Bar timing and look-ahead guard · Fill model · [1]
+  Mid vs print, shorts · [2] Mid vs print, longs · [3] Parameter grid · [4] Friction · [5] Entry
+  timing · [6] Stated assumptions. Nothing else changes: each panel's content, figures and claims
+  are as DEC-115 built them.
+- **What leaves the site:**
+  - **Data coverage** (HR-8): `coverage.json` is still written by the batch, committed and
+    exported, so the disclosure stays in the published results, but no page shows it.
+  - **The Reg T treatment and its quotes** (DEC-10): the citations stay in DEC-10 and the
+    requirements in Spec › NAV and Reg T; the spec's open item that asked for them on
+    Methodology now says they were dropped. Each strategy page's Reg T panel and its breach
+    warning (HR-4) are unaffected.
+  - **The data and RIC scheme:** LSEG hourly bars, the RIC grammar and caret rule, guess and
+    check, the cache and manifest. The manifest footer still shows every hash.
+- **Code removed:** the three panels (`DataScheme`, `CoveragePanel`, `RegTTreatment`), their
+  figures (`daysTo`, `longestLong`, `assignments`), the quote and OCC styles, the coverage
+  fixture, and their tests (8). The Fill model's prose names the Friction table rather than its
+  number.
+- **Then, the same day:** the PO cut the limits' sentence weighing quant's long against A1 ("but
+  A1: quant with the baseline long leg made $294.00 more than Quant PMCC, so its long selection
+  isn't shown to help: its better long is mostly when its roll fell"). The paragraph now ends
+  "Quant PMCC's long leg made +$792.50 more than Baseline PMCC's." The limits no longer read
+  `robustness.json` or `rules.json`; `longSelectorAblation` and its test go. The ablations table
+  on the Comparison page still shows A1.
+- **Amended 2026-10-08 (PO, DEC-121):** the Bar timing and look-ahead guard, Friction and Stated assumptions panels are dropped too; the fill model states the look-ahead guard and r in a sentence.
+
+### DEC-117 — P7-05: the Universe page
+**Status:** ENG · **Affects:** P7-05; UI-SPEC §6.5; ARCHITECTURE §13; DEC-66, DEC-105, DEC-111, DEC-113
+
+How P7-05 builds UI-SPEC §6.5. Nothing here changes a result.
+
+- **Data** (DEC-105): [1] `universe/suitability.json`, [2] `universe/headline.json`, [3]
+  `universe/pooled.json`; the strategies' names from the index, and the screen's rule names and
+  hovers from quant's rules in `rules.json`. No readouts: §6.5 lists none, and each symbol's
+  comparison page has them.
+- **[1] Symbol suitability:** a row per symbol, sortable: long extrinsic per delta (% of spot),
+  median spread (long / short), weekly credit after half-spread (% of long cost), IV ÷ RV20, and
+  the event-week gate's fires ("2 of 26 weeks", linked to the gate, with quant's threshold under
+  it). Each measure's weeks are under its value, since each is over the weeks it could be read
+  (DEC-66). Percents are at 1 dp and a spread under 1% at 2 (UI-SPEC §9), so NVDA's 1.65% credit
+  reads 1.7% and its spreads 2.5% / 2.1%. The caption says how the screen is read and names the
+  quant rules it reads (the long and short strike rules, the volatility risk premium and event
+  week gates), each linked (DEC-113).
+- **[2] Headline by symbol:** the comparison page's headline columns (`HEADLINE_COLUMNS`) after a
+  Symbol column that links to `#/compare/<SYM>`; the symbols in the file's order, quant first
+  within each, as Comparison [2] lists them. `headline.json` has no drawdown as a % of the peak,
+  so max drawdown shows dollars alone: the shared column now leaves the % out where a row has
+  none, which no comparison row lacks.
+- **[3] Pooled universe:** the comparison page's panel and caption, at full width.
+- **Footer:** the universe files carry no manifest, so the page loads the runs `headline.json`
+  names and shows their manifests (`useManifests`; a run the index lacks, or that fails to load,
+  is left out). On NVDA these are the two full runs the comparison page loads, about 1 MB.
+- **On NVDA:** extrinsic per delta 3.0% of spot, spreads 2.5% / 2.1%, credit 1.7% of the long,
+  IV ÷ RV20 1.12, the event-week gate 2 of 26 weeks above 1.20; quant +$3,303.50 and the
+  baseline +$3,672.50, as on the comparison page.
+- **Tests:** `web/src/pages/Universe.test.tsx` (12); the fixtures gain `headline.json` and
+  `suitability.json`. The smoke test checks the page on the built site (20 pass).
+- **Amended 2026-10-08 (PO, DEC-121):** no page has a footer, so the Universe page no longer loads the headline's runs for their manifests (`useManifests` is gone).
+
+### DEC-118 — L-03: each symbol's own starting cash
+**Status:** ENG · E-L4's reworded text put to the PO at the handover · **Affects:** L-03, L-02, P1-10; `pmcc.config.capital`, `pmcc.config.universe`, `pmcc.calibration`, `pmcc calibrate`, `pmcc run`, `pmcc batch`, `pmcc export`; ARCHITECTURE §10, §12; DEC-15, DEC-30, DEC-93
+
+How L-03 builds the PO's 2026-10-05 answer to DEC-30. No result's numbers change: NVDA's value is what it was.
+
+- **The block** (`configs/universe.yaml`, still the file's last key, still written only by `pmcc calibrate`): E-L4's `cash_multiple` and `cash_round_to` and the `calibration_cash` once at the top, then `symbols:`, one entry per calibrated symbol in the universe's order: its `value`, `provisional` and `entries`. An entry no longer repeats its symbol. Each symbol's value is checked against the rule over its own entries, and `provisional` is true exactly while it lacks a strategy, so a symbol is final on its own, whatever else the universe lists.
+- **The loader** refuses a calibrated symbol outside the universe, or symbols out of the universe's order (calibrate never writes them so), but lets a listed symbol have no value yet. `pmcc fetch` reads the file, so a symbol can be uncommented and fetched with nothing else touched. The old one-value shape is refused.
+- **`pmcc calibrate`:**
+  - With no `--symbol`, it calibrates every universe symbol without a final value, and refuses if there is none. A final symbol, named or not, is never rewritten: it is refused before anything runs, with the message to remove its entry by hand.
+  - It merges what it calibrated into the block (`StartingCash.merged`): every other symbol's entry is kept as it was. A block calibrated under another E-L4 rule is refused; remove it by hand to recalibrate every symbol.
+  - `--check` recomputes every calibrated symbol by default (or those named), merges them the same way and compares the whole file byte for byte (DEC-93). A listed symbol not yet calibrated is skipped, and a block under another rule is a mismatch.
+  - It prints each symbol's value with its entries, then each run's lowest funds at its own symbol's value.
+- **`pmcc run`** takes the symbol's own value and refuses a symbol without one, naming `pmcc calibrate --symbol SYM`. **`pmcc batch`** refuses, before running anything, if any universe symbol has no value, naming them; each symbol's job carries its own value (it already did), and a provisional symbol is noted by name.
+- **`index.json`:** the starting cash moves from the index to each symbol (`IndexSymbol.starting_cash`; null for a symbol with only analytics files). The export still refuses runs over another window or r, and now refuses a symbol whose runs started from different cash. The site reads each run's own `starting_cash`, so no page changes. Since `index.json`'s shape changed, `SCHEMA_VERSION` is 5.
+- **E-L4's text** (`configs/_shared.yaml`, shown on the Trade rules page): the summary and action now say each symbol's account starts with 2× its most expensive first long-leg cost, and the rationale says why (each symbol is its own account, so returns compare). The wording is the agent's, put to the PO at the handover. It is part of the config, so every run's `config_hash` changes.
+- **Re-run:** the new hash and schema version mean every committed result is stale. After the PO commits this, `just batch` from a clean tree re-writes `results/` (24 NVDA runs and the symbol and universe files); their numbers are expected to stay as they are, since NVDA's cash didn't move.
+
+### DEC-119 — LSEG's request cap, and QQQ's fetch deadline
+**Status:** SETTLED · **Basis:** PO, 2026-10-05; the cap measured from the fetch logs · **Affects:** P1-10, L-02; R-04; DEC-15
+
+- **Found, resuming QQQ's fetch on 2026-10-05:** LSEG answers `429, Too many requests, please try again later` after a few thousand RIC requests, and keeps answering it for hours. `pmcc fetch` treats three refusals in a row as an outage, so it stops cleanly and writes nothing for the unit in flight (DEC-49); re-running resumes at the first missing unit.
+  - **2026-09-29 (seen again in the logs):** NVDA's 2,001 requests, then TSLA's 3,146, then 429s from 05:17 UTC. It was still refused at 13:17 and 13:20 UTC, 8 hours on. This is why TSLA's pull stopped with none of its monthlies (P1-10).
+  - **2026-10-05:** QQQ's 1,913 requests, a Workspace hang on the May 29 unit (read timeouts, cleared by restarting Workspace), then 1,358 more, then 429s from 15:47 UTC. Still refused 15 minutes later, and again at 01:01 UTC on Oct 6, more than 9 hours on.
+  - **So:** a cap of very roughly 3,300 to 5,200 requests (depending on how the one-RIC re-asks count), over a day or a rolling 24 hours; LSEG doesn't say which. LSEG-DATA-GUIDE doesn't mention it.
+- **QQQ's state:** 27 of 63 units cached, the stock tape and every weekly from Apr 2 to Jun 26, calls and puts. None of the long-leg monthlies are cached (the fetch works through expiries in date order), so QQQ can't be backtested on what's there. The rest is 36 units, an estimated 4,611 to 13,833 requests: one to three more days at the cap.
+- **A shorter QQQ window was considered and declined** (PO, as recommended): Mar 30 to Jun 26 would need only the long-leg monthlies (about 1,600 to 1,800 requests), but it breaks one window for every symbol (DEC-07), needs a window per symbol in the universe, batch and export, mixes two windows in the pooled CI, and would cache those monthlies with the short window's narrower strike bands, which are never overwritten.
+- **Outcome:** 2026-10-05 — PO: **keep pulling QQQ's full window, a quota at a time, and drop QQQ if it isn't in before the due date.** Each attempt resumes with the same command; the agent reports what came in. Until then `configs/universe.yaml`'s uncommented QQQ line stays uncommitted (`just batch` refuses a symbol with no starting cash, DEC-118). Once the fetch completes: calibrate QQQ alone, run the batch, repeat P5-05's band-edge check, then the site (DEC-15).
+
+### DEC-120 — The lecture's Greeks on the site: position Greeks, both pages' Greek attribution, Discovery
+**Status:** SETTLED · **Basis:** PO, 2026-10-05 · **Affects:** L-04; Spec › Attribution, Site and UI (Baseline PMCC, Quant PMCC, Methodology); PRD FR-M9, HR-11; UI-SPEC §4, §6.2, §6.4, §9; ARCHITECTURE §12; amends DEC-54 (the baseline's sections), DEC-76 (its display, now on both pages), DEC-109 and DEC-116 (the panel's name)
+
+- **Context:** the PO checked the build against the 2026-09-22 lecture on the PMCC (a deep ITM long call with weekly calls sold against it) and its Greeks. The rules and accounting already did what the lecture asks: a 0.70–0.90 delta long; an explicit rule after assignment that leaves the position short 100 shares and still long the call (X-S5, never exercising the long); no 50%-of-LMV Reg T; coverage only while the long's strike is no higher and its expiry no later (INV-05); full Black-Scholes theta, rate term included; every rule written down. Where it fell short was in showing the lecture's central point: the weekly is a gamma and theta position, the long a vega one, and the PMCC is long delta, short gamma, long theta and long vega.
+- **Gaps put to the PO, each with a recommendation:** (1) the committed results contradict the lecture's "positive net theta" for quant, and the site doesn't say so; (2) only quant's page showed the Greek attribution; (3) no page showed the position's net Greeks; (4) quant's long is never "six months or more"; (5) the event-week gate leaves the long's vega uncovered. Also corrected at the time: quant skipped 18 of its 26 weeks, not 11 (the baseline's figure).
+- **Outcome:** 2026-10-05 — PO: **1, 2 and 3.**
+  - **(1):** "a simple sentence or two in the limits of the backtest, but rename that box to Discovery". No new figure (the long's theta split by whether a short was open was offered and not taken).
+  - **(2):** the baseline's `report.sections` gains `greek_attribution`.
+  - **(3):** a chart and table, on both strategy pages, in dollar units.
+- **Built (L-04):**
+  - **Position Greeks** (`pmcc/analytics/position_greeks.py`; section `position_greeks`, which both strategy files now list). At every ledger bar, the position's net δ, Γ, θ and ν: the long's plus the short's, negated, plus X-S5's shares for δ. Units from DEC-24's: δ × 100 × contracts (shares), Γ × 100 × contracts (shares per $1), θ ÷ 365 × 100 × contracts ($ a calendar day), ν ÷ 100 × 100 × contracts ($ a vol point). A Greek is null on a bar holding nothing, or where a held leg's is unknown; the ledger's Greeks are used as recorded. The table averages each Greek over the bars ending with both legs held and it known for both (`bars`), gives each leg's mean and the net's, and the share of those bars on which the net had the textbook PMCC's sign. Sums use `math.fsum`.
+  - **The result** gains `position_greeks {rows, series}` beside `attribution`, null unless declared; a summary run keeps none. `SCHEMA_VERSION` is 6, so every committed result is stale until re-run.
+  - **The page:** Strategy [8] Position Greeks (quant; [7] on the baseline), before the Greek attribution, now [9] ([8]). The table first, then the four panes on one time axis at hero height, each named by its axis with a zero ruler, then every bar's values in a disclosure: the order the leg and Greek attribution panels use, rather than the table beside the chart in the mockup put to the PO. Its caption says where no short is open, the net is the long alone.
+  - **Discovery** (Methodology's first panel, renamed): one paragraph, between the rolls and the CIs, read from each run's Greek attribution as the page renders. Its head says whether the weekly rent covered the long's decay in both, neither or one strategy; then each strategy's short theta against its long's; then that a short is held at most Monday to Friday (and none in a skipped week, where any run skipped one) while the long decays every calendar day, weekends included. A run without a Greek attribution leaves the paragraph out.
+- **NVDA, from the uncommitted tree** (scratch runs; trades, ledger and P&L unchanged):
+  - **Theta over the run:** the baseline's shorts +$1,336.93 against its long's −$973.03, the rent covering the decay; quant's +$836.54 against −$838.24, about even. Quant's short was open on 138 of its 875 bars (18 weeks skipped), the baseline's on 211.
+  - **While both legs were held**, both strategies had the lecture's package. Net θ averaged +$42.91 a day (baseline) and +$40.99 (quant); net δ +64.1 and +68.4 shares; net Γ −3.70 and −3.27 shares per $1; net ν +$10.66 and +$8.02 a vol point. Net δ, Γ and θ had the textbook sign on every such bar; net ν on 96.7% and 78.3% of them.
+  - **Size:** `position_greeks` adds about 118 KB to each full run's file.
+
+### DEC-121 — Site trims: Greeks in words, no sensitivity or friction table, fewer Methodology panels, no footer
+**Status:** SETTLED · **Basis:** PO, 2026-10-08 · **Affects:** L-05; Spec › Run manifest, Site and UI (Trade rules, Methodology), Frontend constraints; PRD Q3, Q5, G5, FR-B3, FR-S11, HR-9; UI-SPEC §2, §5, §6.3, §6.4, §6.5, §9; ARCHITECTURE §13; TEST-STRATEGY; amends DEC-11 (where r is stated), DEC-112 (the Sensitivity panel), DEC-116 and DEC-117
+
+- **The PO, reading the site after L-04:** "anything related to the greeks - lets not use the symbol and just use the name. lets lose the sensitivity table in the rules page and the methodology page. Lets also lose the stated assumptions on the methodology page and the bar timing and look ahead guard on the methodology page. Let's also lose the footer on all pages." And: the leg attribution's "Stock after X-S5" and its caption's "X-S5's stock" break DEC-113's rule that the site names a rule, never its ID.
+- **Asked, and answered:**
+  - **Which Methodology table is "the sensitivity table"** (the page had the parameter grid, friction and entry timing)? PO: **friction only** ("just [4]"); the grid and entry timing stay.
+  - **Removing those panels and the footer leaves the site without r (DEC-11), the look-ahead guard (the spec's deliverable lists "no look-ahead bias") and the manifest.** Recommended: keep one sentence in the fill model for the first two; the manifest stays in every result file. PO: **as recommended.**
+- **Built (L-05):**
+  - **Greeks in words** on every page: the position Greeks' table and chart (Net delta, Net gamma, Net theta, Net vega), the Greek attribution's components (delta, gamma, theta, vega, residual) and its note ("delta, gamma, theta and vega terms, per bar"), the ledger's L delta and S delta, the gate log's "delta 0.19", and the position Greeks' caption. Δ for a change (Cash Δ, Δ vs quant) is not a Greek and stays.
+  - **Rule names, not IDs:** the leg attribution's row reads "Stock after a missed assignment", the rule's name from the run's config, linked to its rule; the caption says "the stock after a missed assignment". A sweep found no other ID in the site's copy outside the ID columns.
+  - **Trade rules:** the Sensitivity panel and its helpers (`fillChanges`, `CHECK_NAMES`) are gone; the four tables renumber. The sensitivity runs are still run and published in `robustness.json` and `rules.json`.
+  - **Methodology:** Discovery · Fill model · [1] and [2] Mid vs print · [3] Parameter grid · [4] Entry timing, now full width (alone at half width it would have scrolled sideways, as P7-04 found). Bar timing and look-ahead guard, Friction and Stated assumptions are gone. The fill model drops the friction runs' capture row and gains one sentence: "Every decision uses only data stamped at or before its bar's end, and the engine refuses any request for later data, so look-ahead is impossible by construction; implied volatilities and Greeks use a risk-free rate of 3.71%", r read from the index.
+  - **No footer:** `ManifestFooter`, `format/hash`, `REPO_URL` and `useManifests` are removed, with the footer's styles. The tests and the smoke test that waited on the footer wait on the page's main landmark, and check that no page has a footer.
+  - **No result changes:** configs and results are untouched, so no re-run.
+- **Tests:** Vitest 400 (the footer, sensitivity, friction, assumptions and hash tests removed; one added for the fill model's sentence); the smoke test passes on the built site (20).
+- **Then, 2026-10-08 — PO:** "make the ablations table fill the width of the window". The Rules page's Ablations panel is full width (10 columns), the page's last panel now that the sensitivity table is gone; a test pins it (Vitest 401).
+
+## E. Analytics definitions
+
+These define the reported numbers, so each goes to the PO. They're asked as one batch when P6 starts.
+
+### DEC-60 — Returns and performance
+**Status:** SETTLED, amended by DEC-111 (no return on capital deployed; Sharpe and Sortino on excess returns, annualized) · **Basis:** PO, 2026-10-01, at P6 start · **Affects:** P6-01
+
+- **Recommendation:**
+  - **Session-close NAV:** the NAV at the session's close bar.
+  - **Daily return:** close NAV ÷ previous close NAV − 1.
+  - **Weekly return:** NAV at the week-final session close ÷ the previous week-final close − 1. The first week compares against starting cash.
+  - **Sharpe:** mean ÷ sample standard deviation of daily returns.
+  - **Sortino:** mean ÷ √mean(min(r, 0)²).
+  - Both use a target of 0 and are not annualized. Any annualized figure is × √252 and labelled "annualized from N sessions".
+  - **Max drawdown:** measured on per-bar NAV.
+  - **Longest time underwater:** the most sessions from a peak to full recovery, or to the end.
+  - **Return on starting NAV:** P&L ÷ starting cash.
+  - **Return on capital deployed:** P&L ÷ the peak long-leg entry cost.
+- **Outcome:** 2026-10-01 — PO, at P6 start: **as recommended.** Built at P6-01
+  (`pmcc/analytics/performance.py`, DEC-101). Where the recommendation leaves a detail open, the
+  build does this; each is in `Metrics`' docstring and the schema, and any is the PO's to change:
+  - the first session's daily return is against the starting cash, as the first week's is, so a
+    run has one daily return per session;
+  - the starting cash is the first peak, for drawdown and for time underwater;
+  - max drawdown's dollar figure and its share of the peak are each their own maximum (a larger
+    fall in dollars from a higher peak can be a smaller share);
+  - time underwater counts from a peak's close to the close that regains it (an equal close
+    regains it), or to the last session;
+  - Sharpe and Sortino are null when their divisor is 0 (no variation, no losing day), and no
+    annualized figure is published;
+  - the peak long-leg cost is the dearest long entry, fees included, as E-L4's cost is.
+  - **NVDA, from the uncommitted tree** (committed unchanged at P6-09, DEC-105): baseline P&L
+    $3,672.50, 24.5% on $15,000, 71.7% on its dearest long ($5,125.00); max drawdown $4,211.50
+    (20.6%); 92 sessions underwater, from the May 14 peak to the end; daily Sharpe 0.084 and
+    Sortino 0.131. Quant $3,303.50, 22.0%, 53.5% on $6,177.50; $4,261.50 (20.8%); 92 sessions;
+    0.075 and 0.117. Every P&L matches P5-04's end NAVs.
+
+### DEC-61 — Bootstrap
+**Status:** SETTLED · **Basis:** PO, 2026-10-01, at P6 start · **Affects:** P6-05
+
+- **Recommendation (per symbol and strategy):** a percentile 95% CI of the mean weekly return, from 10,000 resamples.
+- **Randomness:** numpy PCG64, seeded from `configs/universe.yaml` (`bootstrap.seed`); the seed is recorded in results.
+- **Recommendation (pooled):**
+  - Build a week × symbol matrix of weekly returns.
+  - Resample whole weeks (rows) with replacement, so all symbols move together.
+  - Take the mean of each resample.
+- **Outcome:** 2026-10-01 — PO, at P6 start: **as recommended.** Built at P6-05
+  (`pmcc/analytics/bootstrap.py`, DEC-101): one function takes a week × symbol table (one column
+  for a run, one per symbol pooled), draws 10,000 resamples of whole weeks from a fresh PCG64 at
+  the seed, and takes the 2.5th and 97.5th percentiles of the means (numpy's linear
+  interpolation). The weekly returns are kept at the 6 places results publish, and the CI is
+  drawn from those, so it can be rebuilt from the file and a one-symbol pooled CI equals the run's
+  own (found by the review). `configs/universe.yaml` holds `bootstrap: {seed: 535}`, above the
+  starting-cash block; every CI records its seed, resamples, level and weeks. Every run gets its CI, so each
+  robustness row has one. `universe/pooled.json` is written by the batch's universe stage.
+  - **NVDA:** the baseline's mean weekly return 0.95%, 95% CI −0.89% to 2.76%; quant 0.89%,
+    −1.01% to 2.74%; over 26 weeks both intervals hold 0. Pooled over NVDA alone, each equals the
+    run's own (DEC-15).
+
+### DEC-62 — Cycles
+**Status:** SETTLED · **Basis:** PO, 2026-10-01, at P6 start · **Affects:** P6-02
+
+- **Recommendation:**
+  - **Cycle:** one calendar week of the window.
+  - **Cycle P&L:** the NAV change from the previous week-final close to this one, both legs included.
+  - **Win / loss statistics:** a win is P&L > 0. Win rate, average win, average loss and payoff (average win ÷ |average loss|) cover weeks with a long held.
+  - **Traded vs skipped:** counted separately, with skips counted by rule ID.
+  - **Premium captured:** (credit − buyback) ÷ credit, on traded weeks.
+  - **Weekly credit as % of long-leg cost:** credit ÷ the current long's entry cost.
+  - **Exit mix:** counts of X-S1–X-S5, X-L1 and X-L2.
+- **Alternative:** base the win statistics on short-leg P&L instead of NAV.
+- **Outcome:** 2026-10-01 — PO, at P6 start: **as recommended**, on NAV, with two details the
+  recommendation left open, each as recommended:
+  - **premium captured across weeks** is Σ(credit − buyback) ÷ Σcredit, weighted by credit, not
+    the mean of each week's ratio, which one large buyback would swing;
+  - **weekly credit as % of the long's cost across weeks** is the mean over traded weeks.
+  - **Built at P6-02** (`pmcc/analytics/cycles.py`, DEC-101). Credits and buybacks are cash, net
+    of fees; X-S4 buys back at $0, and so does X-S5's assignment, its stock reported apart
+    (DEC-63). A loss is P&L below 0; a flat week is neither, but counts in the win rate's
+    weeks. Average win and loss round half-even to $0.0001. The exit mix lists all seven exits,
+    at 0 too. Each cycle also says whether a long was held and the cost of the long its short
+    was sold against. A long was held in a week if any of its bars ends with one or one was
+    carried into it: a long sold on the week's first bar by an X-L reset whose re-entry never
+    completes still counts, since the week's P&L is that long's (found by the review).
+  - **NVDA:** premium captured is negative for both strategies. The baseline's 15 shorts took in
+    $2,742.00 and paid $3,232.00 to close, $2,952.50 of it in six X-S2 stop-losses: −17.9%. Quant's
+    8 took in $803.50 and paid $2,455.00 (four X-S2s, $2,385.00): −205.5%. Checked against the
+    blotters. Win rate 65.4% and 61.5%, payoff 0.79 and 0.88, credit 4.2% and 1.7% of the long's
+    cost a week.
+
+### DEC-63 — Attribution
+**Status:** SETTLED · **Basis:** PO, 2026-10-01, at P6 start · **Affects:** P6-03, P6-04
+
+- **Recommendation (by leg):**
+  - The short leg is credits − buybacks (the spec's net short premium). X-S5 stock losses are shown separately.
+  - The long leg is realized + unrealized P&L, split into the intrinsic change (Δ of max(0, S − K) × 100 × qty) and the extrinsic change (the rest).
+- **Recommendation (by Greek):**
+  - Per bar and per leg, predicted = δΔS + ½Γ(ΔS)² + θΔt + νΔσ, using the previous bar's Greeks and DEC-24 units.
+  - Residual = actual − predicted.
+  - A bar with a stale endpoint or a failed IV counts entirely as residual, and the number of such bars is reported.
+- **Outcome:** 2026-10-01 — PO, at P6 start: **as recommended.** Built at P6-03 and P6-04
+  (`pmcc/analytics/attribution.py`, `greek_attribution.py`, DEC-102). Where the recommendation
+  leaves a detail open, the build does this; each is in the docstrings of the models, which the
+  schema and the site's types carry, and any is the PO's to change. Three decide NVDA's published
+  figures: the closing fill's IV prices every buyback and long sale in both full runs, ΔV as the
+  leg's P&L over the bar is every bar's actual change, and the below-floor reading makes 25 of
+  quant's long bars residual. The rest (an open short, X-S5's stock, a carried spot, friction,
+  an X-S4 or X-S5 bar) don't arise in either:
+  - **a short still open at the window's end** is reported apart at its last mark
+    (`short_open`), so long + net short premium − open short + X-S5's stock = the run's P&L, to
+    the $0.0001; a run whose legs don't add up raises;
+  - **X-S5's stock** is one signed P&L: its sale at the strike, its cover, and any open mark;
+  - **the long's intrinsic value** uses the bar's spot (TRDPRC_1, DEC-23), or the last spot
+    before it on a bar without a trade; the extrinsic part, being the rest, holds the long's
+    fees and friction;
+  - **a bar's ΔV is the leg's P&L over the bar** (its value at the bar's end, plus its trades'
+    cash, less its value at the previous end), so the Greek table adds up to the leg attribution,
+    and a trade's friction and fees fall in the residual (none at the default fill model, so none
+    in the published runs);
+  - **on the bar a leg is closed,** Δσ ends at the IV its fill was at; an X-S4 expiry or an X-S5
+    assignment has no fill (and T is 0 at the close), so its bar is residual whole;
+  - **"a failed IV" includes a call under its floor,** although DEC-27 gives it Greeks (δ 1,
+    Γ = ν = 0): it has no IV, so Δσ is unknown and its bars are residual whole;
+  - **the unattributed bars are counted per leg,** beside the bars the leg was held, their
+    denominator.
+  - **NVDA, from the uncommitted tree** (committed unchanged at P6-09, DEC-105):
+    - **Baseline:** long +$4,162.50 (intrinsic +$5,877.28, extrinsic −$1,714.78); short credits
+      $2,742.00 less buybacks $3,232.00, −$490.00; P&L $3,672.50.
+    - **Quant:** long +$4,955.00 (intrinsic +$5,964.77, extrinsic −$1,009.77); short $803.50 less
+      $2,455.00, −$1,651.50; P&L $3,303.50. The credits and buybacks are DEC-62's.
+    - **Quant by Greek:** the long's δ +$6,686.05, Γ +$367.45, θ −$838.24, ν −$2,282.44 and
+      residual +$1,022.18 (20.6% of its change); the short's δ −$1,197.19, Γ −$1,091.09,
+      θ +$836.54, ν −$299.48 and residual +$99.72 (−6.0% of −$1,651.50).
+    - **Unattributed:** 25 of the long's 872 bars, every one a quote under its floor (DEC-27);
+      none of the short's 138. Those 25 carry −$1,497.50 of the long's residual and the 847 priced
+      bars +$2,519.68. Neither run had a stale mark, a bar without a spot, an X-S5 or a short
+      open at the end.
+
+### DEC-64 — Fill-assumption check
+**Status:** SETTLED · **Basis:** PO, 2026-10-01, at P6 start · **Affects:** P6-07, P7-04
+
+- **Recommendation:**
+  - **Sample:** session bars with a TRDPRC_1 print and a valid end-of-bar BID/ASK. Weekly call bands are the "shorts" group and monthly long candidates the "longs" group. Computed per symbol and pooled.
+  - **Fit:** OLS of TRDPRC_1 on mid, reporting slope, intercept, R² and N. Also report the median |print − mid| as a % of the spread.
+  - **Caveat stated on the page:** a print can be up to an hour older than the end-of-bar quote.
+- **Outcome:** 2026-10-01 — PO, at P6 start: **as recommended.** Built at P6-07
+  (`pmcc/data/fillcheck.py`, `pmcc/analytics/fillcheck.py`, DEC-103). Where the recommendation
+  leaves a detail open, the build does this; each is in the models' docstrings, and any is the
+  PO's to change:
+  - **a print is a real trade in that bar:** on NVDA's cache TRDPRC_1 is present on exactly the
+    bars with trades (none of its 188,963 call prints lacks NUM_MOVES or ACVOL_UNS, and no bar
+    with a trade lacks a print; the puts' 2,436 prints too), so a bar without a trade is never paired with an old print;
+  - **inside the window only:** the Apr 2 weekly's bands start Mar 23, for G-3's next-week IV,
+    and those bars are left out;
+  - **the groups are split by date:** a chain's bars over its weekly's dates (the prior week's
+    first session to the expiry, as fetched, DEC-16) are shorts, so the prior week's bars, which
+    G-3 reads but no short trades on, are in; the bars before those dates are longs, which only a
+    long-candidate monthly has, so a monthly's bars after it stops being a candidate (a long can
+    be held down to X-L2's DTE) are in too;
+  - **a monthly that is also a weekly expiry** (Aug 21 and Sep 18 on NVDA) keeps its near-money
+    strikes as shorts (from its band's floor, padded 4 steps as fetched) and its deep strikes as
+    longs (to their padded top): 1,462 bars of deep calls two weeks from expiry stay out of
+    the shorts, and 9,827 of out-of-the-money monthlies out of the longs;
+  - **the mid** is (BID + ASK) ÷ 2 rounded half-even to $0.0001, as a fill at mid is;
+  - **a locked quote** (BID = ASK) stays in the fit and out of the median, since it has no
+    spread; its count is published;
+  - **pooled** is one fit over every symbol's pairs together (`universe/pooled_fill_check.json`);
+    with NVDA alone it equals NVDA's.
+  - **NVDA, from the uncommitted tree** (committed unchanged at P6-09, DEC-105):
+
+    | group | N | slope | intercept | R² | median \|print − mid\| ÷ spread | locked |
+    | --- | --- | --- | --- | --- | --- | --- |
+    | shorts | 46,874 | 0.999837 | +$0.002265 | 0.999227 | 0.500 | 39 |
+    | longs | 124,723 | 1.000335 | −$0.003417 | 0.999690 | 0.318 | 33 |
+
+    The spec expects the long leg to fit worse. By R² it doesn't, but R² is near 1 for both only
+    because the mids span $0.01 to $71 and $0.21 to $184, so it says little. The other measures,
+    counted in exact $0.0001 units, split:
+    - a short's median print is half a spread from the mid: 44.5% of the shorts' prints sit
+      exactly at the bid or the ask, and 21.7% lie outside the end-of-bar quote;
+    - a long's median print is a third of a spread from the mid, but 32.2% of the longs' prints
+      lie outside the quote (7.7% at the bid or the ask), and the spread is wider: median $0.40
+      against $0.04, median gap $0.15 against $0.01.
+
+    Both are published as they are (HR-7); the write-up's reading of them is P7-04's. (A first
+    draft of this outcome said 48.9% of the shorts' prints lay outside the quote: comparing the
+    dollar columns as floats counted most prints at the bid or ask as outside. The review found it.)
+
+### DEC-65 — Robustness tables: references, dispersion, columns
+**Status:** SETTLED · **Basis:** PO, 2026-10-01, at P6 start · **Affects:** P6-06, P7-02, P7-04; Spec › Robustness tables
+
+- **Context:** the spec lists the four tables and the ablation table's columns, but not what each
+  run is compared with, what "spread" means for timing, or the other tables' columns.
+- **PO answers, as recommended:**
+  - **References:** the ablations against quant; each friction run against its own strategy at
+    spread capture 0; the timing runs against the baseline (E-T1's liquidity trigger); the grid
+    against quant at its defaults. The reference's own row leads its rows.
+  - **Timing dispersion:** the range (highest − lowest) and sample standard deviation of P&L
+    over the fixed-bar runs only. The E-T1 baseline is shown for comparison, not counted.
+  - **Columns, every table:** P&L, P&L against the reference, max drawdown, payoff ratio and the
+    weekly-return CI (the spec's ablation columns).
+- **Outcome:** 2026-10-01 — built at P6-06 (`pmcc/analytics/robustness.py`, DEC-101): the batch
+  writes `{SYM}/robustness.json` once every run of the symbol has succeeded. A table's rows follow
+  `configs/sensitivity.yaml`'s lists, never run-ID suffixes.
+  - **NVDA:** ablations against quant's $3,303.50: A1 +$294.00, A2 +$77.50, A3 +$123.00, A4
+    −$254.50, A5 +$70.00. Friction: the baseline −$100.71 and −$201.50 at 0.25 and 0.50, quant
+    −$186.45 and −$373.00. Timing: P&L from $2,788.00 (t3) to $4,332.50 (t6), a range of
+    $1,544.50 and a standard deviation of $610.26 over the seven fixed bars, against the
+    baseline's $3,672.50. Grid: from −$298.50 (G-4 at 0.90) to +$860.00 (G-4 at 1.10).
+
+### DEC-66 — Suitability screen: the sample, the contracts, the credit, G-3
+**Status:** SETTLED · **Basis:** PO, 2026-10-01, at P6-08 · **Affects:** P6-08, P7-05; Spec › Symbol suitability screen
+
+- **Context:** the spec names the five measures "per symbol, from point-in-time data", but not
+  which bar they're read on, which contracts the long and short measures read, how the credit and
+  the long's cost are priced, or where the G-3 count comes from. P6-08 had no **Ask first**, but
+  each changes a published number, so the questions went to the PO when the item started.
+- **PO answers, each as recommended:**
+  - **Sample:** one snapshot a week, at the first bar of each week-open session in the window:
+    the bar both strategies decide on in most weeks, the same for every symbol, and independent
+    of any run. (Alternatives: every session's close; quant's decision bars.)
+  - **Contracts:** quant's picks on that bar. The long is E-L3's cheapest replacement (lowest
+    extrinsic ÷ delta over E-L2's 120–270 DTE monthlies, delta 0.70–0.90), whose own score the
+    first measure is. The short is E-S3's lowest strike at or above spot + 1.0 × EM. The spread
+    medians are over the weekly picks. (Alternatives: the baseline's picks; quant's whole long
+    candidate band for the long spread.)
+  - **Credit after half-spread:** the short's bid (mid − half-spread) ÷ the long's mid, the long
+    priced as E-L4 and DEC-62 price it. (Alternative: the long at its ask.)
+  - **G-3 fires:** the screen's own check each sampled week, at quant's threshold (1.20),
+    counted out of the weeks it could be evaluated, `n/a` weeks apart. It works on any symbol
+    before a run. (Alternative: the quant run's gate log.)
+- **Stated to the PO with the questions:** "average" is the mean over the weeks; IV ÷ RV20 is the
+  mean of each week's ratio, its IV the front week's ATM IV (G-4's input); a week missing an
+  input is left out of that measure alone, and each measure publishes its count.
+- **Outcome:** 2026-10-01 — built at P6-08 (`pmcc/analytics/suitability.py`, DEC-104). Where the
+  answers leave a detail open, the build does this; each is in `SuitabilityRow`'s docstring,
+  and any is the PO's to change:
+  - **the picks needn't pass E-T1:** the screen measures what quant would trade, not whether
+    that bar's spread lets it;
+  - **a week without a long reads no short**, since a short is sold against a long (E-S1); IV ÷
+    RV20 and G-3 are read whatever the picks;
+  - **a spread is (ASK − BID) ÷ mid** exactly as E-T1 tests it, and the medians and the credit's
+    mean are exact fractions, so no figure depends on the weeks' order;
+  - **a week whose RV20 is 0** has no IV ÷ RV20 and is left out of that mean (G-4 instead passes
+    such a week, its ratio unbounded); it doesn't arise on NVDA.
+  - **NVDA, from the uncommitted tree** (committed unchanged at P6-09, DEC-105): every measure read in all 26 weeks.
+    The long's extrinsic per delta averages 3.05% of spot (2.56% to 3.39% by week); the median
+    spread is 2.48% for the long, under E-T1's 3%, and 2.07% for the short; the short's bid
+    averages 1.65% of the long's mid a week (quant's realized credit is 1.7% of its long's cost,
+    DEC-62); IV ÷ RV20 averages 1.12, and is under 1.00 in 13 weeks, the 13 in which G-4 fired
+    in quant's gate log; G-3 fires in 2 of 26 weeks, May 18 and Aug 24, the two in which it fired
+    there.
+
+### DEC-67 — Entry timing: when dispersion is "fragility"
+**Status:** SETTLED · **Basis:** PO, 2026-10-03, asked at P7-04 · **Affects:** P7-04, UI-SPEC §6.4 [5]; Spec › Robustness tables; DEC-65
+
+- **Context:** the spec says "large dispersion is reported as fragility", and UI-SPEC §6.4 [5]
+  flags it, but nothing says how large. DEC-65 settled what the dispersion is (the range and
+  sample standard deviation of P&L over the fixed-bar runs), not when it counts as large. Found at
+  P6-09's audit of what the site needs; DEC-101's review had set it aside as older than P6.
+- **Recommendation:** flag fragility when any fixed-bar run's mean weekly return falls outside the
+  E-T1 baseline's 95% weekly-return CI. It sets no new threshold, since it reads the CI the page
+  already shows, and every number it needs is in `{SYM}/robustness.json`, so the results don't
+  change. On NVDA the fixed bars' means run from 0.77% (t3) to 1.08% (t6) a week, inside the
+  baseline's −0.89% to 2.76%: not flagged. With 26 weeks the CI is wide, so the flag will rarely
+  fire; what it says is whether timing moves the result more than the sample's own noise.
+- **Alternatives:**
+  - a fixed threshold, e.g. the range above 25% of the baseline's P&L (NVDA: $1,544.50 is 42% of
+    $3,672.50, so flagged). It needs a number with no basis in the spec, which would live in
+    `configs/sensitivity.yaml`;
+  - no flag: show the range and standard deviation, with the range as a share of the baseline's
+    P&L, and leave the reading to the write-up.
+- **Outcome:** 2026-10-03 — PO: **as recommended**, recorded with P7-04 (DEC-115). Timing is
+  fragile when any fixed-bar run's mean weekly return falls outside the E-T1 baseline's 95%
+  weekly-return CI; a mean on the CI's edge is inside. The Entry timing panel states the fixed
+  bars' count, the P&L range and sample standard deviation, the fixed bars' means against the
+  baseline's CI and the verdict, a fragile one in `--negative` naming each bar outside. Spec ›
+  Sensitivity checks now says so. On NVDA: 7 fixed bars, range $1,544.50, standard deviation
+  $610.26, means 0.8% to 1.1% against the baseline's −0.9% to 2.8%: **not fragile**.
+
+## F. Frontend
+
+### DEC-70 — Design tokens
+**Status:** ENG
+
+- **`web/src/theme/tokens.css`:** the only place colours and font stacks exist, as CSS custom properties. One theme since DEC-03 (PO, 2026-09-30).
+  - Values start from `theme.py` (the baseline), with names that mirror it (`--nav-line`, `--margin-im`, …).
+  - A palette change the PO asks for is one edit in this file.
+- **`web/src/theme/tokens.ts`:** typed accessors plus the numeric layout constants.
+- **ECharts:** reads colours from the CSS variables at render time, so a palette change in `tokens.css` reaches every chart. (One theme, DEC-03: there is no theme switch.)
+- **Ported tests:**
+  - Token-lint: no hex, `rgb()`, font name or `[Npx]` arbitrary value outside `web/src/theme/`.
+  - AA contrast for every text pairing.
+- **Outcome:** 2026-09-30 — built at P4-06 (DEC-97): `tokens.css` holds `theme.py`'s values unchanged; `shell.css` ports `PAGE_CSS`; `tokens.ts` holds the layout constants and a `color()` accessor for the charts (P7). The token lint and the contrast test are `web/src/theme/tokenlint.test.ts` and `contrast.test.ts`. The ECharts theme joins with the first chart (P7-01).
+
+### DEC-71 — shadcn/ui restyled
+**Status:** ENG
+
+- Radius 0, no shadows, token colours only, matching the baseline's square terminal panels.
+- The components are used for behaviour and accessibility (Select, Tooltip, Toggle), not for their default look.
+- **Outcome:** 2026-09-30 — P4-06 copies in only the Select the symbol selector needs (`web/src/components/ui/select.tsx`, over `@radix-ui/react-select`), styled by `shell.css`. Its caret is a text glyph, so no icon package. More components join as pages need them.
+
+### DEC-72 — Fonts self-hosted
+**Status:** ENG
+
+- Space Grotesk, Inter and JetBrains Mono come from `@fontsource/*` and are bundled into `web/dist`. The site then makes no Google Fonts request.
+- This follows Spec › Frontend constraints: static output, loading from its own origin only.
+- **Outcome:** 2026-09-30 — built at P4-06: `web/src/theme/fonts.ts` imports the weights `theme.py` loads (Space Grotesk 500 and 700, Inter 400 and 600, JetBrains Mono 400 and 700), and `vite build` bundles them. The built `dist/` names no Google Fonts, LSEG or `localhost:9000` host (checked by hand; the dist guard joins at P4-07).
+
+### DEC-73 — Routing and base path
+**Status:** ENG
+
+- HashRouter, as the spec requires, with Vite `base: './'` so the build works under any Pages repository path.
+- Data is fetched relative to the document (`data/index.json`).
+- Rule links are routes (`#/rules/E-S3`), because an in-page `#anchor` can't work inside a hash route.
+- The route table is in UI-SPEC §7.
+- **Outcome:** 2026-09-30 — built at P4-06: `web/src/app/routes.tsx` (the table), `App.tsx` (HashRouter), `pages.ts` (paths). `web/src/app/routes.test.tsx` renders every route in a MemoryRouter.
+
+### DEC-74 — Synthetic-data banner
+**Status:** ENG
+
+- Every result carries `manifest.data_source` (`lseg` | `synthetic`).
+- Any page showing a synthetic result shows a warning banner, so generated data can never pass for real (DG §4).
+- The P4 sample deploy relies on this.
+- **Outcome:** 2026-09-30 — PO, asked at P4-06's review handover: **P4-07 deploys the real committed results**, not a synthetic sample. Real NVDA results exist and pass `pmcc verify`, so the first Pages deploy shows them, with no banner. The banner stays for any synthetic data and is tested (`web/src/app/routes.test.tsx`), so no synthetic entry point to `pmcc run` is needed (DEC-92's note). Spec › Build order's Oct 1–2 row and P4-07's done-when now say so.
+- **Outcome:** 2026-09-30 — built at P4-06: the banner shows on every page while the index lists any synthetic run, since the Comparison and Universe pages mix runs.
+
+### DEC-75 — Data page
+**Status:** ASK · **Ask at:** P7-06
+
+- The spec says the Data page "only works via the local server" but doesn't say what it shows.
+- **Recommendation:**
+  - **On github.io:** a single panel reading "Data connection required".
+  - **Locally:** `pmcc serve` serves `web/dist` plus read-only JSON endpoints over the cache (coverage per expiry, quotes per RIC) on 127.0.0.1.
+  - The local mode is cuttable; the github.io behaviour is not.
+- **Outcome:** —
+
+### DEC-76 — Greek attribution display
+**Status:** SETTLED · **Basis:** PO, 2026-10-01, at P6 start · **Affects:** P6-04, P7-01
+
+- **Recommendation:** a table per leg × component (δ, Γ, θ, ν, residual) shows cumulative $ and % of ΔV, plus one cumulative-residual line.
+- A five-series stacked chart would need five hues the baseline palette doesn't have.
+- **Outcome:** 2026-10-01 — PO, at P6 start: **as recommended**, as UI-SPEC §4 and §6.2 already
+  describe it. To be built at P6-04 and P7-01.
+- **Outcome:** 2026-10-01 — the data built at P6-04 (DEC-63, DEC-102): `attribution.greek` holds
+  a row per leg × component (δ, Γ, θ, ν, residual) with its dollars and its share of the leg's
+  change, each leg's change with its bars held and unattributed, and the cumulative residual over
+  both legs at every bar. The display waits for P7-01.
+- **Amended 2026-10-05 (PO, DEC-120):** shown on both strategy pages, after the new position Greeks panel.
+
+---
+
+## Template
+
+```markdown
+### DEC-NN — Title
+**Status:** ASK | VERIFY | SETTLED | ENG · **Ask at / Verify at / Basis:** … · **Affects:** backlog IDs, tests
+- **Context:** what the spec says, what conflicts or is missing.
+- **Recommendation / decision:** …
+- **Outcome:** YYYY-MM-DD — evidence (probe file, commit, PO answer).
+```

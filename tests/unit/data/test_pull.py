@@ -16,7 +16,7 @@ import structlog
 from structlog.testing import capture_logs
 
 from pmcc.config.calendar import load_calendar
-from pmcc.data.cache import STOCK_UNIT, SymbolCache
+from pmcc.data.cache import STOCK_UNIT, WHEEL_PART, SymbolCache
 from pmcc.data.coverage import coverage
 from pmcc.data.discovery import Band, FetchPlan, Pad, Region, StepSource, Unit, UnitKind, unit_kind
 from pmcc.data.fetch import Retry
@@ -30,6 +30,7 @@ from pmcc.data.pull import (
     check_strikes,
     measure_step,
     prepare,
+    prepare_wheel,
     pull_unit,
     pull_units,
 )
@@ -498,3 +499,93 @@ def test_pull_strike_check_uses_the_widest_step_any_band_could_measure() -> None
     assert band.ladder(100)[-1] <= 99_999
     with pytest.raises(PlanError, match="chains/2026-09-18_P"):
         check_strikes(plan)
+
+
+# --- The wheel's puts (WD-11): planned from the PMCC's cached tape, cached apart -------------
+
+
+@pytest.fixture
+def wheel(cache: SymbolCache) -> SymbolCache:
+    return SymbolCache(cache.root, "NVDA", part=WHEEL_PART)
+
+
+def _stock_only(cache: SymbolCache) -> None:
+    """Cache the stock tape alone, as `pmcc fetch` writes it first."""
+    stock = _prepare(_market(), cache).stock
+    assert stock is not None
+    cache.write_unit(stock)
+
+
+def _prepare_wheel(cache: SymbolCache, wheel: SymbolCache) -> Prepared:
+    return prepare_wheel(cache, wheel, CAL, TARGET, WINDOW)
+
+
+def test_wd_11_wheel_prepare_plans_from_the_cached_tape_without_asking(
+    cache: SymbolCache, wheel: SymbolCache
+) -> None:
+    _stock_only(cache)
+
+    prepared = _prepare_wheel(cache, wheel)
+
+    assert prepared.stock is None
+    assert [u.name for u in prepared.pending] == ["chains/2026-09-18_P"]
+    assert (prepared.pending[0].start, prepared.pending[0].end) == WINDOW
+
+
+def test_wd_11_wheel_prepare_needs_the_stock_tape_cached_first(
+    cache: SymbolCache, wheel: SymbolCache
+) -> None:
+    with pytest.raises(PlanError, match="pmcc fetch"):
+        _prepare_wheel(cache, wheel)
+
+
+def test_wd_11_wheel_prepare_refuses_a_cached_stock_unit_of_another_window(
+    cache: SymbolCache, wheel: SymbolCache
+) -> None:
+    _stock_only(cache)
+
+    with pytest.raises(PlanError, match="cached stock unit covers"):
+        prepare_wheel(cache, wheel, CAL, TARGET, (date(2026, 9, 21), date(2026, 9, 25)))
+
+
+def test_wd_11_wheel_pull_writes_apart_and_leaves_the_pmcc_cache_untouched(
+    cache: SymbolCache, wheel: SymbolCache
+) -> None:
+    _fetch(_market(), cache)
+    before = {n: cache.sidecar_path(n).read_bytes() for n in cache.unit_names()}
+    manifest = cache.manifest_path.read_bytes()
+    market = _market()
+
+    written = _pull(market, wheel, _prepare_wheel(cache, wheel))
+
+    assert written == ("chains/2026-09-18_P",)
+    assert wheel.dir == cache.dir / "wheel"
+    assert wheel.unit_names() == written
+    assert {n: cache.sidecar_path(n).read_bytes() for n in cache.unit_names()} == before
+    assert cache.manifest_path.read_bytes() == manifest
+    assert _units_asked(market) == {"chains/2026-09-18_P"}
+
+
+def test_wd_11_wheel_pull_asks_puts_on_every_session_to_expiry(
+    cache: SymbolCache, wheel: SymbolCache
+) -> None:
+    _stock_only(cache)
+    market = _market()
+
+    _pull(market, wheel, _prepare_wheel(cache, wheel))
+
+    hourly = [r for r in market.requests if r[4] is Interval.HOURLY]
+    assert hourly
+    assert {(r[2], r[3]) for r in hourly} == {(WINDOW[0], WINDOW[1] + _DAY)}
+    assert {parse_ric(ric).option.right for r in hourly for ric in r[0]} == {Right.PUT}
+
+
+def test_wd_11_wheel_prepare_resumes_from_its_own_cache(
+    cache: SymbolCache, wheel: SymbolCache
+) -> None:
+    _stock_only(cache)
+    _pull(_market(), wheel, _prepare_wheel(cache, wheel))
+
+    again = _prepare_wheel(cache, wheel)
+
+    assert (again.pending, again.cached) == ((), 1)

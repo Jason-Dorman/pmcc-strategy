@@ -62,7 +62,10 @@ def test_instruments_option_id_strike_is_positive_whole_cents(units: int) -> Non
 
 @pytest.mark.parametrize(
     "text",
-    ["E-T1", "E-L1", "E-L4", "E-S5", "G-1", "G-5", "X-S1", "X-S5", "X-L1", "X-L2", "X-E1"],
+    [
+        *("E-T1", "E-L1", "E-L4", "E-S5", "G-1", "G-5", "X-S1", "X-S5", "X-L1", "X-L2", "X-E1"),
+        *("W-T1", "W-P1", "W-P4", "W-C1", "W-C3", "W-X1", "W-X5"),  # the wheel's (WD-12)
+    ],
 )
 def test_rule_id_accepts_spec_rule_ids(text: str) -> None:
     rid = RuleId(text)
@@ -70,7 +73,10 @@ def test_rule_id_accepts_spec_rule_ids(text: str) -> None:
     assert str(rid) == text
 
 
-@pytest.mark.parametrize("text", ["", "e-s3", "E-S", "E-X1", "G-", "X-T1", "ES3", " E-S3", "E-S10"])
+@pytest.mark.parametrize(
+    "text",
+    ["", "e-s3", "E-S", "E-X1", "G-", "X-T1", "ES3", " E-S3", "E-S10", "W-1", "W-S1", "w-p1"],
+)
 def test_rule_id_rejects_malformed_ids(text: str) -> None:
     with pytest.raises(ValueError, match="rule ID"):
         RuleId(text)

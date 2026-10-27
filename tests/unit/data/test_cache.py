@@ -626,3 +626,26 @@ def test_cache_partial_left_by_a_killed_write_doesnt_block_the_unit(tmp_path: Pa
     cache.write_unit(pull_chain(market({100: option_bars()}), [100]))
     assert cache.has_unit(CHAIN.name)
     assert cache.orphans() == ()
+
+
+# --- A part of a symbol's cache (WD-11) -------------------------------------------------------
+
+
+def _part_pull() -> UnitPull:
+    return pull_chain(market({100: option_bars()}), [100])
+
+
+def test_wd_11_a_part_lives_in_its_own_folder_under_the_symbol(tmp_path: Path) -> None:
+    part = SymbolCache(tmp_path, SYMBOL, part="wheel")
+    part.write_unit(_part_pull())
+
+    assert part.dir == tmp_path / SYMBOL / "wheel"
+    assert part.unit_names() == (CHAIN.name,)
+    assert _manifest(part)["symbol"] == SYMBOL
+
+
+def test_wd_11_the_symbols_cache_never_lists_a_parts_units(tmp_path: Path) -> None:
+    SymbolCache(tmp_path, SYMBOL, part="wheel").write_unit(_part_pull())
+
+    assert _cache(tmp_path).unit_names() == ()
+    assert _cache(tmp_path).units() == ()

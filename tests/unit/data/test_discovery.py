@@ -26,6 +26,7 @@ from pmcc.data.discovery import (
     increment_strikes,
     neighbour_anchors,
     plan_symbol,
+    plan_wheel_puts,
     session_ranges,
     stock_unit,
     unit_kind,
@@ -432,3 +433,67 @@ def test_unit_kind_from_right_and_regions(
     right: Right | None, regions: set[Region], kind: UnitKind
 ) -> None:
     assert unit_kind(right, regions) is kind
+
+
+# --- The wheel's puts (WD-11) -----------------------------------------------------------------
+# One put unit per week, from the week's first session (when W-P1 sells) to its expiry, since a
+# short put is held and marked to expiry. Strikes from 80% of the week-open session's low to two
+# steps over its high, in two bands so the money's own grid is probed where W-P3 picks.
+
+WHEEL = plan_wheel_puts(CAL, RANGES, *WINDOW)
+
+
+def test_wd_11_wheel_plan_is_one_put_unit_per_week_and_no_stock() -> None:
+    assert all(u.right is Right.PUT for u in WHEEL.units)
+    expiries = [u.expiry for u in WHEEL.units]
+    assert expiries[0] == date(2026, 7, 10)
+    assert expiries[-1] == date(2026, 9, 18)  # no next week: a put is sold only in the window
+    assert len(expiries) == 11
+    assert WHEEL.units[0].name == "chains/2026-07-10_P"
+
+
+def test_wd_11_wheel_put_unit_runs_from_the_week_open_to_its_expiry() -> None:
+    unit = WHEEL.unit("chains/2026-07-10_P")
+    assert (unit.start, unit.end) == (date(2026, 7, 6), date(2026, 7, 10))
+    labor_day_week = WHEEL.unit("chains/2026-09-11_P")
+    assert (labor_day_week.start, labor_day_week.end) == (date(2026, 9, 8), date(2026, 9, 11))
+
+
+def test_wd_11_wheel_window_starting_mid_week_skips_that_weeks_put() -> None:
+    plan = plan_wheel_puts(CAL, RANGES, date(2026, 7, 8), WINDOW[1])
+    assert "chains/2026-07-10_P" not in {u.name for u in plan.units}
+    assert plan.units[0].name == "chains/2026-07-17_P"
+
+
+def test_wd_11_wheel_window_ending_mid_week_ends_its_last_unit_there() -> None:
+    tape = _ranges(date(2026, 5, 1), date(2026, 9, 23))
+    plan = plan_wheel_puts(CAL, tape, date(2026, 8, 3), date(2026, 9, 23))  # ends Wednesday
+    assert plan.units[-1].name == "chains/2026-09-25_P"
+    assert plan.units[-1].end == date(2026, 9, 23)
+
+
+def test_wd_11_wheel_put_band_runs_from_80pct_of_the_open_low_to_2_steps_over_its_high() -> None:
+    unit = WHEEL.unit("chains/2026-07-10_P")  # Jul 6: low $100, high $110
+    strikes = sorted({k for b in unit.bands for k in b.ladder(250)})
+    assert strikes[0] == 8_000
+    assert strikes[-1] == 11_500
+    assert strikes == list(range(8_000, 11_501, 250))  # no gap where the two bands meet
+
+
+def test_wd_11_wheel_near_band_is_probed_near_the_money() -> None:
+    # A band measured at its centre (~90% of spot) could find a coarser grid there and skip the
+    # money's own strikes, where a 0.30-delta weekly put sits.
+    near = max(WHEEL.unit("chains/2026-07-10_P").bands, key=lambda b: b.high)
+    assert near.low == P("95")
+    assert near.high == P("110")
+    assert increment_anchor(near.centre) == 10_000
+
+
+def test_wd_11_wheel_bands_follow_each_weeks_own_open() -> None:
+    tape = [
+        SessionRange(r.day, P("150"), P("160"), r.close) if r.day >= date(2026, 8, 3) else r
+        for r in RANGES
+    ]
+    plan = plan_wheel_puts(CAL, tape, *WINDOW)
+    assert min(b.low for b in plan.unit("chains/2026-08-07_P").bands) == P("120")
+    assert min(b.low for b in plan.unit("chains/2026-07-31_P").bands) == P("80")

@@ -480,6 +480,52 @@ def _segments(low: Price, high: Price) -> tuple[Band, ...]:
     )
 
 
+# --- The wheel's puts (WD-11) -----------------------------------------------------------------
+
+WHEEL_PUT_FLOOR = 0.80  # the band's bottom: 80% of the week-open session's low
+WHEEL_PUT_NEAR = 0.95  # where the near-money band starts, so the money's grid is probed there
+WHEEL_PUT_ABOVE_STEPS = 2
+
+
+def plan_wheel_puts(
+    calendar: SessionCalendar,
+    ranges: Sequence[SessionRange],
+    window_start: date,
+    window_end: date,
+) -> FetchPlan:
+    """The wheel's put units, from the stock tape's session ranges; no stock unit (WD-11).
+
+    One unit per week whose first session is in the window: from that session, when W-P1 sells,
+    to the expiry or the window's end, since a short put is held and marked to expiry. Strikes run
+    from 80% of the week-open session's low to two steps over its high, in two bands: near the
+    money (from 95% of the low) and below it. Each measures its own strike step, so a coarser grid
+    far out can't hide the money's. `sigma` is reported only; no wheel band uses it.
+    """
+    if window_start > window_end:
+        raise ValueError(f"the window starts {window_start}, after it ends {window_end}")
+    tape = _Tape(ranges, window_start, window_end)
+    parts = list(_wheel_puts(calendar, tape))
+    return FetchPlan(
+        window_start, window_end, band_vol(ranges, window_start, window_end), _merge(parts)
+    )
+
+
+def _wheel_puts(calendar: SessionCalendar, tape: _Tape) -> Iterator[_Part]:
+    for first, _ in _weeks(calendar, tape.start, tape.end):
+        week_open = calendar.week_open(first).day
+        if week_open < tape.start:  # the window starts after this week's put is sold
+            continue
+        expiry = calendar.week_final(first).day
+        low, high = tape.span(week_open, week_open)
+        near_low = Price.from_dollars(WHEEL_PUT_NEAR * float(low.to_dollars()))
+        floor = Price.from_dollars(WHEEL_PUT_FLOOR * float(low.to_dollars()))
+        bands = (
+            Band(Region.NEAR_MONEY, floor, near_low, Pad(0), Pad(1)),
+            Band(Region.NEAR_MONEY, near_low, high, Pad(1), Pad(WHEEL_PUT_ABOVE_STEPS)),
+        )
+        yield _Part(expiry, Right.PUT, week_open, min(expiry, tape.end), bands)
+
+
 def _weeks(calendar: SessionCalendar, start: date, end: date) -> list[tuple[date, date]]:
     """The first and last session of each calendar week, clipped to `start`..`end`."""
     weeks: dict[date, list[date]] = {}

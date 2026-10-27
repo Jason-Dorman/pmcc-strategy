@@ -15,7 +15,7 @@ from pmcc import cli
 from pmcc.cli import app
 from pmcc.config.calendar import load_calendar
 from pmcc.config.universe import load_universe
-from pmcc.data.cache import SymbolCache
+from pmcc.data.cache import WHEEL_PART, SymbolCache
 from pmcc.data.coverage import Coverage
 from pmcc.data.discovery import StepSource
 from pmcc.data.fetch import Retry
@@ -291,6 +291,49 @@ def test_cli_fetch_refuses_a_cache_from_another_window(fetch_market: FakeMarket)
     assert code == 1
     assert "superseded/" in output
     assert fetch_market.calls == calls
+
+
+def _wheel_cache() -> SymbolCache:
+    return SymbolCache(Path("data_cache"), "NVDA", part=WHEEL_PART)
+
+
+def test_cli_fetch_wheel_plan_only_prints_the_put_estimate_and_asks_nothing(
+    fetch_market: FakeMarket, events: list[Event]
+) -> None:
+    _fetch()
+    events.clear()
+
+    code, output = _fetch("--wheel", "--plan-only")
+
+    assert code == 0, output
+    said = _said(events)
+    assert "RIC requests" in said
+    assert "puts" in said
+    assert [rics for kind, rics in events if kind == "request"] == []
+    assert not _wheel_cache().dir.exists()
+
+
+def test_cli_fetch_wheel_caches_the_puts_apart_from_the_pmcc(
+    fetch_market: FakeMarket, events: list[Event]
+) -> None:
+    _fetch()
+    pmcc = _cache().manifest_path.read_bytes()
+    events.clear()
+
+    code, output = _fetch("--wheel")
+
+    assert code == 0, output
+    assert _wheel_cache().unit_names() == ("chains/2026-09-18_P",)
+    assert _cache().manifest_path.read_bytes() == pmcc
+    assert "1 wheel put units written to data_cache/NVDA/wheel" in _said(events)
+
+
+def test_cli_fetch_wheel_needs_the_stock_tape_cached(fetch_market: FakeMarket) -> None:
+    code, output = _fetch("--wheel")
+
+    assert code == 1
+    assert "pmcc fetch" in output
+    assert fetch_market.calls == 0
 
 
 def test_cli_fetch_gives_an_unmeasured_band_the_probe_reports_step(

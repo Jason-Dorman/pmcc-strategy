@@ -17,9 +17,9 @@ from pmcc.domain import Money, RuleId
 BASELINE = load_strategy(CONFIGS_DIR / "baseline_pmcc.yaml")
 QUANT_ONLY_GATES = {RuleId("G-3"), RuleId("G-4"), RuleId("G-5")}
 SHORT_EXITS = ("X-S1", "X-S2", "X-S3", "X-S4", "X-S5")
-SPEC = (Path(__file__).resolve().parents[3] / "docs" / "PMCC-Backtest-System-Spec.md").read_text(
-    encoding="utf-8"
-)
+SPEC = (
+    Path(__file__).resolve().parents[3] / "docs/archive/pmcc/PMCC-Backtest-System-Spec.md"
+).read_text(encoding="utf-8")
 
 
 def _spec_rows() -> dict[str, list[str]]:

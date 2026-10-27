@@ -26,14 +26,14 @@ from pmcc.config.universe import UNIVERSE_PATH, Underlying, load_universe
 from pmcc.config.universe import Universe as UniverseConfig
 from pmcc.config.yaml_file import parse_yaml
 from pmcc.data import coverage, estimate
-from pmcc.data.cache import CacheError, SymbolCache
+from pmcc.data.cache import WHEEL_PART, CacheError, SymbolCache
 from pmcc.data.calendar import CalendarMismatchError
 from pmcc.data.files import replace_file
 from pmcc.data.load import load_symbol
 from pmcc.data.lseg import lseg_session
 from pmcc.data.probe import ProbeStoppedError, probe_path, run_probe, write_report
 from pmcc.data.provider import ProviderOutageError
-from pmcc.data.pull import PlanError, Target, prepare, pull_units
+from pmcc.data.pull import PlanError, Target, prepare, prepare_wheel, pull_units
 from pmcc.domain.calendar import SessionCalendar
 from pmcc.domain.clock import ET
 from pmcc.domain.errors import EngineError
@@ -79,6 +79,10 @@ def fetch(
     start: Day,
     end: Day,
     plan_only: Annotated[bool, typer.Option(help="Print the request estimate and stop.")] = False,
+    wheel: Annotated[
+        bool,
+        typer.Option(help="Pull the wheel's weekly puts (WD-11), planned from the cached tape."),
+    ] = False,
     cache: Cache = Path("data_cache"),
     probes: Annotated[Path, typer.Option(help="Probe reports.")] = Path("data_cache/probes"),
 ) -> None:
@@ -91,11 +95,14 @@ def fetch(
         steps = estimate.assumed_steps(estimate.latest_probe_report(probes, sym))
     except estimate.NoProbeReportError as exc:
         _fail(str(exc))
-    store = SymbolCache(cache, sym)
+    store = SymbolCache(cache, sym, part=WHEEL_PART if wheel else None)
     window = (start.date(), end.date())
     try:
         with lseg_session() as provider:
-            prepared = prepare(provider, store, calendar, target, window, _now)
+            if wheel:
+                prepared = prepare_wheel(SymbolCache(cache, sym), store, calendar, target, window)
+            else:
+                prepared = prepare(provider, store, calendar, target, window, _now)
             _say(estimate.describe(estimate.estimate(prepared, steps)))
             if plan_only:
                 return
@@ -109,9 +116,12 @@ def fetch(
         )
     except (PlanError, CalendarMismatchError, CacheError, FileExistsError) as exc:
         _fail(f"{sym}: {exc}")
-    _say(f"{sym}: {len(written)} units written.")
-    rate = universe.risk_free_rate.value
-    _say(coverage.describe(coverage.coverage(cache, sym, calendar, rate)))
+    if wheel:  # the PMCC's coverage summary reads the PMCC's units; W1-02 reports the puts'
+        _say(f"{sym}: {len(written)} wheel put units written to {store.dir.as_posix()}.")
+    else:
+        _say(f"{sym}: {len(written)} units written.")
+        rate = universe.risk_free_rate.value
+        _say(coverage.describe(coverage.coverage(cache, sym, calendar, rate)))
     _say(f"Log: {log_path.as_posix()}")
 
 

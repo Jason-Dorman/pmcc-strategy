@@ -1,0 +1,136 @@
+# Wheel Strategy Backtest — Spec
+
+Oct 26, 2026 · the source of truth for the wheel, as amended by PO answers in [DECISIONS](DECISIONS.md). The PMCC's docs are archived in [archive/pmcc/](archive/pmcc/README.md) and are not requirements here (WD-01).
+
+> Sections marked **ASK** wait on the PO; the entry named beside each holds the recommendation. Weekly tenor is provisional until the PO's group confirms it (WD-02).
+
+## Assignment
+
+> Sell cash-secured puts; if assigned, sell covered calls against the shares; if called away, restart. Build and run it inside the GitHub Pages system you already have. Report exact trades in your blotter, include your ledger, and include relevant metrics.
+>
+> 1. Accurate historical backtest with a full blotter and ledger of every trade (opens, closes, assignments, rolls).
+> 2. Ability to view the exact portfolio (cash, shares, short puts, covered calls) at any point in time.
+> 3. Any fill-price assumptions must be stated and justified with data.
+> 4. State your thesis for why this should make money/beat a benchmark/improve Sharpe, then show whether it actually did.
+
+Each requirement maps to a section below: (1) Accounting, (2) Ledger and portfolio view, (3) Fill model, (4) Thesis and Benchmarks.
+
+## Scope
+
+**In:** one wheel strategy with fixed rules (WD-05) on NVDA, weekly options (WD-02), over Mon Mar 30 – Fri Sep 25 2026 (WD-04), LSEG hourly data; its blotter, ledger, NAV and metrics; a fill-friction sensitivity to justify the fill model; a benchmark comparison against the baseline PMCC and the S&P 500 (WD-03); new wheel pages on the existing site, in its existing look.
+
+**Out:** other symbols; ablations, parameter grids, entry-timing sweeps; rolls and early closes (WD-09); margin (it's a cash account, WD-10); charting the benchmarks (WD-03). The PMCC's pages and results stay on the site unchanged.
+
+## Thesis (PO, WD-21)
+
+Weekly NVDA options are, on average, priced at an implied volatility above the volatility NVDA then realizes: the volatility risk premium. A seller of fully secured, 0.30-delta weekly options collects that premium every week. Being cash-secured and short a single option at a time, the wheel holds at most 100 shares' worth of exposure, never levered. The thesis is that:
+
+1. **It makes money:** the premiums collected exceed the losses taken when puts are assigned below the market and shares are called away below where the stock went.
+2. **It improves Sharpe on the baseline PMCC:** the wheel carries less delta per dollar of capital (about 30 shares' worth while a put is open, about 70 while shares are held under a call, on $25,000), so its NAV should swing less. Less exposure alone leaves Sharpe unchanged; the claim is that the premium earned is large relative to that smaller swing, so its return per unit of volatility is higher than the PMCC's.
+3. **It beats the S&P 500** over the same period on return.
+
+The site states the thesis first, then each claim's verdict from the results, met or not, with the numbers. The thesis was fixed on 2026-10-26, before the first run, and is not edited after it.
+
+## Data
+
+- **Underlying:** NVDA's hourly stock tape, already cached (`data_cache/NVDA/stock.parquet`).
+- **Calls:** the cached weekly calls, used for covered calls. Coverage of each strike the wheel picks is checked once the run exists.
+- **Puts:** a new pull of weekly puts, needed because the cache holds puts only for each week's first session near the money (WD-06). For each weekly expiry in the window: every session from the week's first through expiry, strikes from 80% of the first session's low up to two increments above its high, in two bands that each measure their own strike step (WD-11). `pmcc fetch --wheel` pulls them. Fetching ranges from the window's prices is allowed; selection only ever sees data up to its decision time.
+- **Cache:** the wheel's puts go in their own folder with their own manifest (`data_cache/NVDA/wheel/`), so the PMCC's cache and its results' data hash are untouched (WD-11). Never overwritten; an outage aborts and writes nothing.
+- **S&P 500:** **ASK** (WD-17). Recommended: FRED's `SP500` daily closes, Fri Mar 27 and Fri Sep 25 2026, as a committed two-row file with its citation.
+- **Risk-free rate:** **ASK** (WD-16). Recommended: 3.71% continuously compounded, from the 3-month Treasury yield (FRED DGS3MO, 3.73%) at the last close before the window.
+
+## Conventions
+
+- **Time:** America/New_York. LSEG stamps hourly bars at their start with end-of-bar quotes, so a bar is known at its end: every decision happens at a bar's end, using only data stamped at or before it. The engine's `MarketView` raises on any request for later data.
+- **Week:** a week opens on its first trading session and its options expire on its last trading session.
+- **Greeks:** Black-Scholes, implied vol solved from the bar's mid, dividend yield 0. A contract whose IV can't be solved on a bar can't be selected on that bar.
+- **Dividends and interest:** **ASK** (WD-18). Recommended: NVDA's $0.01 quarterly dividend is ignored, and cash earns no interest. Both are stated on the site.
+- **Early assignment:** **ASK** (WD-15). Recommended: none before expiry.
+
+## Fill model
+
+- **Base:** every option entry and exit fills at the decision bar's mid, (BID + ASK) ÷ 2 (PO, WD-23). No BID or no ASK on that bar means no fill; a print is never invented. Under hold-to-expiry (WD-09) the only option fills are the put and call sales: an option leaves the book by expiring at $0 or by assignment at its strike, never by a buy-back.
+- **Friction:** a `spread_capture` parameter in [0, 1]: a sell fills at mid − capture × half-spread, a buy at mid + capture × half-spread. The reported run is at 0, so at mid; sensitivity runs at 0.25 and 0.50 only show how much of the result survives paying part of the spread (WD-23).
+- **Fees:** a per-contract fee parameter, base $0. **ASK** (WD-19).
+- **Justification with data (requirement 3):** for every option the wheel traded, each bar with a trade print plots the print against the bar's mid, with the fitted line, R², and where the prints fall within the spread. The friction runs show how much of the result survives paying part of the spread. Assignment and call-away fills are at the strike, which is contractual, not an assumption.
+
+## Trade rules
+
+The wheel is always in exactly one state. Each state allows one kind of short option at a time, one contract (WD-10).
+
+| State | Holds | Next |
+| --- | --- | --- |
+| Cash | cash only | sell a put → Put |
+| Put | cash, one short put, with cash ≥ strike × 100 reserved | expires OTM → Cash; assigned → Shares |
+| Shares | cash, 100 shares | sell a call → Call |
+| Call | cash, 100 shares, one short call covered by them | expires OTM → Shares; called away → Cash |
+
+**Order each session:** expiries and assignments are settled at the week's last close; new options are sold on the next week's first session.
+
+| ID | Rule | Definition |
+| --- | --- | --- |
+| W-T1 | Entry trigger | **ASK** (WD-14). Recommended: sell on the first bar of the week's first session where the selected contract has a valid bid and ask and a spread ≤ 10% of its mid |
+| W-P1 | Put timing | Each week's first session, in the Cash state |
+| W-P2 | Put expiry | That week's last trading session |
+| W-P3 | Put strike | The OTM put whose delta is nearest −0.30 (WD-07) |
+| W-P4 | Cash-secured | One contract, sold only if cash ≥ strike × 100. Otherwise no sale, logged |
+| W-C1 | Call timing | Each week's first session, in the Shares state |
+| W-C2 | Call expiry | That week's last trading session |
+| W-C3 | Call strike | Among OTM calls with strike ≥ cost basis, the one whose delta is nearest 0.30. None → no call that week, logged (WD-08) |
+| W-X1 | Put expires | Put OTM at expiry: `EXPIRE` at $0 → Cash |
+| W-X2 | Put assigned | Put ITM at expiry: `ASSIGN` the put and buy 100 shares at the strike → Shares |
+| W-X3 | Call expires | Call OTM at expiry: `EXPIRE` at $0 → Shares |
+| W-X4 | Called away | Call ITM at expiry: `ASSIGN` the call and sell 100 shares at the strike → Cash |
+| W-X5 | End of backtest | Mark everything at the final bar; no forced liquidation |
+
+- **Hold to expiry:** no option is bought back early, and there are no rolls (WD-09). The blotter's trade types are therefore opens, expiries, assignments and call-aways; a week's new sale is the next cycle, not a roll.
+- **ITM at expiry:** **ASK** (WD-15). Recommended: judged by the stock's last trade in the bar ending at the 16:00 close; a put is ITM if that price is below its strike, a call if above.
+- **Cost basis:** the assigned put's strike, minus that put's credit and every call credit received since, per share, net of fees.
+- **Skips:** a week with no sale gets one gate-log row with its reason: no valid quote all session (W-T1), not enough cash (W-P4), or no call strike at or above cost basis (W-C3).
+
+Every threshold lives in YAML under its rule ID, and every blotter and gate-log row carries the ID of the rule that produced it.
+
+## Accounting
+
+Cash moves only on blotter rows. Money is an integer count of $0.0001.
+
+**Blotter:** Time (decision bar end) · Instrument (RIC, with OCC symbol; or the stock) · Side (`BUY` / `SELL` / `EXPIRE` / `ASSIGN`) · Qty · Limit (mid) · Fill · Cash Δ · Trade P&L · Rule · Notes. A put assignment is an `ASSIGN` row on the put plus a `BUY` 100 shares at the strike; a call-away is an `ASSIGN` row on the call plus a `SELL` 100 shares at the strike.
+
+**Ledger (one row per bar):** state; cash; reserved cash (strike × 100 while a put is open) and free cash; shares and their mark; short put (RIC, strike, expiry, mark, delta); short call (the same); cost basis; NAV.
+
+```
+NAV = cash + shares × stock price − short put MV − short call MV
+```
+
+Option marks at mid; a bar without a bid or ask carries the last valid mid, flagged stale, and a stale mark never fills.
+
+**Portfolio at any point in time (requirement 2):** the site lets a reader pick any bar and shows that bar's ledger row as a portfolio: cash (reserved and free), shares, the short put, the short call, each with its mark, and NAV. **ASK** at the UI item (WD-22).
+
+## Metrics — **ASK** (WD-20)
+
+Recommended, per run:
+
+- **Performance:** P&L; return on starting cash over the window; max drawdown ($ and %) and longest time underwater; Sharpe and Sortino on daily session-close NAV returns in excess of r, annualized by √252 and labelled with the sample length.
+- **Wheel cycles:** puts sold, assigned and expired; calls sold, called away and expired; weeks skipped by reason; total premium collected; complete cycles (Cash → … → Cash); share of time in each state.
+- **Uncertainty:** a bootstrap 95% CI on the mean weekly return (10,000 resamples, seeded).
+- **Benchmarks** (WD-03, a table, no chart): the wheel against the baseline PMCC on NVDA (return on starting cash, Sharpe, max drawdown %), and the S&P 500's price return over the same period. Each thesis claim is then marked met or not.
+
+## Site
+
+The wheel's pages join the existing site in its existing look ([UI-SPEC](UI-SPEC.md)); the PMCC pages are untouched. **ASK** at the UI item (WD-22). Recommended: a Wheel page (readouts, NAV, portfolio at a point in time, blotter, ledger, cycle statistics, gate log) and a Wheel review page (thesis and verdict, benchmark table, fill model and its evidence, friction runs, the rules rendered from the config).
+
+## Invariants
+
+These must hold on every run and fail the build if they don't:
+
+1. Cash changes only on blotter rows; the sum of Cash Δ equals the change in cash.
+2. NAV reconciles on every bar.
+3. No fill without a valid bid and ask on the decision bar (assignment fills at the strike excepted).
+4. No decision reads data stamped after its decision time.
+5. While a put is open, cash ≥ strike × 100.
+6. While a call is open, shares ≥ 100 × calls.
+7. The state is always one of the four; a put is never open with shares held, nor a call without them.
+8. No option is open after its expiry session.
+9. Every blotter and gate-log row carries a rule ID defined in the config.
+10. Re-running on cached data gives byte-identical results, once the run timestamp and commit are dropped.

@@ -4,7 +4,12 @@
 data_cache/{SYM}/manifest.json
 data_cache/{SYM}/stock.parquet                  stock.sidecar.json
 data_cache/{SYM}/chains/{YYYY-MM-DD}_{C|P}.parquet    ….sidecar.json
+data_cache/{SYM}/wheel/manifest.json, wheel/chains/…   the wheel's puts: a part (WD-11)
 ```
+
+- **A part** is a cache of its own in a folder under the symbol's, with its own units and
+  manifest. The symbol's cache lists only its own `stock` and `chains/`, so a part's units never
+  enter its plan check, its loader or its data-manifest hash (WD-11).
 
 - **A unit is its parquet and its sidecar.** The parquet is written first and the sidecar last,
   each whole or not at all (`write_new`), so a unit exists once its sidecar does. A write that
@@ -48,6 +53,7 @@ FORMAT = 1
 STOCK_UNIT = "stock"
 MANIFEST = "manifest.json"
 SUPERSEDED = "superseded"  # where a user moves units to pull them again; never read
+WHEEL_PART = "wheel"  # the wheel's puts, apart from the PMCC's units (WD-11)
 PARQUET = ".parquet"
 SIDECAR = ".sidecar.json"
 TZ_CONVENTION = (
@@ -444,12 +450,13 @@ class CachedUnit:
 
 @final
 class SymbolCache:
-    """`data_cache/{SYM}/`: write units, list them, and read their sidecars back."""
+    """`data_cache/{SYM}/`, or a part of it, `data_cache/{SYM}/{part}/` (WD-11): write units,
+    list them, and read their sidecars back."""
 
-    def __init__(self, root: Path, symbol: str) -> None:
+    def __init__(self, root: Path, symbol: str, *, part: str | None = None) -> None:
         self.root = root
         self.symbol = symbol
-        self.dir = root / symbol
+        self.dir = root / symbol if part is None else root / symbol / part
 
     def parquet_path(self, unit: str) -> Path:
         return self.dir / f"{unit}{PARQUET}"

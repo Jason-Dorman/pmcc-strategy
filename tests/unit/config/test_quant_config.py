@@ -16,9 +16,9 @@ from pmcc.domain import Price, RuleId
 QUANT = load_strategy(CONFIGS_DIR / "quant_pmcc.yaml")
 BASELINE = load_strategy(CONFIGS_DIR / "baseline_pmcc.yaml")
 QUANT_LAYER = ("E-L2", "E-L3", "E-S3", "G-3", "G-4", "G-5")
-SPEC = (Path(__file__).resolve().parents[3] / "docs" / "PMCC-Backtest-System-Spec.md").read_text(
-    encoding="utf-8"
-)
+SPEC = (
+    Path(__file__).resolve().parents[3] / "docs/archive/pmcc/PMCC-Backtest-System-Spec.md"
+).read_text(encoding="utf-8")
 SPEC_ROWS = {
     rule_id: [c.strip() for c in rest.split(" | ")]
     for rule_id, rest in re.findall(r"^\| ((?:E-[LS]|G-)\d) \| (.+) \|$", SPEC, flags=re.MULTILINE)

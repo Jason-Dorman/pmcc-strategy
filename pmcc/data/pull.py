@@ -9,6 +9,8 @@ It sits above `fetch` and `cache`, since `cache` builds on `fetch`'s results (DE
    plan would write, with the same dates and bands; if one isn't, nothing is asked and the user
    moves it into `superseded/` (DEC-46). A band whose ladder could pass $999.99 stops the plan
    there too (DEC-12).
+   `prepare_wheel` plans the wheel's puts the same way, from the stock tape already cached by
+   `prepare`, into a part of the symbol's cache (WD-11); it asks nothing.
 2. `pull_units` writes the stock unit if `prepare` fetched it, then each unit that has no sidecar
    yet. For each one it measures each band's strike step (DEC-14), asks the band's ladder for
    hourly bars (`fetch_contracts`), and writes the parquet, then the sidecar. An outage raises
@@ -39,6 +41,7 @@ from pmcc.data.discovery import (
     increment_strikes,
     neighbour_anchors,
     plan_symbol,
+    plan_wheel_puts,
     session_ranges,
     stock_unit,
 )
@@ -133,12 +136,49 @@ def prepare(
         history = pull.history
     sessions = sessions_from_tape(calendar, history.rows["bar_start"], unit.start, unit.end)
     plan = plan_symbol(calendar, session_ranges(history.rows, sessions), start, end)
+    return _prepared(cache, target, plan, pull)
+
+
+def prepare_wheel(
+    stock_cache: SymbolCache,
+    cache: SymbolCache,
+    calendar: SessionCalendar,
+    target: Target,
+    window: tuple[date, date],
+) -> Prepared:
+    """The wheel's put plan for `window`, from the stock tape in `stock_cache`, pending in
+    `cache`, a part of the symbol's cache (WD-11). It asks LSEG nothing; `pull_units` pulls it.
+
+    Raises `PlanError` when the window isn't between sessions, the tape isn't cached (`pmcc fetch`
+    caches it) or covers another window, `cache` holds units this plan wouldn't write, or a band
+    could reach past $999.99; `CalendarMismatchError` as `prepare` does.
+    """
+    start, end = window
+    _check_window(calendar, start, end)
+    unit = stock_unit(calendar, start, end)
+    if not stock_cache.has_unit(STOCK_UNIT):
+        raise PlanError(
+            f"the wheel's puts are planned from {target.symbol}'s cached stock tape, and there is "
+            f"none in {stock_cache.dir}: run `pmcc fetch` for the window first"
+        )
+    cached, history = cached_stock(stock_cache)
+    _check_same(cached, unit)
+    sessions = sessions_from_tape(calendar, history.rows["bar_start"], unit.start, unit.end)
+    plan = plan_wheel_puts(calendar, session_ranges(history.rows, sessions), start, end)
+    return _prepared(cache, target, plan, None)
+
+
+def _prepared(
+    cache: SymbolCache, target: Target, plan: FetchPlan, pull: UnitPull | None
+) -> Prepared:
+    """Check the plan against `cache` and the RIC's strike field, and list what is left."""
     _check_cached(cache, plan)
     check_strikes(plan)
     pending = tuple(u for u in plan.units if u.name != STOCK_UNIT and not cache.has_unit(u.name))
     log.info(
         "fetch.plan",
         symbol=target.symbol,
+        cache=cache.dir.as_posix(),
         units=len(plan.units),
         pending=len(pending),
         stock="fetched" if pull is not None else "cached",
