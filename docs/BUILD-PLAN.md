@@ -18,11 +18,11 @@ Oct 26, 2026 · from the [Wheel spec](WHEEL-SPEC.md) · **due Sun Nov 1 2026, 11
 | W0 Docs and thesis | Mon Oct 26 | Wheel spec, decisions and backlog live; PMCC docs archived; thesis fixed | Done 2026-10-26: thesis fixed (WD-21), due date (WD-13), fills at mid (WD-23) |
 | W1 Data | Mon Oct 26 – Tue Oct 27 | NVDA weekly puts cached; S&P closes committed | Done 2026-10-26: 26 weeks of puts cached, the −0.30-delta strike validly quoted on 93.6% of bars to expiry (W1-02); S&P closes committed (W1-03) |
 | W2 Engine and rules | Tue Oct 27 – Thu Oct 29 | The wheel runs on NVDA: blotter, ledger, NAV, gate log; invariants hold; one cycle hand-audited | Done 2026-10-27: W2-01 and W2-02 (WD-24, WD-25); W2-03, `pmcc wheel` and its verified result file, the Jun 1 – Jul 10 cycle hand-audited with 0 discrepancies (WD-26, WD-27). Next: W3-01 |
-| W3 Results and analytics | Fri Oct 30 | Wheel result and friction runs committed and verified; metrics and benchmarks | In progress: W3-01 and W3-02 done 2026-10-28 (WD-20, WD-28 to WD-31); W3-03 (commit the results from a clean tree) next |
+| W3 Results and analytics | Fri Oct 30 | Wheel result and friction runs committed and verified; metrics and benchmarks | Done 2026-10-28: W3-01 to W3-03 (WD-20, WD-28 to WD-31); `results/NVDA/wheel.json` and the two friction runs run from a clean tree at `8abed76` and verified. Next: W4-01 |
 | W4 Site | Sat Oct 31 | Wheel pages live on GitHub Pages; thesis verdict shown | Not started |
 | W5 Release | Sun Nov 1 | Reproduced from a clean tree; submitted by 18:00 (deadline 23:59 ET) | Not started |
 
-**Critical path:** the data is in (W1) and weekly tenor is confirmed (WD-02, 2026-10-27), so it now runs W3-01's metrics → W3-03's committed results → W4-01's pages, which wait on them.
+**Critical path:** the data is in (W1) and weekly tenor is confirmed (WD-02, 2026-10-27), so it now runs through W4-01's pages, the last item the PO's review gates before release.
 
 **Cut order if time runs short** (the PO confirms each cut; the bootstrap CI, Sortino and time underwater are already cut, WD-20): the friction runs at 0.25 (keep 0.50) → the portfolio view as a picker (fall back to a filterable ledger, which still shows the portfolio at every bar). **Never cut:** the blotter, the ledger, the portfolio at any bar, the mid-vs-print evidence, the thesis and its verdict, the benchmark table, the invariant tests.
 
@@ -83,7 +83,7 @@ Oct 26, 2026 · from the [Wheel spec](WHEEL-SPEC.md) · **due Sun Nov 1 2026, 11
   - The mid-vs-print evidence for the options the wheel traded, and the friction runs at spread capture 0.25 and 0.50.
   - Done when: both are in the results and `pmcc verify` passes them.
   - Needs: W2-03
-- [ ] **W3-03 · Commit the results** **[PO]**
+- [x] **W3-03 · Commit the results** **[PO]** — done 2026-10-28; `just wheels NVDA` on the clean tree at `8abed76` wrote `results/NVDA/wheel.json`, `wheel--sc025.json` and `wheel--sc050.json` (`git_dirty: false`, 420 KB each), the same figures as the working-tree runs; `just verify` passes all 34 files (27 runs), and a scratch export still publishes only the PMCC's 31. The PO commits them
   - Re-run from a clean tree; `pmcc verify` passes; the PO commits.
   - Needs: W3-01, W3-02
 
