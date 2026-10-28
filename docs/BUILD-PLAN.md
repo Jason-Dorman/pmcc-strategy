@@ -17,22 +17,20 @@ Oct 26, 2026 · from the [Wheel spec](WHEEL-SPEC.md) · **due Sun Nov 1 2026, 11
 | --- | --- | --- | --- |
 | W0 Docs and thesis | Mon Oct 26 | Wheel spec, decisions and backlog live; PMCC docs archived; thesis fixed | Done 2026-10-26: thesis fixed (WD-21), due date (WD-13), fills at mid (WD-23) |
 | W1 Data | Mon Oct 26 – Tue Oct 27 | NVDA weekly puts cached; S&P closes committed | Done 2026-10-26: 26 weeks of puts cached, the −0.30-delta strike validly quoted on 93.6% of bars to expiry (W1-02); S&P closes committed (W1-03) |
-| W2 Engine and rules | Tue Oct 27 – Thu Oct 29 | The wheel runs on NVDA: blotter, ledger, NAV, gate log; invariants hold; one cycle hand-audited | In progress: W2-01 and W2-02 done 2026-10-26 (WD-24, WD-25); W2-03 (`pmcc wheel`, the result file, the audit) next |
-| W3 Results and analytics | Fri Oct 30 | Wheel result and friction runs committed and verified; metrics and benchmarks | Not started |
+| W2 Engine and rules | Tue Oct 27 – Thu Oct 29 | The wheel runs on NVDA: blotter, ledger, NAV, gate log; invariants hold; one cycle hand-audited | Done 2026-10-27: W2-01 and W2-02 (WD-24, WD-25); W2-03, `pmcc wheel` and its verified result file, the Jun 1 – Jul 10 cycle hand-audited with 0 discrepancies (WD-26, WD-27). Next: W3-01 |
+| W3 Results and analytics | Fri Oct 30 | Wheel result and friction runs committed and verified; metrics and benchmarks | In progress: W3-01 and W3-02 done 2026-10-28 (WD-20, WD-28 to WD-31); W3-03 (commit the results from a clean tree) next |
 | W4 Site | Sat Oct 31 | Wheel pages live on GitHub Pages; thesis verdict shown | Not started |
 | W5 Release | Sun Nov 1 | Reproduced from a clean tree; submitted by 18:00 (deadline 23:59 ET) | Not started |
 
-**Critical path:** the put pull (W1-02) needs Workspace signed in and the PO's approval of the estimate, and everything from W2-03 on waits for it. Weekly tenor (WD-02) must be confirmed by Tue Oct 27; a switch to monthly after that puts W3 and later at risk.
+**Critical path:** the data is in (W1) and weekly tenor is confirmed (WD-02, 2026-10-27), so it now runs W3-01's metrics → W3-03's committed results → W4-01's pages, which wait on them.
 
-**Cut order if time runs short** (the PO confirms each cut): the bootstrap CI → Sortino and time underwater → the friction runs at 0.25 (keep 0.50) → the portfolio view as a picker (fall back to a filterable ledger, which still shows the portfolio at every bar). **Never cut:** the blotter, the ledger, the portfolio at any bar, the mid-vs-print evidence, the thesis and its verdict, the benchmark table, the invariant tests.
+**Cut order if time runs short** (the PO confirms each cut; the bootstrap CI, Sortino and time underwater are already cut, WD-20): the friction runs at 0.25 (keep 0.50) → the portfolio view as a picker (fall back to a filterable ledger, which still shows the portfolio at every bar). **Never cut:** the blotter, the ledger, the portfolio at any bar, the mid-vs-print evidence, the thesis and its verdict, the benchmark table, the invariant tests.
 
 ## Questions for the PO
 
 | When | Asks |
 | --- | --- |
-| W3-01 | WD-20 (metrics) |
 | W4-01 | WD-22 (pages) |
-| any time | WD-02's confirmation (weekly, expected 2026-10-27) |
 
 ## Backlog
 
@@ -69,19 +67,19 @@ Oct 26, 2026 · from the [Wheel spec](WHEEL-SPEC.md) · **due Sun Nov 1 2026, 11
   - `configs/wheel.yaml`: every rule (W-T1 … W-X5) with its thresholds and write-up text; the state machine; the put and call selectors; expiry settlement; the gate log.
   - Done when: each rule has tests at its boundaries, and a synthetic market drives the wheel through every state and transition.
   - Needs: W2-01
-- [ ] **W2-03 · Run the wheel on NVDA** **[PO]**
+- [x] **W2-03 · Run the wheel on NVDA** **[PO]** — done 2026-10-27; `pmcc wheel` (`just wheel NVDA`, also in `just reproduce`) writes `results/NVDA/wheel.json`, a `WheelResult` whose invariants `pmcc verify` re-derives from its rows, and which `pmcc export` holds back until W4-01 (WD-26). On NVDA: 61 rows over 26 weeks, every week sold, 4 complete cycles, $25,000 to $29,171.50; committed at W3-03 from a clean tree. Every put and call picked was covered by the cache (no week skipped under W-C3, no call pull needed). The PO picked and accepted the hand audit of May 26 and the Jun 1 – Jul 10 cycle: 3,898 checks, 0 discrepancies, after it found WD-27 (delta ±1 under the floor, PO). WD-02 confirmed: weekly. The PMCC's 31 result files are unchanged (a scratch batch)
   - A `pmcc wheel --symbol NVDA` command (the PMCC's `pmcc run` rejects the wheel's config: WD-24) that writes `results/NVDA/wheel.json` with its run manifest; then check the call coverage of every strike the wheel picked and of every week skipped under W-C3, and hand-audit a full cycle against the raw quotes with the PO.
   - Done when: the result passes every invariant and the audit.
   - Needs: W1-02, W2-02
 
 ### W3 — Results and analytics
 
-- [ ] **W3-01 · Metrics and benchmarks** **[PO]**
-  - Ask first: WD-20.
+- [x] **W3-01 · Metrics and benchmarks** **[PO]** — done 2026-10-28; the result's summary holds the metrics (trimmed, WD-20), the cycle statistics (a complete cycle runs from assignment to call-away, WD-29), the benchmark table against the baseline PMCC's committed result and the S&P 500, and each claim's verdict by the tests WD-29 fixed before any was computed; each blotter row has its Trade P&L (WD-28). `pmcc verify` re-derives each and checks the baseline's figures against its file (WD-30). On NVDA: +$4,171.50 (16.69%), Sharpe 1.574 against the PMCC's 1.242, S&P 500 21.58%: claims 1 and 2 met, 3 not
+  - Ask first: WD-20; the blotter's Trade P&L; complete cycles and the verdict tests (all settled 2026-10-27: WD-20, WD-28, WD-29).
   - Performance, wheel-cycle statistics and the weekly-return CI; the benchmark table against the baseline PMCC and the S&P 500; each thesis claim's verdict.
   - Done when: every number the wheel pages need is in the results JSON.
   - Needs: W2-03, W1-03
-- [ ] **W3-02 · Fill justification**
+- [x] **W3-02 · Fill justification** — done 2026-10-28; every wheel result holds its fill evidence: each sold option's prints against its mids from sale to expiry, puts and calls, fitted as the PMCC's fill check is (WD-31). The friction runs are `configs/wheel_friction/sc025.yaml` and `sc050.yaml`, variants that extend the wheel (`just wheels NVDA`, in `just reproduce`). On NVDA: 825 pairs, R² 0.9994, 89% of prints inside the quote, the median at the bid or ask; paying half the spread costs $17.25 of $4,171.50 and changes no verdict. All three wheel files pass `pmcc verify` (a dirty tree aside)
   - The mid-vs-print evidence for the options the wheel traded, and the friction runs at spread capture 0.25 and 0.50.
   - Done when: both are in the results and `pmcc verify` passes them.
   - Needs: W2-03
@@ -104,7 +102,7 @@ Oct 26, 2026 · from the [Wheel spec](WHEEL-SPEC.md) · **due Sun Nov 1 2026, 11
 
 ## Risks
 
-- **Tenor changes (WD-02).** If monthly is chosen, W1-01's band and dates, the call coverage, and W-P2/W-C2 change; only about 5–6 cycles fit the window.
+- **Tenor changes (WD-02).** Closed: weekly confirmed 2026-10-27.
 - **Put coverage.** Weekly puts may be sparse away from the money; W1-02 reports it before the rules depend on it.
-- **Call coverage.** The cached calls were fetched for the PMCC's 0.30-delta shorts; a call at or above a cost basis well above spot may fall outside them. W2-03 checks every pick; a gap means a call pull.
+- **Call coverage.** Closed: W2-03 found every call and put the run picked covered on its decision bar, the basis-bound calls included; no call pull is needed (WD-26).
 - **Engine generality.** The PMCC's book refuses puts by design, so the wheel has its own book, config and loop beside it (WD-24), and the PMCC's results must keep matching: after the review's fixes, a scratch batch of all 24 PMCC runs matched all 31 committed result files (WD-24).

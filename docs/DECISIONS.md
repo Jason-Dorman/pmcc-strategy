@@ -18,7 +18,7 @@ The user is the product owner (PO). This log tracks what the spec leaves open, t
 | ID | Decision | Status | Ask at |
 | --- | --- | --- | --- |
 | WD-01 | PMCC docs archived; styling carried over | SETTLED (PO) | — |
-| WD-02 | Option tenor | PROVISIONAL (PO): weekly, confirm by 2026-10-27 | — |
+| WD-02 | Option tenor | SETTLED (PO): weekly, confirmed 2026-10-27 | — |
 | WD-03 | Benchmarks | SETTLED (PO) | — |
 | WD-04 | Backtest window | SETTLED (PO) | — |
 | WD-05 | One wheel strategy, fixed rules | SETTLED (PO) | — |
@@ -36,12 +36,18 @@ The user is the product owner (PO). This log tracks what the spec leaves open, t
 | WD-17 | S&P 500 source | SETTLED (PO): FRED SP500 | — |
 | WD-18 | Dividends and interest on cash | SETTLED (PO): neither | — |
 | WD-19 | Fees | SETTLED (PO): $0 | — |
-| WD-20 | Metrics | ASK | W3-01 |
+| WD-20 | Metrics | SETTLED (PO): trimmed | — |
 | WD-21 | Thesis wording | SETTLED (PO): the draft, unchanged | — |
 | WD-22 | Wheel pages | ASK | W4-01 |
 | WD-23 | Fills at mid | SETTLED (PO) | — |
 | WD-24 | The wheel's own book, beside the PMCC's | ENG | — |
 | WD-25 | Rule details the spec leaves open (W2-02) | ENG, put to the PO | — |
+| WD-26 | The wheel's result: `pmcc wheel`, its file and its checks (W2-03) | ENG | — |
+| WD-27 | Delta of a held option under its no-arbitrage floor | SETTLED (PO): ±1 | — |
+| WD-28 | The blotter's Trade P&L | SETTLED (PO): per instrument | — |
+| WD-29 | Complete cycles, and how each thesis claim is judged | SETTLED (PO) | — |
+| WD-30 | The wheel's numbers: where they are computed and checked (W3-01) | ENG | — |
+| WD-31 | The fill evidence and the friction runs (W3-02) | ENG | — |
 
 ## Settled
 
@@ -55,10 +61,10 @@ The user is the product owner (PO). This log tracks what the spec leaves open, t
   - **CLAUDE.md** keeps the working rules (the PO decides and does all git; credentials; LSEG access; integer money; no styling literals) and points at the new docs.
 
 ### WD-02 — Option tenor
-**Status:** PROVISIONAL · **Basis:** PO, 2026-10-26; final answer expected 2026-10-27 · **Affects:** Spec › Data, Trade rules
+**Status:** SETTLED · **Basis:** PO, 2026-10-26; confirmed 2026-10-27 · **Affects:** Spec › Data, Trade rules
 
 - **Options:** weekly (about 26 cycles in the window, reusing the cached weekly calls); monthly at 30–45 DTE (the textbook wheel, but only 5–6 cycles); both.
-- **Outcome:** weekly for now. The PO is taking it to others and expects a final decision by 2026-10-27. If it changes to monthly, the put pull, the call coverage check and W-P2/W-C2 change with it.
+- **Outcome:** weekly. Provisional on 2026-10-26 while the PO took it to others; confirmed by the PO on 2026-10-27 (W2-03).
 
 ### WD-03 — Benchmarks
 **Status:** SETTLED · **Basis:** PO, 2026-10-26 · **Affects:** Spec › Metrics, Thesis
@@ -111,6 +117,33 @@ The user is the product owner (PO). This log tracks what the spec leaves open, t
 **Status:** SETTLED · **Basis:** PO, 2026-10-26 · **Affects:** BUILD-PLAN schedule and cut list
 
 - **Outcome:** Sun Nov 1 2026, 11:59 pm ET (EST: daylight time ends at 2 am that day). Six days from the question; the backlog's schedule and cut list follow from it.
+
+### WD-27 — Delta of a held option under its no-arbitrage floor
+**Status:** SETTLED · **Basis:** PO, 2026-10-27 · **Affects:** Spec › Conventions (Greeks); the ledger's leg delta
+
+- **Found by the hand audit (W2-03, WD-26):** on 12 of NVDA's 849 held-leg bars, all on an expiry day and deep in the money, the option's mid sits just under its no-arbitrage floor (S − K·e^(−rT) for a call, K·e^(−rT) − S for a put), so no IV solves. The shared pricing gave a call the PMCC's deep ITM limit (archived DEC-27: delta 1) and a put nothing, since the PMCC never holds one: 5 call bars showed delta 1, 7 put bars a blank. No trade, cash or NAV depends on it, only the ledger's reported delta.
+- **Asked:** keep the limit, leave both blank, or keep the code's asymmetry. The PO first chose "keep delta ±1" from a question that wrongly called that the code as it stood; asked again with the asymmetry stated, the PO chose ±1 on both sides.
+- **Outcome:** a held option under its floor is shown at the deep in-the-money limit: delta +1 for a call, −1 for a put, gamma and vega 0, theta −r·K·e^(−rT) for a call and +r·K·e^(−rT) for a put. It still has no IV, so it can't be selected; it is in the money anyway, and only out-of-the-money options are picked.
+- **Built:** `pmcc/pricing/chain.py` gives a put the mirror of the call's limit. The PMCC holds no puts: a scratch batch of all 24 PMCC runs after the change matches all 31 committed result files. On NVDA's wheel, the 7 put bars now show −1, and the hand audit agrees on every bar.
+
+### WD-20 — Metrics
+**Status:** SETTLED · **Basis:** PO, 2026-10-27 · **Affects:** Spec › Metrics; W3-01
+
+- **Recommendation:** as listed in Spec › Metrics: performance (with Sortino and the longest time underwater), wheel-cycle statistics, a bootstrap CI on the mean weekly return, and the benchmark table with each thesis claim marked met or not.
+- **Outcome:** 2026-10-27, PO: "trim now". The recommended set without the bootstrap CI, Sortino and time underwater, which were first on the cut list: P&L, return on starting cash, max drawdown ($ and %), Sharpe (with its sample length); the cycle statistics; the benchmark table and the verdicts. Asked early, while W2-03 finished; recorded with W3-01, the work it unblocks.
+
+### WD-28 — The blotter's Trade P&L
+**Status:** SETTLED · **Basis:** PO, 2026-10-27 · **Affects:** Spec › Accounting (Blotter); W3-01
+
+- **Asked:** the spec names a Trade P&L column but doesn't define it, and assignments make it ambiguous. Offered per instrument (recommended) or per cycle (one figure on the call-away's share sale).
+- **Outcome:** 2026-10-27, PO: per instrument. On the row that closes a position, net of fees, blank on opening rows: an option's credit on its `EXPIRE` or `ASSIGN` row, the shares' sale less purchase on the call-away's `SELL`. The rows sum to the realized P&L; cycle totals belong to the cycle statistics. (NVDA's Jun 1 cycle: the put +$208, five calls +$676, the shares −$750.)
+
+### WD-29 — Complete cycles, and how each thesis claim is judged
+**Status:** SETTLED · **Basis:** PO, 2026-10-27 · **Affects:** Spec › Metrics; W3-01
+
+- **Asked** at W3-01, before any verdict was computed, so the tests weren't fitted to the result.
+- **Complete cycle:** a put assigned and its shares later called away. A put that expires counts as a put expired, not a cycle; a turn still holding shares at the end is reported as open (PO, as recommended; the alternative counted every return to cash).
+- **Verdicts:** each claim is met when the wheel's number is higher. (1) Makes money: P&L > $0 over the window, shares still held at the end marked at their mid (W-X5). (2) Improves Sharpe: the wheel's annualized Sharpe > the baseline PMCC's, by the same method. (3) Beats the S&P 500: return on starting cash > the index's price return from Mar 27 to Sep 25 (PO, as recommended; the alternative judged claim 1 on realized P&L only). Judged on the values as published, to 6 places, so `pmcc verify` re-judges them alike; a claim missing a number is not met.
 
 ### WD-23 — Fills at mid
 **Status:** SETTLED · **Basis:** PO, 2026-10-26 · **Affects:** Spec › Fill model
@@ -170,7 +203,7 @@ The user is the product owner (PO). This log tracks what the spec leaves open, t
 - **Command:** `pmcc fetch --wheel` (`just fetch NVDA 2026-03-30 2026-09-25 --wheel [--plan-only]`). It plans from the stock tape the PMCC's fetch cached and asks LSEG nothing to plan, but it opens a Workspace session like every fetch, so even `--plan-only` needs Workspace signed in. It then reuses the PMCC's unit loop, strike-step measurement, RIC builder, estimate and cache format unchanged.
 - **Estimate (W1-01, 2026-10-26):** 26 units, 710 strikes on the probe report's $2.50 step, 970 to 2,910 RIC requests, about 23 to 67 min (expect about 2 to 2.5 times the low figure: 45–55 min).
 - **Pull (W1-02, 2026-10-26, PO's go):** all 26 units in 14 min, 1.3 MB (`logs/fetch_20261027T023615Z.jsonl`); 0 to 4 strikes a week unanswered, all deep and unlisted. The PMCC's manifest is unchanged.
-- **Coverage (W1-02; corrected 2026-10-26):** at each week's first bar (10:00 ET), the put nearest −0.30 delta (IV from the mid, r 3.71%, spot the bar's last trade) had a valid quote (BID > 0, ASK > 0, ASK ≥ BID, as the loader tests it) on 819 of the 875 session bars from then to expiry (93.6%; at least 80% of each week's bars: 28 to 35 a week, 26 to 28 in the five four-session weeks). The other 56 are zero bids late in the week, after the stock moved away from the strike; they mark the put at its last mid, flagged stale, and never need a fill, since the wheel doesn't buy back. (First reported as 100%, which counted any bar with a BID and an ASK present, zero bids included.) Its delta was −0.26 to −0.35; its spread 0.5–2.7% of mid; and at least 9 fetched strikes lay below it, so the 80% floor never bound. Its mid was $1.22–$3.65 a share. This is a data check, not the rules: W-T1 and the delta pick are settled at W2-02, and W2-03 re-checks every strike the run actually picks.
+- **Coverage (W1-02; corrected 2026-10-26):** at each week's first bar (10:00 ET), the put nearest −0.30 delta (IV from the mid, r 3.71%, spot the bar's last trade) had a valid quote (BID > 0, ASK > 0, ASK ≥ BID, as the loader tests it) on 819 of the 875 session bars from then to expiry (93.6%; at least 80% of each week's bars: 28 to 35 a week, 26 to 28 in the five four-session weeks). The other 56 are zero bids late in the week, after the stock moved away from the strike; they mark the put at its last mid, flagged stale, and never need a fill, since the wheel doesn't buy back. (First reported as 100%, which counted any bar with a BID and an ASK present, zero bids included.) Its delta was −0.26 to −0.35; its spread 0.5–2.7% of mid; and at least 9 fetched strikes lay below it, so the 80% floor never bound. Its mid was $1.22–$3.65 a share. This is a data check, not the rules: W-T1 and the delta pick are settled at W2-02, and W2-03 re-checks every strike the run actually picks (done: WD-26).
 
 ### WD-12 — Wheel ID prefixes
 **Status:** ENG
@@ -205,12 +238,46 @@ None of these changes NVDA's run: every week sold on its first bar (10:00), delt
 4. **A holding with no mid on the bar it was filled** is marked stale until a mid arrives: shares bought on assignment at the closing trade that assigned them (the close has just gone through the strike, so marking at the strike would overstate that bar's NAV; changed after the adversarial review, WD-24), anything else at its fill.
 5. **Skip reasons:** a week that sells nothing is logged under W-P4 if cash couldn't secure the put on some bar; under W-C3 if no call at or above the cost basis had a quote on any bar (its note names the highest call listed); otherwise under W-T1. A W-P4 refusal doesn't end the week: a later bar's pick, re-made per #1, may be one cash secures.
 
+### WD-26 — The wheel's result: `pmcc wheel`, its file and its checks (W2-03)
+**Status:** ENG · **Affects:** W2-03; `pmcc wheel`, `pmcc verify`, `pmcc export`, `just reproduce`
+
+- **Command:** `pmcc wheel --symbol SYM [--config PATH]` (`just wheel SYM`), from the cache only: `load_wheel_market` (the cache's stock and calls, the wheel part's puts, WD-11), the bar loop, then `results/{SYM}/{run_id}.json`. The window and r come from `configs/universe.yaml`, the starting cash from the wheel's own config (WD-10). A failed run writes nothing. `--config` takes another wheel config under its own run ID, as W3-02's friction runs will (`wheel--sc025`).
+- **The file (`pmcc/export/wheel_models.py`):** its own `WheelResult`, beside the PMCC's `RunResult` (WD-24): the PMCC's manifest, blotter row, instrument and leg models unchanged; the wheel's ledger row (state, cash, reserved and free cash, shares and their mark, the put and call legs with RIC, OCC, strike, expiry, mark, stale flag and delta, cost basis per share, NAV, flags) and gate-log row; a summary of the runtime invariants held (WINV-01 to 03, 05 to 09) and the ledger's flag counts. Metrics wait for W3-01. Written by the same canonical writer, so the config in the file hashes to `manifest.config_hash`.
+- **`pmcc verify`:** knows a wheel run by its run ID (`wheel.json`, `wheel--*.json`), applies the PMCC's file checks (schema, canonical bytes, its place, a clean tree, the config hash, the rule text, the invariants recorded), and re-derives the invariants from the rows with its own arithmetic (`pmcc/export/wheel_rederive.py`): the positions the rows booked; WINV-01 (each row's Cash Δ, and the cash walk), 02 (NAV), 03 (fills at the quote's mid ± capture; an assignment's shares at its strike), 05 (reserved cash = the put's strike × 100, and cash covers it), 06, 07 (each bar's state is what it holds), 08 and 09. WINV-04 is `MarketView`'s; WINV-10 is a test. A corrupted copy fails on each, one check per corruption.
+- **`pmcc export`:** verifies the wheel's results but doesn't publish them, so the site is unchanged until the wheel's pages exist (W4-01).
+- **`just reproduce`:** the PMCC's batch, then `just wheel NVDA`, then verify, export and the site.
+- **The market:** `load_wheel_market` now also refuses a stock tape short of the window, the same data-gap guard as the option units' (WD-24), and names every instrument by the RIC its cache answered with.
+- **Shared code, no PMCC change:** the runner's RIC naming (`Names`), blotter row and tape check, and two of the PMCC re-derivation's row checks, are made public for the wheel; the writer's and verify's types widen to either result. After every change here and WD-27's, a scratch batch of all 24 PMCC runs matches all 31 committed result files, the manifest's run time, commit and dirty flag aside.
+- **The NVDA run (2026-10-27, from the working tree):** 61 rows over 875 bars and 26 weeks, every week sold on its 10:00 bar: 13 puts (8 expired, 5 assigned) and 13 calls (9 expired, 4 called away), so 4 complete cycles, the fifth ending in shares (100 at a basis of $221.355, marked $225.07). $4,414.50 of premium. NAV $25,000 to $29,171.50, lowest $24,967.00 (May 4, 12:00), highest $29,225.50 (Sep 22, 15:00). 36 bars marked stale (20 call, 16 put), none stale stock. Config hash `0ee09dd0…`, data-manifest hash `5d20c90a…`, 402 KB. It is committed at W3-03, from a clean tree, with its metrics.
+- **Call coverage (and put):** for each of the 26 options sold, the raw cache on its decision bar had validly quoted strikes on both sides of it (9 to 41 below, 4 to 21 above) on the $2.50 grid, so the nearest-delta search was never cut short by the fetched band; the calls the cost basis pushed far out of the money (down to 0.07 delta) still had 10 or more quoted strikes above them. No week was skipped, so none under W-C3. From sale to expiry, a pick was validly quoted on 63% (the Jun 22 call) to 100% of its bars; the rest are the 36 stale bars.
+- **The hand audit (PO, 2026-10-27):** the PO picked the Jun 1 – Jul 10 cycle, with the May 26 week so that W-X1 is in it too, and accepted the audit. A script outside the repo, sharing no code with `pmcc`, re-derived the 7 weeks from the raw parquet with polars, its own Black-Scholes (ACT/365 to the 16:00 close, q = 0, r = 0.0371, spot the bar's TRDPRC_1) and exact decimals, starting from the result's cash at May 22's close: 3,898 checks against the result's 14 blotter rows and 238 ledger bars, 0 discrepancies once WD-27 was settled (before it, 1: WD-27's first case, Jul 10 at 13:00).
+  - **May 26:** the $210 put (δ −0.259; next, $212.50 at −0.357 and $207.50 at −0.180) at its mid $1.435 (bid 1.42, ask 1.45, a 2.1% spread); it expires at the $211.15 close.
+  - **Jun 1:** the $212.50 put (δ −0.274) at $2.08; assigned at the Jun 5 close of $205.11; 100 shares bought at $212.50; the basis $212.50 − $2.08 = $210.42.
+  - **Jun 8 to Jul 6:** calls at $212.50 (δ +0.295), $212.50 (+0.337), $217.50 (+0.328), $205 (+0.088) and $205 (+0.171), each the nearest 0.30 at or above the basis, which fell to $208.485, $206.695, $204.765 and $204.44; the basis set the last two. The first four expire; the Jul 10 close of $210.96 calls the shares away at $205.
+  - **The cycle:** the put +$208, the calls +$676, the shares −$750: +$134.
+  - **Every bar:** the state, cash, reserved and free cash, shares, the stock's mark, cost basis, NAV, flags, and each leg's RIC, strike, expiry, mark (with the stale carry) and delta.
+- **WINV-10:** tested in-process and in two processes with different hash seeds on a synthetic market, and on NVDA: two runs, `PYTHONHASHSEED` 12345 and random, byte-identical once the run time and commit are dropped.
+- **Tests:** the result mirrors the engine row by row on a synthetic five-week market where every booking and skip rule fires (`tests/scenario/winv10_run.py`); verify passes it and fails each corruption; export leaves it out; the CLI's paths; the market's tape check and names; WD-27's put limit; the justfile.
+
+### WD-30 — The wheel's numbers: where they are computed and checked (W3-01)
+**Status:** ENG · **Affects:** W3-01; `pmcc wheel`, `pmcc verify`
+
+- **Where:** `pmcc/wheel/analytics.py` computes the metrics, cycle statistics, each row's Trade P&L and the verdicts from the engine's run, reusing the PMCC's Sharpe and drawdown arithmetic (`pmcc.analytics.performance`), so the wheel and the baseline are measured alike. `pmcc wheel` writes them into the result's summary (`WheelMetrics`, `WheelCycleStats`, `Benchmarks`, `ThesisVerdict`), and each blotter row gains `trade_pnl`; it prints the three verdicts.
+- **The baseline's numbers** are read from its committed result, `results/{SYM}/baseline_pmcc.json` (`--out`), which must have run over the same window at the same r: `pmcc wheel` refuses otherwise, or if it's missing ("run pmcc batch first"). `just reproduce` already runs the batch first. Its run ID and config hash are kept beside the numbers, so the table names the run it compares with.
+- **The S&P 500** comes from `configs/benchmarks.yaml` (`--benchmarks`), checked against the window as at W1-03.
+- **`pmcc verify`** re-derives each row's Trade P&L from the rows, the S&P 500's return from its two closes, and each verdict from the summary's numbers; and checks the baseline PMCC's figures against the `baseline_pmcc.json` beside the wheel's file, so a baseline re-run since is caught.
+- **On NVDA** (2026-10-28, from the working tree; committed at W3-03): P&L $4,171.50, return 16.69% on $25,000, max drawdown $1,943.50 (7.10%), Sharpe 1.574 over 125 sessions; 13 puts (8 expired, 5 assigned), 13 calls (9 expired, 4 called away), 4 complete cycles and one open at the end, no week skipped, $4,414.50 of premium; time in state: put 48.1%, call 48.9%, shares 1.6%, cash 1.4% of bars. The baseline PMCC: 24.48% on $15,000, Sharpe 1.242, max drawdown 20.55%. The S&P 500: 6,368.85 to 7,743.41, 21.58%. Verdicts: (1) met, (2) met, (3) not met.
+
+### WD-31 — The fill evidence and the friction runs (W3-02)
+**Status:** ENG · **Affects:** W3-02; Spec › Fill model; `configs/wheel_friction/`, `just wheels`
+
+- **Friction runs:** `configs/wheel_friction/sc025.yaml` and `sc050.yaml`, each a variant that `extends: ../wheel.yaml`, names itself (`wheel--sc025`, `wheel--sc050`) and patches only `fill_model.spread_capture`. The wheel's config loader folds `extends` like the PMCC's (a relative `.yaml` path, cycles refused); a wheel variant can change only its id, name and fill model, since the rules are fixed (WD-05). Each runs as a full wheel result beside `wheel.json`, with its own metrics and verdicts. `just wheels SYM` runs the wheel and every friction file; `just reproduce` uses it after the batch.
+- **Fill evidence, which bars:** the spec asks for "each bar with a trade print" of every option the wheel traded. Read here as each session bar from the option's sale through its expiry session's close with a trade print (TRDPRC_1) and a valid quote, the bars the wheel could fill or held it on. The calls' cache also holds their prior week's bars (fetched for the PMCC's band), which this leaves out. Overrule it and the change is one filter.
+- **What the evidence holds** (`fill_evidence` in every wheel result): the number of options sold; per right (puts, calls), every pair (mid rounded half-even as a fill at mid is, print, spread), the PMCC's exact OLS fit of print on mid (slope, intercept, R², N, the median |print − mid| ÷ spread, locked quotes counted apart), and the share of prints at or inside the quote (BID ≤ print ≤ ASK); and a fit and share over both. A print can be up to an hour older than the end-of-bar quote it is paired with.
+- **`pmcc verify`** checks the evidence's schema and canonical form, like every other block; it doesn't re-fit it, since export may not import the analytics (archived ARCHITECTURE §3.3, rule 5).
+- **On NVDA** (2026-10-28, from the working tree; committed at W3-03): 825 pairs over the 26 options sold (412 put, 413 call bars). Print on mid: slope 0.998, intercept $0.0019, R² 0.9994; 89.1% of prints at or inside the quote (puts 84.7%, calls 93.5%); the median print sits half a spread from the mid, at the bid or the ask. So a fill at mid is optimistic by about half the spread, and the friction runs price that: at 0.25 the P&L is $4,162.87 and at 0.50 $4,154.25, against $4,171.50 at mid, the same 61 trades, Sharpe 1.570 and 1.567 against 1.574, and every claim's verdict unchanged.
+
 ## Open
-
-### WD-20 — Metrics
-**Status:** ASK · **Ask at:** W3-01
-
-- **Recommendation:** as listed in Spec › Metrics: performance, wheel-cycle statistics, a bootstrap CI on the mean weekly return, and the benchmark table with each thesis claim marked met or not.
 
 ### WD-22 — Wheel pages
 **Status:** ASK · **Ask at:** W4-01

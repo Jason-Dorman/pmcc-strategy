@@ -9,6 +9,7 @@ from pmcc.config.universe import load_universe
 from pmcc.domain.money import Money
 from pmcc.domain.rules import RuleId
 from pmcc.wheel.config import (
+    FRICTION_DIR,
     WHEEL_PATH,
     WHEEL_RULE_IDS,
     WheelConfigError,
@@ -101,3 +102,53 @@ def test_w_config_run_hash_follows_the_config(tmp_path: Path) -> None:
     assert shipped.config_hash() != changed.config_hash()
     assert shipped.window == universe.window
     assert shipped.risk_free_rate.value == 0.0371  # WD-16
+
+
+# ---- friction variants (W3-02) ------------------------------------------------------------------
+
+
+def _variant(tmp_path: Path, body: str, name: str = "sc.yaml") -> Path:
+    """A variant file in a copy of configs/: its parent is the shipped wheel.yaml."""
+    (tmp_path / "wheel.yaml").write_bytes(WHEEL_PATH.read_bytes())
+    path = tmp_path / "variants" / name
+    path.parent.mkdir(exist_ok=True)
+    path.write_text(body, encoding="utf-8", newline="\n")
+    return path
+
+
+def test_w3_02_a_variant_extends_the_wheel_and_patches_its_fill_model(tmp_path: Path) -> None:
+    path = _variant(tmp_path, "id: wheel--sc025\nname: Friction 0.25\nextends: ../wheel.yaml\n"
+                              "fill_model: {spread_capture: 0.25}\n")  # fmt: skip
+    base = load_wheel()
+
+    variant = load_wheel(path)
+
+    assert (variant.id, variant.name) == ("wheel--sc025", "Friction 0.25")
+    assert variant.fill_model.spread_capture == 0.25
+    assert variant.fill_model.fee_per_contract == base.fill_model.fee_per_contract
+    assert (variant.starting_cash, variant.rules) == (base.starting_cash, base.rules)
+
+
+@pytest.mark.parametrize(
+    ("body", "said"),
+    [("id: wheel--x\nname: X\nextends: ../wheel.yaml\nrules: []\n", "rules"),
+     ("id: wheel--x\nextends: ../wheel.yaml\n", "name"),
+     ("id: wheel--x\nname: X\nextends: /abs/wheel.yaml\n", "relative"),
+     ("id: wheel--x\nname: X\nextends: sc.yaml\n", "cycle"),
+     ("id: wheel--x\nname: X\nextends: ../missing.yaml\n", "missing.yaml")],
+)  # fmt: skip
+def test_w3_02_a_bad_variant_is_refused(tmp_path: Path, body: str, said: str) -> None:
+    path = _variant(tmp_path, body)
+
+    with pytest.raises(WheelConfigError, match=said):
+        load_wheel(path)
+
+
+def test_w3_02_the_shipped_friction_variants_change_only_the_spread_capture() -> None:
+    base = load_wheel()
+    for path, capture in ((FRICTION_DIR / "sc025.yaml", 0.25), (FRICTION_DIR / "sc050.yaml", 0.50)):
+        variant = load_wheel(path)
+        assert variant.id == f"wheel--{path.stem}"
+        assert variant.fill_model.spread_capture == capture
+        assert variant.model_copy(update={"id": base.id, "name": base.name,
+                                          "fill_model": base.fill_model}) == base  # fmt: skip

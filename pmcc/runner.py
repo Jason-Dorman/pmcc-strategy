@@ -32,7 +32,7 @@ from pmcc.accounting.events import Event, Instrument, StockId
 from pmcc.accounting.ledger import LedgerRow, LegRow, StockRow
 from pmcc.analytics.run import RunAnalytics, analyze
 from pmcc.config.strategy import Detail, RunConfig
-from pmcc.config.universe import Underlying
+from pmcc.config.universe import Underlying, Window
 from pmcc.data.cache import CacheError
 from pmcc.data.load import SymbolData, load_symbol
 from pmcc.data.ric import occ_symbol
@@ -85,13 +85,13 @@ class Market:
 
     loaded: SymbolData
     data: MarketData
-    names: "_Names"
+    names: "Names"
 
     @classmethod
     def prepare(cls, loaded: SymbolData, root: str, rate: float) -> "Market":
         """Price `loaded` at `rate`, its options named under `root`."""
         data = MarketData.build(loaded.stock, loaded.chains, loaded.calendar, rate, root)
-        return cls(loaded, data, _Names.of(loaded))
+        return cls(loaded, data, Names.of(loaded))
 
 
 def run_symbol(cache: Path, underlying: Underlying, calendar: SessionCalendar, config: RunConfig,
@@ -139,7 +139,11 @@ def run_output(market: Market, config: RunConfig, starting_cash: Money) -> RunOu
 def check_covers(loaded: SymbolData, config: RunConfig) -> None:
     """Raises `CacheError` unless the cached stock tape has bars on every session of the window
     (PO, DEC-92): a run over sessions with no data would write a result of empty weeks."""
-    window = config.window
+    check_tape(loaded, config.window)
+
+
+def check_tape(loaded: SymbolData, window: Window) -> None:
+    """`check_covers` for any run over `window`, the wheel's included."""
     sessions = [s.day for s in loaded.calendar.sessions(window.start, window.end)]
     taped: set[date] = set(
         loaded.stock.filter(pl.col("session_bar"))["bar_end"].dt.date().unique().to_list()
@@ -163,7 +167,7 @@ def to_result(output: RunOutput, market: Market, config: RunConfig, stamp: Stamp
         rule_text={r.id: RuleTextOut(**asdict(r.text())) for r in config.strategy.rules},
         starting_cash=output.starting_cash.to_dollars(),
         summary=_summary(output, analytics),
-        blotter=tuple(_blotter_row(e, names) for e in output.blotter) if full else None,
+        blotter=tuple(blotter_row(e, names) for e in output.blotter) if full else None,
         ledger=tuple(_ledger_row(r, names) for r in output.ledger) if full else None,
         gate_log=tuple(_gate_row(g) for g in output.gate_log) if full else None,
         cycles=analytics.cycles if full else None,
@@ -208,21 +212,27 @@ def _manifest(loaded: SymbolData, config: RunConfig, stamp: Stamp) -> Manifest:
 
 @final
 @dataclass(frozen=True, slots=True)
-class _Names:
+class Names:
     """The RIC each instrument answered with in the cache."""
 
     stock: str
     options: Mapping[_ContractKey, str]
 
     @classmethod
-    def of(cls, loaded: SymbolData) -> "_Names":
+    def of(cls, loaded: SymbolData) -> "Names":
+        return cls.of_frames(loaded.symbol, loaded.stock, loaded.chains)
+
+    @classmethod
+    def of_frames(cls, symbol: str, stock: pl.DataFrame,
+                  chains: Mapping[tuple[date, Right], pl.DataFrame]) -> "Names":  # fmt: skip
+        """The names in a stock tape and chains (the wheel's mix the cache's and its part's)."""
         options: dict[_ContractKey, str] = {}
-        for (expiry, right), frame in loaded.chains.items():
+        for (expiry, right), frame in chains.items():
             for strike_cents, ric in frame.select("strike_cents", "ric").unique().iter_rows():
                 key = (expiry, right, int(strike_cents))
                 if options.setdefault(key, ric) != ric:
                     raise ValueError(f"{key} answered as both {options[key]} and {ric}")
-        return cls(_one_ric(loaded.stock, loaded.symbol), options)
+        return cls(_one_ric(stock, symbol), options)
 
     def instrument(self, instrument: Instrument) -> InstrumentOut:
         if isinstance(instrument, StockId):
@@ -244,7 +254,7 @@ def _one_ric(stock: pl.DataFrame, symbol: str) -> str:
     return rics[0]
 
 
-def _blotter_row(event: Event, names: _Names) -> BlotterRow:
+def blotter_row(event: Event, names: Names) -> BlotterRow:
     return BlotterRow(
         time=event.time,
         instrument=names.instrument(event.instrument),
@@ -264,7 +274,7 @@ def _dollars(price: Price | None) -> Decimal | None:
     return None if price is None else price.to_dollars()
 
 
-def _ledger_row(row: LedgerRow, names: _Names) -> LedgerRowOut:
+def _ledger_row(row: LedgerRow, names: Names) -> LedgerRowOut:
     return LedgerRowOut(
         time=row.time,
         long=_leg(row.long, names),
@@ -280,14 +290,14 @@ def _ledger_row(row: LedgerRow, names: _Names) -> LedgerRowOut:
     )
 
 
-def _leg(leg: LegRow | None, names: _Names) -> LegOut | None:
+def _leg(leg: LegRow | None, names: Names) -> LegOut | None:
     if leg is None:
         return None
     return LegOut(instrument=names.instrument(leg.option), qty=leg.qty,
                   mark=leg.mark.to_dollars(), stale=leg.stale, delta=leg.delta)  # fmt: skip
 
 
-def _stock(stock: StockRow | None, names: _Names) -> StockOut | None:
+def _stock(stock: StockRow | None, names: Names) -> StockOut | None:
     if stock is None:
         return None
     return StockOut(instrument=names.instrument(stock.stock), shares=stock.shares,

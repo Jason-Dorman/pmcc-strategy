@@ -14,6 +14,9 @@ The export directory is rebuilt whole on every export:
 
 Both are derived from the results at export time rather than committed, so neither can disagree
 with the runs it describes.
+
+The wheel's results (`{SYM}/wheel*.json`, W2-03) are verified like every other file but not
+exported: the site has no wheel pages until W4-01, which publishes them.
 """
 
 import shutil
@@ -27,7 +30,7 @@ from pmcc.config.kinds import SPEC_RULE_IDS
 from pmcc.config.matrix import Family
 from pmcc.config.strategy import Rule
 from pmcc.export import canonical
-from pmcc.export.analytics_models import SYMBOL_FILES, UNIVERSE_FILES, Robustness
+from pmcc.export.analytics_models import SYMBOL_FILES, Robustness
 from pmcc.export.models import RunResult
 from pmcc.export.schema import SCHEMA_DIR, write_schemas
 from pmcc.export.site_models import (
@@ -40,6 +43,7 @@ from pmcc.export.site_models import (
     StrategyRules,
 )
 from pmcc.export.verify import UNIVERSE_DIR, Problem, kind_of, verify
+from pmcc.export.wheel_models import WheelResult
 
 INDEX, RULES = "index.json", "rules.json"
 PUBLISHABLE_ONLY = "git_dirty"  # the one verify check a local export lets through
@@ -241,12 +245,11 @@ def _change(base: Rule | None, variant: Rule | None) -> str:
 
 
 def _runs(results: Path) -> list[_Loaded]:
-    """Every run file (`verify` has passed them)."""
-    extras = {*SYMBOL_FILES, *UNIVERSE_FILES}
+    """Every PMCC run file (`verify` has passed them)."""
     return [
         _Loaded(p.relative_to(results).as_posix(), RunResult.model_validate_json(p.read_bytes()))
         for p in sorted(results.glob("*/*.json"))
-        if p.parent.name != UNIVERSE_DIR and p.stem not in extras
+        if kind_of(p.relative_to(results)) is RunResult
     ]
 
 
@@ -292,8 +295,11 @@ def _clear(out: Path) -> None:
 
 
 def _copy(results: Path, out: Path) -> int:
+    """Every results file but the wheel's, which waits for its pages (W4-01)."""
     copied = 0
     for path in sorted(results.glob("*/*.json")):
+        if kind_of(path.relative_to(results)) is WheelResult:
+            continue
         target = out / path.relative_to(results)
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(path.read_bytes())

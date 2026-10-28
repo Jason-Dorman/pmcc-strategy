@@ -39,14 +39,18 @@ from pmcc.domain.clock import ET
 from pmcc.domain.errors import EngineError
 from pmcc.domain.money import Money
 from pmcc.export.manifest import ProvenanceError, provenance
-from pmcc.export.models import DataSource, RunResult
-from pmcc.export.results import write_result
+from pmcc.export.models import DataSource
+from pmcc.export.results import Result, write_result
 from pmcc.export.schema import write_schemas
 from pmcc.export.site import Exported, ExportError, check_export_dir, export_site
 from pmcc.export.verify import Verified
 from pmcc.export.verify import verify as verify_results
+from pmcc.export.wheel_models import ThesisVerdict
 from pmcc.log import configure_logging
 from pmcc.runner import Market, Stamp, run_symbol
+from pmcc.wheel.benchmarks import BENCHMARKS_PATH, BenchmarkError, load_benchmarks
+from pmcc.wheel.config import WHEEL_PATH, WheelConfigError, WheelRunConfig, load_wheel_run
+from pmcc.wheel.result import run_wheel_symbol
 
 app = typer.Typer(help="PMCC backtester: fetch LSEG data, run backtests, export the site.")
 log = structlog.get_logger()
@@ -213,7 +217,7 @@ def _run_config(path: Path, settings: UniverseConfig) -> RunConfig:
 
 
 def _backtest(cache: Path, underlying: Underlying, calendar: SessionCalendar,
-              config: RunConfig, cash: Money, seed: int) -> RunResult:  # fmt: skip
+              config: RunConfig, cash: Money, seed: int) -> Result:  # fmt: skip
     """The run's result, or exit 1 with nothing written (DEC-49)."""
     try:
         stamp = Stamp(provenance(), DataSource.LSEG, _now())
@@ -223,7 +227,7 @@ def _backtest(cache: Path, underlying: Underlying, calendar: SessionCalendar,
         _fail(f"{underlying.symbol}: {exc}; nothing was written")
 
 
-def _describe_run(result: RunResult, path: Path) -> str:
+def _describe_run(result: Result, path: Path) -> str:
     manifest = result.manifest
     lines = [_describe_rows(result), f"Written to {path.as_posix()}"]
     if manifest.git_dirty:
@@ -234,7 +238,7 @@ def _describe_run(result: RunResult, path: Path) -> str:
     return "\n".join(lines)
 
 
-def _describe_rows(result: RunResult) -> str:
+def _describe_rows(result: Result) -> str:
     manifest = result.manifest
     head = f"{manifest.symbol} {manifest.run_id}:"
     blotter, ledger, gate_log = result.blotter, result.ledger, result.gate_log
@@ -242,6 +246,52 @@ def _describe_rows(result: RunResult) -> str:
         return f"{head} a summary, without its rows (DEC-54)."
     return (f"{head} {len(blotter)} trades over {len(ledger)} bars and {len(gate_log)} weeks; "
             f"final NAV {ledger[-1].nav} from {result.starting_cash}.")  # fmt: skip
+
+
+@app.command()
+def wheel(
+    symbol: Symbol,
+    config: Annotated[Path, typer.Option(help="The wheel's config YAML.")] = WHEEL_PATH,
+    cache: Cache = Path("data_cache"),
+    out: Annotated[
+        Path, typer.Option(help="Results directory; it holds the baseline PMCC compared with.")
+    ] = Path("results"),
+    benchmarks: Annotated[Path, typer.Option(help="The S&P 500's closes.")] = BENCHMARKS_PATH,
+) -> None:
+    """Backtest the wheel on one symbol, from the cache only: its stock and calls with the
+    wheel's puts (WD-11). The window and r come from configs/universe.yaml; the starting cash is
+    the wheel config's own (WD-10). Compares it with the symbol's baseline PMCC result, so run
+    pmcc batch first, and the S&P 500 (WD-03). Writes results/{SYM}/{run_id}.json (W2-03)."""
+    log_path = configure_logging("wheel")
+    sym, calendar = symbol.upper(), load_calendar()
+    settings = _universe(calendar)
+    underlying = _underlying(sym, settings)
+    run_config = _wheel_config(config, settings)
+    try:
+        against = load_benchmarks(out, sym, calendar, run_config, benchmarks)
+        stamp = Stamp(provenance(), DataSource.LSEG, _now())
+        result = run_wheel_symbol(cache, underlying, calendar, run_config, stamp, against)
+    except (BenchmarkError, CacheError, CalendarMismatchError, ProvenanceError, EngineError,
+            ValueError) as exc:  # fmt: skip
+        log.exception("wheel.abort", symbol=sym, run_id=run_config.wheel.id)
+        _fail(f"{sym}: {exc}; nothing was written")
+    path = write_result(result, out)
+    _say(_describe_run(result, path))
+    _say("\n".join(_describe_verdict(v) for v in result.summary.thesis))
+    _say(f"Log: {log_path.as_posix()}")
+
+
+def _describe_verdict(verdict: ThesisVerdict) -> str:
+    met = "met" if verdict.met else "not met"
+    numbers = f"{verdict.wheel} vs {verdict.benchmark}"
+    return f"  Claim {verdict.claim} ({verdict.test}): {met}, {numbers}"
+
+
+def _wheel_config(path: Path, settings: UniverseConfig) -> WheelRunConfig:
+    try:
+        return load_wheel_run(settings, path)
+    except (OSError, WheelConfigError, yaml.YAMLError) as exc:  # no file; bad YAML; refused
+        _fail(f"{path.as_posix()}: {exc}")
 
 
 @app.command()

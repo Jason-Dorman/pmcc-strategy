@@ -178,13 +178,13 @@ def _ledger_holds(bar: LedgerRowOut) -> dict[str, int]:
 
 def _row_cash(rows: _Rows) -> Iterator[Finding]:
     for row in rows.blotter:
-        expected = _expected_cash(row)
+        expected = expected_row_cash(row)
         if expected is None or units(row.cash_delta) != expected:
             yield Finding("INV-01", f"{_label(row)}: Cash Δ {row.cash_delta} doesn't follow "
                                     "from its fill, quantity and fee")  # fmt: skip
 
 
-def _expected_cash(row: BlotterRow) -> int | None:
+def expected_row_cash(row: BlotterRow) -> int | None:
     if row.side in ("EXPIRE", "ASSIGN"):
         return 0 if units(row.fee) == 0 else None
     if row.side not in ("BUY", "SELL") or row.fill is None:
@@ -230,12 +230,12 @@ def _fills(rows: _Rows) -> Iterator[Finding]:
         if row.side not in ("BUY", "SELL"):
             continue
         problem = (_assignment_problem(row, rows.blotter) if row.audit.get("assignment")
-                   else _fill_problem(row, capture))  # fmt: skip
+                   else fill_problem(row, capture))  # fmt: skip
         if problem:
             yield Finding("INV-03", f"{_label(row)}: {problem}")
 
 
-def _fill_problem(row: BlotterRow, capture: float) -> str:
+def fill_problem(row: BlotterRow, capture: float) -> str:
     bid, ask = row.audit.get("bid"), row.audit.get("ask")
     if type(bid) is not int or type(ask) is not int or not 0 < bid <= ask:
         return f"no valid BID/ASK in its audit (bid {bid!r}, ask {ask!r})"

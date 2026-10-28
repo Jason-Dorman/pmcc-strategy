@@ -2,7 +2,7 @@
 
 Oct 26, 2026 · the source of truth for the wheel, as amended by PO answers in [DECISIONS](DECISIONS.md). The PMCC's docs are archived in [archive/pmcc/](archive/pmcc/README.md) and are not requirements here (WD-01).
 
-> Sections marked **ASK** wait on the PO; the entry named beside each holds the recommendation. Weekly tenor is provisional until the PO's group confirms it (WD-02).
+> Sections marked **ASK** wait on the PO; the entry named beside each holds the recommendation. Weekly tenor was confirmed on 2026-10-27 (PO, WD-02).
 
 ## Assignment
 
@@ -34,7 +34,7 @@ The site states the thesis first, then each claim's verdict from the results, me
 ## Data
 
 - **Underlying:** NVDA's hourly stock tape, already cached (`data_cache/NVDA/stock.parquet`).
-- **Calls:** the cached weekly calls, used for covered calls. Coverage of each strike the wheel picks is checked once the run exists.
+- **Calls:** the cached weekly calls, used for covered calls. On NVDA's run, every call and put the wheel sold had validly quoted strikes on both sides of it on its decision bar, so the fetched band never cut a pick short; no week was skipped under W-C3 (WD-26).
 - **Puts:** a new pull of weekly puts, needed because the cache holds puts only for each week's first session near the money (WD-06). For each weekly expiry in the window: every session from the week's first through expiry, strikes from 80% of the first session's low up to two increments above its high, in two bands that each measure their own strike step (WD-11). `pmcc fetch --wheel` pulls them. Fetching ranges from the window's prices is allowed; selection only ever sees data up to its decision time.
 - **Cache:** the wheel's puts go in their own folder with their own manifest (`data_cache/NVDA/wheel/`), so the PMCC's cache and its results' data hash are untouched (WD-11). Never overwritten; an outage aborts and writes nothing.
 - **S&P 500:** FRED's `SP500` daily closes, Fri Mar 27 and Fri Sep 25 2026, price return, as a committed two-row file with its citation (PO, WD-17).
@@ -44,7 +44,7 @@ The site states the thesis first, then each claim's verdict from the results, me
 
 - **Time:** America/New_York. LSEG stamps hourly bars at their start with end-of-bar quotes, so a bar is known at its end: every decision happens at a bar's end, using only data stamped at or before it. The engine's `MarketView` raises on any request for later data.
 - **Week:** a week opens on its first trading session and its options expire on its last trading session.
-- **Greeks:** Black-Scholes, implied vol solved from the bar's mid, dividend yield 0. A contract whose IV can't be solved on a bar can't be selected on that bar.
+- **Greeks:** Black-Scholes, implied vol solved from the bar's mid, dividend yield 0. A contract whose IV can't be solved on a bar can't be selected on that bar. A held option whose mid is under its no-arbitrage floor (S − K·e^(−rT) for a call, K·e^(−rT) − S for a put) has no IV there, and is shown at the deep in-the-money limit: delta +1 for a call, −1 for a put, gamma and vega 0 (PO, WD-27).
 - **Dividends and interest:** NVDA's $0.01 quarterly dividend is ignored, and cash earns no interest. Both are stated on the site (PO, WD-18).
 - **Early assignment:** none before expiry (PO, WD-15).
 
@@ -98,6 +98,8 @@ Cash moves only on blotter rows. Money is an integer count of $0.0001.
 
 **Blotter:** Time (decision bar end) · Instrument (RIC, with OCC symbol; or the stock) · Side (`BUY` / `SELL` / `EXPIRE` / `ASSIGN`) · Qty · Limit (mid) · Fill · Cash Δ · Trade P&L · Rule · Notes. A put assignment is an `ASSIGN` row on the put plus a `BUY` 100 shares at the strike; a call-away is an `ASSIGN` row on the call plus a `SELL` 100 shares at the strike.
 
+**Trade P&L (PO, WD-28)** is per instrument, on the row that closes a position, net of fees; blank on a row that opens one. An option's is its credit, on its `EXPIRE` or `ASSIGN` row; the shares' is their sale less their purchase × 100, on the call-away's `SELL` (the assignment's `BUY` is blank). The rows sum to the realized P&L; a cycle's total is in the cycle statistics.
+
 **Ledger (one row per bar):** state; cash; reserved cash (strike × 100 while a put is open) and free cash; shares and their mark; short put (RIC, strike, expiry, mark, delta); short call (the same); cost basis; NAV.
 
 ```
@@ -108,14 +110,16 @@ Option and share marks at mid; a bar without a valid bid and ask carries the las
 
 **Portfolio at any point in time (requirement 2):** the site lets a reader pick any bar and shows that bar's ledger row as a portfolio: cash (reserved and free), shares, the short put, the short call, each with its mark, and NAV. **ASK** at the UI item (WD-22).
 
-## Metrics — **ASK** (WD-20)
+## Metrics (PO, WD-20)
 
-Recommended, per run:
+Per run, in its result's summary:
 
-- **Performance:** P&L; return on starting cash over the window; max drawdown ($ and %) and longest time underwater; Sharpe and Sortino on daily session-close NAV returns in excess of r, annualized by √252 and labelled with the sample length.
-- **Wheel cycles:** puts sold, assigned and expired; calls sold, called away and expired; weeks skipped by reason; total premium collected; complete cycles (Cash → … → Cash); share of time in each state.
-- **Uncertainty:** a bootstrap 95% CI on the mean weekly return (10,000 resamples, seeded).
-- **Benchmarks** (WD-03, a table, no chart): the wheel against the baseline PMCC on NVDA (return on starting cash, Sharpe, max drawdown %), and the S&P 500's price return over the same period. Each thesis claim is then marked met or not.
+- **Performance:** P&L; return on starting cash over the window; max drawdown ($ and %); Sharpe on daily session-close NAV returns in excess of r, annualized by √252 and labelled with the sample length (the sessions). The same definitions as the baseline PMCC's, so the two compare.
+- **Wheel cycles:** puts sold, assigned and expired; calls sold, called away and expired; weeks skipped by reason; total premium collected; complete cycles; whether a cycle is still open at the end; share of time (of bars) in each state. A complete cycle is a put assigned and its shares later called away; a put that expires is counted as expired, not as a cycle (PO, WD-29).
+- **Benchmarks** (WD-03, a table, no chart): the wheel against the baseline PMCC on NVDA (return on starting cash, Sharpe, max drawdown %), from the baseline's committed result, and the S&P 500's price return over the same period.
+- **Verdicts (PO, WD-29),** each from the numbers above, met when the wheel's is higher: (1) makes money: P&L > $0, shares still held at the end marked at their mid (W-X5); (2) improves Sharpe: the wheel's Sharpe > the baseline PMCC's; (3) beats the S&P 500: return on starting cash > the index's price return. A claim missing a number is not met.
+
+Not reported (PO, WD-20): Sortino, time underwater, and a bootstrap CI on the mean weekly return.
 
 ## Site
 

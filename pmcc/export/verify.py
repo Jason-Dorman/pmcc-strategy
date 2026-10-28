@@ -2,7 +2,8 @@
 §12, DEC-51). CI runs it on every push (DEC-79).
 
 Every file under the results directory must be one the pipeline writes, where it writes it:
-`{SYM}/{run_id}.json`, `{SYM}/{robustness,fill_check,coverage}.json` or
+`{SYM}/{run_id}.json` (a wheel run's ID is `wheel` or a variant of it, W2-03),
+`{SYM}/{robustness,fill_check,coverage}.json` or
 `universe/{pooled,headline,pooled_fill_check,suitability}.json`. Each must validate against its
 model, which is the JSON Schema `pmcc export` publishes, since both come from the same pydantic
 model.
@@ -13,7 +14,8 @@ A run's file must also:
 - come from a clean tree (`git_dirty: false`, PO, DEC-50) and hash its config to
   `manifest.config_hash`;
 - render its rule text from its config, and record every runtime invariant as held;
-- if it is full detail, hold the invariants re-derived from its rows (`rederive`).
+- if it is full detail, hold the invariants re-derived from its rows (`rederive`; a wheel run is
+  always full, and `wheel_rederive` re-derives its own).
 """
 
 import re
@@ -28,8 +30,12 @@ from pmcc.engine.invariants import RUNTIME_INVARIANTS
 from pmcc.export import canonical
 from pmcc.export.analytics_models import SYMBOL_FILES, UNIVERSE_FILES
 from pmcc.export.models import RunResult
-from pmcc.export.rederive import rederive
-from pmcc.export.results import to_bytes
+from pmcc.export.rederive import Finding, rederive
+from pmcc.export.results import Result, to_bytes
+from pmcc.export.wheel_models import WHEEL_RUN_FILE, WheelResult
+from pmcc.export.wheel_rederive import baseline_findings, rederive_wheel
+from pmcc.wheel.benchmarks import BASELINE_PMCC
+from pmcc.wheel.invariants import RUNTIME_INVARIANTS as WHEEL_INVARIANTS
 
 UNIVERSE_DIR = "universe"
 SYMBOL_DIR = re.compile(r"[A-Z][A-Z0-9]*")
@@ -42,7 +48,7 @@ _SHOWN = 3  # findings of one kind printed per file before the rest are counted
 class Problem:
     path: str  # relative to the results directory, with forward slashes
     check: str  # "layout", "schema", "canonical", "manifest", "git_dirty", "config_hash",
-    # "rule_text", "summary", or an invariant ("INV-01")
+    # "rule_text", "summary", or an invariant ("INV-01", "WINV-01")
     message: str
 
     def __str__(self) -> str:
@@ -72,6 +78,9 @@ def verify(root: Path) -> Verified:
         elif kind is RunResult:
             runs += 1
             problems += _check_run(path, name)
+        elif kind is WheelResult:
+            runs += 1
+            problems += _check_wheel(path, name)
         else:
             problems += _check_other(path, name, kind)
     return Verified(runs, files, tuple(problems))
@@ -88,6 +97,8 @@ def kind_of(relative: Path) -> type[BaseModel] | None:
         return None
     if stem in SYMBOL_FILES:
         return SYMBOL_FILES[stem]
+    if WHEEL_RUN_FILE.fullmatch(relative.name):
+        return WheelResult
     return RunResult if RUN_FILE.fullmatch(relative.name) else None
 
 
@@ -115,30 +126,62 @@ def _check_run(path: Path, name: str) -> list[Problem]:
         result = RunResult.model_validate_json(raw)
     except ValidationError as e:
         return [Problem(name, "schema", _describe(e))]
-    found = [Problem(name, check, message) for check, message in _run_checks(result, raw, path)]
-    return found + _shown(name, [(f.invariant, f.message) for f in rederive(result)])
+    strategy = result.config.strategy
+    rendered = {str(r.id): asdict(r.text()) for r in strategy.rules}
+    checks = _run_checks(result, raw, path, (strategy.id, rendered), RUNTIME_INVARIANTS)
+    return _found(name, checks, rederive(result))
 
 
-def _run_checks(result: RunResult, raw: bytes, path: Path) -> Iterator[tuple[str, str]]:
-    manifest, config = result.manifest, result.config
+def _check_wheel(path: Path, name: str) -> list[Problem]:
+    raw = path.read_bytes()
+    try:
+        result = WheelResult.model_validate_json(raw)
+    except ValidationError as e:
+        return [Problem(name, "schema", _describe(e))]
+    wheel = result.config.wheel
+    rendered = {str(r.id): asdict(r.text()) for r in wheel.rules}
+    checks = _run_checks(result, raw, path, (wheel.id, rendered), WHEEL_INVARIANTS)
+    found = rederive_wheel(result) + baseline_findings(result, _baseline(path))
+    return _found(name, checks, found)
+
+
+def _baseline(wheel: Path) -> RunResult | None:
+    """The baseline PMCC's result beside a wheel result, if it is there and reads."""
+    try:
+        return RunResult.model_validate_json((wheel.parent / f"{BASELINE_PMCC}.json").read_bytes())
+    except (OSError, ValidationError):
+        return None
+
+
+def _found(name: str, checks: Iterator[tuple[str, str]],
+           findings: list[Finding]) -> list[Problem]:  # fmt: skip
+    found = [Problem(name, check, message) for check, message in checks]
+    return found + _shown(name, [(f.invariant, f.message) for f in findings])
+
+
+type _Ran = tuple[str, dict[str, dict[str, str]]]  # the config's run ID and its rendered rule text
+
+
+def _run_checks(result: Result, raw: bytes, path: Path, ran: _Ran,
+                invariants: tuple[str, ...]) -> Iterator[tuple[str, str]]:  # fmt: skip
+    manifest, (run_id, rendered) = result.manifest, ran
     if to_bytes(result) != raw:
         yield "canonical", "isn't canonical JSON as pmcc run writes it (DEC-50)"
     where = (path.parent.name, path.stem)
-    if where != (manifest.symbol, manifest.run_id) or manifest.run_id != config.strategy.id:
+    if where != (manifest.symbol, manifest.run_id) or manifest.run_id != run_id:
         yield "manifest", (f"its manifest names {manifest.symbol}/{manifest.run_id}, run from "
-                           f"{config.strategy.id}")  # fmt: skip
+                           f"{run_id}")  # fmt: skip
     if manifest.git_dirty:
         yield "git_dirty", "it ran on a dirty tree; commit the code and run it again (DEC-50)"
-    if config.config_hash() != manifest.config_hash:
+    if result.config.config_hash() != manifest.config_hash:
         yield "config_hash", "its config doesn't hash to manifest.config_hash"
-    rendered = {str(r.id): asdict(r.text()) for r in config.strategy.rules}
     if {k: v.model_dump() for k, v in result.rule_text.items()} != rendered:
         yield "rule_text", "its rule text isn't rendered from its config (DEC-52)"
     held = {c.id for c in result.summary.invariants if c.held}
     recorded = [c.id for c in result.summary.invariants]
-    if held != set(RUNTIME_INVARIANTS) or len(recorded) != len(held):
+    if held != set(invariants) or len(recorded) != len(held):
         yield "summary", (f"it records invariants {recorded} as held {sorted(held)}; every run "
-                          f"holds {list(RUNTIME_INVARIANTS)}")  # fmt: skip
+                          f"holds {list(invariants)}")  # fmt: skip
 
 
 def _shown(name: str, findings: list[tuple[str, str]]) -> list[Problem]:

@@ -118,12 +118,25 @@ def test_dec_27_a_call_below_the_floor_is_ineligible_but_keeps_deep_itm_greeks()
     assert got.theta[0] == pytest.approx(-R * k * math.exp(-R * t))
 
 
-def test_dec_27_a_put_below_the_floor_gets_no_greeks() -> None:
-    # Only calls are ever held; a put's IV failure leaves its Greeks unknown.
-    got = _one(140, 38.00, 38.10, call=False)
+def test_wd_27_a_put_below_the_floor_is_ineligible_but_keeps_deep_itm_greeks() -> None:
+    # The wheel holds puts: one under its floor mirrors the call's limit (PO, WD-27).
+    k, t = 140.0, 0.1
+    got = _one(k, 38.00, 38.10, t=t, call=False)  # the floor is 140·e^(-rT) - 100 ≈ 39.48
 
     assert got.code[0] == IvCode.BELOW_FLOOR
-    assert math.isnan(got.delta[0])
+    assert not got.eligible[0]
+    assert math.isnan(got.iv[0])
+    assert got.delta[0] == -1.0
+    assert got.gamma[0] == 0.0
+    assert got.vega[0] == 0.0
+    assert got.theta[0] == pytest.approx(R * k * math.exp(-R * t))
+
+
+def test_wd_27_a_put_above_its_cap_still_gets_no_greeks() -> None:
+    got = _one(90, 95.00, 95.10, call=False)  # a put can't be worth more than K·e^(-rT)
+
+    assert got.code[0] == IvCode.ABOVE_CAP
+    assert _no_greeks(got)
 
 
 def _no_greeks(got: PricedQuotes) -> bool:

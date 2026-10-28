@@ -40,6 +40,15 @@ fetch SYM START END *ARGS:
 run SYM CONFIG:
     {{uv}} pmcc run --symbol {{SYM}} --config {{CONFIG}}
 
+# Backtest the wheel on one symbol (W2-03), from the cache only. Add --config for another wheel config
+wheel SYM *ARGS:
+    {{uv}} pmcc wheel --symbol {{SYM}} {{ARGS}}
+
+# The wheel and its friction runs on one symbol (W3-02): configs/wheel.yaml, then each configs/wheel_friction/*.yaml
+wheels SYM:
+    {{uv}} pmcc wheel --symbol {{SYM}}
+    for config in configs/wheel_friction/*.yaml; do {{uv}} pmcc wheel --symbol {{SYM}} --config "$config" || exit 1; done
+
 # Run every symbol, strategy and variant in the universe
 batch:
     {{uv}} pmcc batch --universe configs/universe.yaml
@@ -72,5 +81,5 @@ e2e: web-build
 serve:
     {{uv}} pmcc serve
 
-# Cached data -> all runs -> verify -> export -> built site (Spec › CLI)
-reproduce: batch verify export web-build
+# Cached data -> all runs (the PMCC's batch, then the wheel and its friction runs on NVDA) -> verify -> export -> built site (Spec › CLI)
+reproduce: batch (wheels "NVDA") verify export web-build

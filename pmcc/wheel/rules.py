@@ -9,7 +9,9 @@
 - **ITM at expiry (WD-15):** a put below its strike, a call above it, at the closing trade.
 
 A contract without a valid quote, or whose IV didn't solve, has no delta on the bar and can't be
-picked there (Spec › Conventions). Rules read the market only through `MarketView`.
+picked there (Spec › Conventions). One under its no-arbitrage floor carries the deep in-the-money
+limit, delta ±1 (WD-27), but is in the money, and only out-of-the-money contracts are picked. Rules
+read the market only through `MarketView`.
 """
 
 import math

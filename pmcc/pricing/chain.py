@@ -3,10 +3,11 @@
 - **One bar** (`price_quotes`): each contract's mid is (BID + ASK) / 2 of a valid quote, exact
   (not rounded to $0.0001), and its IV is solved from that mid with the bar's spot and T. A
   contract is **eligible** only when its IV solves (Spec › Greeks and pricing).
-- **Held contracts (PO, DEC-27):** a call whose mid is under the no-arbitrage floor gets the
+- **Held contracts (PO, DEC-27; WD-27):** a call whose mid is under the no-arbitrage floor gets the
   zero-vol limit of a deep ITM call: δ = 1, Γ = vega = 0, θ = -r·K·e^(-rT). It stays ineligible, so
-  selection never picks it, but X-S2 and X-L1 still see a deep ITM leg. Every other failure leaves
-  the Greeks unknown (NaN). Only calls are ever held, so a put below its floor gets no Greeks.
+  selection never picks it, but X-S2 and X-L1 still see a deep ITM leg. The wheel holds puts, so a
+  put under its floor gets the mirror image: δ = -1, Γ = vega = 0, θ = r·K·e^(-rT) (PO, WD-27).
+  Every other failure leaves the Greeks unknown (NaN).
 - **A whole symbol** (`price_symbol`): every session bar of every chain unit, priced in one
   vectorized pass per unit. Spot is the underlying's TRDPRC_1 on the same bar (DEC-23), and T runs
   to the expiry session's close (DEC-24). `PricedSymbol.snapshot` slices one bar of one unit and
@@ -116,18 +117,19 @@ def price_quotes(*, strike: IntArray, bid: IntArray | FloatArray, ask: IntArray 
 
 def _greeks(s: FloatArray, k: FloatArray, t: FloatArray, rate: float, call: BoolArray,
             solved: ImpliedVol) -> tuple[FloatArray, ...]:  # fmt: skip
-    """Greeks where the IV solved; DEC-27's deep ITM limit for a call under its floor; NaN
-    elsewhere."""
+    """Greeks where the IV solved; the deep ITM limit for an option under its floor (DEC-27's
+    call, WD-27's put); NaN elsewhere."""
     out = [np.full(s.size, np.nan) for _ in range(4)]
     ok = solved.code == IvCode.OK
     if ok.any():
         g = greeks(s[ok], k[ok], t[ok], rate, solved.vol[ok], call[ok])
         for values, column in zip(out, (g.delta, g.gamma, g.theta, g.vega), strict=True):
             values[ok] = column
-    held = call & (solved.code == IvCode.BELOW_FLOOR)
+    held = solved.code == IvCode.BELOW_FLOOR
+    sign = np.where(call[held], 1.0, -1.0)  # a call moves with the stock, a put against it
     delta, gamma, theta, vega = out
-    delta[held], gamma[held], vega[held] = 1.0, 0.0, 0.0
-    theta[held] = -rate * k[held] * np.exp(-rate * t[held])
+    delta[held], gamma[held], vega[held] = sign, 0.0, 0.0
+    theta[held] = -sign * rate * k[held] * np.exp(-rate * t[held])
     return delta, gamma, theta, vega
 
 

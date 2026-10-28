@@ -8,6 +8,11 @@ set (WD-05). The PMCC's `Rule` stays its own: it is keyed by the PMCC's kinds (W
 
 `load_wheel_run` adds the universe's window and r; `config_hash` is the sha256 of the result as
 canonical JSON, so a result's manifest names the exact config that produced it.
+
+**Variants (W3-02):** a file that `extends` another (a path relative to itself, `.yaml`, forward
+slashes) gives its own `id` and `name` and patches the parent's `fill_model` field by field; it
+can change nothing else, since the wheel's rules are fixed (WD-05). The friction runs are two such
+files in `configs/wheel_friction/`, at spread capture 0.25 and 0.50 (Spec › Fill model).
 """
 
 import hashlib
@@ -36,6 +41,7 @@ from pmcc.config.yaml_file import read_yaml
 from pmcc.domain import RuleId
 
 WHEEL_PATH = CONFIGS_DIR / "wheel.yaml"
+FRICTION_DIR = CONFIGS_DIR / "wheel_friction"
 
 
 class WheelConfigError(Exception):
@@ -213,12 +219,46 @@ class WheelRunConfig(BaseModel):
         return hashlib.sha256(self.canonical_json().encode("utf-8")).hexdigest()
 
 
+class WheelVariant(BaseModel):
+    """A variant file as written: a new name, and the parent's fill model patched."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    id: str
+    name: str
+    extends: str
+    fill_model: dict[str, object] = {}
+
+    @field_validator("extends")
+    @classmethod
+    def _relative_yaml(cls, extends: str) -> str:
+        """Relative, with forward slashes, so a config means the same on every machine."""
+        if extends.startswith("/") or ":" in extends or "\\" in extends:
+            raise ValueError(f"extends must be a relative path with forward slashes: {extends!r}")
+        if not extends.endswith(".yaml"):
+            raise ValueError(f"extends must name a .yaml file: {extends!r}")
+        return extends
+
+
 def load_wheel(path: Path = WHEEL_PATH) -> WheelConfig:
-    """The wheel `path` defines. Raises `WheelConfigError`."""
+    """The wheel `path` defines, its `extends` chain folded in. Raises `WheelConfigError`."""
     try:
-        return WheelConfig.model_validate(read_yaml(path))
-    except (ValidationError, ValueError) as exc:
+        return WheelConfig.model_validate(_raw(path.resolve(), ()))
+    except (ValidationError, ValueError, OSError) as exc:
         raise WheelConfigError(f"{path}: {exc}") from exc
+
+
+def _raw(path: Path, chain: tuple[Path, ...]) -> dict[str, object]:
+    if path in chain:
+        raise ValueError(f"extends cycle: {' → '.join(p.name for p in (*chain, path))}")
+    data = read_yaml(path)
+    if not isinstance(data, dict) or "extends" not in data:
+        return cast(dict[str, object], data)
+    variant = WheelVariant.model_validate(data)
+    parent = _raw((path.parent / variant.extends).resolve(), (*chain, path))
+    fill_model = cast(dict[str, object], parent.get("fill_model", {}))
+    return {**parent, "id": variant.id, "name": variant.name,
+            "fill_model": {**fill_model, **variant.fill_model}}  # fmt: skip
 
 
 def load_wheel_run(universe: Universe, path: Path = WHEEL_PATH) -> WheelRunConfig:

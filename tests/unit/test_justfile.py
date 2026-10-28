@@ -12,6 +12,8 @@ RECIPES = [
     "probe",
     "fetch",
     "run",
+    "wheel",
+    "wheels",
     "batch",
     "calibrate",
     "export",
@@ -36,3 +38,10 @@ def test_justfile_runs_recipes_under_bash() -> None:
 
 def test_justfile_defines_every_architecture_recipe() -> None:
     assert set(RECIPES) <= _recipe_names()
+
+
+def test_w3_02_reproduce_runs_the_wheel_and_its_friction_runs_after_the_batch() -> None:
+    text = JUSTFILE.read_text(encoding="utf-8")
+    line = next(x for x in text.splitlines() if x.startswith("reproduce:"))
+    assert line.split() == ["reproduce:", "batch", '(wheels', '"NVDA")', "verify", "export",
+                            "web-build"]  # fmt: skip

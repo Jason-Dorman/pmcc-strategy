@@ -78,3 +78,22 @@ def test_wd_11_a_week_with_no_call_unit_stops_the_load(root: Path) -> None:
     assert not call.exists()
     with pytest.raises(CacheError, match="2026-09-04 calls"):
         load_wheel_market(root, "SYN", "SYN", CAL, RATE, WEEK1)
+
+
+def test_w2_03_a_window_past_the_stock_tape_stops_the_load(root: Path) -> None:
+    # Sessions with no stock bars would have no spot, and every week would read as a W-T1 skip.
+    with pytest.raises(CacheError, match="no stock bars on 5 of the window's 14 sessions"):
+        load_wheel_market(root, "SYN", "SYN", CAL, RATE, (WEEK1[0], date(2026, 9, 18)))
+
+
+def test_w2_03_the_market_names_puts_from_the_part_and_calls_from_the_cache(root: Path) -> None:
+    market = load_wheel_market(root, "SYN", "SYN", CAL, RATE, WEEK1)
+    part = load_chains(SymbolCache(root, "SYN", part=WHEEL_PART), CAL).chains
+    cache = load_symbol(root, "SYN", CAL).chains
+    put_ric = part[(WEEK1[1], Right.PUT)]["ric"][0]
+    call_ric = cache[(WEEK1[1], Right.CALL)]["ric"][0]
+
+    assert market.symbol == "SYN"
+    assert put_ric in market.names.options.values()
+    assert call_ric in market.names.options.values()
+    assert market.names.stock == "SYN.O"

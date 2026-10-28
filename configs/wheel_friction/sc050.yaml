@@ -1,0 +1,7 @@
+# A friction run (Spec › Fill model; W3-02): the wheel with every option sale filled at
+# mid − 0.50 × half-spread instead of at mid. Sensitivity evidence for the fill assumption, never
+# the reported result (PO, WD-23). Loaded by pmcc.wheel.config.
+id: wheel--sc050
+name: "Friction: the wheel at spread capture 0.50"
+extends: ../wheel.yaml
+fill_model: {spread_capture: 0.50}
