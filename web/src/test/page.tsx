@@ -1,7 +1,8 @@
-// Helpers for the page tests (strategy, comparison, rules, methodology, universe): render a page
-// over a fake fetch, and read its readouts, panels and tables the way a reader sees them.
+// Helpers for the page tests (strategy, comparison, rules, methodology, universe, the wheel's):
+// render a page over a fake fetch, and read its readouts, panels and tables the way a reader sees
+// them.
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { expect, vi } from "vitest";
 
 import { IndexProvider } from "../data/IndexContext";
@@ -10,6 +11,8 @@ import { Methodology } from "../pages/Methodology";
 import { Rules } from "../pages/Rules";
 import { Strategy } from "../pages/Strategy";
 import { Universe } from "../pages/Universe";
+import { Wheel } from "../pages/Wheel";
+import { WheelReview } from "../pages/WheelReview";
 import type { RunResult, Section } from "../types/generated/run_result";
 import { fakeFetch, FILES, run } from "./fixtures";
 
@@ -73,6 +76,43 @@ export function renderUniverse(files: Record<string, unknown> = FILES) {
       <IndexProvider>
         <Routes>
           <Route path="/universe" element={<Universe />} />
+        </Routes>
+      </IndexProvider>
+    </MemoryRouter>,
+  );
+}
+
+/** Where the router is, for a test to read: the path and the query (`?bar=…`). */
+function Where() {
+  const { pathname, search } = useLocation();
+  return <output data-testid="where">{pathname + search}</output>;
+}
+
+export function where(): string {
+  return screen.getByTestId("where").textContent ?? "";
+}
+
+export function renderWheel(path = "/wheel/NVDA", files: Record<string, unknown> = FILES) {
+  vi.stubGlobal("fetch", vi.fn(fakeFetch(files)));
+  return render(
+    <MemoryRouter initialEntries={[path]}>
+      <IndexProvider>
+        <Routes>
+          <Route path="/wheel/:symbol" element={<><Wheel /><Where /></>} />
+        </Routes>
+      </IndexProvider>
+    </MemoryRouter>,
+  );
+}
+
+export function renderWheelReview(path = "/wheel-review/NVDA",
+                                  files: Record<string, unknown> = FILES) {
+  vi.stubGlobal("fetch", vi.fn(fakeFetch(files)));
+  return render(
+    <MemoryRouter initialEntries={[path]}>
+      <IndexProvider>
+        <Routes>
+          <Route path="/wheel-review/:symbol/:ruleId?" element={<WheelReview />} />
         </Routes>
       </IndexProvider>
     </MemoryRouter>,

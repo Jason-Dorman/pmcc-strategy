@@ -6,8 +6,8 @@ The export directory is rebuilt whole on every export:
   `gen:types` turns into TypeScript (INV-14);
 - every results file, copied byte for byte, once it passes `pmcc verify` (a dirty tree is allowed
   here, so a local preview works; CI's verify step keeps dirty results off the published site);
-- `index.json`: what exists, per symbol with the starting cash its runs share, and the window
-  and r every run shares;
+- `index.json`: what exists, per symbol with the starting cash its PMCC runs share and its
+  wheel runs (each with its own starting cash, WD-10), and the window and r every run shares;
 - `rules.json`: each strategy's and variant's rules, rendered from the config it ran with, each
   variant's changes against its strategy, and each run's family, from the robustness tables that
   hold it (the Trade rules page; DEC-52, P7-03).
@@ -15,8 +15,9 @@ The export directory is rebuilt whole on every export:
 Both are derived from the results at export time rather than committed, so neither can disagree
 with the runs it describes.
 
-The wheel's results (`{SYM}/wheel*.json`, W2-03) are verified like every other file but not
-exported: the site has no wheel pages until W4-01, which publishes them.
+The wheel's results (`{SYM}/wheel*.json`, W2-03) are verified and copied like every other file,
+for the wheel's pages (W4-01, WD-22). The pages read their rules from the result itself, so
+`rules.json` stays the PMCC's.
 """
 
 import shutil
@@ -37,6 +38,7 @@ from pmcc.export.site_models import (
     Index,
     IndexRun,
     IndexSymbol,
+    IndexWheelRun,
     RuleChange,
     RuleOut,
     Rules,
@@ -72,6 +74,13 @@ class _Loaded:
     result: RunResult
 
 
+@final
+@dataclass(frozen=True, slots=True)
+class _LoadedWheel:
+    path: str
+    result: WheelResult
+
+
 def export_site(results: Path, out: Path) -> Exported:
     """Rebuild `out` from `results`. Raises `ExportError`, before touching `out`, if a results
     file fails verification (a dirty tree aside), the runs don't share one window and r, or a
@@ -80,33 +89,35 @@ def export_site(results: Path, out: Path) -> Exported:
     refused = [p for p in verified.problems if p.check != PUBLISHABLE_ONLY]
     if refused:
         raise ExportError(_problems(refused))
-    runs = _runs(results)
+    runs, wheels = _runs(results), _wheels(results)
     if not runs:
         raise ExportError(f"{results} holds no runs to export")
     extras = _extras(results)
-    index, rules = build_index(runs, extras), build_rules(runs, families(results, extras))
+    index = build_index(runs, extras, wheels)
+    rules = build_rules(runs, families(results, extras))
     _clear(out)
     write_schemas(out)
     copied = _copy(results, out)
     (out / INDEX).write_bytes(canonical.to_bytes(index.model_dump()))
     (out / RULES).write_bytes(canonical.to_bytes(rules.model_dump()))
     dirty = sorted({p.path for p in verified.problems if p.check == PUBLISHABLE_ONLY})
-    return Exported(len(runs), len(index.symbols), copied, tuple(dirty))
+    return Exported(len(runs) + len(wheels), len(index.symbols), copied, tuple(dirty))
 
 
-def build_index(runs: Sequence[_Loaded], extras: Sequence[str]) -> Index:
+def build_index(runs: Sequence[_Loaded], extras: Sequence[str],
+                wheels: Sequence[_LoadedWheel] = ()) -> Index:  # fmt: skip
     first = runs[0].result
-    for run in runs:
-        _check_shared(first, run)
+    for run in (*runs, *wheels):
+        _check_shared(first, run.path, run.result)
     symbols = sorted(
-        {run.result.manifest.symbol for run in runs}
+        {run.result.manifest.symbol for run in (*runs, *wheels)}
         | {Path(p).parent.name for p in extras if Path(p).parent.name != UNIVERSE_DIR}
     )
     return Index(
         pmcc_version=version("pmcc"),
         window=first.config.window,
         risk_free_rate=first.config.risk_free_rate,
-        symbols=tuple(_symbol(s, runs, extras) for s in symbols),
+        symbols=tuple(_symbol(s, runs, extras, wheels) for s in symbols),
         universe=_files_in(UNIVERSE_DIR, extras),
     )
 
@@ -116,25 +127,29 @@ def _files_in(folder: str, extras: Sequence[str]) -> dict[str, str]:
     return {Path(p).stem: p for p in extras if Path(p).parent.name == folder}
 
 
-def _check_shared(first: RunResult, run: _Loaded) -> None:
+def _check_shared(first: RunResult, path: str, result: RunResult | WheelResult) -> None:
     shared = (first.config.window, first.config.risk_free_rate)
-    mine = (run.result.config.window, run.result.config.risk_free_rate)
+    mine = (result.config.window, result.config.risk_free_rate)
     if mine != shared:
         raise ExportError(
-            f"{run.path} ran over another window or r than "
+            f"{path} ran over another window or r than "
             f"{first.manifest.symbol}/{first.manifest.run_id}; re-run every result together"
         )
 
 
-def _symbol(symbol: str, runs: Sequence[_Loaded], extras: Sequence[str]) -> IndexSymbol:
+def _symbol(symbol: str, runs: Sequence[_Loaded], extras: Sequence[str],
+            wheels: Sequence[_LoadedWheel]) -> IndexSymbol:  # fmt: skip
     mine = sorted((r for r in runs if r.result.manifest.symbol == symbol),
                   key=lambda r: r.result.manifest.run_id)  # fmt: skip
+    wheel = sorted((w for w in wheels if w.result.manifest.symbol == symbol),
+                   key=lambda w: w.result.manifest.run_id)  # fmt: skip
     cash = {r.result.starting_cash for r in mine}
     if len(cash) > 1:
         raise ExportError(f"{symbol}'s runs started from different cash, "
                           f"{sorted(cash)}; re-run the symbol's results together")  # fmt: skip
     return IndexSymbol(symbol=symbol, starting_cash=next(iter(cash), None),
                        runs=tuple(_index_run(r) for r in mine),
+                       wheel=tuple(_index_wheel(w) for w in wheel),
                        files=_files_in(symbol, extras))  # fmt: skip
 
 
@@ -146,6 +161,20 @@ def _index_run(run: _Loaded) -> IndexRun:
         name=strategy.name,
         detail=strategy.report.detail,
         sections=strategy.report.sections,
+        path=run.path,
+        data_source=manifest.data_source,
+        config_hash=manifest.config_hash,
+        git_sha=manifest.git_sha,
+    )
+
+
+def _index_wheel(run: _LoadedWheel) -> IndexWheelRun:
+    manifest, wheel = run.result.manifest, run.result.config.wheel
+    return IndexWheelRun(
+        run_id=manifest.run_id,
+        name=wheel.name,
+        spread_capture=wheel.fill_model.spread_capture,
+        starting_cash=run.result.starting_cash,
         path=run.path,
         data_source=manifest.data_source,
         config_hash=manifest.config_hash,
@@ -253,6 +282,17 @@ def _runs(results: Path) -> list[_Loaded]:
     ]
 
 
+def _wheels(results: Path) -> list[_LoadedWheel]:
+    """Every wheel run file (`verify` has passed them)."""
+    return [
+        _LoadedWheel(
+            p.relative_to(results).as_posix(), WheelResult.model_validate_json(p.read_bytes())
+        )
+        for p in sorted(results.glob("*/*.json"))
+        if kind_of(p.relative_to(results)) is WheelResult
+    ]
+
+
 def _extras(results: Path) -> list[str]:
     """The analytics files present, by their path relative to `results`."""
     found = [*results.glob(f"{UNIVERSE_DIR}/*.json"),
@@ -295,11 +335,9 @@ def _clear(out: Path) -> None:
 
 
 def _copy(results: Path, out: Path) -> int:
-    """Every results file but the wheel's, which waits for its pages (W4-01)."""
+    """Every results file, the wheel's included (W4-01)."""
     copied = 0
     for path in sorted(results.glob("*/*.json")):
-        if kind_of(path.relative_to(results)) is WheelResult:
-            continue
         target = out / path.relative_to(results)
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(path.read_bytes())

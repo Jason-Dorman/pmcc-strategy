@@ -19,7 +19,7 @@ Oct 26, 2026 · from the [Wheel spec](WHEEL-SPEC.md) · **due Sun Nov 1 2026, 11
 | W1 Data | Mon Oct 26 – Tue Oct 27 | NVDA weekly puts cached; S&P closes committed | Done 2026-10-26: 26 weeks of puts cached, the −0.30-delta strike validly quoted on 93.6% of bars to expiry (W1-02); S&P closes committed (W1-03) |
 | W2 Engine and rules | Tue Oct 27 – Thu Oct 29 | The wheel runs on NVDA: blotter, ledger, NAV, gate log; invariants hold; one cycle hand-audited | Done 2026-10-27: W2-01 and W2-02 (WD-24, WD-25); W2-03, `pmcc wheel` and its verified result file, the Jun 1 – Jul 10 cycle hand-audited with 0 discrepancies (WD-26, WD-27). Next: W3-01 |
 | W3 Results and analytics | Fri Oct 30 | Wheel result and friction runs committed and verified; metrics and benchmarks | Done 2026-10-28: W3-01 to W3-03 (WD-20, WD-28 to WD-31); `results/NVDA/wheel.json` and the two friction runs run from a clean tree at `8abed76` and verified. Next: W4-01 |
-| W4 Site | Sat Oct 31 | Wheel pages live on GitHub Pages; thesis verdict shown | Not started |
+| W4 Site | Sat Oct 31 | Wheel pages live on GitHub Pages; thesis verdict shown | In progress 2026-10-28: W4-01's pages built to the PO's answers (WD-22, WD-32), `just check` and the smoke test green; waiting on the PO's read-through |
 | W5 Release | Sun Nov 1 | Reproduced from a clean tree; submitted by 18:00 (deadline 23:59 ET) | Not started |
 
 **Critical path:** the data is in (W1) and weekly tenor is confirmed (WD-02, 2026-10-27), so it now runs through W4-01's pages, the last item the PO's review gates before release.
@@ -89,8 +89,8 @@ Oct 26, 2026 · from the [Wheel spec](WHEEL-SPEC.md) · **due Sun Nov 1 2026, 11
 
 ### W4 — Site
 
-- [ ] **W4-01 · Wheel pages** **[PO]**
-  - Ask first: WD-22 (with a mockup).
+- [ ] **W4-01 · Wheel pages** **[PO]** — built 2026-10-28, waiting on the PO's read-through: `#/wheel/NVDA` and `#/wheel-review/NVDA` (WD-22, WD-32); export publishes the wheel's three results; 44 new web tests and the smoke test's wheel routes at four widths
+  - Ask first: WD-22 (with a mockup; settled 2026-10-28, as recommended).
   - The wheel's pages in the existing look ([UI-SPEC](UI-SPEC.md)), including the portfolio at a chosen bar; the PMCC pages unchanged.
   - Done when: the pages render the committed results, the smoke test covers them, and the PO has read them through.
   - Needs: W3-03

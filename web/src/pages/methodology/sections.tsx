@@ -20,7 +20,7 @@ import { fillPairs, gapOfSpread, timing, type FillPair } from "./figures";
 
 // ---- mid vs print ---------------------------------------------------------------------
 
-const PAIR_COLUMNS: readonly TableColumn<FillPair>[] = [
+export const PAIR_COLUMNS: readonly TableColumn<FillPair>[] = [
   { id: "mid", header: "Mid", num: true, sort: (r) => r.mid, cell: (r) => price(r.mid) },
   { id: "trade", header: "Print", num: true, sort: (r) => r.trade, cell: (r) => price(r.trade) },
   { id: "gap", header: "Print − mid", num: true, sort: (r) => r.trade - r.mid,
@@ -43,28 +43,34 @@ const FIT_ROWS: readonly FitRow[] = [
   ["Locked quotes, left out of the median", (f) => count(f.locked)],
 ];
 
-/** A fit's measures, the symbol's beside the pooled universe's. */
-export function FitTable({ label, symbol, fit, pooled }: {
+/** A fit's measures, one column per fit: the symbol's beside the pooled universe's (the PMCC),
+ * or the wheel's alone (WD-22). A row of extra measures follows the fit's own. */
+export function FitTable({ label, fits, extra = [] }: {
   label: string;
-  symbol: string;
-  fit: Fit | null;
-  pooled: Fit | null;
+  fits: readonly (readonly [name: string, fit: Fit | null])[];
+  extra?: readonly (readonly [name: string, values: readonly string[]])[];
 }) {
   return (
     <table className="pm-table pm-table-kv" aria-label={label}>
       <thead>
         <tr>
           <th>Print ≈ slope × mid + intercept</th>
-          <th className="pm-num">{symbol}</th>
-          <th className="pm-num">Pooled</th>
+          {fits.map(([name]) => <th key={name} className="pm-num">{name}</th>)}
         </tr>
       </thead>
       <tbody>
         {FIT_ROWS.map(([name, show]) => (
           <tr key={name}>
             <td>{name}</td>
-            <td className="pm-num">{fit ? show(fit) : "—"}</td>
-            <td className="pm-num">{pooled ? show(pooled) : "—"}</td>
+            {fits.map(([column, fit]) => (
+              <td key={column} className="pm-num">{fit ? show(fit) : "—"}</td>
+            ))}
+          </tr>
+        ))}
+        {extra.map(([name, values]) => (
+          <tr key={name}>
+            <td>{name}</td>
+            {values.map((v, i) => <td key={i} className="pm-num">{v}</td>)}
           </tr>
         ))}
       </tbody>
@@ -86,7 +92,7 @@ export function MidVsPrint({ symbol, group, pooled, label }: {
   return (
     <>
       <Chart build={build} label={`${label}: print against mid, ${count(rows.length)} pairs`} />
-      <FitTable label={`${label} fit`} symbol={symbol} fit={fit} pooled={pooled?.fit ?? null} />
+      <FitTable label={`${label} fit`} fits={[[symbol, fit], ["Pooled", pooled?.fit ?? null]]} />
       <Details summary="Values for every pair" table lazy>
         <DataTable label={`${label} pairs`} rows={rows} columns={PAIR_COLUMNS}
                    rowId={(r) => String(r.i)} virtual />

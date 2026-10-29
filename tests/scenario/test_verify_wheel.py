@@ -4,8 +4,8 @@ Verify passes a wheel result as `pmcc wheel` writes it, and fails a hand-corrupt
 invariant it re-derives from the rows (`wheel_rederive`), on each reported number it re-derives
 (Trade P&L, the S&P 500's return, the verdicts, the baseline PMCC's figures) and on each file
 check. Each corruption edits one value, keeping the file canonical and valid against its schema,
-so only the check it targets can catch it. Export leaves the wheel's results out until its pages
-exist (W4-01).
+so only the check it targets can catch it. Export publishes the wheel's results beside the PMCC's,
+listed in the index under their symbol (W4-01).
 
 The result is `winv10_run.full_wheel`'s, beside the baseline PMCC run on the same market, which
 its benchmarks were loaded from as `pmcc wheel` loads them, so the results directory holds both
@@ -14,6 +14,7 @@ kinds, as `results/NVDA/` will.
 
 import shutil
 from collections.abc import Callable
+from datetime import date
 from decimal import Decimal
 from pathlib import Path
 from typing import Any, cast
@@ -269,18 +270,42 @@ def test_w2_03_verify_refuses_a_wheel_result_under_another_run_id(
 # ---- export -------------------------------------------------------------------------------------
 
 
-def test_w2_03_export_leaves_the_wheels_results_out_until_its_pages(
+def test_w4_01_export_publishes_the_wheels_results_beside_the_pmccs(
     results: Path, tmp_path: Path
 ) -> None:
     site = tmp_path / "data"
 
     exported = export_site(results, site)
 
-    assert (exported.runs, exported.files) == (1, 1)
+    assert (exported.runs, exported.files) == (2, 2)
     assert (site / PMCC).read_bytes() == (results / PMCC).read_bytes()
-    assert not (site / WHEEL).exists()
+    assert (site / WHEEL).read_bytes() == (results / WHEEL).read_bytes()
     index = Index.model_validate_json((site / "index.json").read_bytes())
-    assert [r.run_id for s in index.symbols for r in s.runs] == ["baseline_pmcc"]
+    (symbol,) = index.symbols
+    assert [r.run_id for r in symbol.runs] == ["baseline_pmcc"]
+    (wheel,) = symbol.wheel
+    result = WheelResult.model_validate_json((results / WHEEL).read_bytes())
+    assert (wheel.run_id, wheel.path, wheel.name) == ("wheel", WHEEL, result.config.wheel.name)
+    assert wheel.spread_capture == result.config.wheel.fill_model.spread_capture
+    assert wheel.config_hash == result.manifest.config_hash
+    # the wheel's own starting cash, apart from the PMCC runs' shared one (WD-10)
+    assert wheel.starting_cash == result.starting_cash
+    assert symbol.starting_cash == RunResult.model_validate_json(
+        (results / PMCC).read_bytes()).starting_cash  # fmt: skip
+
+
+def test_w4_01_export_refuses_a_wheel_run_over_another_window(
+    results: Path, tmp_path: Path
+) -> None:
+    root = _copy(results, tmp_path)
+    wheel = WheelResult.model_validate_json((root / WHEEL).read_bytes())
+    window = wheel.config.window.model_copy(update={"end": date(2026, 9, 18)})
+    config = wheel.config.model_copy(update={"window": window})
+    manifest = wheel.manifest.model_copy(update={"config_hash": config.config_hash()})
+    write_result(wheel.model_copy(update={"config": config, "manifest": manifest}), root)
+
+    with pytest.raises(ExportError, match="another window or r"):
+        export_site(root, tmp_path / "data")
 
 
 def test_w2_03_export_still_refuses_a_wheel_result_that_fails_verification(

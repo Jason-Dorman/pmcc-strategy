@@ -26,11 +26,26 @@ class IndexRun(Model):
     git_sha: str
 
 
+class IndexWheelRun(Model):
+    """A wheel run (W4-01): the wheel, or a friction run of it (WD-31). Its starting cash is the
+    wheel config's own (WD-10), so it stays out of the PMCC runs' shared one."""
+
+    run_id: str
+    name: str
+    spread_capture: float
+    starting_cash: Dollars
+    path: str  # relative to index.json
+    data_source: DataSource
+    config_hash: str
+    git_sha: str
+
+
 class IndexSymbol(Model):
     symbol: str
-    # Every run on the symbol shares its own (PO, DEC-30); null for a symbol with no runs
+    # Every PMCC run on the symbol shares its own (PO, DEC-30); null for a symbol with no runs
     starting_cash: Dollars | None
     runs: tuple[IndexRun, ...]
+    wheel: tuple[IndexWheelRun, ...]  # the wheel's runs on the symbol, by run ID (W4-01)
     files: Mapping[str, str]  # robustness, fill_check, coverage → path, once written
 
 

@@ -12,6 +12,9 @@ const ROUTES = [
   `compare/${SYMBOL}`,
   `baseline/${SYMBOL}`,
   `quant/${SYMBOL}`,
+  `wheel/${SYMBOL}`,
+  `wheel-review/${SYMBOL}`,
+  `wheel-review/${SYMBOL}/W-X2`,
   "rules",
   "rules/X-S3",
   `methodology/${SYMBOL}`,
@@ -109,6 +112,63 @@ test("the strategy pages show the run's numbers, charts and tables", async ({ pa
   }
   await page.getByRole("table", { name: "Blotter" }).getByRole("link").first().click();
   await expect(page).toHaveURL(/#\/rules\/[A-Z]-[A-Z0-9]+$/);
+});
+
+/** The portfolio panel's row, by its label. */
+function portfolioRow(page: Page, label: string) {
+  return page.getByRole("table", { name: "Portfolio" }).locator("tr", { hasText: label })
+    .locator("td").nth(1);
+}
+
+test("the wheel page picks a bar's portfolio from the chart, the controls and the ledger (WD-22)",
+     async ({ page }) => {
+  await page.goto(`./#/wheel/${SYMBOL}`);
+  await settled(page);
+  const label = page.locator(".pm-readout-label", { hasText: /^Ending NAV$/ });
+  const nav = page.locator(".pm-readout", { has: label }).locator(".pm-readout-value");
+  await expect(nav).toHaveText(/^\$\d{1,3}(,\d{3})*\.\d{2}$/);
+  const last = await portfolioRow(page, "Bar").textContent();
+  // A click on the chart picks the bar under it, into the URL.
+  const chart = page.getByRole("figure", { name: /NAV, with the stock/ });
+  const box = await chart.boundingBox();
+  if (!box) throw new Error("no chart");
+  await page.mouse.click(box.x + box.width * 0.3, box.y + box.height * 0.3);
+  await expect(page).toHaveURL(/\?bar=/);
+  await expect(portfolioRow(page, "Bar")).not.toHaveText(last ?? "");
+  // The step buttons move it a bar.
+  const picked = await portfolioRow(page, "Bar").textContent();
+  await page.getByRole("button", { name: "Next bar" }).click();
+  await expect(portfolioRow(page, "Bar")).not.toHaveText(picked ?? "");
+  // A ledger time shows its bar, and a link to the URL opens the same portfolio.
+  const time = page.getByRole("table", { name: "Ledger" }).locator("tbody")
+    .getByRole("button").nth(3);
+  const shown = await time.textContent();
+  await time.click();
+  await expect(portfolioRow(page, "Bar")).toHaveText(shown ?? "");
+  await page.reload();
+  await settled(page);
+  await expect(portfolioRow(page, "Bar")).toHaveText(shown ?? "");
+  // A blotter rule links to its row on the review page, outlined.
+  await page.getByRole("table", { name: "Blotter" }).getByRole("link").first().click();
+  await expect(page).toHaveURL(/#\/wheel-review\/NVDA\/W-[A-Z]\d$/);
+  await expect(page.getByRole("table", { name: "Wheel rules" }).locator("tr.pm-target"))
+    .toBeVisible();
+});
+
+test("the wheel review page shows the verdicts, benchmarks, evidence and friction runs",
+     async ({ page }) => {
+  await page.goto(`./#/wheel-review/${SYMBOL}`);
+  await settled(page);
+  const rows = (name: string) =>
+    page.getByRole("table", { name, exact: true }).locator("tbody tr:not(.pm-spacer)");
+  await expect(rows("Verdicts")).toHaveCount(3);
+  await expect(rows("Benchmarks")).toHaveCount(3);
+  await expect(rows("Friction runs")).toHaveCount(3);
+  for (const name of ["Mid vs print — puts", "Mid vs print — calls"]) {
+    const region = page.getByRole("region", { name });
+    await expect(region.getByRole("figure").locator("svg path").first()).toBeAttached();
+  }
+  await expect(rows("Wheel rules")).toHaveCount(13);
 });
 
 test("the comparison page shows both runs, the pooled universe and the ablations", async ({ page }) => {

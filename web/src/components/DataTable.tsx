@@ -68,6 +68,9 @@ export interface DataTableProps<T> {
   wrap?: boolean;
   /** As tall as its rows, without TABLE_MAX_HEIGHT's cap: the rule tables (PO, DEC-112). */
   grow?: boolean;
+  /** The row ID a reader has chosen (the wheel ledger's bar, WD-22): outlined like a target, but
+   * not scrolled to, so a long table stays where the reader is. */
+  selected?: string | undefined;
 }
 
 const features = tableFeatures({
@@ -232,7 +235,7 @@ function useTarget(target: string | undefined, present: boolean) {
 
 export function DataTable<T extends RowData>({
   label, rows, columns, rowId, filters = NO_FILTERS, virtual = false, detail, target,
-  wrap = false, grow = false,
+  wrap = false, grow = false, selected,
 }: DataTableProps<T>) {
   const defs = useColumns(columns);
   const [chosen, setChosen] = useState<Chosen>({});
@@ -288,9 +291,11 @@ export function DataTable<T extends RowData>({
               const isOpen = more !== undefined && open.has(row.id);
               const detailId = `pm-detail-${label}-${row.id}`.replace(/[^\w-]+/g, "-");
               const isTarget = row.id === target;
+              const outlined = isTarget || row.id === selected;
               return (
                 <Fragment key={row.id}>
-                  <tr className={isTarget ? "pm-target" : undefined}
+                  <tr className={outlined ? "pm-target" : undefined}
+                      aria-selected={selected === undefined ? undefined : row.id === selected}
                       ref={isTarget ? targetRef : undefined}>
                     {detail && (
                       <td className="pm-toggle-col">

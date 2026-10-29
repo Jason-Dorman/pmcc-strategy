@@ -38,7 +38,7 @@ The user is the product owner (PO). This log tracks what the spec leaves open, t
 | WD-19 | Fees | SETTLED (PO): $0 | — |
 | WD-20 | Metrics | SETTLED (PO): trimmed | — |
 | WD-21 | Thesis wording | SETTLED (PO): the draft, unchanged | — |
-| WD-22 | Wheel pages | ASK | W4-01 |
+| WD-22 | Wheel pages | SETTLED (PO): two pages | — |
 | WD-23 | Fills at mid | SETTLED (PO) | — |
 | WD-24 | The wheel's own book, beside the PMCC's | ENG | — |
 | WD-25 | Rule details the spec leaves open (W2-02) | ENG, put to the PO | — |
@@ -48,6 +48,7 @@ The user is the product owner (PO). This log tracks what the spec leaves open, t
 | WD-29 | Complete cycles, and how each thesis claim is judged | SETTLED (PO) | — |
 | WD-30 | The wheel's numbers: where they are computed and checked (W3-01) | ENG | — |
 | WD-31 | The fill evidence and the friction runs (W3-02) | ENG | — |
+| WD-32 | The wheel's pages: export, index and site code (W4-01) | ENG, the chart's shading put to the PO | — |
 
 ## Settled
 
@@ -193,6 +194,15 @@ The user is the product owner (PO). This log tracks what the spec leaves open, t
 - **Recommendation:** $0 in the base run, matching the PMCC benchmark's assumption; the friction runs at spread capture 0.25 and 0.50 carry the cost sensitivity.
 - **Outcome:** 2026-10-26, PO: as recommended. $0 per contract in every run; the friction runs carry the cost sensitivity.
 
+### WD-22 — Wheel pages
+**Status:** SETTLED · **Basis:** PO, 2026-10-28 · **Affects:** UI-SPEC §2, §3, §6, §7; Spec › Accounting (portfolio at any point in time), Site; W4-01
+
+- **Asked** at W4-01 with a mockup of both pages; every answer as recommended.
+- **Pages:** two, in the existing look. **Wheel** (`#/wheel/:symbol`): readouts; [1] NAV; [2] Portfolio at a bar beside [3] Cycle statistics; [4] Blotter; [5] Gate log; [6] Ledger. **Wheel review** (`#/wheel-review/:symbol/:ruleId?`): readouts; the thesis; [1] Verdicts; [2] Benchmarks; the fill model; [3] and [4] mid vs print for the puts and the calls; [5] Friction runs; [6] Rules, rendered from the config. The layouts are in UI-SPEC §6. (The alternative was one long page.)
+- **Portfolio at a bar (requirement 2):** a click on the NAV chart or on a ledger row's time picks the bar; ◀ ▶ step a bar, and a session select and a bar select jump to one. The bar is in the URL (`?bar=`), so a link opens the same portfolio; with none, the last bar. (The alternative was the selects alone.)
+- **Nav, landing, wordmark:** the two entries join the nav after Quant. `#/` still opens the PMCC's Compare page and the wordmark stays "PMCC Backtest", so nothing the PMCC's submission links to moves; the wheel is submitted by its deep link, `#/wheel/NVDA`. (The alternative was the wheel first.)
+- **Copy rules:** the PMCC PO's three are kept for the wheel: a rule is named by what it did, never by its ID, outside ID columns; rule cells are in plain words and link to the rule (its row on the wheel review page); Greeks are named in words.
+
 ## Engineering
 
 ### WD-11 — Put fetch band and a separate cache
@@ -244,7 +254,7 @@ None of these changes NVDA's run: every week sold on its first bar (10:00), delt
 - **Command:** `pmcc wheel --symbol SYM [--config PATH]` (`just wheel SYM`), from the cache only: `load_wheel_market` (the cache's stock and calls, the wheel part's puts, WD-11), the bar loop, then `results/{SYM}/{run_id}.json`. The window and r come from `configs/universe.yaml`, the starting cash from the wheel's own config (WD-10). A failed run writes nothing. `--config` takes another wheel config under its own run ID, as W3-02's friction runs will (`wheel--sc025`).
 - **The file (`pmcc/export/wheel_models.py`):** its own `WheelResult`, beside the PMCC's `RunResult` (WD-24): the PMCC's manifest, blotter row, instrument and leg models unchanged; the wheel's ledger row (state, cash, reserved and free cash, shares and their mark, the put and call legs with RIC, OCC, strike, expiry, mark, stale flag and delta, cost basis per share, NAV, flags) and gate-log row; a summary of the runtime invariants held (WINV-01 to 03, 05 to 09) and the ledger's flag counts. Metrics wait for W3-01. Written by the same canonical writer, so the config in the file hashes to `manifest.config_hash`.
 - **`pmcc verify`:** knows a wheel run by its run ID (`wheel.json`, `wheel--*.json`), applies the PMCC's file checks (schema, canonical bytes, its place, a clean tree, the config hash, the rule text, the invariants recorded), and re-derives the invariants from the rows with its own arithmetic (`pmcc/export/wheel_rederive.py`): the positions the rows booked; WINV-01 (each row's Cash Δ, and the cash walk), 02 (NAV), 03 (fills at the quote's mid ± capture; an assignment's shares at its strike), 05 (reserved cash = the put's strike × 100, and cash covers it), 06, 07 (each bar's state is what it holds), 08 and 09. WINV-04 is `MarketView`'s; WINV-10 is a test. A corrupted copy fails on each, one check per corruption.
-- **`pmcc export`:** verifies the wheel's results but doesn't publish them, so the site is unchanged until the wheel's pages exist (W4-01).
+- **`pmcc export`:** verifies the wheel's results but doesn't publish them, so the site is unchanged until the wheel's pages exist (W4-01; published since, WD-32).
 - **`just reproduce`:** the PMCC's batch, then `just wheel NVDA`, then verify, export and the site.
 - **The market:** `load_wheel_market` now also refuses a stock tape short of the window, the same data-gap guard as the option units' (WD-24), and names every instrument by the RIC its cache answered with.
 - **Shared code, no PMCC change:** the runner's RIC naming (`Names`), blotter row and tape check, and two of the PMCC re-derivation's row checks, are made public for the wheel; the writer's and verify's types widen to either result. After every change here and WD-27's, a scratch batch of all 24 PMCC runs matches all 31 committed result files, the manifest's run time, commit and dirty flag aside.
@@ -257,7 +267,7 @@ None of these changes NVDA's run: every week sold on its first bar (10:00), delt
   - **The cycle:** the put +$208, the calls +$676, the shares −$750: +$134.
   - **Every bar:** the state, cash, reserved and free cash, shares, the stock's mark, cost basis, NAV, flags, and each leg's RIC, strike, expiry, mark (with the stale carry) and delta.
 - **WINV-10:** tested in-process and in two processes with different hash seeds on a synthetic market, and on NVDA: two runs, `PYTHONHASHSEED` 12345 and random, byte-identical once the run time and commit are dropped.
-- **Tests:** the result mirrors the engine row by row on a synthetic five-week market where every booking and skip rule fires (`tests/scenario/winv10_run.py`); verify passes it and fails each corruption; export leaves it out; the CLI's paths; the market's tape check and names; WD-27's put limit; the justfile.
+- **Tests:** the result mirrors the engine row by row on a synthetic five-week market where every booking and skip rule fires (`tests/scenario/winv10_run.py`); verify passes it and fails each corruption; export leaves it out (until W4-01, WD-32); the CLI's paths; the market's tape check and names; WD-27's put limit; the justfile.
 
 ### WD-30 — The wheel's numbers: where they are computed and checked (W3-01)
 **Status:** ENG · **Affects:** W3-01; `pmcc wheel`, `pmcc verify`
@@ -277,10 +287,15 @@ None of these changes NVDA's run: every week sold on its first bar (10:00), delt
 - **`pmcc verify`** checks the evidence's schema and canonical form, like every other block; it doesn't re-fit it, since export may not import the analytics (archived ARCHITECTURE §3.3, rule 5).
 - **On NVDA** (2026-10-28; committed at W3-03 from the clean tree at `8abed76`, the same figures): 825 pairs over the 26 options sold (412 put, 413 call bars). Print on mid: slope 0.998, intercept $0.0019, R² 0.9994; 89.1% of prints at or inside the quote (puts 84.7%, calls 93.5%); the median print sits half a spread from the mid, at the bid or the ask. So a fill at mid is optimistic by about half the spread, and the friction runs price that: at 0.25 the P&L is $4,162.87 and at 0.50 $4,154.25, against $4,171.50 at mid, the same 61 trades, Sharpe 1.570 and 1.567 against 1.574, and every claim's verdict unchanged.
 
+### WD-32 — The wheel's pages: export, index and site code (W4-01)
+**Status:** ENG; the chart's shading put to the PO at W4-01's read-through · **Affects:** W4-01; `pmcc export`, `index.json`, the site
+
+- **Export** publishes the wheel's results beside the PMCC's (its copy no longer skips them), with their schema, `wheel_result.schema.json`, from which the site generates `WheelResult`. `index.json` lists each symbol's wheel runs in a field of their own, `wheel` (run ID, name, spread capture, starting cash, path, data source, config hash, commit), not among the PMCC's `runs`: their starting cash is the wheel config's own ($25,000, WD-10), which the PMCC runs' shared-cash check would refuse. Export checks that they share the PMCC runs' window and r, as every run must. `rules.json` stays the PMCC's: the wheel pages read their rules from the result, rendered from the config it ran with. On the committed results: 27 runs (the PMCC's 24, the wheel's 3) and 34 files.
+- **Rule links:** a wheel rule links to its row on the wheel review page (`#/wheel-review/NVDA/W-X2`), which outlines and scrolls to it as the Rules page does. Plain labels for the wheel's IDs join the PMCC's in `web/src/format/rule.ts`: "Put assigned", "Called away", "Sell put", and for a skip "No liquid bar" (W-T1), "Cash short" (W-P4), "No call at the basis" (W-C3).
+- **The NAV chart:** NAV above a pane of the stock, the held option's strike (dashed) and the shares' cost basis (dotted), the two references as steps. The mockup's "shaded by state" is drawn as one shade, over the bars holding shares, alone or under a call; a put shows as no shade with a strike, a call as shade with one, so the four states read without four fills. Three chart roles and a shade join tokens.css, each from an existing colour: `--spot-line` (TEXT), `--strike-line` (MARGIN_IM), `--basis-line` (IDENTITY_LINE), `--shares-shade` (NAV_LINE at 14%). The chosen bar is a thin amber rule on both panes: a reader's choice, so chrome, not data.
+- **Shared components, the PMCC pages unchanged:** `Chart` takes an optional `onPick` (a click on a plot gives the bar under it), `DataTable` an optional `selected` row (outlined like a target, not scrolled to), `RuleLink` an optional `to`, and `FitTable` its columns (Methodology still shows the symbol's fit beside the pooled one; the wheel shows its own alone, with the share of prints inside the quote). The ledger's times are buttons, so a keyboard reaches the pick.
+- **Tests:** export publishes and indexes the wheel and refuses one over another window (pytest); the chart's option, the click mapping, and both pages over a fixture wheel and its friction run (44 vitest tests); the smoke test's three wheel routes at four widths, with a click on the real NAV chart, the step buttons, a ledger time, a reload of the deep link, and a blotter rule link landing on its outlined rule (Playwright).
+
 ## Open
 
-### WD-22 — Wheel pages
-**Status:** ASK · **Ask at:** W4-01
-
-- **Recommendation:** two pages added to the nav. **Wheel:** readouts, NAV chart, portfolio at a chosen bar, blotter, ledger, cycle statistics, gate log. **Wheel review:** thesis and verdict, benchmark table, fill model and its evidence, friction runs, the rules from the config. The layout is put to the PO as a mockup at W4-01.
-- **Also to confirm:** UI-SPEC carries over three copy rules the PMCC's PO set (archived DEC-107, DEC-113, DEC-121): rules named by what they do, never by ID, outside ID columns; rule cells in plain words linking to the rule; Greeks named in words. They're content, not styling, so WD-01 doesn't settle them for the wheel. Recommended: keep them, so the wheel's pages read like the PMCC's.
+None.

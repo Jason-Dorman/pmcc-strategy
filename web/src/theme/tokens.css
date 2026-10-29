@@ -43,10 +43,14 @@
   --strategy-quant: var(--nav-line); /* quant's NAV on the comparison page, solid */
   --strategy-baseline: var(--mark); /* the baseline's NAV there, solid: no mid or print series */
   --available-funds: var(--text); /* the account chart's lower pane; below zero shaded NEGATIVE */
+  --spot-line: var(--text); /* the wheel's NAV chart, lower pane: the stock's price (WD-32) */
+  --strike-line: var(--margin-im); /* there: the held option's strike, a dashed reference */
+  --basis-line: var(--identity-line); /* there: the shares' cost basis, a dotted reference */
 
   /* derived */
   --negative-tint: color-mix(in srgb, var(--negative) 14%, transparent); /* warning ground */
   --negative-shade: color-mix(in srgb, var(--negative) 30%, transparent); /* funds below zero */
+  --shares-shade: color-mix(in srgb, var(--nav-line) 14%, transparent); /* the wheel holds shares */
 
   /* type stacks (self-hosted, DEC-72) */
   --font-display: "Space Grotesk", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;

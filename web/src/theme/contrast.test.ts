@@ -121,6 +121,10 @@ const DEC_04: Record<string, ColorToken> = {
   "strategy-quant": "nav-line",
   "strategy-baseline": "mark",
   "available-funds": "text",
+  // the wheel's NAV chart (WD-32)
+  "spot-line": "text",
+  "strike-line": "margin-im",
+  "basis-line": "identity-line",
 };
 
 describe("chart roles (DEC-04)", () => {
@@ -140,6 +144,10 @@ describe("chart roles (DEC-04)", () => {
 
   it("shades funds below zero in NEGATIVE", () => {
     expect(TOKENS).toContain("--negative-shade: color-mix(in srgb, var(--negative) 30%, transparent)");
+  });
+
+  it("shades the wheel's bars holding shares in NAV_LINE (WD-32)", () => {
+    expect(TOKENS).toContain("--shares-shade: color-mix(in srgb, var(--nav-line) 14%, transparent)");
   });
 });
 

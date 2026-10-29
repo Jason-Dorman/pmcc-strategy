@@ -4,6 +4,8 @@ export type PageKey =
   | "compare"
   | "baseline"
   | "quant"
+  | "wheel"
+  | "wheel-review"
   | "rules"
   | "methodology"
   | "universe"
@@ -19,6 +21,8 @@ export const PAGES: readonly Page[] = [
   { key: "compare", label: "Compare", symbol: "required" },
   { key: "baseline", label: "Baseline", symbol: "required" },
   { key: "quant", label: "Quant", symbol: "required" },
+  { key: "wheel", label: "Wheel", symbol: "required" },
+  { key: "wheel-review", label: "Wheel review", symbol: "required" },
   { key: "rules", label: "Rules", symbol: "none" },
   { key: "methodology", label: "Methodology", symbol: "optional" },
   { key: "universe", label: "Universe", symbol: "none" },
@@ -27,6 +31,14 @@ export const PAGES: readonly Page[] = [
 
 /** The strategy each strategy page shows; the page never checks it otherwise (UI-SPEC §6.2). */
 export const STRATEGY_PAGES = { baseline: "baseline_pmcc", quant: "quant_pmcc" } as const;
+
+/** The wheel's own run, which the wheel pages show; its friction runs are `wheel--…` (WD-31). */
+export const WHEEL_RUN = "wheel";
+
+/** A wheel rule's row on the wheel review page (WD-22), where the wheel's rules are listed. */
+export function wheelRulePath(symbol: string, ruleId: string): string {
+  return `/wheel-review/${symbol}/${ruleId}`;
+}
 
 export function pagePath(page: Page, symbol: string | undefined): string {
   return page.symbol === "none" || symbol === undefined ? `/${page.key}` : `/${page.key}/${symbol}`;

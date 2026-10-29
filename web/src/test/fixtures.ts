@@ -1,6 +1,7 @@
-// A small index, two full runs, NVDA's robustness and fill check, the universe's files and
-// rules.json, shaped as `pmcc export` writes them, for the page, route and loader tests. Each is
-// typed against the generated schema, so a schema change shows here.
+// A small index, two full runs, NVDA's robustness and fill check, the universe's files,
+// rules.json and NVDA's wheel runs (wheelFixtures.ts), shaped as `pmcc export` writes them,
+// for the page, route and loader tests. Each is typed against the generated schema, so a schema
+// change shows here.
 import type { FillCheck } from "../types/generated/fill_check";
 import type { Headline } from "../types/generated/headline";
 import type { Index } from "../types/generated/index";
@@ -22,6 +23,7 @@ import type {
   Section,
 } from "../types/generated/run_result";
 import { SCHEMA_VERSION } from "../types/generated/version";
+import { WHEEL, WHEEL_INDEX, WHEEL_SC050 } from "./wheelFixtures";
 
 export const INDEX: Index = {
   schema_version: SCHEMA_VERSION,
@@ -42,6 +44,7 @@ export const INDEX: Index = {
       symbol: "NVDA",
       starting_cash: 15000,
       files: { robustness: "NVDA/robustness.json", fill_check: "NVDA/fill_check.json" },
+      wheel: WHEEL_INDEX,
       runs: [
         {
           run_id: "baseline_pmcc",
@@ -67,7 +70,7 @@ export const INDEX: Index = {
         },
       ],
     },
-    { symbol: "QQQ", starting_cash: null, files: {}, runs: [] },
+    { symbol: "QQQ", starting_cash: null, files: {}, runs: [], wheel: [] },
   ],
 };
 
@@ -541,6 +544,8 @@ export const FILES: Record<string, unknown> = {
   "data/universe/headline.json": HEADLINE,
   "data/universe/suitability.json": SUITABILITY,
   "data/rules.json": RULES,
+  "data/NVDA/wheel.json": WHEEL,
+  "data/NVDA/wheel--sc050.json": WHEEL_SC050,
 };
 
 /** A fetch over `files`, answering 404 for anything else. */

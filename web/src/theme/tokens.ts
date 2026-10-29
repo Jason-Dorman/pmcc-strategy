@@ -38,12 +38,20 @@ export const ROLE_TOKENS = {
   "strategy-quant": "nav-line",
   "strategy-baseline": "mark",
   "available-funds": "text",
+  // the wheel's NAV chart (WD-32): the stock a series; the held strike and the cost basis
+  // references, thin and dashed or dotted (UI-SPEC §4 rule 5)
+  "spot-line": "text",
+  "strike-line": "margin-im",
+  "basis-line": "identity-line",
 } as const satisfies Record<string, ColorToken>;
 
 export type RoleToken = keyof typeof ROLE_TOKENS;
 
+/** The translucent fills tokens.css derives from a palette colour. */
+export type ShadeToken = "negative-shade" | "shares-shade";
+
 /** A colour token's current value, read from the document at render time (the charts). */
-export function color(token: ColorToken | RoleToken | "negative-shade",
+export function color(token: ColorToken | RoleToken | ShadeToken,
                       root: Element = document.documentElement): string {
   return getComputedStyle(root).getPropertyValue(`--${token}`).trim();
 }

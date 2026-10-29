@@ -7,13 +7,14 @@ import {
   AriaComponent,
   GridComponent,
   LegendComponent,
+  MarkAreaComponent,
   MarkLineComponent,
   TooltipComponent,
 } from "echarts/components";
 import * as echarts from "echarts/core";
 import { SVGRenderer } from "echarts/renderers";
 
-import { color, type ColorToken, type RoleToken } from "./tokens";
+import { color, type ColorToken, type RoleToken, type ShadeToken } from "./tokens";
 
 echarts.use([
   LineChart,
@@ -22,6 +23,7 @@ echarts.use([
   TooltipComponent,
   LegendComponent,
   MarkLineComponent,
+  MarkAreaComponent,
   AriaComponent,
   SVGRenderer,
 ]);
@@ -32,7 +34,7 @@ export { echarts };
 export const RENDERER = "svg" as const;
 
 /** What a chart reads from tokens.css. */
-export type Palette = Record<ColorToken | RoleToken | "negative-shade", string> & {
+export type Palette = Record<ColorToken | RoleToken | ShadeToken, string> & {
   fontBody: string;
   fontMono: string;
 };
@@ -41,7 +43,8 @@ const PALETTE_TOKENS = [
   "bg", "surface", "surface-alt", "border", "grid", "text", "text-muted", "text-inverse",
   "accent", "accent-dim", "mark", "trade", "trade-edge", "positive", "negative", "warn",
   "nav-line", "margin-im", "margin-mm", "fit-line", "identity-line", "long-leg", "short-leg",
-  "strategy-quant", "strategy-baseline", "available-funds", "negative-shade",
+  "strategy-quant", "strategy-baseline", "available-funds", "spot-line", "strike-line",
+  "basis-line", "negative-shade", "shares-shade",
 ] as const satisfies readonly (keyof Palette)[];
 
 /** Every colour and font stack a chart uses, as the document has them now. */

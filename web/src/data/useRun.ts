@@ -1,11 +1,13 @@
-// A page's results files: a run found through the index by symbol and run ID, a symbol's or the
-// universe's file by its key in the index, or `rules.json`, each loaded on demand and cached
-// (ARCHITECTURE §13). A file the index lacks is "missing", never an error.
+// A page's results files: a run found through the index by symbol and run ID, a wheel run (or
+// all of a symbol's, W4-01), a symbol's or the universe's file by its key in the index, or
+// `rules.json`, each loaded on demand and cached (ARCHITECTURE §13). A file the index lacks is
+// "missing", never an error.
 import { useEffect, useState } from "react";
 
-import type { Index, IndexRun } from "../types/generated/index";
+import type { Index, IndexRun, IndexWheelRun } from "../types/generated/index";
 import type { Rules } from "../types/generated/rules";
 import type { RunResult } from "../types/generated/run_result";
+import type { WheelResult } from "../types/generated/wheel_result";
 import { failure, useIndex } from "./IndexContext";
 import { loadFile, loadRun } from "./loader";
 import type { Loaded } from "./state";
@@ -46,6 +48,31 @@ function useLoaded<T>(locate: (index: Index) => string | undefined, what: string
 export function useRun(symbol: string, runId: string): Loaded<RunResult> {
   return useLoaded((index) => findRun(index, symbol, runId)?.path, `${symbol} / ${runId}`,
                    loadRun);
+}
+
+/** A symbol's wheel runs, the wheel's own and its friction runs, by run ID (WD-31). */
+export function wheelRuns(index: Index, symbol: string): readonly IndexWheelRun[] {
+  return index.symbols.find((s) => s.symbol === symbol)?.wheel ?? [];
+}
+
+export function useWheel(symbol: string, runId: string): Loaded<WheelResult> {
+  return useLoaded((index) => wheelRuns(index, symbol).find((r) => r.run_id === runId)?.path,
+                   `${symbol} / ${runId}`, loadFile<WheelResult>);
+}
+
+// Many files under one key: their paths, a line each, so useLoaded tracks them as one.
+const PATHS = "\n";
+
+function loadWheels(key: string): Promise<WheelResult[]> {
+  return Promise.all(key.split(PATHS).map((path) => loadFile<WheelResult>(path)));
+}
+
+/** Every wheel run on a symbol, in the index's order: the wheel review page's friction runs. */
+export function useWheelRuns(symbol: string): Loaded<WheelResult[]> {
+  return useLoaded((index) => {
+    const paths = wheelRuns(index, symbol).map((r) => r.path);
+    return paths.length > 0 ? paths.join(PATHS) : undefined;
+  }, `${symbol} / the wheel`, loadWheels);
 }
 
 /** One of a symbol's files (`robustness`, `coverage`, `fill_check`). */

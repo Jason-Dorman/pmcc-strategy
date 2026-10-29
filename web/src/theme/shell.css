@@ -110,6 +110,10 @@ body {
   font-size: 12px;
   z-index: 10;
 }
+.pm-select-long {
+  max-height: min(var(--radix-select-content-available-height), 320px); /* a session per item */
+  overflow-y: auto;
+}
 .pm-select-item {
   padding: 4px 10px;
   color: var(--text);
@@ -522,6 +526,32 @@ th[aria-sort="descending"] .pm-sort-mark::after {
   margin-top: 6px;
 }
 /* the row a reader arrived for (#/rules/X-S3): an outline, which is chrome, not data */
+/* a ledger time that shows its bar's portfolio (the wheel, WD-22): a link's look, a button */
+.pm-pick {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--text);
+  font: inherit;
+  text-decoration: underline;
+  text-decoration-color: var(--border);
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.pm-pick:hover {
+  text-decoration-color: var(--accent);
+}
+/* the portfolio panel's bar controls */
+.pm-picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.pm-picker .pm-chip:disabled {
+  color: var(--text-muted);
+  cursor: default;
+}
 .pm-table tr.pm-target {
   outline: 1px solid var(--accent);
   outline-offset: -1px;

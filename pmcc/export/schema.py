@@ -17,12 +17,14 @@ from pydantic import BaseModel
 from pmcc.export.analytics_models import SYMBOL_FILES, UNIVERSE_FILES
 from pmcc.export.models import RunResult
 from pmcc.export.site_models import Index, Rules
+from pmcc.export.wheel_models import WheelResult
 
 SCHEMA_DIR = "schema"
 SCHEMAS: Mapping[str, type[BaseModel]] = {
     "index": Index,
     "rules": Rules,
     "run_result": RunResult,
+    "wheel_result": WheelResult,
     **SYMBOL_FILES,
     **UNIVERSE_FILES,
 }

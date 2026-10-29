@@ -9,6 +9,8 @@ import { Methodology } from "../pages/Methodology";
 import { Rules } from "../pages/Rules";
 import { Strategy } from "../pages/Strategy";
 import { Universe } from "../pages/Universe";
+import { Wheel } from "../pages/Wheel";
+import { WheelReview } from "../pages/WheelReview";
 import { AppShell } from "./AppShell";
 
 /** `#/` opens the comparison page of the index's first symbol. */
@@ -27,6 +29,8 @@ export function AppRoutes() {
         <Route path="compare/:symbol" element={<Comparison />} />
         <Route path="baseline/:symbol" element={<Strategy page="baseline" />} />
         <Route path="quant/:symbol" element={<Strategy page="quant" />} />
+        <Route path="wheel/:symbol" element={<Wheel />} />
+        <Route path="wheel-review/:symbol/:ruleId?" element={<WheelReview />} />
         <Route path="rules/:ruleId?" element={<Rules />} />
         <Route path="methodology/:symbol?" element={<Methodology />} />
         <Route path="universe" element={<Universe />} />

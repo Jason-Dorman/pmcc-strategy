@@ -2,7 +2,7 @@
 
 Oct 26, 2026 · the source of truth for the wheel, as amended by PO answers in [DECISIONS](DECISIONS.md). The PMCC's docs are archived in [archive/pmcc/](archive/pmcc/README.md) and are not requirements here (WD-01).
 
-> Sections marked **ASK** wait on the PO; the entry named beside each holds the recommendation. Weekly tenor was confirmed on 2026-10-27 (PO, WD-02).
+> No section waits on the PO now: weekly tenor was confirmed on 2026-10-27 (PO, WD-02), and the pages settled on 2026-10-28 (PO, WD-22).
 
 ## Assignment
 
@@ -108,7 +108,7 @@ NAV = cash + shares × stock price − short put MV − short call MV
 
 Option and share marks at mid; a bar without a valid bid and ask carries the last valid mid, flagged stale, and a stale mark never fills. A holding with no mid yet on the bar it was filled is marked stale until one arrives: shares bought on assignment at the closing trade that assigned them, anything else at its fill (WD-25).
 
-**Portfolio at any point in time (requirement 2):** the site lets a reader pick any bar and shows that bar's ledger row as a portfolio: cash (reserved and free), shares, the short put, the short call, each with its mark, and NAV. **ASK** at the UI item (WD-22).
+**Portfolio at any point in time (requirement 2):** the site lets a reader pick any bar and shows that bar's ledger row as a portfolio: cash (reserved and free), shares, the short put, the short call, each with its mark, and NAV. The reader picks the bar with a click on the NAV chart or on a ledger time, by stepping a bar, or with a session and bar select, and the URL keeps it, so a link opens the same portfolio (PO, WD-22).
 
 ## Metrics (PO, WD-20)
 
@@ -123,7 +123,7 @@ Not reported (PO, WD-20): Sortino, time underwater, and a bootstrap CI on the me
 
 ## Site
 
-The wheel's pages join the existing site in its existing look ([UI-SPEC](UI-SPEC.md)); the PMCC pages are untouched. **ASK** at the UI item (WD-22). Recommended: a Wheel page (readouts, NAV, portfolio at a point in time, blotter, ledger, cycle statistics, gate log) and a Wheel review page (thesis and verdict, benchmark table, fill model and its evidence, friction runs, the rules rendered from the config).
+The wheel's pages join the existing site in its existing look ([UI-SPEC](UI-SPEC.md)); the PMCC pages are untouched. Two pages join the nav (PO, WD-22): a Wheel page (readouts, NAV, portfolio at a point in time, cycle statistics, blotter, gate log, ledger) and a Wheel review page (thesis and verdicts, benchmark table, fill model and its evidence, friction runs, the rules rendered from the config). The landing page and the wordmark stay the PMCC's; the wheel is linked as `#/wheel/NVDA`. Rules are named in plain words outside ID columns, as on the PMCC's pages.
 
 ## Invariants
 

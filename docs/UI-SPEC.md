@@ -19,7 +19,7 @@ No rounded corners, no shadows, no floating cards, no whitespace gaps. shadcn/ui
 | Block | React component | Notes |
 | --- | --- | --- |
 | Command bar | `CommandBar` | **Left:** the wordmark (display font, amber, uppercase, tracked). **Right:** the ident (symbol · bar size · window), the nav (wrapping on a phone), the symbol select |
-| Nav | inside `CommandBar` | Muted at rest; the current page is amber. The wheel's entries: WD-22 |
+| Nav | inside `CommandBar` | Muted at rest; the current page is amber. The wheel's two entries, Wheel and Wheel review, follow Quant (PO, WD-22) |
 | Readout strip | `Readouts` | Per KPI: label (muted caps), value (amber mono), and a one-line hint defining the number |
 | Panel grid | `PanelGrid` | 10 columns. Widths: 10 (full), 5 + 5, 6 + 4. A row's widths sum to 10 |
 | Panel | `Panel` | **Header:** `[n]` (amber mono), NAME (display caps), note (mono muted, one line, truncated). **Body:** figure or table. **Caption:** HTML below the body |
@@ -30,7 +30,7 @@ No rounded corners, no shadows, no floating cards, no whitespace gaps. shadcn/ui
 
 - **Numbering:** panels holding a figure or table are numbered `[1]`, `[2]`, … in page order, computed at render time. Prose panels are unnumbered.
 - **Breakpoints:** ≥ 1400px the full 10-column grid; 1101–1399px two columns; ≤ 1100px one column.
-- **Copy:** a rule is named by what it does ("Put assigned"), never by its ID; IDs appear only in ID columns. Greeks are named in words, never symbols. These two, and rule cells in plain words (§5), are the PMCC PO's content choices carried over, not styling: the wheel's PO confirms them at W4-01 (WD-22).
+- **Copy:** a rule is named by what it does ("Put assigned"), never by its ID; IDs appear only in ID columns. Greeks are named in words, never symbols. These two, and rule cells in plain words (§5), are the PMCC PO's content choices, kept for the wheel by its PO (WD-22). A wheel rule links to its row on the wheel review page.
 
 ## 3. Tokens
 
@@ -49,8 +49,8 @@ No rounded corners, no shadows, no floating cards, no whitespace gaps. shadcn/ui
 | `WARN` | `--warn` | skip reasons (words only) |
 | `NAV_LINE` | `--nav-line` | the NAV series |
 | `FIT_LINE` / `IDENTITY_LINE` | `--fit-line` / `--identity-line` | OLS fit / y = x |
-| chart roles | `var()` of a palette colour, named in `tokens.ts`'s `ROLE_TOKENS` | charts name a role, never a colour. New wheel roles (for example reserved cash) are added there |
-| derived | `--negative-tint` / `--negative-shade` | `NEGATIVE` at 14% (a warning's ground) / 30% (a shaded breach) |
+| chart roles | `var()` of a palette colour, named in `tokens.ts`'s `ROLE_TOKENS` | charts name a role, never a colour. The wheel's NAV chart adds `--spot-line` (TEXT), `--strike-line` (MARGIN_IM) and `--basis-line` (IDENTITY_LINE) (WD-32) |
+| derived | `--negative-tint` / `--negative-shade` / `--shares-shade` | `NEGATIVE` at 14% (a warning's ground) / 30% (a shaded breach); `NAV_LINE` at 14% (the wheel's bars holding shares, WD-32) |
 | `FONT_DISPLAY` / `FONT_BODY` / `FONT_MONO` | `--font-display` / `--font-body` / `--font-mono` | Space Grotesk / Inter / JetBrains Mono, self-hosted |
 
 **Layout constants** live typed in `web/src/theme/tokens.ts` and are never re-typed as literals: the grid (`GRID_COLUMNS` 10, `W_FULL`, `W_HALF`, `W_HERO`, `W_SIDECAR`), breakpoints, figure heights (`PANEL_FIGURE_HEIGHT`, `HERO_FIGURE_HEIGHT`, `FIGURE_MIN_WIDTH`), table sizes (`TABLE_MIN_WIDTH`, `TABLE_MAX_HEIGHT`, `TABLE_FONT_SIZE`, `TABLE_ROW_HEIGHT`, `TABLE_OVERSCAN`), account line weights and marker sizes.
@@ -95,11 +95,46 @@ Rule cells show what the rule did in plain words and link to that rule.
 
 **PMCC pages:** unchanged; their layouts are in the archived spec.
 
-**Wheel pages:** **ASK** (WD-22), settled at W4-01 from a mockup. Readouts come first on every page, then panels.
+**Wheel pages** (PO, WD-22; built at W4-01, WD-32). Their headings carry no number, so the PMCC code's `§6.n` citations still mean the archived spec's pages. Readouts come first on every page, then panels in the order listed. Widths are grid columns; a prose panel is unnumbered.
+
+### Wheel — `#/wheel/:symbol?bar=`
+
+**Readouts:** Ending NAV · P&L (from the starting cash) · Return on starting cash · Sharpe (annualized; from N daily returns) · Max drawdown ($, and its %) · Complete cycles (and one open at the end) · Weeks sold / skipped (of N)
+
+| # | Panel | Width | Content |
+| --- | --- | --- | --- |
+| 1 | NAV | 10 | NAV, shaded (`--shares-shade`) over the bars holding shares; a lower pane of the stock's last trade (`--spot-line`), the held option's strike (`--strike-line`, dashed step) and the cost basis (`--basis-line`, dotted step); the chosen bar a thin `--accent` rule on both. A click on either pane picks the bar under it |
+| 2 | Portfolio at a bar | 6 | ◀, a session select, a bar select, ▶; then key/value: the bar, what is held (in words), the stock's last trade, cash, reserved for the put, free cash, shares at their mark, the short put and the short call (contracts × RIC, OCC, strike and expiry, mark with its value to the book, delta; a stale mark in `flag`), the cost basis per share, NAV, flags. Opens on the URL's `?bar=`, else the last bar |
+| 3 | Cycle statistics | 4 | key/value: weeks sold / skipped; skips by reason (in plain words, linked); puts sold, expired and assigned; calls sold, expired and called away; complete cycles (and one open); premium; the share of bars in each state |
+| 4 | Blotter | 10 | §5, with Trade P&L on the closing rows (WD-28); filters by rule (in words) and side |
+| 5 | Gate log | 10 | per week: session, put or call, decision time, the option picked (delta against its target, mid, spread), outcome (sold, or skipped and the rule, linked), notes |
+| 6 | Ledger | 10 | §5, virtualized: time (a button that picks the bar for [2], the chosen row outlined in `--accent`), what is held, stock, cash, reserved, free cash, shares, each short leg with its mark and delta, cost basis, NAV, flags; filters by what is held and by flag |
+
+### Wheel review — `#/wheel-review/:symbol/:ruleId?`
+
+**Readouts:** Claims met (n of 3) · P&L · Return on starting cash (the S&P 500's in the hint) · Sharpe (the baseline PMCC's in the hint) · Prints inside the quote (of N prints)
+
+| # | Panel | Width | Content |
+| --- | --- | --- | --- |
+| — | Thesis | 10 | Prose: the thesis word for word as fixed (Spec › Thesis), then how many claims the results meet, each named |
+| 1 | Verdicts | 10 | per claim: the thesis's words, its test, the wheel's number, the benchmark's, Met or Not met (in `flag`) |
+| 2 | Benchmarks | 10 | the wheel, the baseline PMCC and the S&P 500's price return: starting cash, return, Sharpe, max drawdown %; the caption names the baseline's run and config and the index's closes and source |
+| — | Fill model | 10 | Prose and key/value: fills at the mid, the spread capture and fee the run used, assignment at the strike, r, the options sold, the share of prints inside the quote and R² over all of them |
+| 3 | Mid vs print — puts | 5 | the methodology scatter (§4) of every put pair, its fit (the symbol's column alone) with the share of prints inside the quote, and every pair in a disclosure |
+| 4 | Mid vs print — calls | 5 | as [3], for the calls |
+| 5 | Friction runs | 10 | one row per wheel run by spread capture, at mid first ("reference"): P&L, Δ against at mid, return, Sharpe, max drawdown, which claims are met |
+| 6 | Rules | 10 | the config's rules in order: ID · Rule (its question) · What happens (its summary, the rule stated exactly on hover); ▸ opens the reasoning. `:ruleId` scrolls to that row and outlines it in `--accent`; an ID the results lack says so |
 
 ## 7. Routes
 
-Hash routing (GitHub Pages has no SPA fallback); the URL is the state. The wheel's routes are set with its pages at W4-01.
+Hash routing (GitHub Pages has no SPA fallback); the URL is the state. The PMCC's routes are in the archived spec; the wheel adds two (PO, WD-22), and `#/` still opens the PMCC's Compare page:
+
+| Route | Page |
+| --- | --- |
+| `#/wheel/:symbol` | Wheel; `?bar=<the bar's end time>` chooses the portfolio's bar |
+| `#/wheel-review/:symbol/:ruleId?` | Wheel review; a wheel rule's link lands on its row |
+
+Every wheel rule named on the wheel pages (blotter, gate log, cycle statistics, filters) links to `#/wheel-review/:symbol/<ID>`.
 
 ## 8. States
 

@@ -95,7 +95,7 @@ These exist once P0 is done.
 | `just test [ARGS]` | pytest only |
 | `just probe SYM` / `just fetch SYM START END [--plan-only] [--wheel]` | LSEG spikes / pull (local, Workspace signed in); `--wheel` pulls the wheel's weekly puts into `data_cache/SYM/wheel/` (WD-11) |
 | `just run SYM CONFIG` / `just batch` / `just calibrate [ARGS]` | backtests; `calibrate` sets each symbol's own starting cash, skipping final ones; `calibrate --check` recomputes it without writing |
-| `just wheel SYM [--config PATH]` | the wheel on one symbol, from the cache only → `results/SYM/wheel.json` (W2-03), with its metrics, benchmarks and verdicts (W3-01); reads the symbol's `baseline_pmcc.json`, so run `just batch` first; `pmcc verify` checks it, `pmcc export` leaves it out until W4-01 |
+| `just wheel SYM [--config PATH]` | the wheel on one symbol, from the cache only → `results/SYM/wheel.json` (W2-03), with its metrics, benchmarks and verdicts (W3-01); reads the symbol's `baseline_pmcc.json`, so run `just batch` first; `pmcc verify` checks it, `pmcc export` publishes it for the wheel's pages (W4-01) |
 | `just wheels SYM` | the wheel and each friction run in `configs/wheel_friction/` (W3-02) |
 | `just export` / `just verify` | site data / results validation |
 | `just web-dev` / `just web-build` / `just e2e` / `just serve` | frontend (`web-dev` and `web-build` export first) |
