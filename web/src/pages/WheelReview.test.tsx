@@ -8,6 +8,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { clearRunCache } from "../data/loader";
 import { FILES } from "../test/fixtures";
 import { bodyRows, column, kv, panel, readout, renderWheelReview, rowAt } from "../test/page";
+import { resultsSentence } from "./wheel/review";
 
 afterEach(() => {
   cleanup();
@@ -71,13 +72,30 @@ describe("the panels", () => {
 });
 
 describe("the thesis and its verdicts", () => {
-  it("states the thesis as fixed, then how many claims the results meet", async () => {
+  it("states the thesis in the PO's words, then the results built from the verdicts (WD-33)",
+     async () => {
     renderWheelReview();
     const thesis = await panel("Thesis");
-    await within(thesis).findByText(/2 of 3 claims are met/);
-    expect(thesis.textContent).toContain("volatility risk premium");
-    expect(thesis.textContent).toContain("fixed on 2026-10-26, before the first run");
-    expect(thesis.textContent).toContain("it beats the S&P 500 (not met)");
+    await within(thesis).findByText(/Two of the three objectives were met/);
+    expect(thesis.textContent).toContain("priced for larger price movements than actually occur");
+    expect(thesis.textContent).toContain(
+      "Outperform the S&P 500's price return over the same period.");
+    expect(thesis.textContent).toContain("Two of the three objectives were met: The wheel "
+      + "generated a profit and achieved a higher Sharpe ratio than the PMCC, but it did not "
+      + "outperform the S&P 500.");
+    expect(thesis.textContent).not.toMatch(/total return|fixed on 2026-10-26/);
+  });
+
+  it("words the results for any mix of verdicts", () => {
+    const of = (...met: boolean[]) => resultsSentence(met.map((m, i) => ({ claim: i + 1, met: m })));
+    expect(of(true, true, true)).toBe("All three objectives were met: The wheel generated a "
+      + "profit, achieved a higher Sharpe ratio than the PMCC and outperformed the S&P 500.");
+    expect(of(false, true, false)).toBe("One of the three objectives was met: The wheel "
+      + "achieved a higher Sharpe ratio than the PMCC, but it did not generate a profit and did "
+      + "not outperform the S&P 500.");
+    expect(of(false, false, false)).toBe("None of the three objectives was met: The wheel did "
+      + "not generate a profit, did not achieve a higher Sharpe ratio than the PMCC and did not "
+      + "outperform the S&P 500.");
   });
 
   it("shows each claim's test, the wheel's number, its benchmark's and the verdict", async () => {

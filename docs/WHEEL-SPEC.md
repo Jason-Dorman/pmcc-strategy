@@ -21,15 +21,19 @@ Each requirement maps to a section below: (1) Accounting, (2) Ledger and portfol
 
 **Out:** other symbols; ablations, parameter grids, entry-timing sweeps; rolls and early closes (WD-09); margin (it's a cash account, WD-10); charting the benchmarks (WD-03). The PMCC's pages and results stay on the site unchanged.
 
-## Thesis (PO, WD-21)
+## Thesis (PO, WD-21, WD-33)
 
-Weekly NVDA options are, on average, priced at an implied volatility above the volatility NVDA then realizes: the volatility risk premium. A seller of fully secured, 0.30-delta weekly options collects that premium every week. Being cash-secured and short a single option at a time, the wheel holds at most 100 shares' worth of exposure, never levered. The thesis is that:
+NVDA options tend to be priced for larger price movements than actually occur, creating an opportunity to profit by selling weekly options and collecting premiums. The strategy uses a cash-secured options wheel, trading one contract at a time without leverage.
 
-1. **It makes money:** the premiums collected exceed the losses taken when puts are assigned below the market and shares are called away below where the stock went.
-2. **It improves Sharpe on the baseline PMCC:** the wheel carries less delta per dollar of capital (about 30 shares' worth while a put is open, about 70 while shares are held under a call, on $25,000), so its NAV should swing less. Less exposure alone leaves Sharpe unchanged; the claim is that the premium earned is large relative to that smaller swing, so its return per unit of volatility is higher than the PMCC's.
-3. **It beats the S&P 500** over the same period on return.
+The hypothesis is that the wheel will:
 
-The site states the thesis first, then each claim's verdict from the results, met or not, with the numbers. The thesis was fixed on 2026-10-26, before the first run, and is not edited after it.
+1. **(It makes money)** Generate a profit by collecting more in premiums than it loses from unfavorable stock movements.
+2. **(It improves Sharpe on the baseline PMCC)** Improve risk-adjusted returns compared with the original PMCC strategy by generating income with less exposure to NVDA's price fluctuations.
+3. **(It beats the S&P 500)** Outperform the S&P 500's price return over the same period.
+
+The bold names are the claims' names in the Verdicts table; the site shows the thesis without them. Below the thesis, a **Results** line, built from the verdicts (for example "Two of the three objectives were met: The wheel generated a profit and achieved a higher Sharpe ratio than the PMCC, but it did not outperform the S&P 500."), then each claim's verdict, met or not, with the numbers.
+
+The three claims and their tests (WD-29) were fixed on 2026-10-26, before the first run. The PO reworded the thesis on 2026-10-30, after the results; the claims and tests are unchanged, and WD-33 keeps the original wording. The site doesn't carry a note about the date.
 
 ## Data
 

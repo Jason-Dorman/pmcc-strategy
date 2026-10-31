@@ -49,6 +49,7 @@ The user is the product owner (PO). This log tracks what the spec leaves open, t
 | WD-30 | The wheel's numbers: where they are computed and checked (W3-01) | ENG | — |
 | WD-31 | The fill evidence and the friction runs (W3-02) | ENG | — |
 | WD-32 | The wheel's pages: export, index and site code (W4-01) | ENG, the chart's shading put to the PO | — |
+| WD-33 | The thesis reworded | SETTLED (PO): plain wording, claims unchanged | — |
 
 ## Settled
 
@@ -156,6 +157,7 @@ The user is the product owner (PO). This log tracks what the spec leaves open, t
 
 - **Asked:** confirm or rewrite the spec's draft thesis, fixed before the first run.
 - **Outcome:** the PO: "keep it". Three claims: the wheel makes money; it beats the baseline PMCC's Sharpe; it beats the S&P 500's return over the same period. Fixed as of 2026-10-26, before any wheel run; the site marks each met or not.
+- **Reworded** by the PO on 2026-10-30, claims unchanged (WD-33).
 
 ### WD-14 — Entry trigger
 **Status:** SETTLED · **Basis:** PO, 2026-10-26 · **Affects:** W-T1
@@ -203,6 +205,19 @@ The user is the product owner (PO). This log tracks what the spec leaves open, t
 - **Nav, landing, wordmark:** the two entries join the nav after Quant. `#/` still opens the PMCC's Compare page and the wordmark stays "PMCC Backtest", so nothing the PMCC's submission links to moves; the wheel is submitted by its deep link, `#/wheel/NVDA`. (The alternative was the wheel first.)
 - **Copy rules:** the PMCC PO's three are kept for the wheel: a rule is named by what it did, never by its ID, outside ID columns; rule cells are in plain words and link to the rule (its row on the wheel review page); Greeks are named in words.
 - **Claim 1's benchmark (PO, 2026-10-28, at the read-through):** making money has no outside benchmark, only P&L > $0 (WD-29), so its Benchmark cell reads "$0.00 (break-even)" rather than a bare $0.00; the column keeps its name. (The alternative was renaming the column "Must beat".)
+
+### WD-33 — The thesis reworded
+**Status:** SETTLED · **Basis:** PO, 2026-10-30, at the W4-01 read-through · **Affects:** Spec › Thesis; UI-SPEC §6 (Wheel review, Thesis); WD-21
+
+- **Asked:** the PO gave a plainer wording of the thesis and a results line. Four questions came with it; the PO's answers follow.
+- **Claim 3** says "price return", not the "total return" in the PO's draft, because the benchmark is price return (WD-17). (Recommended. The alternatives were "total return" as drafted, or "in return".)
+- **The "fixed on 2026-10-26, not edited after it" note** is dropped from the site, now that the wording has changed after the results; the spec records what was fixed when. The claims and their tests (WD-29) are unchanged since 2026-10-26, so no verdict moves. (The recommendation was to say the wording was reworded; the PO chose to drop the note.)
+- **The results line** ("Two of the three objectives were met: The wheel generated a profit and achieved a higher Sharpe ratio than the PMCC, but it did not outperform the S&P 500.") is built from the verdicts, so it can't drift from the Verdicts table. (Recommended. The alternative was fixed text.)
+- **The spec** takes the new wording. (Recommended. The alternative was changing the site only.) The original, word for word, as fixed on 2026-10-26:
+  > Weekly NVDA options are, on average, priced at an implied volatility above the volatility NVDA then realizes: the volatility risk premium. A seller of fully secured, 0.30-delta weekly options collects that premium every week. Being cash-secured and short a single option at a time, the wheel holds at most 100 shares' worth of exposure, never levered. The thesis is that:
+  > 1. **It makes money:** the premiums collected exceed the losses taken when puts are assigned below the market and shares are called away below where the stock went.
+  > 2. **It improves Sharpe on the baseline PMCC:** the wheel carries less delta per dollar of capital (about 30 shares' worth while a put is open, about 70 while shares are held under a call, on $25,000), so its NAV should swing less. Less exposure alone leaves Sharpe unchanged; the claim is that the premium earned is large relative to that smaller swing, so its return per unit of volatility is higher than the PMCC's.
+  > 3. **It beats the S&P 500** over the same period on return.
 
 ## Engineering
 

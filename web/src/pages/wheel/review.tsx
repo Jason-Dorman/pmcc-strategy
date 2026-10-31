@@ -25,14 +25,54 @@ import { FitTable, PAIR_COLUMNS, scatterCaption } from "../methodology/sections"
 
 // ---- the thesis -----------------------------------------------------------------------------
 
-/** Each claim as the thesis names it (Spec › Thesis), how its two numbers read, and what its
- * benchmark is when it isn't another strategy's number. */
-const CLAIMS: Readonly<Record<number, { name: string; show: (v: number) => string;
-                                        bar?: string }>> = {
-  1: { name: "It makes money", show: moneySigned, bar: "break-even" },
-  2: { name: "It improves Sharpe on the baseline PMCC", show: ratio },
-  3: { name: "It beats the S&P 500", show: pct },
+interface Claim {
+  name: string;
+  show: (v: number) => string;
+  bar?: string;
+  /** What the wheel did, met and not, for the results sentence (PO, WD-33). */
+  did: string;
+  didNot: string;
+}
+
+/** Each claim as the thesis names it (Spec › Thesis), how its two numbers read, what its
+ * benchmark is when it isn't another strategy's number, and how the results word it. */
+const CLAIMS: Readonly<Record<number, Claim>> = {
+  1: { name: "It makes money", show: moneySigned, bar: "break-even",
+       did: "generated a profit", didNot: "did not generate a profit" },
+  2: { name: "It improves Sharpe on the baseline PMCC", show: ratio,
+       did: "achieved a higher Sharpe ratio than the PMCC",
+       didNot: "did not achieve a higher Sharpe ratio than the PMCC" },
+  3: { name: "It beats the S&P 500", show: pct,
+       did: "outperformed the S&P 500", didNot: "did not outperform the S&P 500" },
 };
+
+const NUMBER_WORDS = ["None", "One", "Two", "Three"];
+
+function numberWord(n: number): string {
+  return NUMBER_WORDS[n] ?? String(n);
+}
+
+/** `a`, `a and b`, `a, b and c`. */
+function listed(items: readonly string[]): string {
+  return items.length < 2 ? items.join("")
+    : `${items.slice(0, -1).join(", ")} and ${items.at(-1) ?? ""}`;
+}
+
+/** The results in the PO's words (WD-33), built from the verdicts so they can't drift from the
+ * Verdicts table: "Two of the three objectives were met: The wheel …, but it did not …". */
+export function resultsSentence(verdicts: readonly Pick<ThesisVerdict, "claim" | "met">[]): string {
+  const total = numberWord(verdicts.length).toLowerCase();
+  const met = verdicts.filter((v) => v.met).length;
+  const head = met === verdicts.length ? `All ${total} objectives were met`
+    : `${numberWord(met)} of the ${total} objectives ${met > 1 ? "were" : "was"} met`;
+  const did = verdicts.filter((v) => v.met)
+    .map((v) => CLAIMS[v.claim]?.did ?? `met claim ${String(v.claim)}`);
+  const didNot = verdicts.filter((v) => !v.met)
+    .map((v) => CLAIMS[v.claim]?.didNot ?? `did not meet claim ${String(v.claim)}`);
+  const body = did.length && didNot.length ? `${listed(did)}, but it ${listed(didNot)}`
+    : listed([...did, ...didNot]);
+  return `${head}: The wheel ${body}.`;
+}
 
 function claimName(claim: number): string {
   return CLAIMS[claim]?.name ?? `Claim ${String(claim)}`;
@@ -54,42 +94,24 @@ function Verdict({ met }: { met: boolean }) {
   return met ? <>Met</> : <span className="pm-flag">Not met</span>;
 }
 
-/** The thesis, word for word as the PO fixed it on 2026-10-26, before the first run (WD-21), then
- * how it fared. */
+/** The thesis, word for word as the spec has it (PO, WD-33), then how it fared. */
 export function Thesis({ run }: { run: WheelResult }) {
-  const verdicts = run.summary.thesis;
-  const met = verdicts.filter((v) => v.met).length;
   return (
     <Note>
       <p>
-        <b>The thesis.</b> Weekly NVDA options are, on average, priced at an implied volatility
-        above the volatility NVDA then realizes: the volatility risk premium. A seller of fully
-        secured, 0.30-delta weekly options collects that premium every week. Being cash-secured
-        and short a single option at a time, the wheel holds at most 100 shares&apos; worth of
-        exposure, never levered. The thesis is that:
+        NVDA options tend to be priced for larger price movements than actually occur, creating
+        an opportunity to profit by selling weekly options and collecting premiums. The strategy
+        uses a cash-secured options wheel, trading one contract at a time without leverage.
       </p>
+      <p>The hypothesis is that the wheel will:</p>
       <ol className="pm-steps">
-        <li><b>It makes money:</b> the premiums collected exceed the losses taken when puts are
-          assigned below the market and shares are called away below where the stock went.</li>
-        <li><b>It improves Sharpe on the baseline PMCC:</b> the wheel carries less delta per
-          dollar of capital (about 30 shares&apos; worth while a put is open, about 70 while
-          shares are held under a call, on $25,000), so its NAV should swing less. Less exposure
-          alone leaves Sharpe unchanged; the claim is that the premium earned is large relative
-          to that smaller swing, so its return per unit of volatility is higher than the
-          PMCC&apos;s.</li>
-        <li><b>It beats the S&amp;P 500</b> over the same period on return.</li>
+        <li>Generate a profit by collecting more in premiums than it loses from unfavorable stock
+          movements.</li>
+        <li>Improve risk-adjusted returns compared with the original PMCC strategy by generating
+          income with less exposure to NVDA&apos;s price fluctuations.</li>
+        <li>Outperform the S&amp;P 500&apos;s price return over the same period.</li>
       </ol>
-      <p>
-        The thesis was fixed on 2026-10-26, before the first run, and is not edited after it.
-        Each claim is met when the wheel&apos;s number is higher than its benchmark&apos;s. Over
-        this window, <b>{count(met)} of {count(verdicts.length)} claims are met</b>:{" "}
-        {verdicts.map((v, i) => (
-          <span key={v.claim}>
-            {i > 0 && (i === verdicts.length - 1 ? " and " : ", ")}
-            {claimName(v.claim).replace(/^It /, "it ")} {v.met ? "(met)" : "(not met)"}
-          </span>
-        ))}.
-      </p>
+      <p><b>Results.</b> {resultsSentence(run.summary.thesis)}</p>
     </Note>
   );
 }

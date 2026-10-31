@@ -116,7 +116,7 @@ Rule cells show what the rule did in plain words and link to that rule.
 
 | # | Panel | Width | Content |
 | --- | --- | --- | --- |
-| — | Thesis | 10 | Prose: the thesis word for word as fixed (Spec › Thesis), then how many claims the results meet, each named |
+| — | Thesis | 10 | Prose: the thesis word for word (Spec › Thesis; WD-33), then a **Results** line built from the verdicts ("Two of the three objectives were met: The wheel …, but it did not …") |
 | 1 | Verdicts | 10 | per claim: the thesis's words, its test, the wheel's number, the benchmark's (claim 1's, $0, labelled "break-even": WD-22), Met or Not met (in `flag`) |
 | 2 | Benchmarks | 10 | the wheel, the baseline PMCC and the S&P 500's price return: starting cash, return, Sharpe, max drawdown %; the caption names the baseline's run and config and the index's closes and source |
 | — | Fill model | 10 | Prose and key/value: fills at the mid, the spread capture and fee the run used, assignment at the strike, r, the options sold, the share of prints inside the quote and R² over all of them |
