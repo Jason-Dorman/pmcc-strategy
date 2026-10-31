@@ -77,7 +77,11 @@ describe("the thesis and its verdicts", () => {
     renderWheelReview();
     const thesis = await panel("Thesis");
     await within(thesis).findByText(/Two of the three objectives were met/);
-    expect(thesis.textContent).toContain("priced for larger price movements than actually occur");
+    expect(thesis.textContent).toContain("Thesis: The wheel strategy is based on the volatility "
+      + "risk premium: the historical tendency for options to price in more volatility than "
+      + "stocks ultimately experience. My theory is that selling weekly NVDA options can capture "
+      + "enough of that premium to generate profits.");
+    expect(thesis.textContent).not.toContain("one contract at a time");
     expect(thesis.textContent).toContain(
       "Outperform the S&P 500's price return over the same period.");
     expect(thesis.textContent).toContain("Two of the three objectives were met: The wheel "

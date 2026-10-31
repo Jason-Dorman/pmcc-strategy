@@ -23,7 +23,7 @@ Each requirement maps to a section below: (1) Accounting, (2) Ledger and portfol
 
 ## Thesis (PO, WD-21, WD-33)
 
-NVDA options tend to be priced for larger price movements than actually occur, creating an opportunity to profit by selling weekly options and collecting premiums. The strategy uses a cash-secured options wheel, trading one contract at a time without leverage.
+**Thesis:** The wheel strategy is based on the volatility risk premium: the historical tendency for options to price in more volatility than stocks ultimately experience. My theory is that selling weekly NVDA options can capture enough of that premium to generate profits.
 
 The hypothesis is that the wheel will:
 

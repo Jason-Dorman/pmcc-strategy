@@ -99,9 +99,10 @@ export function Thesis({ run }: { run: WheelResult }) {
   return (
     <Note>
       <p>
-        NVDA options tend to be priced for larger price movements than actually occur, creating
-        an opportunity to profit by selling weekly options and collecting premiums. The strategy
-        uses a cash-secured options wheel, trading one contract at a time without leverage.
+        <b>Thesis:</b> The wheel strategy is based on the volatility risk premium: the historical
+        tendency for options to price in more volatility than stocks ultimately experience. My
+        theory is that selling weekly NVDA options can capture enough of that premium to generate
+        profits.
       </p>
       <p>The hypothesis is that the wheel will:</p>
       <ol className="pm-steps">
