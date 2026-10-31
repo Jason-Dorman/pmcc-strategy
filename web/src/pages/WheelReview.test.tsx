@@ -86,11 +86,20 @@ describe("the thesis and its verdicts", () => {
     expect(rowAt(table, 0).textContent).toContain("It makes money");
     expect(rowAt(table, 0).textContent).toContain("+$502.50");
     expect(rowAt(table, 1).textContent).toContain("1.80");
+    expect(rowAt(table, 1).textContent).not.toContain("break-even");
     expect(rowAt(table, 1).textContent).toContain("1.23");
     const third = rowAt(table, 2);
     expect(third.textContent).toContain("2.0%");
     expect(third.textContent).toContain("2.1%");
     expect(within(third).getByText("Not met").className).toBe("pm-flag");
+  });
+
+  it("names making money's bar as break-even, there being no outside benchmark (PO, WD-22)",
+     async () => {
+    renderWheelReview();
+    const table = await screen.findByRole("table", { name: "Verdicts" });
+    expect(within(rowAt(table, 0)).getAllByRole("cell")[4]?.textContent)
+      .toBe("$0.00 (break-even)");
   });
 });
 

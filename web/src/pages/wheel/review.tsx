@@ -25,9 +25,11 @@ import { FitTable, PAIR_COLUMNS, scatterCaption } from "../methodology/sections"
 
 // ---- the thesis -----------------------------------------------------------------------------
 
-/** Each claim as the thesis names it (Spec › Thesis), and how its two numbers read. */
-const CLAIMS: Readonly<Record<number, { name: string; show: (v: number) => string }>> = {
-  1: { name: "It makes money", show: moneySigned },
+/** Each claim as the thesis names it (Spec › Thesis), how its two numbers read, and what its
+ * benchmark is when it isn't another strategy's number. */
+const CLAIMS: Readonly<Record<number, { name: string; show: (v: number) => string;
+                                        bar?: string }>> = {
+  1: { name: "It makes money", show: moneySigned, bar: "break-even" },
   2: { name: "It improves Sharpe on the baseline PMCC", show: ratio },
   3: { name: "It beats the S&P 500", show: pct },
 };
@@ -38,6 +40,13 @@ function claimName(claim: number): string {
 
 function claimValue(claim: number, value: number | null): string {
   return orDash(value, CLAIMS[claim]?.show ?? ratio);
+}
+
+/** The benchmark's number; making money's is labelled break-even (PO, WD-22). */
+function benchmarkValue(claim: number, value: number | null): string {
+  const bar = CLAIMS[claim]?.bar;
+  const shown = claimValue(claim, value);
+  return bar && value !== null ? `${shown} (${bar})` : shown;
 }
 
 /** `Met`, or `Not met` in the flag colour. */
@@ -93,7 +102,7 @@ const VERDICT_COLUMNS: readonly TableColumn<ThesisVerdict>[] = [
   { id: "wheel", header: "Wheel", num: true, sort: (v) => v.wheel ?? undefined,
     cell: (v) => claimValue(v.claim, v.wheel) },
   { id: "benchmark", header: "Benchmark", num: true, sort: (v) => v.benchmark ?? undefined,
-    cell: (v) => claimValue(v.claim, v.benchmark) },
+    cell: (v) => benchmarkValue(v.claim, v.benchmark) },
   { id: "verdict", header: "Verdict", sort: (v) => (v.met ? 0 : 1),
     cell: (v) => <Verdict met={v.met} /> },
 ];

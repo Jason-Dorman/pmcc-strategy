@@ -202,6 +202,7 @@ The user is the product owner (PO). This log tracks what the spec leaves open, t
 - **Portfolio at a bar (requirement 2):** a click on the NAV chart or on a ledger row's time picks the bar; ◀ ▶ step a bar, and a session select and a bar select jump to one. The bar is in the URL (`?bar=`), so a link opens the same portfolio; with none, the last bar. (The alternative was the selects alone.)
 - **Nav, landing, wordmark:** the two entries join the nav after Quant. `#/` still opens the PMCC's Compare page and the wordmark stays "PMCC Backtest", so nothing the PMCC's submission links to moves; the wheel is submitted by its deep link, `#/wheel/NVDA`. (The alternative was the wheel first.)
 - **Copy rules:** the PMCC PO's three are kept for the wheel: a rule is named by what it did, never by its ID, outside ID columns; rule cells are in plain words and link to the rule (its row on the wheel review page); Greeks are named in words.
+- **Claim 1's benchmark (PO, 2026-10-28, at the read-through):** making money has no outside benchmark, only P&L > $0 (WD-29), so its Benchmark cell reads "$0.00 (break-even)" rather than a bare $0.00; the column keeps its name. (The alternative was renaming the column "Must beat".)
 
 ## Engineering
 
