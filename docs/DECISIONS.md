@@ -29,7 +29,7 @@ The user is the product owner (PO). This log tracks what the spec leaves open, t
 | LD-11 | How a strike is chosen | SETTLED (PO): from LSEG's chain, by us | — |
 | LD-12 | NVDA in Robin, and its conid | ASK: testing (test orders placed 2026-11-13) | — |
 | LD-13 | Risk-free rate for delta | ASK | L2-03 |
-| LD-14 | A stale or unreadable book | ASK | L2-02 |
+| LD-14 | A stale or unreadable book, or a bad order in the file | ASK | L2-02 |
 | LD-15 | No raw LSEG data on the page | ASK | L4-01 |
 | LD-16 | The page's route and nav name | ASK | L4-01 |
 | LD-17 | Sanji's files are exempt from the formatting hooks | ENG | — |
@@ -37,6 +37,7 @@ The user is the product owner (PO). This log tracks what the spec leaves open, t
 | LD-19 | What `open_orders.json` holds; order ids | ENG | — |
 | LD-20 | Code layout | ENG | — |
 | LD-21 | The headless session and the close snapshot (L1-02) | ENG | — |
+| LD-22 | Reading the order language strictly (L2-01) | ENG | — |
 
 ## Settled
 
@@ -121,11 +122,12 @@ The user is the product owner (PO). This log tracks what the spec leaves open, t
 - **Context:** the backtests used 3.71%, the 3-month Treasury yield before Mar 30. It moves the 0.30-delta pick only at the margin.
 - **Recommendation:** the latest FRED DGS3MO, converted to continuous compounding, fixed in `configs/live.yaml` with its date. **Alternative:** keep 3.71%.
 
-### LD-14 — A stale or unreadable book
+### LD-14 — A stale or unreadable book, or a bad order in the file
 **Status:** ASK · **Ask at:** L2-02
 
-- **Recommendation:** if Sanji hasn't resolved the last session (L-B1) or `positions.json` doesn't map to one of the four states (L-B2), write no new order, log why, and fail the run so it shows red in Actions. Placing an order on a book we can't read risks a second short option.
-- **Alternative:** assume the last state we logged.
+- **Recommendation:** if Sanji hasn't resolved the last session (L-B1), `positions.json` doesn't map to one of the four states (L-B2), or an order already in `open_orders.json` (ours or placed by hand, like LD-12's tests) fails the order language's checks (LD-22), write no new order, log why, and fail the run so it shows red in Actions. Placing an order on a book we can't read risks a second short option.
+- **Alternative:** assume the last state we logged; for a bad hand-placed order, drop it with a warning and carry on.
+- **Added 2026-11-14** (the L2-01 code review): what a bad order already in the file does to the run was first recorded under LD-22 as an engineering choice; it decides run behaviour, so it is asked here.
 
 ### LD-15 — No raw LSEG data on the page
 **Status:** ASK · **Ask at:** L4-01
@@ -169,3 +171,13 @@ The user is the product owner (PO). This log tracks what the spec leaves open, t
 - **signon_control:** `True`, as in the course's nightly job: opening takes the account's sign-on from another platform session, so a session left open elsewhere can't fail the nightly run. If that turns out to sign the PO out of something they use, it's a question for the PO.
 - **The snapshot:** `pmcc/live/snapshot.py`, through the same `HistoryProvider` port and batched fetch as the backtests (single-RIC re-asks, retries, fail-soft unlisted strikes). For the last completed session: the stock's close, the last trade in the close bar (if LSEG hasn't published that bar, the snapshot stops: an earlier trade is not the close); and every put and call from 10% below the close to 10% above, in $2.50 steps, for the expiry of the week of the session after it (L-P2), each with its bid, ask and last trade in the close bar. The session after is counted from the session read, so the close and the expiry always pair; for the nightly run, after the close, it is L-S1's first session after the run's date. How L-S1 treats a run before the close is for L2-03. The band and step move to `configs/live.yaml` at L2-03. A 0.30-delta weekly sits a few percent from the money. A strike LSEG doesn't list comes back unlisted. L2-03's pick reads this snapshot.
 - **The probe:** `pmcc live-probe --symbol NVDA` (`just live-probe NVDA`) writes the snapshot to `data_cache/probes/live_NVDA_{time}.json` (gitignored, never overwritten), prints counts only (LD-15), and exits 1 if no option had a valid quote at the close. `.github/workflows/live-probe.yml` runs it by hand in Actions with the repo's secrets: read-only, the secrets in that one step, the report kept as a one-day artifact. The artifact holds LSEG's quotes; the PO is fine with it as is (2026-11-13, at the code review).
+- **Probe result (2026-11-14, the PO's run in Actions):** the session opened headlessly; NVDA closed $162.83 on Fri Nov 13; for the Nov 20 expiry, of 30 contracts asked from $145 to $180, 28 were listed (not $147.50: NVDA's strikes are $5 apart below $150) and all 28 had a valid bid and ask at the close, spreads about 1–2% of the mid. The $162.50 pair holds put-call parity to about $0.02.
+
+### LD-22 — Reading the order language strictly (L2-01)
+**Status:** ENG · **Affects:** Spec › Orders; L2-01
+
+- **Where:** `pmcc/live/orders.py`: an `Order` model (pydantic, strict, unknown fields forbidden), `parse_orders`, `read_orders`, `render_orders` and `write_orders`. Every order is checked before the file is written, and an invalid one fails with nothing written (LINV-01). Orders already in the file, ours or placed by hand (LD-12's tests), are read through the same checks; a bad one raises `OrderError`, as does a file that isn't UTF-8 JSON. What the run then does is LD-14's question.
+- **Strict where the page is silent:** tokens (`expiry`, `strike`, `lmt_prc`) must be JSON strings, as in all the page's examples; `qty` and `underlying` must be JSON whole numbers (not `true`, `"1"` or `1.5`); `for` and a date expiry must be real calendar dates, and a date expiry can't be before `for`; a field is given or left out, never `null`; a numeric strike or limit must be above zero; `NDTE` takes no leading zero; `delta:X` takes 0 < X < 100 with no sign, and `premium:X` X > 0; `otm:N` and `itm:N` take N ≥ 1; `pct:X` takes an optional sign. Anything the page doesn't show is refused, so we never send Sanji something it might reject. Whether `for` is a trading session, and whether an id is already in Sanji's `fills.json` (the page's "Unique in the repo"), need the calendar and Sanji's book: the run checks those (L2-02, L2-03; LINV-05).
+- **The page's own rules:** a limit order needs `lmt_prc` and a market order mustn't have one; a put or call needs `expiry` and `strike`, and shares carry neither; `vega:` is reserved and rejected; ids are unique in the file. Rules that depend on the book (a `SEL` with no long, a `BTC` with no short) are the live rules', at L2-03.
+- **The file:** a JSON list (`[]` when empty), two-space indent, LF, a final newline, the page's field order, absent fields left out (an omitted `ref` stays omitted, so a hand-written order round-trips unchanged). It's written whole, replacing the last: staged as a `*.partial` file beside it, which `.gitignore` keeps out of any commit if a run dies mid-write.
+- **Ids and strikes:** `order_id` makes LD-19's `wheel-{for}-{P|C}-{strike}`, and `strike_token` writes a strike as a plain number (`155`, `152.5`).

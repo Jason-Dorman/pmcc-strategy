@@ -16,8 +16,8 @@ Nov 13, 2026 · from the [Live spec](LIVE-SPEC.md) · **due Tue Nov 17 2026, 11:
 | Phase | Dates | Exit criteria | Status |
 | --- | --- | --- | --- |
 | L0 Docs | Fri Nov 13 | Spec, decisions and backlog live; the wheel's docs archived | In progress: L0-01 drafted, waiting on the PO's review |
-| L1 Foundations | Fri Nov 13 | CI green on Sanji's pushes; a headless LSEG session pulls NVDA's chain | In progress: L1-01 done (CI green); L1-02 built, waiting on the PO's run; LD-12's test orders placed |
-| L2 Algorithm | Sat Nov 14 | `pmcc live` reads the book, picks the week's option and writes a valid `open_orders.json` | Not started |
+| L1 Foundations | Fri Nov 13 | CI green on Sanji's pushes; a headless LSEG session pulls NVDA's chain | Done 2026-11-14: CI green (L1-01); the headless session pulled NVDA's quoted chain in Actions (L1-02). LD-12's test orders placed |
+| L2 Algorithm | Sat Nov 14 | `pmcc live` reads the book, picks the week's option and writes a valid `open_orders.json` | In progress: L2-01 done; L2-02 waits on LD-14, L2-03 on LD-13 |
 | L3 Nightly job | Sun Nov 15 | The scheduled job runs, commits and redeploys; Monday's order is in the file before Sunday's 22:00 run ends | Not started |
 | L4 Site | Mon Nov 16 | The live page shows the algorithm, the orders, Sanji's book and the run log | Not started |
 | L5 Release | Tue Nov 17 | Monday's order resolved by Sanji and shown; submitted by 18:00 (deadline 23:59 ET) | Not started |
@@ -31,7 +31,7 @@ Nov 13, 2026 · from the [Live spec](LIVE-SPEC.md) · **due Tue Nov 17 2026, 11:
 | When | Asks |
 | --- | --- |
 | Now | LD-12: the test orders' outcomes in `fills.json` (Nov 13's if Sanji takes them, Nov 16's for certain), and the professor |
-| L2-02 | LD-14 (a stale or unreadable book) |
+| L2-02 | LD-14 (a stale or unreadable book, or a bad order in the file) |
 | L2-03 | LD-13 (the risk-free rate) |
 | L4-01 | LD-15 (no raw LSEG data on the page), LD-16 (the page's route and name), the "why" text |
 
@@ -49,7 +49,7 @@ Nov 13, 2026 · from the [Live spec](LIVE-SPEC.md) · **due Tue Nov 17 2026, 11:
   - Exclude Sanji's files from the file-fixing hooks (LD-17), pinned by the repo-policy test.
   - Done when: `pre-commit run --all-files` passes with `price_history.json` as Sanji wrote it, and the PO's push turns CI green.
   - Needs: L0-01
-- [ ] **L1-02 · Headless LSEG session and probe** **[LSEG]** **[PO]** — built 2026-11-13 (LD-21): `platform_session`, the close snapshot, `pmcc live-probe` and the `live-probe` workflow; 47 new tests, after a code review's fixes; waiting on the PO's run against LSEG
+- [x] **L1-02 · Headless LSEG session and probe** **[LSEG]** **[PO]** — done 2026-11-14 (LD-21): `platform_session`, the close snapshot, `pmcc live-probe` and the `live-probe` workflow; 47 new tests, after a code review's fixes. The PO's run in Actions (green): NVDA closed $162.83 on Nov 13; for the Nov 20 expiry, 28 of the 30 contracts asked ($145–$180) were listed and all 28 quoted at the close, spreads about 1–2% of the mid
   - Settled: LD-11 (the chain from LSEG, PO 2026-11-13).
   - `pmcc/data/lseg/platform.py` opens a platform session from `LSEG_APP_KEY`, `LSEG_USERNAME`, `LSEG_PASSWORD` and checks it really opened (LSEG-DATA-GUIDE's lesson). A probe pulls NVDA's last close, the listed expiries, and the coming week's strikes with their bids and asks at the close, and reports what came back, with no credentials in its output. A fake session, kept true by a contract test, serves the tests.
   - Done when: the probe, run by the PO locally (or by a manual Actions run), shows NVDA's close and a full quoted chain for next week's expiry. If the platform session lacks the entitlement, take it to the PO before L2.
@@ -57,7 +57,7 @@ Nov 13, 2026 · from the [Live spec](LIVE-SPEC.md) · **due Tue Nov 17 2026, 11:
 
 ### L2 — Algorithm
 
-- [ ] **L2-01 · Orders in the order language**
+- [x] **L2-01 · Orders in the order language** — done 2026-11-14 (LD-22): `pmcc/live/orders.py`; 117 tests: the page's examples, each field rule, every token form on the page and its near misses, nulls, an expiry before its session, the file's format, encoding and round trip, and an invalid order failing with the file untouched. A code review's fixes are in; whether a bad order in the file stops the run moved to LD-14
   - A typed order and a writer for `open_orders.json`: the fields and tokens the order page defines, every rejection rule checked before writing (LINV-01), canonical JSON, LF, a final newline; ids per LD-19.
   - Done when: tests cover each field's rule and the page's examples, and an invalid order fails without writing.
   - Needs: L0-01
@@ -98,7 +98,8 @@ Nov 13, 2026 · from the [Live spec](LIVE-SPEC.md) · **due Tue Nov 17 2026, 11:
 ## Risks
 
 - **NVDA not in Robin (LD-12).** Monday's order would come back `unresolved`. Three test orders for Monday and a question to the professor; SPY is the fallback, with a larger starting cash.
-- **Platform entitlement.** The class showed a headless session works; whether it returns NVDA's option quotes is unproven until L1-02.
-- **Cash may not secure a put.** NVDA closed near $225 on Sep 25; a 0.30-delta put on $25,000 needs a strike ≤ $250. If NVDA is above about $260, L-P4 blocks every put; L1-02's probe shows the price, and the PO decides then.
+- **Platform entitlement.** Closed 2026-11-14: the headless session returned NVDA's close and a fully quoted weekly chain in Actions (L1-02).
+- **Cash may not secure a put.** Closed 2026-11-14: NVDA closed $162.83 on Nov 13, so a 0.30-delta put (a strike near $155) secures about $15,500 of the $25,000.
+- **Earnings week.** The Nov 20 weekly's at-the-money straddle cost about $15.75 at Nov 13's close, about 10% of the stock: likely NVDA's earnings that week (not confirmed). The rules have no event filter, as in the backtest, so Monday's put is sold through it; raised with the PO 2026-11-14.
 - **Sanji's file formats.** `positions.json` and `fills.json` don't exist yet; L2-02 reads them leniently and L5-01 checks them.
 - **Timing.** Cron runs can start late; Sanji resolves from about 16:30 ET. L-B1 refuses a stale book rather than guess.

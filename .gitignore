@@ -34,3 +34,6 @@ dist/
 Thumbs.db
 desktop.ini
 .DS_Store
+
+# A write in progress: replace_file and write_new stage it beside the target (LD-22)
+*.partial

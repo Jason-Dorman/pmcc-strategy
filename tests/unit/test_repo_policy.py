@@ -99,3 +99,7 @@ def test_ld_17_no_hook_rewrites_sanjis_files(path: str) -> None:
 def test_ld_17_our_order_file_is_still_checked() -> None:
     (fixer,) = _hooks("end-of-file-fixer")
     assert _applies(fixer, "open_orders.json")
+
+
+def test_ld_22_a_write_left_half_done_is_never_committed() -> None:
+    assert _ignored("open_orders.json.k3j2h1.partial")
