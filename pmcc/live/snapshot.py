@@ -9,8 +9,9 @@ platform session, LD-05):
    close (LSEG stamps bars at their start, so it starts an hour earlier: LDG §4.8, §9). If that
    bar isn't there (LSEG publishes it after the close), the snapshot stops: an earlier trade is
    not the close, and the options' quotes come from the same bar.
-3. Every put and call from 10% below the close to 10% above it, in $2.50 steps, for that expiry,
-   with each one's bid, ask and last trade in the close bar. A 0.30-delta weekly sits a few percent
+3. Every put and call within the strike rule's band of the close (L-P3's or L-C3's in
+   `configs/live.yaml`: 10% either side, $2.50 apart), for that expiry, with each one's bid,
+   ask and last trade in the close bar. A 0.30-delta weekly sits a few percent
    from the money, so the band holds it with room to spare. A strike LSEG doesn't list comes back
    unlisted (fetch's fail-soft guess-and-check, INV-12), never as an error.
 
@@ -35,13 +36,11 @@ from pmcc.domain.clock import BAR, to_et
 from pmcc.domain.instruments import OptionId, Right
 from pmcc.domain.money import UNITS_PER_CENT, Price
 from pmcc.domain.sessions import Session
+from pmcc.live.config import StrikeParams
+from pmcc.live.names import RIGHT_NAMES, dollars
 
-BAND_PERCENT = 10  # strikes asked: within this percent of the close, either side
-STEP_CENTS = 250  # $2.50, NVDA's finest weekly strike step (the probe's, WD-11)
-STEP = Price(STEP_CENTS * UNITS_PER_CENT)
 QUOTE_FIELDS = ("BID", "ASK", "TRDPRC_1")
 _DAY = timedelta(days=1)
-_RIGHT_NAMES = {Right.PUT: "put", Right.CALL: "call"}
 
 type Json = dict[str, object]
 
@@ -96,6 +95,8 @@ class CloseSnapshot:
     stock_ric: str
     close: Price
     options: tuple[OptionQuote, ...]
+    band_percent: int
+    step: Price
 
 
 def last_completed(calendar: SessionCalendar, now: datetime) -> Session:
@@ -116,11 +117,11 @@ def next_session(calendar: SessionCalendar, now: datetime) -> Session:
     return calendar.session(day)
 
 
-def strike_ladder(close: Price, band_percent: int = BAND_PERCENT) -> tuple[Price, ...]:
-    """Every `STEP_CENTS` strike from `band_percent` below `close` to as far above, rounded
+def strike_ladder(close: Price, band_percent: int, step_cents: int) -> tuple[Price, ...]:
+    """Every `step_cents` strike from `band_percent` below `close` to as far above, rounded
     outwards to whole steps."""
     cents = close.units // UNITS_PER_CENT
-    step = STEP_CENTS
+    step = step_cents
     low = cents * (100 - band_percent) // 100 // step * step
     high = -(-cents * (100 + band_percent) // 100 // step) * step
     return tuple(Price(c * UNITS_PER_CENT) for c in range(low, high + 1, step))
@@ -131,6 +132,7 @@ def take_snapshot(
     underlying: Underlying,
     calendar: SessionCalendar,
     now: datetime,
+    band: StrikeParams,
     retry: Retry = Retry(),  # noqa: B008 (frozen, so a shared default is safe)
 ) -> CloseSnapshot:
     """Tonight's snapshot for `underlying`. Raises `SnapshotError` if the stock has no trade in
@@ -149,13 +151,23 @@ def take_snapshot(
         )
     options = [
         OptionId(underlying.option_root, expiry, right, strike)
-        for strike in strike_ladder(close)
+        for strike in strike_ladder(close, band.band_percent, band.step_cents)
         for right in (Right.PUT, Right.CALL)
     ]
     fetched = fetch_contracts(provider, options, request, fetch_date=to_et(now).date(), retry=retry)
     closing = _close_bar_rows(fetched.history, session)
     quotes = tuple(_option_quote(o, fetched.answered, closing) for o in options)
-    return CloseSnapshot(now, session, upcoming, expiry, underlying.stock_ric, close, quotes)
+    return CloseSnapshot(
+        now,
+        session,
+        upcoming,
+        expiry,
+        underlying.stock_ric,
+        close,
+        quotes,
+        band.band_percent,
+        band.step_price,
+    )
 
 
 def _bar_start(bar_end: datetime) -> datetime:
@@ -205,8 +217,8 @@ def snapshot_report(snapshot: CloseSnapshot) -> Json:
         "session": snapshot.session.day.isoformat(),
         "next_session": snapshot.next_session.day.isoformat(),
         "expiry": snapshot.expiry.isoformat(),
-        "stock": {"ric": snapshot.stock_ric, "close": _dollars(snapshot.close)},
-        "band": {"percent": BAND_PERCENT, "step": _dollars(STEP)},
+        "stock": {"ric": snapshot.stock_ric, "close": dollars(snapshot.close)},
+        "band": {"percent": snapshot.band_percent, "step": dollars(snapshot.step)},
         "counts": _counts(snapshot.options),
         "options": [_option_row(q) for q in snapshot.options],
     }
@@ -218,7 +230,8 @@ def describe(snapshot: CloseSnapshot) -> str:
     return (
         f"{snapshot.stock_ric}: close of {snapshot.session.day} read; next session "
         f"{snapshot.next_session.day}, expiry {snapshot.expiry}. Asked {len(snapshot.options)} "
-        f"contracts (within {BAND_PERCENT}% of the close, ${_dollars(STEP)} apart): LSEG listed "
+        f"contracts (within {snapshot.band_percent}% of the close, ${dollars(snapshot.step)} "
+        "apart): LSEG listed "
         f"{listed['put']} puts and {listed['call']} calls; {quoted['put']} puts and "
         f"{quoted['call']} calls had a valid bid and ask at the close."
     )
@@ -241,22 +254,18 @@ def _quoted(options: Sequence[OptionQuote]) -> list[OptionQuote]:
 
 
 def _per_right(options: Sequence[OptionQuote]) -> dict[str, int]:
-    return {name: sum(q.option.right is r for q in options) for r, name in _RIGHT_NAMES.items()}
+    return {name: sum(q.option.right is r for q in options) for r, name in RIGHT_NAMES.items()}
 
 
 def _option_row(quote: OptionQuote) -> Json:
     close = quote.close
     return {
         "ric": quote.ric,
-        "right": _RIGHT_NAMES[quote.option.right],
-        "strike": _dollars(quote.option.strike),
+        "right": RIGHT_NAMES[quote.option.right],
+        "strike": dollars(quote.option.strike),
         "listed": quote.listed,
-        "bid": _dollars(close.bid) if close and close.bid else None,
-        "ask": _dollars(close.ask) if close and close.ask else None,
-        "last": _dollars(close.last) if close and close.last else None,
+        "bid": dollars(close.bid) if close and close.bid else None,
+        "ask": dollars(close.ask) if close and close.ask else None,
+        "last": dollars(close.last) if close and close.last else None,
         "valid": bool(close and close.valid),
     }
-
-
-def _dollars(price: Price) -> str:
-    return f"{price.to_dollars():.2f}"

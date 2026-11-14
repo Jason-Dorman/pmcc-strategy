@@ -30,6 +30,7 @@ COMMANDS = [
     "fetch",
     "probe",
     "live-probe",
+    "live",
     "run",
     "batch",
     "calibrate",

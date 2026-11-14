@@ -20,6 +20,7 @@ from pmcc.domain.calendar import SessionCalendar
 from pmcc.domain.clock import ET
 from pmcc.domain.instruments import OptionId, Right
 from pmcc.domain.money import Price
+from pmcc.live.config import StrikeParams
 from pmcc.live.snapshot import (
     CloseSnapshot,
     OptionQuote,
@@ -39,6 +40,7 @@ EXPIRY = date(2026, 11, 20)
 # Fri Nov 13 2026 is EST (UTC-5): bars starting 14:00, 15:00 (the close bar) and 16:00 ET.
 INDEX = (datetime(2026, 11, 13, 19), datetime(2026, 11, 13, 20), datetime(2026, 11, 13, 21))
 NO_WAIT = Retry(sleep=lambda _: None)
+BAND = StrikeParams(target_delta=0.30, band_percent=10, step="2.50")
 
 
 @pytest.fixture(scope="module")
@@ -63,7 +65,7 @@ def _market(**extra: dict[str, list[float | None]]) -> FakeLseg:
 
 def _snapshot(calendar: SessionCalendar, fake: FakeLseg | None = None) -> CloseSnapshot:
     provider = fake_provider(fake if fake is not None else _market())
-    return take_snapshot(provider, NVDA, calendar, FRIDAY_NIGHT, NO_WAIT)
+    return take_snapshot(provider, NVDA, calendar, FRIDAY_NIGHT, BAND, NO_WAIT)
 
 
 def _quote(snapshot: CloseSnapshot, right: Right, strike: str) -> OptionQuote:
@@ -107,7 +109,7 @@ def test_l_p2_thanksgiving_week_expires_on_its_half_day_friday(
 
 
 def test_ld_11_the_ladder_spans_ten_percent_either_side_in_250_cent_steps() -> None:
-    ladder = strike_ladder(Price.from_dollars("200"))
+    ladder = strike_ladder(Price.from_dollars("200"), 10, 250)
 
     assert ladder[0] == Price.from_dollars("180")
     assert ladder[-1] == Price.from_dollars("220")
@@ -116,7 +118,7 @@ def test_ld_11_the_ladder_spans_ten_percent_either_side_in_250_cent_steps() -> N
 
 
 def test_ld_11_the_ladder_rounds_outwards_to_whole_steps() -> None:
-    ladder = strike_ladder(Price.from_dollars("201.37"))
+    ladder = strike_ladder(Price.from_dollars("201.37"), 10, 250)
 
     assert ladder[0] == Price.from_dollars("180")  # 181.23 rounded down
     assert ladder[-1] == Price.from_dollars("222.5")  # 221.51 rounded up

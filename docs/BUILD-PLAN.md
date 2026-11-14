@@ -16,13 +16,13 @@ Nov 13, 2026 · from the [Live spec](LIVE-SPEC.md) · **due Tue Nov 17 2026, 11:
 | Phase | Dates | Exit criteria | Status |
 | --- | --- | --- | --- |
 | L0 Docs | Fri Nov 13 | Spec, decisions and backlog live; the wheel's docs archived | In progress: L0-01 drafted, waiting on the PO's review |
-| L1 Foundations | Fri Nov 13 | CI green on Sanji's pushes; a headless LSEG session pulls NVDA's chain | Done 2026-11-14: CI green (L1-01); the headless session pulled NVDA's quoted chain in Actions (L1-02). LD-12's test orders placed |
-| L2 Algorithm | Sat Nov 14 | `pmcc live` reads the book, picks the week's option and writes a valid `open_orders.json` | In progress: L2-01 done; L2-02 waits on LD-14, L2-03 on LD-13 |
+| L1 Foundations | Fri Nov 13 | CI green on Sanji's pushes; a headless LSEG session pulls NVDA's chain | Done 2026-11-14: CI green (L1-01); the headless session pulled NVDA's quoted chain in Actions (L1-02) |
+| L2 Algorithm | Sat Nov 14 | `pmcc live` reads the book, picks the week's option and writes a valid `open_orders.json` | Built 2026-11-14: L2-01 and L2-02 done; L2-03 waiting on the PO's dry run against LSEG. Sanji isn't resolving orders yet, so the book is read as cash until its files appear (LD-24) |
 | L3 Nightly job | Sun Nov 15 | The scheduled job runs, commits and redeploys; Monday's order is in the file before Sunday's 22:00 run ends | Not started |
 | L4 Site | Mon Nov 16 | The live page shows the algorithm, the orders, Sanji's book and the run log | Not started |
 | L5 Release | Tue Nov 17 | Monday's order resolved by Sanji and shown; submitted by 18:00 (deadline 23:59 ET) | Not started |
 
-**Critical path:** L1-02 (the probe) → L2 → L3, which must place Monday Nov 16's order before the open. The order counts only if it's in the file before Sanji resolves Monday (about 16:30 ET Monday), and the professor expects it from the nightly run, so aim for Sunday's 22:00 run.
+**Critical path:** L2-03's dry run → L3, which must place Monday Nov 16's order before the open, from the nightly run (Sunday's 22:00). It then stays in the file all week (LD-19), so the professor sees it on Tuesday. Sanji isn't resolving orders yet ("Sanji does not resolve these orders yet", the order page), so a fill before the due date isn't expected.
 
 **Cut order if time runs short** (the PO confirms each cut): the page's run-log history (keep tonight's row) → the call side's rules (L-C1 to L-C3; no call can be due before Fri Nov 20's expiry). **Never cut:** the nightly job, a valid `open_orders.json`, the cash-secured and book checks, the page's algorithm write-up and orders.
 
@@ -30,9 +30,6 @@ Nov 13, 2026 · from the [Live spec](LIVE-SPEC.md) · **due Tue Nov 17 2026, 11:
 
 | When | Asks |
 | --- | --- |
-| Now | LD-12: the test orders' outcomes in `fills.json` (Nov 13's if Sanji takes them, Nov 16's for certain), and the professor |
-| L2-02 | LD-14 (a stale or unreadable book, or a bad order in the file) |
-| L2-03 | LD-13 (the risk-free rate) |
 | L4-01 | LD-15 (no raw LSEG data on the page), LD-16 (the page's route and name), the "why" text |
 
 ## Backlog
@@ -61,14 +58,14 @@ Nov 13, 2026 · from the [Live spec](LIVE-SPEC.md) · **due Tue Nov 17 2026, 11:
   - A typed order and a writer for `open_orders.json`: the fields and tokens the order page defines, every rejection rule checked before writing (LINV-01), canonical JSON, LF, a final newline; ids per LD-19.
   - Done when: tests cover each field's rule and the page's examples, and an invalid order fails without writing.
   - Needs: L0-01
-- [ ] **L2-02 · Reading Sanji's book**
-  - Ask first: LD-14.
+- [x] **L2-02 · Reading Sanji's book** — done 2026-11-14 (PO: LD-14 stop and fail; LD-04 both paths; LD-24): `pmcc/live/book.py`; 14 tests. Rescoped: Sanji isn't resolving orders, so its `positions.json` and `fills.json` were never seen. With neither, the book is cash at the starting cash; either appearing stops the run (L-B2) until L5-01 reads it. L-B1 reads the price file over every instrument. Cash and the cost basis through a cycle wait on Sanji's formats (L5-01)
+  - Asked first: LD-14 (settled 2026-11-14: stop and fail).
   - Readers for `positions.json`, `fills.json` and `price_history.json`: the state, cash (LD-09), the cost basis and the last resolved session. Missing files mean Cash; anything else unknown is unreadable (L-B1, L-B2).
   - Their formats are known only from the order page until Sanji writes our first fill (Mon Nov 16, about 16:30 ET), so the readers are lenient, tested on fixtures built from the page, and re-checked against the real files at L5-01.
   - Done when: tests cover every state, the stale and unreadable cases, and cash and cost basis through a full cycle.
   - Needs: L0-01
-- [ ] **L2-03 · The live rules and `pmcc live`**
-  - Ask first: LD-13.
+- [ ] **L2-03 · The live rules and `pmcc live`** — built 2026-11-14 (PO: LD-13, LD-19, LD-23; LD-24): `configs/live.yaml`, `pmcc/live/config.py`, `rules.py`, `run.py`, `pmcc live` (`just live`); 64 tests, after a code review's fixes (PO: LD-25, LD-26): the config, each rule's pick against known Black-Scholes deltas, every way the night declines or fails, the file at both paths and its week-long carry, the log, and the Put, Shares and Call states through the decision. The scripted week through Sanji's files waits on their formats (L5-01). Waiting on the PO's dry run against LSEG
+  - Asked first: LD-13 (settled 2026-11-14: DGS3MO 4.32%).
   - `configs/live.yaml` (every `L-` rule with its thresholds and write-up); the pick from an LSEG snapshot with the backtests' pricer; `pmcc live` (`just live`): read the book, decide, write `open_orders.json` and append the run log, checking LINV-01 to LINV-09. `--dry-run` prints the decision and writes nothing.
   - Done when: each rule has tests at its boundaries; a scripted week runs Cash → Put → (assigned) Shares → Call → (called away) Cash on fixtures; a dry run against live LSEG shows Monday's order.
   - Needs: L1-02, L2-01, L2-02
@@ -90,16 +87,17 @@ Nov 13, 2026 · from the [Live spec](LIVE-SPEC.md) · **due Tue Nov 17 2026, 11:
 
 ### L5 — Release
 
-- [ ] **L5-01 · Monday's order resolved** **[PO]** — after Sanji resolves Mon Nov 16 (about 16:30 ET)
-  - Check the real `positions.json` and `fills.json` against L2-02's readers and fix any mismatch; confirm Monday night's run reads the book (Put if filled, Cash if not) and writes `[]`.
+- [ ] **L5-01 · Sanji's book read** **[PO]** — once Sanji resolves an order (not expected before the due date: "Sanji does not resolve these orders yet")
+  - Read the real `positions.json` and `fills.json` into the book (state, cash, cost basis), with tests on the real files, so the run stops failing L-B2 on them; then the scripted week through Sanji's files (L2-03). Until then, confirm Monday night's run keeps Monday's order (LD-19).
   - Needs: L4-01
 - [ ] **L5-02 · Submit** **[PO]** — the site's URL, by 18:00 Tue Nov 17. Needs: L5-01
 
 ## Risks
 
-- **NVDA not in Robin (LD-12).** Monday's order would come back `unresolved`. Three test orders for Monday and a question to the professor; SPY is the fallback, with a larger starting cash.
+- **NVDA not in the course's prices (LD-12).** Closed 2026-11-14: NVDA (4815747) is tracked in `price_history.json`, as the course's setup provides; its bars start with the price job's next run (16:00 ET Monday).
+- **Sanji isn't resolving orders.** The order page says so, with no date. The run writes correct orders now; the book stays cash; when Sanji's files appear, the run fails red (L-B2) until L5-01 reads them.
 - **Platform entitlement.** Closed 2026-11-14: the headless session returned NVDA's close and a fully quoted weekly chain in Actions (L1-02).
 - **Cash may not secure a put.** Closed 2026-11-14: NVDA closed $162.83 on Nov 13, so a 0.30-delta put (a strike near $155) secures about $15,500 of the $25,000.
 - **Earnings week.** The Nov 20 weekly's at-the-money straddle cost about $15.75 at Nov 13's close, about 10% of the stock: likely NVDA's earnings that week (not confirmed). The rules have no event filter, as in the backtest, so Monday's put is sold through it; raised with the PO 2026-11-14.
-- **Sanji's file formats.** `positions.json` and `fills.json` don't exist yet; L2-02 reads them leniently and L5-01 checks them.
+- **Sanji's file formats.** `positions.json` and `fills.json` don't exist yet, and nothing publishes their format; L5-01 reads them once they do.
 - **Timing.** Cron runs can start late; Sanji resolves from about 16:30 ET. L-B1 refuses a stale book rather than guess.

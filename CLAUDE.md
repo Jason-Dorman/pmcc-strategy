@@ -25,7 +25,7 @@ The user is the product owner (PO).
 - `docs/BUILD-PLAN.md` (the live wheel's backlog) and `docs/UI-SPEC.md` (the site's styling, and the live page) elaborate it. If one disagrees with the spec or a PO answer, fix it.
 - `docs/ENGINEERING-PRINCIPLES.md` says how code is written.
 - **`docs/archive/pmcc/` and `docs/archive/wheel/` are frozen records, not live requirements** (PO, WD-01, LD-01): don't carry a PMCC or wheel decision into the live work; if one seems to apply, ask. Their code cites them (`DEC-nn`, `ARCHITECTURE §n`, `P3-04`, `WD-nn`, `W2-03`, …); each folder's README maps each citation to a file. Edit an archive only to fix a citation its code depends on.
-- **The course's side** (Spec › The course's side): the order language page, <https://jakevestal.github.io/server-logic-533/order.html>, defines `open_orders.json`. Sanji's files at the repo root (`price_history.json`, `positions.json`, `fills.json`) are the professor's: read them, never edit them.
+- **The course's side** (Spec › The course's side): the order language page, <https://jakevestal.github.io/server-logic-533/order.html>, defines `open_orders.json`. Sanji's files (`price_history.json` at the root; `positions.json` and `fills.json` under `mkt/` or at the root) are the professor's: read them, never edit them, except to add a tracked instrument to `price_history.json` in its own format, as the course provides for (LD-12). Sanji isn't resolving orders yet; its book's format is unknown until it does (L5-01).
 - Reference material, not authority:
   - **`LSEG-DATA-GUIDE.md` and `lseg_client.py`:** hard-won know-how for getting data out of LSEG, so it isn't relearned. If LSEG's real behaviour contradicts the spec, take it to the PO.
   - **`DESIGN-GUIDE.md` and `theme.py`:** the baseline look (palette, type, terminal layout). The PO may change it, and changes land in `web/src/theme/`.
@@ -73,7 +73,7 @@ These are working rules, kept for the wheel (WD-01) and the live wheel (LD-01); 
   - Before any pull longer than about 2 minutes, show the PO the `--plan-only` estimate. A Workspace (desktop) session needs Workspace signed in throughout; the live wheel's platform session doesn't.
   - Never overwrite cached data. Never record a failed request as "no data": an outage aborts and writes nothing.
 - **Strategies:**
-  - Strategies see market data only through `MarketView`. No rule touches a dataframe.
+  - Strategies see market data only through `MarketView`. No rule touches a dataframe. The live wheel's picks read the close snapshot instead, which holds only the past (PO, LD-26).
   - Every threshold lives in YAML under a rule ID, and every blotter and gate-log row carries one.
   - A strategy variant is rule composition (`extends` and `overrides`), never a boolean flag passed into rule logic.
 - **Money and results:**
@@ -103,7 +103,7 @@ These exist once P0 is done.
 | `just export` / `just verify` | site data / results validation |
 | `just web-dev` / `just web-build` / `just e2e` / `just serve` | frontend (`web-dev` and `web-build` export first) |
 | `just reproduce` | cached data → all runs (the PMCC's batch, the wheel and its friction runs on NVDA) → verify → export → built site |
-| `just live [--dry-run]` | *(planned, L2-03)* one live-wheel run: read Sanji's book, pull NVDA from LSEG (platform credentials in the environment), write `open_orders.json` and the run log; `--dry-run` writes nothing |
+| `just live SYM [--dry-run] [--root DIR]` | one night of the live wheel, after the close: check Sanji's book (L-B1, L-B2), decide, and write `open_orders.json` at the root and under `mkt/` and a row of `live/runs.jsonl`; asks LSEG (platform credentials in the environment) only the night before a week's first session; `--dry-run` writes nothing (L2-03) |
 
 ## Conventions
 

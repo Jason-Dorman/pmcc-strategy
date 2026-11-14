@@ -1,0 +1,78 @@
+# The live wheel (docs/LIVE-SPEC.md › Trade rules): every rule the nightly run applies, with its
+# thresholds under its rule ID (CLAUDE.md › Hard rules), and its words for the live page. Each run
+# log row names the rule that decided it. `pmcc live` reads this file; nothing else sets these.
+
+symbol: NVDA
+# Interactive Brokers' conid for NVDA, as the order language takes it (LD-12; IBKR's own product
+# list, and the course's price job's seed list). Tracked in price_history.json since 2026-11-14.
+underlying_conid: 4815747
+# The risk-free rate for delta (PO, LD-13): FRED DGS3MO, the 3-month Treasury yield at constant
+# maturity, on its latest date when the rules were built, converted to continuous compounding.
+risk_free:
+  investment_yield_pct: 4.32
+  observed: 2026-11-12
+  source: FRED DGS3MO (3-month Treasury, constant maturity), 4.32% on 2026-11-12
+
+rules:
+  - id: L-B1
+    rule: Book is current
+    text: >-
+      Sanji's price file shows the last completed trading session, so the book is up to date.
+      If it doesn't, no order is written and the run fails.
+  - id: L-B2
+    rule: Book is readable
+    text: >-
+      Sanji's book reads as one of the four states, and every order already in the order file is
+      valid. If not, no order is written and the run fails.
+  - id: L-S1
+    rule: Next session
+    text: The order is for the first trading session after the night it is written.
+  - id: L-P1
+    rule: Put timing
+    text: A put is sold only for a week's first session, and only when holding cash alone.
+  - id: L-P2
+    rule: Put expiry
+    text: The put expires on the last trading session of that week.
+  - id: L-P3
+    rule: Put strike
+    # The chain asked of LSEG: strikes within band_percent of the close, step apart (LD-21). A
+    # 0.30-delta weekly sits a few percent from the money.
+    params: {target_delta: 0.30, band_percent: 10, step: '2.50'}
+    text: >-
+      Among puts within {band_percent}% of the close, the out-of-the-money put whose delta at the
+      close is nearest −{target_delta:.2f}; a tie goes to the lower strike.
+  - id: L-P4
+    rule: Cash-secured
+    # Sanji doesn't start a book, so the cash-secured check is ours (LD-09): the backtest's $25,000.
+    params: {contracts: 1, multiplier: 100, starting_cash: '25000.00'}
+    text: >-
+      {contracts} contract, sold only if cash (starting at ${starting_cash}) covers the strike ×
+      {multiplier} shares.
+  - id: L-C1
+    rule: Call timing
+    text: A call is sold only for a week's first session, and only when holding 100 shares.
+  - id: L-C2
+    rule: Call expiry
+    text: The call expires on the last trading session of that week.
+  - id: L-C3
+    rule: Call strike
+    params: {target_delta: 0.30, band_percent: 10, step: '2.50'}
+    text: >-
+      Among calls within {band_percent}% of the close, out of the money and at or above the cost
+      basis, the one whose delta at the close is nearest {target_delta:.2f}; a tie goes to the
+      higher strike. None means no call that week.
+  - id: L-T1
+    rule: Liquidity
+    params: {max_spread: 0.10}
+    text: >-
+      The chosen option has a bid and an ask at the close, and its spread is no wider than
+      {max_spread:.0%} of its mid; otherwise no order that week.
+  - id: L-O1
+    rule: Order
+    params: {order_type: lmt, lmt_prc: mid, ref: open, qty: 1}
+    text: >-
+      Sell to open {qty} contract at a limit of the {lmt_prc} at the {ref}, naming the expiry by
+      date and the strike by number.
+  - id: L-O2
+    rule: Unfilled
+    text: A week whose order doesn't fill is skipped; it is not retried later in the week.

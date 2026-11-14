@@ -37,6 +37,11 @@ probe SYM:
 live-probe SYM:
     {{uv}} pmcc live-probe --symbol {{SYM}}
 
+# One night of the live wheel: Sanji's book in, open_orders.json out (after the close; add --dry-run
+# to write nothing). Asks LSEG only the night before a week's first session
+live SYM *ARGS:
+    {{uv}} pmcc live --symbol {{SYM}} {{ARGS}}
+
 # Pull a symbol from LSEG into the cache (local; Workspace signed in). Add --plan-only for the estimate
 fetch SYM START END *ARGS:
     {{uv}} pmcc fetch --symbol {{SYM}} --start {{START}} --end {{END}} {{ARGS}}

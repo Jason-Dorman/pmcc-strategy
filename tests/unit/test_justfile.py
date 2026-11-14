@@ -11,6 +11,7 @@ RECIPES = [
     "test",
     "probe",
     "live-probe",
+    "live",
     "fetch",
     "run",
     "wheel",

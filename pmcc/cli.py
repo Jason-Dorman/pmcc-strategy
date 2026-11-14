@@ -46,7 +46,17 @@ from pmcc.export.site import Exported, ExportError, check_export_dir, export_sit
 from pmcc.export.verify import Verified
 from pmcc.export.verify import verify as verify_results
 from pmcc.export.wheel_models import ThesisVerdict
-from pmcc.live.snapshot import SnapshotError, describe, snapshot_report, take_snapshot
+from pmcc.live.book import BookError
+from pmcc.live.config import LiveConfig, LiveConfigError, StrikeParams, load_live_config
+from pmcc.live.orders import OrderError
+from pmcc.live.run import LiveError, describe_night, run_night
+from pmcc.live.snapshot import (
+    CloseSnapshot,
+    SnapshotError,
+    describe,
+    snapshot_report,
+    take_snapshot,
+)
 from pmcc.log import configure_logging
 from pmcc.runner import Market, Stamp, run_symbol
 from pmcc.wheel.benchmarks import BENCHMARKS_PATH, BenchmarkError, load_benchmarks
@@ -183,9 +193,7 @@ def live_probe(
     if path.exists():
         _fail(f"{path} exists; a probe report is never overwritten. Rename it to probe again.")
     try:
-        credentials = PlatformCredentials.from_env(os.environ)
-        with platform_session(credentials) as provider:
-            snapshot = take_snapshot(provider, underlying, calendar, now)
+        snapshot = _close_snapshot(underlying, calendar, now, _live_config().strike("L-P3"))
     except (ProviderOutageError, SnapshotError) as exc:
         _fail(f"{sym}: the live probe stopped and wrote nothing: {exc}")
     write_report(snapshot_report(snapshot), path)
@@ -193,6 +201,65 @@ def live_probe(
     _say(f"Report written to {path}")
     if not any(q.quoted_at_close for q in snapshot.options):
         _fail(f"{sym}: no option had a valid bid and ask at the close; see the report.")
+
+
+@app.command()
+def live(
+    symbol: Symbol,
+    dry_run: Annotated[
+        bool, typer.Option("--dry-run", help="Decide and report; write nothing.")
+    ] = False,
+    root: Annotated[Path, typer.Option(help="The repo root, where Sanji's files are.")] = Path("."),
+) -> None:
+    """One night of the live wheel: read Sanji's book, decide, write open_orders.json (L2-03).
+
+    Needs LSEG_APP_KEY, LSEG_USERNAME and LSEG_PASSWORD in the environment on the night before a
+    week's first session, the only night it asks LSEG anything (LD-05). Run it after the close.
+    """
+    configure_logging("live")
+    sym, now = symbol.upper(), _now()
+    config = _live_config()
+    if sym != config.symbol:
+        _fail(f"{sym}: configs/live.yaml trades {config.symbol}")
+    calendar = load_calendar()
+    underlying = _underlying(sym, _universe(calendar))
+    try:
+        night = run_night(
+            root,
+            now,
+            calendar,
+            config,
+            lambda band: _close_snapshot(underlying, calendar, now, band),
+            dry_run=dry_run,
+        )
+    except (
+        LiveError,
+        BookError,
+        ProviderOutageError,
+        SnapshotError,
+        OrderError,
+        LiveConfigError,
+        OSError,
+    ) as exc:
+        _fail(f"{sym}: no new order: {exc}")
+    _say(describe_night(night, dry_run=dry_run))
+
+
+def _live_config() -> LiveConfig:
+    try:
+        return load_live_config()
+    except LiveConfigError as exc:
+        _fail(str(exc))
+
+
+def _close_snapshot(
+    underlying: Underlying, calendar: SessionCalendar, now: datetime, band: StrikeParams
+) -> CloseSnapshot:
+    """Tonight's close snapshot over the headless session, with a strike rule's band from
+    configs/live.yaml (L-P3's for a put, L-C3's for a call)."""
+    credentials = PlatformCredentials.from_env(os.environ)
+    with platform_session(credentials) as provider:
+        return take_snapshot(provider, underlying, calendar, now, band)
 
 
 def _fail(message: str) -> NoReturn:
