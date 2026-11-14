@@ -1,6 +1,6 @@
 # PMCC docs (archived)
 
-Archived 2026-10-26 (PO, [WD-01](../../DECISIONS.md#wd-01--pmcc-docs-archived-styling-carried-over)). These are the frozen docs of the PMCC backtest, the first assignment. Its code, configs, results and site pages stay live and unchanged; these files remain their record, but they are **not** requirements for the wheel. The wheel's requirements are in [docs/WHEEL-SPEC.md](../../WHEEL-SPEC.md) and [docs/DECISIONS.md](../../DECISIONS.md) alone.
+Archived 2026-10-26 (PO, [WD-01](../wheel/DECISIONS.md#wd-01--pmcc-docs-archived-styling-carried-over)). These are the frozen docs of the PMCC backtest, the first assignment. Its code, configs, results and site pages stay live and unchanged; these files remain their record, but they are **not** requirements for the wheel. The wheel's requirements are in [archive/wheel/WHEEL-SPEC.md](../wheel/WHEEL-SPEC.md) and [archive/wheel/DECISIONS.md](../wheel/DECISIONS.md) alone (the wheel is archived too, LD-01).
 
 The PMCC's code and tests cite these files by short name. Read each citation against this folder:
 

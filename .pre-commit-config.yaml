@@ -8,9 +8,10 @@ repos:
     rev: v6.0.0
     hooks:
       - id: check-yaml
-      # The raw cache is never rewritten, by a hook or anything else (DEC-05).
+      # The raw cache is never rewritten, by a hook or anything else (DEC-05), nor are the files
+      # Sanji, the course's order system, writes at the root (LD-17).
       - id: end-of-file-fixer
-        exclude: ^data_cache/
+        exclude: ^(data_cache/|(price_history|positions|fills)\.json$)
       - id: check-added-large-files
         exclude: ^(results|data_cache)/
       # A full run's result holds a ledger row per bar, about 0.5 MB for 26 weeks (DEC-92).

@@ -1,5 +1,7 @@
 # Credentials: never commit, print, or copy (LSEG-DATA-GUIDE §1)
 lseg-data.config.json
+# Local scratch scripts (may hold hard-coded LSEG credentials)
+scripts/
 
 # Raw LSEG cache: NVDA's is committed (PO, DEC-05). Other symbols, probe reports and fetch logs
 # stay local until the PO adds a symbol

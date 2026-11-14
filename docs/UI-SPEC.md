@@ -1,6 +1,6 @@
-# UI Spec — the site's look, and the wheel's pages
+# UI Spec — the site's look, and the live page
 
-Oct 26, 2026 · The wheel's pages join the existing site and must look like it (WD-01). This document carries over only the **styling** from the PMCC's UI spec, now archived in [archive/pmcc/UI-SPEC.md](archive/pmcc/UI-SPEC.md); the PMCC's page layouts stay there. Section numbers match the archived spec's, so the web code's styling citations (`UI-SPEC §3`, `§10`) still point at the same topics. `DESIGN-GUIDE.md` (DG) and `theme.py` are the baseline look; a change to the look goes into `web/src/theme/` and this document in the same commit.
+Nov 13, 2026 · The live page joins the existing site and must look like it (LD-01), as the wheel's pages did (WD-01, archived); the wheel's page layouts are in this spec's archived copy, [archive/wheel/UI-SPEC.md](archive/wheel/UI-SPEC.md). This document carries over only the **styling** from the PMCC's UI spec, now archived in [archive/pmcc/UI-SPEC.md](archive/pmcc/UI-SPEC.md); the PMCC's page layouts stay there. Section numbers match the archived spec's, so the web code's styling citations (`UI-SPEC §3`, `§10`) still point at the same topics. `DESIGN-GUIDE.md` (DG) and `theme.py` are the baseline look; a change to the look goes into `web/src/theme/` and this document in the same commit.
 
 ## 1. Identity
 
@@ -95,35 +95,21 @@ Rule cells show what the rule did in plain words and link to that rule.
 
 **PMCC pages:** unchanged; their layouts are in the archived spec.
 
-**Wheel pages** (PO, WD-22; built at W4-01, WD-32). Their headings carry no number, so the PMCC code's `§6.n` citations still mean the archived spec's pages. Readouts come first on every page, then panels in the order listed. Widths are grid columns; a prose panel is unnumbered.
+**Wheel pages:** unchanged; their layouts are in the wheel's archived copy of this spec, [archive/wheel/UI-SPEC.md](archive/wheel/UI-SPEC.md) §6 (LD-01).
 
-### Wheel — `#/wheel/:symbol?bar=`
+**Live page** (PO, LD-10; route and name: LD-16, to be asked at L4-01). Readouts first, then panels in the order listed. Widths are grid columns; a prose panel is unnumbered. It shows no LSEG quotes (LD-15, to be asked at L4-01).
 
-**Readouts:** Ending NAV · P&L (from the starting cash) · Return on starting cash · Sharpe (annualized; from N daily returns) · Max drawdown ($, and its %) · Complete cycles (and one open at the end) · Weeks sold / skipped (of N)
+### Live — `#/live/:symbol` (LD-16)
 
-| # | Panel | Width | Content |
-| --- | --- | --- | --- |
-| 1 | NAV | 10 | NAV, shaded (`--shares-shade`) over the bars holding shares; a lower pane of the stock's last trade (`--spot-line`), the held option's strike (`--strike-line`, dashed step) and the cost basis (`--basis-line`, dotted step); the chosen bar a thin `--accent` rule on both. A click on either pane picks the bar under it |
-| 2 | Portfolio at a bar | 6 | ◀, a session select, a bar select, ▶; then key/value: the bar, what is held (in words), the stock's last trade, cash, reserved for the put, free cash, shares at their mark, the short put and the short call (contracts × RIC, OCC, strike and expiry, mark with its value to the book, delta; a stale mark in `flag`), the cost basis per share, NAV, flags. Opens on the URL's `?bar=`, else the last bar |
-| 3 | Cycle statistics | 4 | key/value: weeks sold / skipped; skips by reason (in plain words, linked); puts sold, expired and assigned; calls sold, expired and called away; complete cycles (and one open); premium; the share of bars in each state |
-| 4 | Blotter | 10 | §5, with Trade P&L on the closing rows (WD-28); filters by rule (in words) and side |
-| 5 | Gate log | 10 | per week: session, put or call, decision time, the option picked (delta against its target, mid, spread), outcome (sold, or skipped and the rule, linked), notes |
-| 6 | Ledger | 10 | §5, virtualized: time (a button that picks the bar for [2], the chosen row outlined in `--accent`), what is held, stock, cash, reserved, free cash, shares, each short leg with its mark and delta, cost basis, NAV, flags; filters by what is held and by flag |
-
-### Wheel review — `#/wheel-review/:symbol/:ruleId?`
-
-**Readouts:** Claims met (n of 3) · P&L · Return on starting cash (the S&P 500's in the hint) · Sharpe (the baseline PMCC's in the hint) · Prints inside the quote (of N prints)
+**Readouts:** State (Cash, Put, Shares, Call, in words) · Cash · Cost basis (while shares are held) · Next session · Tonight's decision (an order, or no order and why) · Last run (its time, and a flag if the last run failed or the book was stale)
 
 | # | Panel | Width | Content |
 | --- | --- | --- | --- |
-| — | Thesis | 10 | Prose: the thesis word for word (Spec › Thesis; WD-33), then a **Results** line built from the verdicts ("Two of the three objectives were met: The wheel …, but it did not …") |
-| 1 | Verdicts | 10 | per claim: the thesis's words, its test, the wheel's number, the benchmark's (claim 1's, $0, labelled "break-even": WD-22), Met or Not met (in `flag`) |
-| 2 | Benchmarks | 10 | the wheel, the baseline PMCC and the S&P 500's price return: starting cash, return, Sharpe, max drawdown %; the caption names the baseline's run and config and the index's closes and source |
-| — | Fill model | 10 | Prose and key/value: fills at the mid, the spread capture and fee the run used, assignment at the strike, r, the options sold, the share of prints inside the quote and R² over all of them |
-| 3 | Mid vs print — puts | 5 | the methodology scatter (§4) of every put pair, its fit (the symbol's column alone) with the share of prints inside the quote, and every pair in a disclosure |
-| 4 | Mid vs print — calls | 5 | as [3], for the calls |
-| 5 | Friction runs | 10 | one row per wheel run by spread capture, at mid first ("reference"): P&L, Δ against at mid, return, Sharpe, max drawdown, which claims are met |
-| 6 | Rules | 10 | the config's rules in order: ID · Rule (its question) · What happens (its summary, the rule stated exactly on hover); ▸ opens the reasoning. `:ruleId` scrolls to that row and outlines it in `--accent`; an ID the results lack says so |
+| — | The algorithm | 10 | Prose: what the wheel does each week, in plain words; why it was chosen, with the backtest's result and a link to `#/wheel-review/NVDA` (Spec › Why the wheel); the rules, each in words with its ID |
+| 1 | Open orders | 10 | `open_orders.json` as the nightly run left it: a table (id, for, action, qty, contract, expiry, strike, limit, ref), then the file itself in a disclosure; "No open orders tonight" for `[]` |
+| 2 | Positions | 5 | Sanji's `positions.json`: each holding as a row, and cash; "No positions yet" before the first fill |
+| 3 | Fills | 5 | Sanji's `fills.json`: each fill as a row, newest first, with its outcome (filled, unfilled, unresolved, rejected) |
+| 4 | Nightly run log | 10 | one row per run, newest first: run time, next session, state, cash, decision (order id, or the rule and reason in words), the pick's strike, expiry and delta |
 
 ## 7. Routes
 
@@ -135,6 +121,12 @@ Hash routing (GitHub Pages has no SPA fallback); the URL is the state. The PMCC'
 | `#/wheel-review/:symbol/:ruleId?` | Wheel review; a wheel rule's link lands on its row |
 
 Every wheel rule named on the wheel pages (blotter, gate log, cycle statistics, filters) links to `#/wheel-review/:symbol/<ID>`.
+
+The live assignment adds one (LD-16, to be asked at L4-01):
+
+| Route | Page |
+| --- | --- |
+| `#/live/:symbol` | Live |
 
 ## 8. States
 

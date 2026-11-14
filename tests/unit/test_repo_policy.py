@@ -88,3 +88,14 @@ def test_dec_05_the_cache_has_its_own_large_file_limit() -> None:
     assert len(applying) == 1
     assert applying[0]["args"] == ["--maxkb=2048"]
     assert not any(_applies(hook, "pmcc/cli.py") for hook in applying)
+
+
+@pytest.mark.parametrize("path", ["price_history.json", "positions.json", "fills.json"])
+def test_ld_17_no_hook_rewrites_sanjis_files(path: str) -> None:
+    (fixer,) = _hooks("end-of-file-fixer")
+    assert not _applies(fixer, path)
+
+
+def test_ld_17_our_order_file_is_still_checked() -> None:
+    (fixer,) = _hooks("end-of-file-fixer")
+    assert _applies(fixer, "open_orders.json")

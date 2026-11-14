@@ -1,6 +1,6 @@
 # Wheel Strategy Backtest — Spec
 
-Oct 26, 2026 · the source of truth for the wheel, as amended by PO answers in [DECISIONS](DECISIONS.md). The PMCC's docs are archived in [archive/pmcc/](archive/pmcc/README.md) and are not requirements here (WD-01).
+Oct 26, 2026 · the source of truth for the wheel, as amended by PO answers in [DECISIONS](DECISIONS.md). The PMCC's docs are archived in [archive/pmcc/](../pmcc/README.md) and are not requirements here (WD-01).
 
 > No section waits on the PO now: weekly tenor was confirmed on 2026-10-27 (PO, WD-02), and the pages settled on 2026-10-28 (PO, WD-22).
 
