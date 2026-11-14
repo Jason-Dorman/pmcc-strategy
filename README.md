@@ -47,7 +47,8 @@ A symbol-agnostic backtester for the **Poor Man's Covered Call** (PMCC): a deep 
 - **[just](https://just.systems):** `uv tool install rust-just` installs it.
 - **git, with Git Bash on Windows.**
 - **Node.js 22 LTS with npm,** for the site (`web/`; pinned by `web/.nvmrc`).
-- **LSEG Workspace,** only for fetching data. It must be running and signed in on the same Windows machine, because the LSEG desktop session connects to it locally.
+- **LSEG Workspace,** only for fetching the backtests' data. It must be running and signed in on the same Windows machine, because the LSEG desktop session connects to it locally.
+- **LSEG platform credentials,** only for the live wheel: `LSEG_APP_KEY` (an EDP API app key), `LSEG_USERNAME` and `LSEG_PASSWORD`, as GitHub secrets for the Actions and as environment variables to run it locally. This headless session needs no Workspace (LD-05).
 
 Development runs in Git Bash on Windows, and CI runs the same checks on Ubuntu. Keep the clone on a Windows path, not `\\wsl.localhost\…`. Backtests, tests and the site build never contact LSEG.
 
@@ -75,6 +76,7 @@ LSEG credentials go in `lseg-data.config.json` in the repo root. The file is git
 
 ```bash
 uv run pmcc probe  --symbol NVDA                                       # LSEG spikes → data_cache/probes/ (Workspace required)
+uv run pmcc live-probe --symbol NVDA                                   # the live wheel's close snapshot over the headless session → data_cache/probes/live_NVDA_*.json; counts only on screen (platform credentials in the environment; also the live-probe workflow, run by hand in Actions)
 uv run pmcc fetch  --symbol NVDA --start 2026-07-06 --end 2026-09-18   # LSEG → local cache (Workspace required)
 uv run pmcc fetch  --symbol NVDA --start 2026-03-30 --end 2026-09-25 --plan-only   # the estimate: asks LSEG for the stock tape only, writes nothing (Workspace required)
 uv run pmcc fetch  --symbol NVDA --start 2026-03-30 --end 2026-09-25 --wheel   # the wheel's weekly puts into data_cache/NVDA/wheel/, planned from the cached tape (WD-11; Workspace required, --plan-only too)

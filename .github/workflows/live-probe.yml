@@ -1,0 +1,48 @@
+# The live wheel's LSEG probe (L1-02; LD-05), run by hand from the Actions tab: "Run workflow".
+# It signs in to LSEG headlessly with the repo's secrets (no Workspace), pulls the close snapshot
+# the nightly job will decide from, and prints counts only: no prices in the log (LD-15). The full
+# report, with the quotes, is kept as an artifact for one day. It commits nothing.
+name: live-probe
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live-probe
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Install from uv.lock
+        run: uv sync --frozen
+
+      - name: Pull the close snapshot from LSEG
+        env:
+          LSEG_APP_KEY: ${{ secrets.LSEG_APP_KEY }}
+          LSEG_USERNAME: ${{ secrets.LSEG_USERNAME }}
+          LSEG_PASSWORD: ${{ secrets.LSEG_PASSWORD }}
+        run: uv run --frozen pmcc live-probe --symbol NVDA
+
+      - name: Keep the report for a day
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-probe-report
+          path: data_cache/probes/live_*.json
+          retention-days: 1
+          if-no-files-found: warn

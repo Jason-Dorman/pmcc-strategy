@@ -16,7 +16,7 @@ Nov 13, 2026 · from the [Live spec](LIVE-SPEC.md) · **due Tue Nov 17 2026, 11:
 | Phase | Dates | Exit criteria | Status |
 | --- | --- | --- | --- |
 | L0 Docs | Fri Nov 13 | Spec, decisions and backlog live; the wheel's docs archived | In progress: L0-01 drafted, waiting on the PO's review |
-| L1 Foundations | Fri Nov 13 | CI green on Sanji's pushes; a headless LSEG session pulls NVDA's chain | In progress: L1-01 built; LD-12's test orders placed |
+| L1 Foundations | Fri Nov 13 | CI green on Sanji's pushes; a headless LSEG session pulls NVDA's chain | In progress: L1-01 done (CI green); L1-02 built, waiting on the PO's run; LD-12's test orders placed |
 | L2 Algorithm | Sat Nov 14 | `pmcc live` reads the book, picks the week's option and writes a valid `open_orders.json` | Not started |
 | L3 Nightly job | Sun Nov 15 | The scheduled job runs, commits and redeploys; Monday's order is in the file before Sunday's 22:00 run ends | Not started |
 | L4 Site | Mon Nov 16 | The live page shows the algorithm, the orders, Sanji's book and the run log | Not started |
@@ -45,11 +45,11 @@ Nov 13, 2026 · from the [Live spec](LIVE-SPEC.md) · **due Tue Nov 17 2026, 11:
 
 ### L1 — Foundations
 
-- [ ] **L1-01 · CI green on Sanji's pushes** — built 2026-11-13: the hook exempts Sanji's files, two repo-policy tests pin it, `pre-commit run --all-files` passes; waiting on the PO's push to turn CI green
+- [x] **L1-01 · CI green on Sanji's pushes** — done 2026-11-13: the hook exempts Sanji's files, two repo-policy tests pin it; CI green on the PO's push
   - Exclude Sanji's files from the file-fixing hooks (LD-17), pinned by the repo-policy test.
   - Done when: `pre-commit run --all-files` passes with `price_history.json` as Sanji wrote it, and the PO's push turns CI green.
   - Needs: L0-01
-- [ ] **L1-02 · Headless LSEG session and probe** **[LSEG]** **[PO]**
+- [ ] **L1-02 · Headless LSEG session and probe** **[LSEG]** **[PO]** — built 2026-11-13 (LD-21): `platform_session`, the close snapshot, `pmcc live-probe` and the `live-probe` workflow; 47 new tests, after a code review's fixes; waiting on the PO's run against LSEG
   - Settled: LD-11 (the chain from LSEG, PO 2026-11-13).
   - `pmcc/data/lseg/platform.py` opens a platform session from `LSEG_APP_KEY`, `LSEG_USERNAME`, `LSEG_PASSWORD` and checks it really opened (LSEG-DATA-GUIDE's lesson). A probe pulls NVDA's last close, the listed expiries, and the coming week's strikes with their bids and asks at the close, and reports what came back, with no credentials in its output. A fake session, kept true by a contract test, serves the tests.
   - Done when: the probe, run by the PO locally (or by a manual Actions run), shows NVDA's close and a full quoted chain for next week's expiry. If the platform session lacks the entitlement, take it to the PO before L2.

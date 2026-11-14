@@ -30,7 +30,7 @@ from pmcc.data.cache import WHEEL_PART, CacheError, SymbolCache
 from pmcc.data.calendar import CalendarMismatchError
 from pmcc.data.files import replace_file
 from pmcc.data.load import load_symbol
-from pmcc.data.lseg import lseg_session
+from pmcc.data.lseg import PlatformCredentials, lseg_session, platform_session
 from pmcc.data.probe import ProbeStoppedError, probe_path, run_probe, write_report
 from pmcc.data.provider import ProviderOutageError
 from pmcc.data.pull import PlanError, Target, prepare, prepare_wheel, pull_units
@@ -46,6 +46,7 @@ from pmcc.export.site import Exported, ExportError, check_export_dir, export_sit
 from pmcc.export.verify import Verified
 from pmcc.export.verify import verify as verify_results
 from pmcc.export.wheel_models import ThesisVerdict
+from pmcc.live.snapshot import SnapshotError, describe, snapshot_report, take_snapshot
 from pmcc.log import configure_logging
 from pmcc.runner import Market, Stamp, run_symbol
 from pmcc.wheel.benchmarks import BENCHMARKS_PATH, BenchmarkError, load_benchmarks
@@ -162,6 +163,36 @@ def probe(
     typer.echo(f"{sym}: {report['requests']} requests; report written to {path}")
     if report["stopped"] is not None:
         _fail(f"{sym}: stopped early: {report['stopped']}")
+
+
+@app.command("live-probe")
+def live_probe(
+    symbol: Symbol,
+    out: Annotated[Path, typer.Option(help="Where probe reports go.")] = Path("data_cache/probes"),
+) -> None:
+    """Pull tonight's close snapshot over the headless LSEG session and write a report (L1-02).
+
+    Needs LSEG_APP_KEY, LSEG_USERNAME and LSEG_PASSWORD in the environment (LD-05). Prints counts,
+    never prices (LD-15); the quotes are in the report file (in Actions, a one-day artifact).
+    """
+    configure_logging("live-probe")
+    sym, now = symbol.upper(), _now()
+    calendar = load_calendar()
+    underlying = _underlying(sym, _universe(calendar))
+    path = out / f"live_{sym}_{now:%Y%m%dT%H%M%S}.json"
+    if path.exists():
+        _fail(f"{path} exists; a probe report is never overwritten. Rename it to probe again.")
+    try:
+        credentials = PlatformCredentials.from_env(os.environ)
+        with platform_session(credentials) as provider:
+            snapshot = take_snapshot(provider, underlying, calendar, now)
+    except (ProviderOutageError, SnapshotError) as exc:
+        _fail(f"{sym}: the live probe stopped and wrote nothing: {exc}")
+    write_report(snapshot_report(snapshot), path)
+    _say(describe(snapshot))
+    _say(f"Report written to {path}")
+    if not any(q.quoted_at_close for q in snapshot.options):
+        _fail(f"{sym}: no option had a valid bid and ask at the close; see the report.")
 
 
 def _fail(message: str) -> NoReturn:

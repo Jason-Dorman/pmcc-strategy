@@ -10,6 +10,7 @@ RECIPES = [
     "check",
     "test",
     "probe",
+    "live-probe",
     "fetch",
     "run",
     "wheel",

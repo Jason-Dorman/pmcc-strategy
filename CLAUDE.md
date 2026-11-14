@@ -68,7 +68,7 @@ These are working rules, kept for the wheel (WD-01) and the live wheel (LD-01); 
   - Two automated writers exist, by design: Sanji (the professor's server, with the PO's token) pushes its files, and the nightly workflow's Actions bot commits only `open_orders.json` and the run log (LD-06).
 - **Credentials:** never print, read out, copy or commit `lseg-data.config.json` (it's gitignored) or the platform credentials (`LSEG_APP_KEY`, `LSEG_USERNAME`, `LSEG_PASSWORD`: GitHub secrets, or environment variables locally; LD-05). Only `pmcc/data/lseg/` reads either.
 - **LSEG access:**
-  - Only `pmcc fetch`, `pmcc probe` and the live wheel's run (`pmcc live`, from the nightly workflow or the PO's machine; LD-05) contact LSEG. Tests, the CI checks, builds and the site never do.
+  - Only `pmcc fetch`, `pmcc probe`, `pmcc live-probe` and the live wheel's run (`pmcc live`, from the workflows or the PO's machine; LD-05) contact LSEG. Tests, the CI checks, builds and the site never do.
   - `lseg.data` and `pandas` are imported only under `pmcc/data/lseg/`.
   - Before any pull longer than about 2 minutes, show the PO the `--plan-only` estimate. A Workspace (desktop) session needs Workspace signed in throughout; the live wheel's platform session doesn't.
   - Never overwrite cached data. Never record a failed request as "no data": an outage aborts and writes nothing.
@@ -96,6 +96,7 @@ These exist once P0 is done.
 | `just check` | lint, format check, pyright, pytest, and web lint/typecheck/tests |
 | `just test [ARGS]` | pytest only |
 | `just probe SYM` / `just fetch SYM START END [--plan-only] [--wheel]` | LSEG spikes / pull (local, Workspace signed in); `--wheel` pulls the wheel's weekly puts into `data_cache/SYM/wheel/` (WD-11) |
+| `just live-probe SYM` | the live wheel's close snapshot over the headless platform session (credentials in the environment) → `data_cache/probes/live_SYM_*.json`, counts only on screen (L1-02); the `live-probe` workflow runs it in Actions by hand |
 | `just run SYM CONFIG` / `just batch` / `just calibrate [ARGS]` | backtests; `calibrate` sets each symbol's own starting cash, skipping final ones; `calibrate --check` recomputes it without writing |
 | `just wheel SYM [--config PATH]` | the wheel on one symbol, from the cache only → `results/SYM/wheel.json` (W2-03), with its metrics, benchmarks and verdicts (W3-01); reads the symbol's `baseline_pmcc.json`, so run `just batch` first; `pmcc verify` checks it, `pmcc export` publishes it for the wheel's pages (W4-01) |
 | `just wheels SYM` | the wheel and each friction run in `configs/wheel_friction/` (W3-02) |

@@ -26,7 +26,17 @@ from pmcc.domain.calendar import SessionCalendar
 from pmcc.domain.clock import ET
 from tests.fakes.market import FakeMarket
 
-COMMANDS = ["fetch", "probe", "run", "batch", "calibrate", "export", "verify", "serve"]
+COMMANDS = [
+    "fetch",
+    "probe",
+    "live-probe",
+    "run",
+    "batch",
+    "calibrate",
+    "export",
+    "verify",
+    "serve",
+]
 NOW = datetime(2026, 9, 27, 12, tzinfo=ET)
 
 runner = CliRunner()

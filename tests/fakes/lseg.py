@@ -472,3 +472,29 @@ def _text(value: str | date | datetime | None) -> str | None:
 
 def _as_tuple(value: str | Iterable[str]) -> tuple[str, ...]:
     return (value,) if isinstance(value, str) else tuple(value)
+
+
+class FakePlatformSession:
+    """A platform session (`ld.session.platform.Definition(...).get_session()`) over `fake`
+    (LD-05). Like lseg-data 2.1.1's `Session.open`, `open` doesn't raise when the sign-in fails:
+    it leaves the session Closed, which `fake.opens_to` scripts; `fake.open_error` makes it raise.
+    It is the default session, so `fake.session.get_default()` reports its state."""
+
+    def __init__(self, fake: FakeLseg) -> None:
+        self._fake = fake
+
+    @property
+    def open_state(self) -> OpenState:
+        return self._fake.state
+
+    def open(self) -> OpenState:
+        self._fake.opened_with.append("platform")
+        if self._fake.open_error is not None:
+            raise self._fake.open_error
+        self._fake.state = self._fake.opens_to
+        return self._fake.state
+
+    def close(self) -> OpenState:
+        self._fake.closes += 1
+        self._fake.state = OpenState.Closed
+        return self._fake.state

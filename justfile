@@ -32,6 +32,11 @@ test *ARGS:
 probe SYM:
     {{uv}} pmcc probe --symbol {{SYM}}
 
+# The live wheel's close snapshot over the headless LSEG session (LSEG_APP_KEY, LSEG_USERNAME,
+# LSEG_PASSWORD in the environment; no Workspace). Prints counts; the report stays in data_cache/probes/
+live-probe SYM:
+    {{uv}} pmcc live-probe --symbol {{SYM}}
+
 # Pull a symbol from LSEG into the cache (local; Workspace signed in). Add --plan-only for the estimate
 fetch SYM START END *ARGS:
     {{uv}} pmcc fetch --symbol {{SYM}} --start {{START}} --end {{END}} {{ARGS}}
