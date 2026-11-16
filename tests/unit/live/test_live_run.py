@@ -22,7 +22,14 @@ from pmcc.domain.money import Money, Price
 from pmcc.live.book import Book, BookError, WheelState
 from pmcc.live.config import LiveConfig, StrikeParams, load_live_config
 from pmcc.live.names import quote_dollars
-from pmcc.live.orders import Order, parse_orders, read_orders, write_orders
+from pmcc.live.orders import (
+    Order,
+    parse_orders,
+    pct_token,
+    read_orders,
+    strike_token,
+    write_orders,
+)
 from pmcc.live.run import LiveError, Night, decide, describe_night, run_night, sessions_for
 from pmcc.live.snapshot import CloseSnapshot
 from tests.fakes.live import sanji_root, snapshot
@@ -110,7 +117,15 @@ def test_l_o1_friday_night_sells_mondays_put(
     assert (order.order_type, order.lmt_prc, order.ref) == ("lmt", "mid", "open")
     assert order.expiry == "2026-11-20"
     assert order.underlying == 4815747
-    assert order.id == f"wheel-2026-11-16-P-{order.strike}"
+    pick = night.decision.pick
+    assert pick is not None
+    close = snapshot(calendar, session=FRIDAY).close
+    sent = pct_token(pick.option.strike, close)
+    assert order.strike == sent  # PO, LD-29
+    assert sent.startswith("pct:-")
+    assert order.id == f"wheel-2026-11-16-P-{sent.replace(':', '')}"
+    assert night.row["strike_sent"] == order.strike
+    assert f"at {order.strike} of the open" in night.decision.reason
 
 
 def test_ld_04_the_same_file_is_written_at_the_root_and_under_mkt(
@@ -362,6 +377,8 @@ def test_l_c1_holding_shares_sells_a_call_at_or_above_the_cost_basis(
     assert decision.order.contract == "call"
     assert decision.pick is not None
     assert decision.pick.option.strike >= Price.from_dollars("165")
+    # A call's strike goes as its number, so it can't land below the cost basis (LD-29)
+    assert decision.order.strike == strike_token(decision.pick.option.strike)
 
 
 @pytest.mark.parametrize(("state", "rule"), [(WheelState.PUT, "L-P1"), (WheelState.CALL, "L-C1")])
@@ -467,3 +484,23 @@ def test_ld_24_a_run_past_the_calendar_is_refused_and_writes_nothing(
         _night(tmp_path, calendar, config, datetime(2031, 1, 6, 22, 0, tzinfo=ET))
 
     assert _log(tmp_path) == []
+
+
+def test_ld_29_l_p4_the_cash_must_also_cover_a_gap_at_the_open(
+    tmp_path: Path, calendar: SessionCalendar, config: LiveConfig
+) -> None:
+    source = Source(lambda: snapshot(calendar, session=FRIDAY))
+    rich = decide(Book(WheelState.CASH, Money.from_dollars("25000")), calendar.session(MONDAY),
+                  calendar, config, source)  # fmt: skip
+    assert rich.pick is not None
+    strike = rich.pick.option.strike
+    just = strike.notional(100, 1)  # the strike picked at the close x 100, no gap
+    padded = Money(just.units * 110 // 100)  # 10% more
+
+    tight = decide(Book(WheelState.CASH, just), calendar.session(MONDAY), calendar, config, source)
+    enough = decide(Book(WheelState.CASH, padded), calendar.session(MONDAY), calendar, config,
+                    source)  # fmt: skip
+
+    assert (tight.rule, tight.order) == ("L-P4", None)
+    assert "10% gap" in tight.reason
+    assert enough.rule == "L-O1"

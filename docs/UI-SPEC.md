@@ -108,8 +108,8 @@ Rule cells show what the rule did in plain words and link to that rule.
 | — | The algorithm | 10 | Prose: what the wheel does each week, in plain words; why it was chosen, with the backtest's result and a link to `#/wheel-review/NVDA` (Spec › Why the wheel); the rules, each in words with its ID |
 | 1 | Open orders | 10 | `open_orders.json` as the nightly run left it: a table (id, for, action, qty, contract, expiry, strike, limit, ref), then the file itself in a disclosure; "No open orders tonight" for `[]` |
 | 2 | Positions | 5 | Sanji's `positions.json` as written (a file block), until L5-01 knows its rows: then each holding as a row, and cash; "No positions yet" before the first fill |
-| 3 | Fills | 5 | Sanji's `fills.json` as written, until L5-01: then each fill as a row, newest first, with its outcome (filled, unfilled, unresolved, rejected); "No fills yet" before the first |
-| 4 | Nightly run log | 10 | one row per run, newest first: run time, the session planned, state, cash, outcome, rule, why, the pick's option, delta and IV, and its bid, ask, mid and spread at the close ("—" on rows logged before them, PO, LD-15) |
+| 3 | Fills | 5 | Sanji's `fills.json` as written, until L5-01: then a blotter (PO, LD-30), each fill as a row, newest first, joined to the night and order that placed it: time, contract, side, quantity, limit, fill, outcome (filled, unfilled, unresolved, rejected), cash change, the rule, and once settled its P&L; "No fills yet" before the first |
+| 4 | Nightly run log | 10 | one row per run, newest first: run time, the session planned, state, cash, outcome, rule, why, the option picked at the close, the strike sent (LD-29), its delta and IV, and its bid, ask, mid and spread at the close ("—" on rows logged before them, PO, LD-15) |
 
 ## 7. Routes
 

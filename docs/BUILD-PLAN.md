@@ -70,6 +70,11 @@ Nov 13, 2026 · from the [Live spec](LIVE-SPEC.md) · **due Tue Nov 17 2026, 11:
   - Done when: each rule has tests at its boundaries; a scripted week runs Cash → Put → (assigned) Shares → Call → (called away) Cash on fixtures; a dry run against live LSEG shows Monday's order.
   - Needs: L1-02, L2-01, L2-02
 
+- [x] **L2-04 · A put's strike as its percent from the close** **[PO]** — done 2026-11-16 (PO, LD-29, and its code review): `pct_token`, L-O1 sends a put's strike as `pct:X` in whole percents (L-O1's `pct_step`; a call's stays a number), the order language refuses a decimal `pct:`, L-P4 and LINV-03 check the strike picked at the close plus a 10% gap (L-P4's `gap_allowance`), the run log and the page show the strike sent; 21 new tests, among them a property test that an unchanged open lands Sanji on the picked strike and a gap case. Monday Nov 16's order converted to `pct:-5` before the open
+  - Asked: the PO, on the gap between the night's close and the open (2026-11-16).
+  - Done when: a put order carries `pct:X`, a call order a number, and Monday's order is converted in both files.
+  - Needs: L2-03
+
 ### L3 — Nightly job
 
 - [ ] **L3-01 · The nightly workflow** **[PO]** — built 2026-11-15 (LD-27): `nightly.yml` and `ci.yml`'s `workflow_run`; 14 new tests, after a code review's fixes, and the commit step run against a scratch remote (a shallow clone, a push landing mid-run, a failed night). Waiting on the PO's manual run and Monday night's scheduled one
@@ -88,7 +93,7 @@ Nov 13, 2026 · from the [Live spec](LIVE-SPEC.md) · **due Tue Nov 17 2026, 11:
 ### L5 — Release
 
 - [ ] **L5-01 · Sanji's book read** **[PO]** — once Sanji resolves an order (not expected before the due date: "Sanji does not resolve these orders yet")
-  - Read the real `positions.json` and `fills.json` into the book (state, cash, cost basis), with tests on the real files, so the run stops failing L-B2 on them; then the scripted week through Sanji's files (L2-03). Until then, confirm Monday night's run keeps Monday's order (LD-19).
+  - Read the real `positions.json` and `fills.json` into the book (state, cash, cost basis), with tests on the real files, so the run stops failing L-B2 on them; then the scripted week through Sanji's files (L2-03); and the page's fills as a blotter (PO, LD-30). Until then, confirm Monday night's run keeps Monday's order (LD-19).
   - Needs: L4-01
 - [ ] **L5-02 · Submit** **[PO]** — the site's URL, by 18:00 Tue Nov 17. Needs: L5-01
 

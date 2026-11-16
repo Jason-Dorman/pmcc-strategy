@@ -44,6 +44,8 @@ The user is the product owner (PO). This log tracks what the spec leaves open, t
 | LD-26 | The live picks read the close snapshot, not a MarketView | SETTLED (PO) | — |
 | LD-27 | The nightly workflow (L3-01) | ENG | — |
 | LD-28 | The live page's data and layout (L4-01) | ENG | — |
+| LD-29 | A put's strike goes as its percent from the close, which Sanji applies to the open | SETTLED (PO): `pct:` in whole percents for puts, a number for calls; cash covers a 10% gap | — |
+| LD-30 | A blotter of Sanji's fills | SETTLED (PO): at L5-01 | — |
 
 ## Settled
 
@@ -108,6 +110,7 @@ The user is the product owner (PO). This log tracks what the spec leaves open, t
 
 - **Asked:** pull NVDA's chain from LSEG and compute the strike ourselves, or let Sanji pick with a token? Robin, the professor's database, isn't offered to students (class of Nov 10: he offered whitelisting, then chose each student's own headless LSEG access instead); the order page says Sanji rejects `delta:` tokens until Robin has chain snapshots; and no token says "at or above the cost basis".
 - **Outcome:** the nightly job pulls NVDA's chain for the week from LSEG with the PO's headless (platform) credentials, which the PO has already used without Workspace running; it computes each strike's delta at the close with the backtests' pricer, and writes the chosen strike as a number and the expiry as a date. Sanji then only resolves a named contract. (Recommended. The alternatives were `"strike": "delta:30"` or `otm:N`.)
+- **Amended for puts by LD-29** (PO, 2026-11-16): a put's strike goes as its percent from the close, which Sanji applies to the open; a call's stays a number.
 
 ### LD-12 — NVDA in the course's prices, and its conid
 **Status:** SETTLED · **Basis:** PO, 2026-11-14 · **Affects:** Spec › The course's side; `price_history.json`; CLAUDE.md › Sources of truth
@@ -134,7 +137,7 @@ The user is the product owner (PO). This log tracks what the spec leaves open, t
 
 - **Asked:** weekly selling places one order a week, for Monday; dropping it once Monday was priced (the first rule) would leave the file `[]` on Tuesday, the due date.
 - **Outcome:** each order already in the file stays until the week it's for has ended (the week's last session is before the session planned tonight), then drops; a wheel order (id `wheel-…`) for the session planned tonight is replaced by tonight's decision, so a second run the same night can't put on a second option. Orders placed by hand are kept the same way. Sanji acts on an order only on its own session and never fills an id twice, so a kept order is harmless. (Recommended. The alternative was to drop an order once its session was priced.)
-- An id is `wheel-{for}-{P|C}-{strike}`.
+- An id is `wheel-{for}-{P|C}-{strike}`, the strike as its token with any `:` dropped (`wheel-2026-11-16-P-pct-5`, LD-29).
 
 ### LD-23 — Earnings weeks
 **Status:** SETTLED · **Basis:** PO, 2026-11-14 · **Affects:** Spec › Why the wheel; the live page
@@ -153,6 +156,21 @@ The user is the product owner (PO). This log tracks what the spec leaves open, t
 
 - **Asked:** CLAUDE.md's hard rule "Strategies see market data only through `MarketView`" comes from the backtests, where the view stops a bar loop reading the future. The live picks read tonight's close snapshot directly.
 - **Outcome:** the rule is amended: the live wheel's picks read the close snapshot, which holds only data up to the run, so look-ahead can't happen. The backtests keep the rule. (Recommended. The alternative was a MarketView adapter over the snapshot.)
+
+### LD-29 — A put's strike goes as its percent from the close, which Sanji applies to the open
+**Status:** SETTLED · **Basis:** PO, 2026-11-16 (twice: the change, then its code review) · **Affects:** Spec › Trade rules (L-P4, L-O1), Orders, Run log, Invariants (LINV-03); amends LD-11 for puts and LD-22 for `pct:`; L2-04
+
+- **Asked:** the order is written the night before, from the last close, and the strike was sent as a number, so a gap at the open (likelier in an earnings week) leaves it at another delta than the rule meant: a gap down puts the $155 put near the money. The class of Nov 10 and the order page have Sanji pick a strike against the open (`atm`, `otm:N`, `pct:X`); `delta:` and `premium:` are refused until Robin has chain snapshots. The options: keep the number; `pct:`; `otm:N`.
+- **Outcome:** `pct:`. The night still picks the 0.30-delta put at the close from LSEG (L-P3), then sends its strike as its distance from the close in whole percents (`pct:-5` for $155 against $162.83, −4.81%). Sanji takes the open × (1 + X/100), then the nearest listed strike, a tie further out of the money, so the strike moves with a gap: at Friday's close `pct:-5` is $155, after a 6% gap down $145. (Recommended.)
+- **Whole percents (the code review):** the order page shows only whole ones (`pct:-5`) and rejects a token it doesn't know, so a decimal (first sent as `pct:-4.8`) might be rejected; the order language now refuses a decimal `pct:` (LD-22's rule: nothing the page doesn't show). A whole percent moves Sanji's target at most half a percent of the close, under half a strike step while strikes are over 1% of the price apart (NVDA's $2.50 at $162.83 is 1.54%; $5 below $150), so an unchanged open still lands on the picked strike; a property test sweeps closes from $20 to $600. The rounding step is L-O1's `pct_step` (1).
+- **The cash (the code review):** the strike Sanji sets is unknown until the open, so L-P4 and LINV-03 check the cash against the strike picked at the close × 100 plus L-P4's `gap_allowance`, 10% for a gap up (PO). $25,000 covers it many times over today; it matters once fills tighten the cash.
+- **What follows:** a call's strike stays a number, since L-C3 must never sell below the cost basis and a strike set at the open can't promise that. The id carries the token (`wheel-2026-11-16-P-pct-5`). The run log adds the strike sent; the page shows it.
+- **Monday Nov 16's order** was written on Sunday night as `155`. It was converted on 2026-11-16, before the open, by one-off scripts through the same code (`pct_token` and `order_id` on the logged pick, $155, and Friday's close, $162.83, LD-21), both files through the order language's checks: first to `pct:-4.8`, then, at the code review, to `wheel-2026-11-16-P-pct-5`, strike `pct:-5`. No run could have replaced it (a run before Monday's close is refused, LD-24). It isn't a run, so it has no run-log row: the two Nov 15 rows still name the order as first written, and the page's Open orders caption says so. A copy of Monday night's run on the converted files keeps it and asks LSEG nothing. Sanji isn't resolving orders yet, so no fill is expected either way.
+
+### LD-30 — A blotter of Sanji's fills
+**Status:** SETTLED · **Basis:** PO, 2026-11-16 · **Affects:** UI-SPEC §6 › Live (Fills); L5-01
+
+- **Outcome:** once Sanji resolves an order, the page's fills become a blotter like the wheel page's: each fill as a row, joined to the night and order that placed it, with its time, contract, side, quantity, limit, fill, cash change, the rule that placed it and, once the option settles, its P&L. Built at L5-01, when `fills.json`'s format is known. (Recommended.) A wheel fill joins its run by the session and right its id carries (`wheel-{for}-{P|C}-`), not the whole id, since Monday Nov 16's id changed after its run (LD-29; the code review).
 
 ### LD-15 — LSEG data on the page
 **Status:** SETTLED · **Basis:** PO, 2026-11-15 · **Affects:** Spec › Run log, Site; UI-SPEC §6 › Live; L4-01
@@ -200,10 +218,10 @@ None.
 **Status:** ENG · **Affects:** Spec › Orders; L2-01
 
 - **Where:** `pmcc/live/orders.py`: an `Order` model (pydantic, strict, unknown fields forbidden), `parse_orders`, `read_orders`, `render_orders` and `write_orders`. Every order is checked before the file is written, and an invalid one fails with nothing written (LINV-01). Orders already in the file, ours or placed by hand (LD-12's tests), are read through the same checks; a bad one raises `OrderError`, as does a file that isn't UTF-8 JSON. What the run then does is LD-14's question.
-- **Strict where the page is silent:** tokens (`expiry`, `strike`, `lmt_prc`) must be JSON strings, as in all the page's examples; `qty` and `underlying` must be JSON whole numbers (not `true`, `"1"` or `1.5`); `for` and a date expiry must be real calendar dates, and a date expiry can't be before `for`; a field is given or left out, never `null`; a numeric strike or limit must be above zero; `NDTE` takes no leading zero; `delta:X` takes 0 < X < 100 with no sign, and `premium:X` X > 0; `otm:N` and `itm:N` take N ≥ 1; `pct:X` takes an optional sign. Anything the page doesn't show is refused, so we never send Sanji something it might reject. Whether `for` is a trading session, and whether an id is already in Sanji's `fills.json` (the page's "Unique in the repo"), need the calendar and Sanji's book: the run checks those (L2-02, L2-03; LINV-05).
+- **Strict where the page is silent:** tokens (`expiry`, `strike`, `lmt_prc`) must be JSON strings, as in all the page's examples; `qty` and `underlying` must be JSON whole numbers (not `true`, `"1"` or `1.5`); `for` and a date expiry must be real calendar dates, and a date expiry can't be before `for`; a field is given or left out, never `null`; a numeric strike or limit must be above zero; `NDTE` takes no leading zero; `delta:X` takes 0 < X < 100 with no sign, and `premium:X` X > 0; `otm:N` and `itm:N` take N ≥ 1; `pct:X` takes an optional sign and a whole number (LD-29, its code review: the page shows no decimal). Anything the page doesn't show is refused, so we never send Sanji something it might reject. Whether `for` is a trading session, and whether an id is already in Sanji's `fills.json` (the page's "Unique in the repo"), need the calendar and Sanji's book: the run checks those (L2-02, L2-03; LINV-05).
 - **The page's own rules:** a limit order needs `lmt_prc` and a market order mustn't have one; a put or call needs `expiry` and `strike`, and shares carry neither; `vega:` is reserved and rejected; ids are unique in the file. Rules that depend on the book (a `SEL` with no long, a `BTC` with no short) are the live rules', at L2-03.
 - **The file:** a JSON list (`[]` when empty), two-space indent, LF, a final newline, the page's field order, absent fields left out (an omitted `ref` stays omitted, so a hand-written order round-trips unchanged). It's written whole, replacing the last: staged as a `*.partial` file beside it, which `.gitignore` keeps out of any commit if a run dies mid-write.
-- **Ids and strikes:** `order_id` makes LD-19's `wheel-{for}-{P|C}-{strike}`, and `strike_token` writes a strike as a plain number (`155`, `152.5`).
+- **Ids and strikes:** `order_id` makes LD-19's `wheel-{for}-{P|C}-{strike}`, `strike_token` writes a strike as a plain number (`155`, `152.5`), and `pct_token` as its whole percent from a reference (`pct:-5`, LD-29).
 
 ### LD-24 — The night's run: book, rules, file and log (L2-02, L2-03)
 **Status:** ENG · **Affects:** Spec › Data, Trade rules, Orders, Run log; L2-02, L2-03

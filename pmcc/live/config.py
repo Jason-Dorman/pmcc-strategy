@@ -82,11 +82,13 @@ class StrikeParams(_Params):
 
 
 class CashParams(_Params):
-    """L-P4's: contracts per order, shares per contract, and the cash the book starts with."""
+    """L-P4's: contracts per order, shares per contract, the cash the book starts with, and the
+    gap at the open the cash must also cover, since Sanji sets a put's strike there (PO, LD-29)."""
 
     contracts: StrictInt = Field(ge=1)
     multiplier: StrictInt = Field(ge=1)
     starting_cash: StrictStr
+    gap_allowance: StrictFloat = Field(ge=0, le=1)
 
     @model_validator(mode="after")
     def _positive(self) -> Self:
@@ -108,6 +110,9 @@ class OrderParams(_Params):
     lmt_prc: StrictStr
     ref: StrictStr
     qty: StrictInt = Field(ge=1)
+    # A put's strike goes as `pct:X`, X rounded to a multiple of this, in whole percents: the
+    # order page shows only whole ones (PO, LD-29)
+    pct_step: StrictInt = Field(ge=1)
 
 
 PARAMS: dict[str, type[_Params]] = {
@@ -189,7 +194,11 @@ class LiveConfig(BaseModel):
     def order_fields(self) -> dict[str, Param]:
         """L-O1's order type, limit token, reference and quantity, for an `Order`, which checks
         them against the order language when the order is made."""
-        return dict(OrderParams.model_validate(self.rule("L-O1").params).model_dump())
+        return dict(self.order_params.model_dump(exclude={"pct_step"}))
+
+    @property
+    def order_params(self) -> OrderParams:
+        return OrderParams.model_validate(self.rule("L-O1").params)
 
 
 def load_live_config(path: Path = LIVE_PATH) -> LiveConfig:

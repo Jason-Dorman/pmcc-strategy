@@ -11,14 +11,14 @@ const FIRST: LiveRun = {
   run_at: "2026-11-15T22:31:26.205329-05:00", last_session: "2026-11-13",
   next_session: "2026-11-16", state: "cash", cash: 25000, cost_basis: null, outcome: "order",
   rule: "L-O1", reason: "sell 1 155.00 put expiring 2026-11-20 at the mid",
-  order_id: "wheel-2026-11-16-P-155", pick: { ...PICK, bid: null, ask: null, mid: null,
-                                              spread: null },
+  order_id: "wheel-2026-11-16-P-155", strike_sent: null,
+  pick: { ...PICK, bid: null, ask: null, mid: null, spread: null },
   open_orders: 1,
 };
 
 export const QUOTED: LiveRun = {
   ...FIRST, run_at: "2026-11-16T22:00:05-05:00", last_session: "2026-11-16",
-  next_session: "2026-11-17",
+  next_session: "2026-11-17", order_id: "wheel-2026-11-17-P-pct-5", strike_sent: "pct:-5",
   pick: { ...PICK, bid: 2.41, ask: 2.46, mid: 2.435, spread: 0.0205 },
 };
 
@@ -26,7 +26,7 @@ const FAILED: LiveRun = {
   ...FIRST, run_at: "2026-11-17T22:00:03-05:00", last_session: "2026-11-17",
   next_session: "2026-11-18", state: null, cash: null, outcome: "failed", rule: "L-B1",
   reason: "Sanji's prices end on 2026-11-16, not the last completed session 2026-11-17",
-  order_id: null, pick: null, open_orders: null,
+  order_id: null, strike_sent: null, pick: null, open_orders: null,
 };
 
 export const LIVE: Live = {

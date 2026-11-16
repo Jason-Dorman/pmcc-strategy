@@ -7,10 +7,13 @@ token, a missing required field, a quantity below 1. An invalid order fails and 
 
 import json
 from datetime import date
+from decimal import ROUND_CEILING, Decimal
 from pathlib import Path
 from typing import Any
 
 import pytest
+from hypothesis import assume, given, settings
+from hypothesis import strategies as st
 
 from pmcc.domain.instruments import Right
 from pmcc.domain.money import Price
@@ -20,6 +23,7 @@ from pmcc.live.orders import (
     OrderError,
     order_id,
     parse_orders,
+    pct_token,
     read_orders,
     render_orders,
     strike_token,
@@ -153,8 +157,8 @@ def test_linv_01_an_unknown_expiry_token_is_rejected(token: str) -> None:
         "otm:1",
         "itm:2",
         "pct:-5",
-        "pct:3.5",
         "pct:+2",
+        "pct:0",
         "delta:30",
         "delta:12.5",
         "premium:2",
@@ -178,6 +182,9 @@ def test_linv_01_every_strike_token_on_the_page_is_valid(token: str) -> None:
         "delta:100",
         "premium:0",
         "pct:",
+        "pct:3.5",  # the page shows whole percents only (LD-29)
+        "pct:-4.8",
+        "pct:-05",
         "0",
         "-250",
         "ATM",
@@ -276,15 +283,16 @@ def test_l2_01_an_unreadable_file_is_an_error(tmp_path: Path, text: str) -> None
 @pytest.mark.parametrize(
     ("right", "strike", "expected"),
     [
+        (Right.PUT, "pct:-5", "wheel-2026-11-16-P-pct-5"),
         (Right.PUT, "155", "wheel-2026-11-16-P-155"),
         (Right.CALL, "152.5", "wheel-2026-11-16-C-152.5"),
-        (Right.PUT, "152.25", "wheel-2026-11-16-P-152.25"),
+        (Right.CALL, "152.25", "wheel-2026-11-16-C-152.25"),
     ],
 )
 def test_ld_19_a_wheel_orders_id_names_its_session_right_and_strike(
     right: Right, strike: str, expected: str
 ) -> None:
-    assert order_id(date(2026, 11, 16), right, Price.from_dollars(strike)) == expected
+    assert order_id(date(2026, 11, 16), right, strike) == expected
 
 
 @pytest.mark.parametrize(
@@ -342,3 +350,69 @@ def test_l2_01_a_directory_where_the_file_belongs_is_an_error(tmp_path: Path) ->
 
     with pytest.raises(OrderError, match=r"open_orders\.json"):
         read_orders(path)
+
+
+# ---- LD-29: a put's strike as its distance from the close -------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("strike", "close", "step", "token"),
+    [
+        ("155", "162.83", 1, "pct:-5"),  # Monday Nov 16's put: -4.81%
+        ("150", "162.83", 1, "pct:-8"),  # -7.88%
+        ("170", "162.83", 1, "pct:4"),  # 4.40%
+        ("162.83", "162.83", 1, "pct:0"),
+        ("155", "162.83", 2, "pct:-4"),  # to a multiple of L-O1's pct_step
+    ],
+)
+def test_ld_29_a_strike_is_written_as_its_whole_percent_from_the_close(
+    strike: str, close: str, step: int, token: str
+) -> None:
+    assert pct_token(Price.from_dollars(strike), Price.from_dollars(close), step) == token
+    assert parse_orders([_with(OPTION_LIMIT, strike=token)])[0].strike == token
+
+
+def _sanji_resolves(token: str, ref: Decimal, strikes: list[Decimal]) -> Decimal:
+    """The order page's `pct:X`: ref × (1 + X/100), then the nearest listed strike; a put's tie
+    goes further out of the money (down)."""
+    target = ref * (1 + Decimal(token.removeprefix("pct:")) / 100)
+    return min(strikes, key=lambda k: (abs(k - target), k))
+
+
+def _ladder(close: Decimal) -> tuple[Decimal, list[Decimal]]:
+    """Strikes at least 1.5% of the close apart, in $0.50s (NVDA's $2.50 at $162.83 is 1.54%)."""
+    step = (close * Decimal("0.015") / Decimal("0.50")).to_integral_value(ROUND_CEILING)
+    step *= Decimal("0.50")
+    atm = (close / step).to_integral_value() * step
+    return step, [atm + step * k for k in range(-12, 13) if atm + step * k > 0]
+
+
+@settings(max_examples=300)
+@given(
+    close=st.decimals(min_value=Decimal("20"), max_value=Decimal("600"), places=2),
+    steps=st.integers(min_value=1, max_value=8),
+)
+def test_ld_29_an_unchanged_open_resolves_to_the_strike_picked(close: Decimal, steps: int) -> None:
+    """A whole percent moves Sanji's target at most half a percent of the close, under half a step
+    on a ladder over 1% apart: when the stock opens where it closed, it lands on the picked
+    strike, for any close and any out-of-the-money strike."""
+    step, strikes = _ladder(close)
+    picked = min(strikes, key=lambda k: abs(k - close)) - step * steps
+    assume(0 < picked < close)
+    token = pct_token(Price.from_dollars(picked), Price.from_dollars(close))
+
+    assert _sanji_resolves(token, close, strikes) == picked
+
+
+def test_ld_29_a_gap_at_the_open_moves_the_strike_with_the_stock() -> None:
+    """Monday Nov 16's `pct:-5`: at Friday's close it's $155; a 6% gap down moves it to $145,
+    still 5% below the stock, where a strike sent as `155` would be at the money."""
+    close = Decimal("162.83")
+    strikes = [Decimal(k) for k in range(130, 150, 5)] + [
+        Decimal(150) + Decimal("2.5") * k for k in range(13)
+    ]
+    token = pct_token(Price.from_dollars("155"), Price.from_dollars(close))
+
+    assert _sanji_resolves(token, close, strikes) == Decimal("155")
+    assert _sanji_resolves(token, close * Decimal("0.94"), strikes) == Decimal("145")
+    assert _sanji_resolves(token, close * Decimal("1.06"), strikes) == Decimal("165")

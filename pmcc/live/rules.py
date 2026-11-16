@@ -15,6 +15,7 @@ backtest. Pure functions of the snapshot: they read no files and ask LSEG nothin
 
 import math
 from dataclasses import dataclass
+from decimal import ROUND_CEILING, Decimal
 from typing import final
 
 import numpy as np
@@ -89,9 +90,15 @@ def liquid(pick: Pick, max_spread: float) -> bool:
     return math.isfinite(pick.spread_pct) and pick.spread_pct <= max_spread
 
 
-def secured(cash: Money, strike: Price, contracts: int, multiplier: int) -> bool:
-    """L-P4: cash covers the shares a put's assignment would buy."""
-    return cash >= strike.notional(multiplier, contracts)
+def secured(
+    cash: Money, strike: Price, contracts: int, multiplier: int, allowance: float = 0.0
+) -> bool:
+    """L-P4: cash covers the shares a put's assignment would buy, with `allowance` (0.10: 10%)
+    more for the gap at the open, where Sanji sets the strike (PO, LD-29). Rounded up to the
+    $0.0001, in integer units."""
+    notional = strike.notional(multiplier, contracts).units
+    needed = (Decimal(notional) * (1 + Decimal(str(allowance)))).to_integral_value(ROUND_CEILING)
+    return cash >= Money(int(needed))
 
 
 def _priced(

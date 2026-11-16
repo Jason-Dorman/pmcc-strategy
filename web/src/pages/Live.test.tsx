@@ -8,7 +8,7 @@ import { clearRunCache } from "../data/loader";
 import { FILES } from "../test/fixtures";
 import { LIVE, QUOTED } from "../test/liveFixtures";
 import { bodyRows, column, panel, readout, renderLive, rowAt, sortBy } from "../test/page";
-import { orderFile } from "./live/sections";
+import { orderFile, strikeValue } from "./live/sections";
 
 afterEach(() => {
   cleanup();
@@ -112,6 +112,12 @@ describe("the panels", () => {
     expect(file.textContent).toBe(text);
   });
 
+  it("read a strike token's value: a number's, a percent's, none for the rest", () => {
+    expect([strikeValue("155"), strikeValue("152.5"), strikeValue("pct:-5"),
+            strikeValue("pct:+2"), strikeValue("atm"), strikeValue(null)])
+      .toEqual([155, 152.5, -5, 2, undefined, undefined]);
+  });
+
   it("sort strikes by value, not as text", async () => {
     const at = (strike: string) => ({ ...LIVE.orders[0], id: `o-${strike}`, strike });
     const orders = [at("155"), at("92.5"), at("1000")];
@@ -128,9 +134,10 @@ describe("the panels", () => {
     expect(bodyRows(log)).toHaveLength(3);
     expect(column(log, 4)).toEqual(["Failed", "Order", "Order"]);
     expect(column(log, 7)).toEqual(["", "$155 put, 2026-11-20", "$155 put, 2026-11-20"]);
-    expect(column(log, 10)).toEqual(["", "$2.4100", "—"]); // bid
-    expect(column(log, 12)).toEqual(["", "$2.4350", "—"]); // mid
-    expect(column(log, 13)).toEqual(["", "2.1%", "—"]); // spread
+    expect(column(log, 8)).toEqual(["", "pct:-5", "—"]); // the strike sent (LD-29)
+    expect(column(log, 11)).toEqual(["", "$2.4100", "—"]); // bid
+    expect(column(log, 13)).toEqual(["", "$2.4350", "—"]); // mid
+    expect(column(log, 14)).toEqual(["", "2.1%", "—"]); // spread
   });
 
   it("say when the route's symbol isn't the one the live wheel trades", async () => {

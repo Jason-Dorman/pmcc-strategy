@@ -74,12 +74,12 @@ Any other book (long options, more than one short option, an odd lot) is unreada
 | L-P1 | Put timing | Only when the next session is its week's first, in the Cash state |
 | L-P2 | Put expiry | The listed expiry on that week's last session; none listed → no order that week, logged |
 | L-P3 | Put strike | The OTM put whose delta at the close is nearest −0.30; a tie goes further out of the money (LD-11) |
-| L-P4 | Cash-secured | One contract, only if cash ≥ strike × 100; otherwise no order, logged (LD-09) |
+| L-P4 | Cash-secured | One contract, only if cash ≥ the strike picked at the close × 100 × 1.10, room for a 10% gap at the open, where Sanji sets the strike; otherwise no order, logged (LD-09, PO, LD-29) |
 | L-C1 | Call timing | Only when the next session is its week's first, in the Shares state |
 | L-C2 | Call expiry | As L-P2 |
 | L-C3 | Call strike | Among OTM calls with strike ≥ cost basis, the one whose delta at the close is nearest 0.30; a tie goes further out of the money. None → no order that week, logged |
 | L-T1 | Liquidity | The picked contract has a bid > 0 and an ask ≥ the bid at the close, and its spread is ≤ 10% of its mid; otherwise no order that week, logged |
-| L-O1 | Order | `SHT` 1 contract, limit at `mid`, `ref` `open`, the expiry as a date, the strike as a number (LD-07, LD-11) |
+| L-O1 | Order | `SHT` 1 contract, limit at `mid`, `ref` `open`, the expiry as a date; a put's strike as its percent from the close in whole percents (`pct:-5`), which Sanji applies to the open so a gap moves it; a call's strike as a number (LD-07, LD-11, PO, LD-29) |
 | L-O2 | Unfilled | A week whose order doesn't fill is skipped: no retry later in the week (LD-08) |
 
 - **Cash:** $25,000 at the start (Sanji starts no book: LD-09), plus every cash flow in Sanji's fills: premiums received, and strike × 100 paid on assignment or received on a call-away.
@@ -95,7 +95,7 @@ Every threshold lives in `configs/live.yaml` under its rule ID (the strike band 
 ```json
 [
   {
-    "id": "wheel-2026-11-16-P-200",
+    "id": "wheel-2026-11-16-P-pct-5",
     "for": "2026-11-16",
     "order_type": "lmt",
     "action": "SHT",
@@ -103,18 +103,18 @@ Every threshold lives in `configs/live.yaml` under its rule ID (the strike band 
     "underlying": 4815747,
     "contract": "put",
     "expiry": "2026-11-20",
-    "strike": "200",
+    "strike": "pct:-5",
     "ref": "open",
     "lmt_prc": "mid"
   }
 ]
 ```
 
-NVDA's conid is 4815747 (LD-12); the strike above is a placeholder until the first pick. Every order is validated against the order language before the file is written; an invalid one fails the run and writes nothing.
+NVDA's conid is 4815747 (LD-12). The strike above is Monday Nov 16's: the 0.30-delta put at Friday's close was $155, 4.81% below the $162.83 close, sent as a whole 5%, so Sanji takes the open × 0.95 and the nearest listed strike: $155 if NVDA opens where it closed (PO, LD-29). The order is written the night before, so a strike sent as a number would sit at another delta after a gap at the open; a percentage moves with it. Every order is validated against the order language before the file is written; an invalid one fails the run and writes nothing.
 
 ## Run log
 
-Each run appends one row to a committed log, `live/runs.jsonl`, failed runs included: the run time; the last resolved session; the next session; the state; cash and the cost basis; the decision (an order, or no order) with its rule ID and reason; the order's `id`, strike, expiry and delta at the close, and the picked option's bid, ask, mid and spread then (PO, LD-15).
+Each run appends one row to a committed log, `live/runs.jsonl`, failed runs included: the run time; the last resolved session; the next session; the state; cash and the cost basis; the decision (an order, or no order) with its rule ID and reason; the order's `id` and the strike it sent (LD-29), the picked option's strike, expiry and delta at the close, and its bid, ask, mid and spread then (PO, LD-15).
 
 ## Site
 
@@ -126,7 +126,7 @@ These must hold on every run and fail it if they don't (`LINV-01` … `LINV-09`)
 
 1. Every order written is valid in the order language.
 2. At most one short NVDA option is held or ordered at a time: no put order unless in Cash, no call order unless in Shares.
-3. A put order's strike × 100 ≤ cash.
+3. A put order's strike, as picked at the close, × 100 × (1 + L-P4's gap allowance) ≤ cash (LD-29).
 4. A call order's strike ≥ the cost basis.
 5. Every new order's `for` is an NYSE session after the last completed one. (An order kept from earlier in the week keeps its `for`: LD-19.)
 6. No new order is written on a stale or unreadable book.

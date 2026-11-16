@@ -76,6 +76,9 @@ class LiveRun(Model):
     rule: str
     reason: str
     order_id: str | None
+    # The strike token the order sent (`pct:-5`, PO, LD-29); null on a night with no order,
+    # and on rows logged before it was (Nov 15's)
+    strike_sent: str | None = None
     pick: LivePick | None
     open_orders: int | None
 

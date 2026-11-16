@@ -57,7 +57,8 @@ _DATE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
 _EXPIRY = re.compile(r"(?:0|[1-9][0-9]*)DTE[+-]?|W\+|M\+")
 _STRIKE_NUMBER = re.compile(_NUMBER)
 _STRIKE_STEPS = re.compile(r"(?:otm|itm):[1-9][0-9]*")
-_STRIKE_PCT = re.compile(rf"pct:[+-]?{_NUMBER}")
+# Whole percents only: the page shows `pct:-5` and no decimal, and an unknown token is rejected
+_STRIKE_PCT = re.compile(r"pct:[+-]?(?:0|[1-9][0-9]*)")
 _STRIKE_POSITIVE = re.compile(rf"(?P<kind>delta|premium):(?P<value>{_NUMBER})")
 _LIMIT = re.compile(rf"{_NUMBER}|(?:mid|bid|ask)(?:[+-]{_NUMBER})?")
 _MAX_DELTA = 100
@@ -212,9 +213,21 @@ def strike_token(strike: Price) -> str:
     return format(strike.to_dollars().normalize(), "f")
 
 
-def order_id(session: date, right: Right, strike: Price) -> str:
-    """A wheel order's id (LD-19): its session, right and strike, so a re-run makes the same one."""
-    return f"wheel-{session.isoformat()}-{right.value}-{strike_token(strike)}"
+def pct_token(strike: Price, reference: Price, step: int = 1) -> str:
+    """A strike as its distance from `reference` in whole percents, rounded to a multiple of
+    `step` (PO, LD-29): `pct:-5` for $155 against a $162.83 close. Sanji applies it to the order's
+    `ref` print, the open, then takes the nearest listed strike (a tie further out of the money),
+    so the strike moves with a gap. A whole percent moves the target at most half a percent, which
+    lands on the same strike while strikes are over 1% of the price apart."""
+    pct = (Decimal(strike.units) / Decimal(reference.units) - 1) * 100
+    whole = int((pct / step).to_integral_value()) * step
+    return f"pct:{whole}"
+
+
+def order_id(session: date, right: Right, strike: str) -> str:
+    """A wheel order's id (LD-19): its session, right and strike token, so a re-run makes the same
+    one: `wheel-2026-11-16-P-pct-5`, `wheel-2026-11-16-C-170`."""
+    return f"wheel-{session.isoformat()}-{right.value}-{strike.replace(':', '')}"
 
 
 def _calendar_date(text: str, what: str) -> date:

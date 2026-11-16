@@ -99,6 +99,10 @@ MUTATIONS: list[Mutation] = [
     lambda raw: raw["rules"][6]["params"].update(contracts=1.5),
     lambda raw: raw["rules"][6]["params"].update(starting_cash=25000),
     lambda raw: raw["rules"][6]["params"].update(starting_cash="-1"),
+    lambda raw: raw["rules"][6]["params"].update(gap_allowance=1.5),
+    lambda raw: raw["rules"][6]["params"].update(gap_allowance="10%"),
+    lambda raw: raw["rules"][11]["params"].update(pct_step=0),
+    lambda raw: raw["rules"][11]["params"].update(pct_step=0.5),
     lambda raw: raw["rules"][10]["params"].update(max_spread="10%"),
     lambda raw: raw["rules"][11]["params"].update(qty=True),
 ]
@@ -120,3 +124,11 @@ def test_l_p4_the_starting_cash_is_l_p4s() -> None:
 
     assert config.cash_rule.starting_cash == "25000.00"
     assert config.cash.to_dollars() == 25000
+
+
+def test_ld_29_l_o1s_pct_step_and_l_p4s_gap_allowance_are_theirs() -> None:
+    config = load_live_config()
+
+    assert config.order_params.pct_step == 1
+    assert config.cash_rule.gap_allowance == 0.10
+    assert "pct_step" not in config.order_fields()  # a param, not an order field

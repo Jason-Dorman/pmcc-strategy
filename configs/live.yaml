@@ -44,10 +44,11 @@ rules:
   - id: L-P4
     rule: Cash-secured
     # Sanji doesn't start a book, so the cash-secured check is ours (LD-09): the backtest's $25,000.
-    params: {contracts: 1, multiplier: 100, starting_cash: '25000.00'}
+    # A put's strike is set at the open (L-O1), so the cash covers a gap up to it too (LD-29).
+    params: {contracts: 1, multiplier: 100, starting_cash: '25000.00', gap_allowance: 0.10}
     text: >-
-      {contracts} contract, sold only if cash (starting at ${starting_cash}) covers the strike ×
-      {multiplier} shares.
+      {contracts} contract, sold only if cash (starting at ${starting_cash}) covers the strike
+      picked at the close × {multiplier} shares, plus {gap_allowance:.0%} for a gap at the open.
   - id: L-C1
     rule: Call timing
     text: A call is sold only for a week's first session, and only when holding 100 shares.
@@ -69,10 +70,14 @@ rules:
       {max_spread:.0%} of its mid; otherwise no order that week.
   - id: L-O1
     rule: Order
-    params: {order_type: lmt, lmt_prc: mid, ref: open, qty: 1}
+    # A put's strike goes as its distance from the close in whole percents (`pct:-5`), which Sanji
+    # applies to the open, so a gap moves it (PO, LD-29); a call's as its number (L-C3's floor).
+    params: {order_type: lmt, lmt_prc: mid, ref: open, qty: 1, pct_step: 1}
     text: >-
       Sell to open {qty} contract at a limit of the {lmt_prc} at the {ref}, naming the expiry by
-      date and the strike by number.
+      date. A put's strike is sent as its distance below the close in whole percents, so Sanji
+      sets it that far below the {ref} and it moves with a gap; a call's strike is sent as its
+      number.
   - id: L-O2
     rule: Unfilled
     text: A week whose order doesn't fill is skipped; it is not retried later in the week.

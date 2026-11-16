@@ -40,7 +40,15 @@ from pmcc.domain.sessions import Session
 from pmcc.live.book import Book, BookError, WheelState, check_current, read_book
 from pmcc.live.config import RULE_IDS, LiveConfig, LiveConfigError, StrikeParams
 from pmcc.live.names import ORDERS, RIGHT_NAMES, SANJI_DIR, dollars, quote_dollars
-from pmcc.live.orders import Order, OrderError, order_id, read_orders, strike_token, write_orders
+from pmcc.live.orders import (
+    Order,
+    OrderError,
+    order_id,
+    pct_token,
+    read_orders,
+    strike_token,
+    write_orders,
+)
 from pmcc.live.rules import Pick, liquid, secured, select
 from pmcc.live.snapshot import CloseSnapshot, SnapshotError, last_completed, next_session
 
@@ -235,8 +243,12 @@ def _broken_order(
         return f"LINV-02: a {order.contract} order while holding {book.state.value}"
     cash = config.cash_rule
     strike = pick.option.strike
-    if order.contract == "put" and not secured(book.cash, strike, cash.contracts, cash.multiplier):
-        return f"LINV-03: the put's strike x 100 is more than the cash ({dollars(book.cash)})"
+    covered = secured(book.cash, strike, cash.contracts, cash.multiplier, cash.gap_allowance)
+    if order.contract == "put" and not covered:
+        return (
+            f"LINV-03: the put's strike x 100, with a {cash.gap_allowance:.0%} gap, is more than "
+            f"the cash ({dollars(book.cash)})"
+        )
     floor = book.cost_basis
     if order.contract == "call" and (floor is None or strike < floor):
         return f"LINV-04: the call's strike is below the cost basis ({floor})"
@@ -267,30 +279,43 @@ def _sell(
         )
         return Decision("L-T1", why, pick=pick)
     cash = config.cash_rule
-    if is_put and not secured(book.cash, pick.option.strike, cash.contracts, cash.multiplier):
-        why = f"cash {dollars(book.cash)} doesn't cover the {dollars(pick.option.strike)} put"
+    gap = cash.gap_allowance
+    if is_put and not secured(book.cash, pick.option.strike, cash.contracts, cash.multiplier, gap):
+        why = (
+            f"cash {dollars(book.cash)} doesn't cover the {dollars(pick.option.strike)} put with a "
+            f"{gap:.0%} gap at the open"
+        )
         return Decision("L-P4", why, pick=pick)
     order = _order(snap, pick, config)
-    return Decision(
-        "L-O1",
-        f"sell {order.qty} {dollars(pick.option.strike)} {name} expiring {snap.expiry} at the mid",
-        order,
-        pick,
-    )
+    at = dollars(pick.option.strike)
+    what = f"{name} at {order.strike} of the open ({at} at the close)" if is_put else f"{at} {name}"
+    why = f"sell {order.qty} {what} expiring {snap.expiry} at the mid"
+    return Decision("L-O1", why, order, pick)
+
+
+def _strike(snap: CloseSnapshot, pick: Pick, step: int) -> str:
+    """L-O1: a put's strike as its distance from the close in percent, which Sanji applies to the
+    open, so it moves with a gap (PO, LD-29); a call's as its number, so it can't land below the
+    cost basis (L-C3)."""
+    strike = pick.option.strike
+    if pick.option.right is Right.PUT:
+        return pct_token(strike, snap.close, step)
+    return strike_token(strike)
 
 
 def _order(snap: CloseSnapshot, pick: Pick, config: LiveConfig) -> Order:
     option = pick.option
+    strike = _strike(snap, pick, config.order_params.pct_step)
     try:
         return Order.model_validate(
             {
-                "id": order_id(snap.next_session.day, option.right, option.strike),
+                "id": order_id(snap.next_session.day, option.right, strike),
                 "for": snap.next_session.day.isoformat(),
                 "action": "SHT",
                 "underlying": config.underlying_conid,
                 "contract": RIGHT_NAMES[option.right],
                 "expiry": snap.expiry.isoformat(),
-                "strike": strike_token(option.strike),
+                "strike": strike,
                 **config.order_fields(),
             }
         )
@@ -347,6 +372,7 @@ def _row(
         "rule": decision.rule,
         "reason": decision.reason,
         "order_id": decision.order.id if decision.order is not None else None,
+        "strike_sent": decision.order.strike if decision.order is not None else None,
         "pick": None if pick is None else _pick(pick),
         "open_orders": len(orders),
     }
@@ -361,6 +387,7 @@ def _failed_row(
         "rule": rule,
         "reason": reason,
         "order_id": None,
+        "strike_sent": None,
         "pick": None,
         "open_orders": None,
     }

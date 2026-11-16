@@ -81,7 +81,10 @@ export function Live() {
         { ...panel("orders", "Open orders", W_FULL, body((l) => <OpenOrders live={l} />)),
           note: "open_orders.json, as the nightly run left it",
           caption: <>An order stays in the file until the week it&apos;s for has ended; Sanji
-            acts on it only on its own session, and never fills an id twice.</> },
+            acts on it only on its own session, and never fills an id twice. Monday Nov 16&apos;s
+            order was first written with its strike as a number, $155, and re-sent before the open
+            as its percent below Friday&apos;s close, so the run log&apos;s first rows name its
+            first id.</> },
         { ...panel("positions", "Positions", W_HALF, body((l) => (
             <SanjiFile file={l.positions} empty="No positions yet." />))),
           note: "Sanji's positions.json" },

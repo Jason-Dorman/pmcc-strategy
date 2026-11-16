@@ -18,9 +18,12 @@ import type {
   SanjiFileOut,
 } from "../../types/generated/live";
 
-/** A strike token (`155`, `152.5`) as a number, so strikes sort by value, not as text. */
-function strikeValue(strike: string | null | undefined): number | undefined {
-  return strike === null || strike === undefined ? undefined : Number(strike);
+/** A strike token's value, so strikes sort by value, not as text: a number (`155`), or a
+ * percent's (`pct:-5` is −5, LD-29); a token without one (`atm`) sorts last. */
+export function strikeValue(strike: string | null | undefined): number | undefined {
+  if (strike === null || strike === undefined) return undefined;
+  const value = Number(strike.startsWith("pct:") ? strike.slice(4) : strike);
+  return Number.isFinite(value) ? value : undefined;
 }
 
 // ---- the algorithm ------------------------------------------------------------------------------
@@ -34,9 +37,12 @@ export function Algorithm({ live }: { live: Live }) {
         Each week the live wheel sells one option on {live.symbol}, one contract at a time, and
         writes it to <code>open_orders.json</code> for Sanji, the course&apos;s order system, to
         fill. While it holds only cash, it sells a <b>put</b> for the week&apos;s first trading
-        session: the out-of-the-money put expiring that week whose delta at the close is nearest
-        −0.30, at a limit of the mid at the open, and only if the cash covers the strike × 100. If
-        the put expires worthless, it keeps the premium and sells another the next week. If
+        session. From the close the night before, it finds the out-of-the-money put expiring that
+        week whose delta is nearest −0.30, and sends its strike as a distance below the close in
+        percent: Sanji sets the strike that far below the open, so a gap overnight moves it with
+        the stock. The limit is the put&apos;s mid at the open, and it&apos;s sold only if the
+        cash covers the strike picked at the close × 100, with room for a gap at the open. If the
+        put expires worthless, it keeps the premium and sells another the next week. If
         it&apos;s assigned, it holds 100 shares and sells a <b>covered call</b> each week instead,
         never below what the shares cost, until they&apos;re called away and it holds cash again.
       </p>
@@ -169,8 +175,10 @@ const RUN_COLUMNS: readonly TableColumn<LiveRun>[] = [
   { id: "rule", header: "Rule", sort: (r) => r.rule,
     cell: (r) => r.rule },
   { id: "why", header: "Why", sort: (r) => r.reason, cell: (r) => r.reason },
-  { id: "option", header: "Option", sort: (r) => strikeValue(r.pick?.strike),
+  { id: "option", header: "Picked at the close", sort: (r) => strikeValue(r.pick?.strike),
     cell: (r) => (r.pick ? option(r.pick) : "") },
+  { id: "sent", header: "Sent as", sort: (r) => strikeValue(r.strike_sent),
+    cell: (r) => r.strike_sent ?? (r.order_id ? "—" : "") },
   { id: "delta", header: "Delta", num: true, sort: (r) => r.pick?.delta,
     cell: (r) => quote(r.pick, (p) => p.delta, ratio) },
   { id: "iv", header: "IV", num: true, sort: (r) => r.pick?.iv,
