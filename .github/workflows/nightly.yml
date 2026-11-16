@@ -1,0 +1,75 @@
+# The live wheel's nightly run (L3-01; Spec › Nightly job; LD-05, LD-06, LD-14, LD-27).
+# At 03:00 UTC (22:00 EST, 23:00 EDT), after Sanji has resolved the day's session, and by hand from
+# the Actions tab ("Run workflow"). It runs one night of `pmcc live` on NVDA with the LSEG secrets,
+# then commits only `open_orders.json` (root and mkt/) and the run log as the Actions bot, pulling
+# first because Sanji pushes to the same branch. A failed night commits its failed row alone, the
+# order files left as they were, and the job stays red (LD-14). CI runs when this completes and redeploys the site (LD-06).
+name: nightly
+
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: nightly
+  cancel-in-progress: false
+
+jobs:
+  live:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Install from uv.lock
+        run: uv sync --frozen
+
+      - name: Run tonight's live wheel
+        id: live
+        env:
+          LSEG_APP_KEY: ${{ secrets.LSEG_APP_KEY }}
+          LSEG_USERNAME: ${{ secrets.LSEG_USERNAME }}
+          LSEG_PASSWORD: ${{ secrets.LSEG_PASSWORD }}
+        run: uv run --frozen pmcc live --symbol NVDA
+
+      - name: Commit the orders and the run log
+        if: ${{ !cancelled() && steps.live.outcome != 'skipped' }}
+        env:
+          LIVE_OUTCOME: ${{ steps.live.outcome }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [ "$LIVE_OUTCOME" != "success" ]; then
+            echo "The run failed: committing its log row alone, the orders as they were."
+            git checkout -- open_orders.json mkt/open_orders.json
+          fi
+          git add -- open_orders.json mkt/open_orders.json live/runs.jsonl
+          if git diff --cached --quiet; then
+            echo "Nothing to commit."
+            exit 0
+          fi
+          git commit -m "Live wheel: nightly run $(TZ=America/New_York date +%F)"
+          for attempt in 1 2 3; do
+            if git pull --rebase origin main && git push origin HEAD:main; then
+              exit 0
+            fi
+            git rebase --abort 2>/dev/null || true
+            if [ "$attempt" -lt 3 ]; then
+              sleep $((attempt * 10))
+            fi
+          done
+          echo "Could not push the night's commit after 3 tries." >&2
+          exit 1

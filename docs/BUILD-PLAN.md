@@ -18,7 +18,7 @@ Nov 13, 2026 · from the [Live spec](LIVE-SPEC.md) · **due Tue Nov 17 2026, 11:
 | L0 Docs | Fri Nov 13 | Spec, decisions and backlog live; the wheel's docs archived | In progress: L0-01 drafted, waiting on the PO's review |
 | L1 Foundations | Fri Nov 13 | CI green on Sanji's pushes; a headless LSEG session pulls NVDA's chain | Done 2026-11-14: CI green (L1-01); the headless session pulled NVDA's quoted chain in Actions (L1-02) |
 | L2 Algorithm | Sat Nov 14 | `pmcc live` reads the book, picks the week's option and writes a valid `open_orders.json` | Done 2026-11-15: L2-01 to L2-03; the PO's dry run against LSEG planned Monday's $155 put. Sanji isn't resolving orders yet, so the book is read as cash until its files appear (LD-24) |
-| L3 Nightly job | Sun Nov 15 | The scheduled job runs, commits and redeploys; Monday's order is in the file before Sunday's 22:00 run ends | Not started |
+| L3 Nightly job | Sun Nov 15 | The scheduled job runs, commits and redeploys; Monday's order is in the file before Sunday's 22:00 run ends | Built 2026-11-15 (LD-27); waiting on the PO's manual run. Monday's order was placed by hand on Sunday night (L2-03), as Sunday's 22:00 slot passed before the workflow existed |
 | L4 Site | Mon Nov 16 | The live page shows the algorithm, the orders, Sanji's book and the run log | Not started |
 | L5 Release | Tue Nov 17 | Monday's order resolved by Sanji and shown; submitted by 18:00 (deadline 23:59 ET) | Not started |
 
@@ -72,9 +72,9 @@ Nov 13, 2026 · from the [Live spec](LIVE-SPEC.md) · **due Tue Nov 17 2026, 11:
 
 ### L3 — Nightly job
 
-- [ ] **L3-01 · The nightly workflow** **[PO]**
+- [ ] **L3-01 · The nightly workflow** **[PO]** — built 2026-11-15 (LD-27): `nightly.yml` and `ci.yml`'s `workflow_run`; 14 new tests, after a code review's fixes, and the commit step run against a scratch remote (a shallow clone, a push landing mid-run, a failed night). Waiting on the PO's manual run and Monday night's scheduled one
   - `.github/workflows/nightly.yml`: cron `0 3 * * *` and a manual run; `uv sync --frozen`; `pmcc live` with the secrets; commit `open_orders.json` and the run log as the bot after a pull (LD-06). `ci.yml` also runs on that workflow's completion and deploys from `main` (LD-06).
-  - Done when: a manual run commits Monday's order and the site redeploys; the PO confirms the scheduled run on Sunday night.
+  - Done when: a manual run commits Monday's order and the site redeploys; the PO confirms the scheduled run on Sunday night. Sunday's slot (03:00 UTC Nov 16) passed before the workflow existed, so Monday night's run (03:00 UTC Nov 17, planning Tuesday, keeping Monday's order: LD-19) is the first scheduled one.
   - Needs: L2-03, L1-01
 
 ### L4 — Site
@@ -100,4 +100,5 @@ Nov 13, 2026 · from the [Live spec](LIVE-SPEC.md) · **due Tue Nov 17 2026, 11:
 - **Cash may not secure a put.** Closed 2026-11-14: NVDA closed $162.83 on Nov 13, so a 0.30-delta put (a strike near $155) secures about $15,500 of the $25,000.
 - **Earnings week.** The Nov 20 weekly's at-the-money straddle cost about $15.75 at Nov 13's close, about 10% of the stock: likely NVDA's earnings that week (not confirmed). The rules have no event filter, as in the backtest, so Monday's put is sold through it; raised with the PO 2026-11-14.
 - **Sanji's file formats.** `positions.json` and `fills.json` don't exist yet, and nothing publishes their format; L5-01 reads them once they do.
-- **Timing.** Cron runs can start late; Sanji resolves from about 16:30 ET. L-B1 refuses a stale book rather than guess.
+- **Timing.** Cron runs can start late or be dropped (LD-27); Sanji resolves from about 16:30 ET. L-B1 refuses a stale book rather than guess.
+- **The price job skips days.** It wrote no commit for Nov 12 (Nov 13's carried both days) and has run as late as 10:55 ET the next morning. If Friday's prices haven't landed by Sunday night, every weekend night fails L-B1 and Monday gets no order; a manual run once they land covers it.

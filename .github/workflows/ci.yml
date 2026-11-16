@@ -3,18 +3,26 @@
 # `python` checks the code and verifies the committed results (DEC-51); `web` exports them, checks
 # and builds the site, guards the build and smoke-tests every route (INV-15); `deploy` publishes it
 # to GitHub Pages from main only (P4-07, P4-08; DEC-98, DEC-99).
+# The nightly job's commits are the Actions bot's, which start no workflow, so CI also runs
+# when the nightly job completes, and deploys after a successful one (L3-01; LD-06, LD-27).
 name: ci
 
 on:
   push:
   pull_request:
+  workflow_run:
+    workflows: [nightly]
+    types: [completed]
+    branches: [main]
 
 permissions:
   contents: read
 
+# A run after the nightly job never cancels another (it may not deploy); a push's run may cancel
+# it, since that run builds a newer main (LD-27).
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name != 'workflow_run' }}
 
 jobs:
   python:
@@ -122,13 +130,13 @@ jobs:
           if-no-files-found: warn
 
       - name: Upload the Pages artifact
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event.workflow_run.conclusion == 'success')
         uses: actions/upload-pages-artifact@v3
         with:
           path: web/dist
 
   deploy:
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event.workflow_run.conclusion == 'success')
     needs: [python, web]
     runs-on: ubuntu-latest
     timeout-minutes: 10

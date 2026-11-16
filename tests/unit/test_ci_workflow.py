@@ -62,6 +62,8 @@ def test_ci_never_contacts_lseg() -> None:
     text = WORKFLOW.read_text(encoding="utf-8")
     assert "pmcc fetch" not in text
     assert "pmcc probe" not in text
+    assert "pmcc live" not in text
+    assert "secrets." not in text
 
 
 # ---- the web and deploy jobs (P4-07) ------------------------------------------------------------
@@ -102,7 +104,11 @@ def test_ci_web_job_installs_node_from_nvmrc() -> None:
 
 
 def test_ci_uploads_and_deploys_only_from_main() -> None:
-    main = "github.ref == 'refs/heads/main' && github.event_name == 'push'"
+    """From a push to main, or after a successful nightly run (LD-06, LD-27)."""
+    main = (
+        "github.ref == 'refs/heads/main' && (github.event_name == 'push' || "
+        "github.event.workflow_run.conclusion == 'success')"
+    )
     upload = next(s for s in _job("web")["steps"]
                   if s.get("uses", "").startswith("actions/upload-pages-artifact"))  # fmt: skip
     assert (upload["if"], upload["with"]["path"]) == (main, "web/dist")
