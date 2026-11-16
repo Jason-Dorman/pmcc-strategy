@@ -1,0 +1,195 @@
+// The live page's panels (L4-01; UI-SPEC §6 › Live): the algorithm in words, the open orders and
+// the file itself, Sanji's positions and fills as he writes them, and the nightly run log with
+// each pick's quote at the close (PO, LD-15). Every value is read from `live.json`.
+import { Link } from "react-router-dom";
+
+import { DataTable, type TableColumn } from "../../components/DataTable";
+import { Details, Empty, Note } from "../../components/Note";
+import { money, moneySigned, price } from "../../format/money";
+import { iv, orDash, pct, ratio, spreadPct } from "../../format/number";
+import { timeET } from "../../format/time";
+import { stateLabel } from "../../format/wheel";
+import type {
+  Live,
+  LiveOrder,
+  LivePick,
+  LiveRuleOut,
+  LiveRun,
+  SanjiFileOut,
+} from "../../types/generated/live";
+
+/** A strike token (`155`, `152.5`) as a number, so strikes sort by value, not as text. */
+function strikeValue(strike: string | null | undefined): number | undefined {
+  return strike === null || strike === undefined ? undefined : Number(strike);
+}
+
+// ---- the algorithm ------------------------------------------------------------------------------
+
+/** What the wheel does each week, why it was chosen, from the backtest's numbers. */
+export function Algorithm({ live }: { live: Live }) {
+  const b = live.backtest;
+  return (
+    <Note>
+      <p>
+        Each week the live wheel sells one option on {live.symbol}, one contract at a time, and
+        writes it to <code>open_orders.json</code> for Sanji, the course&apos;s order system, to
+        fill. While it holds only cash, it sells a <b>put</b> for the week&apos;s first trading
+        session: the out-of-the-money put expiring that week whose delta at the close is nearest
+        −0.30, at a limit of the mid at the open, and only if the cash covers the strike × 100. If
+        the put expires worthless, it keeps the premium and sells another the next week. If
+        it&apos;s assigned, it holds 100 shares and sells a <b>covered call</b> each week instead,
+        never below what the shares cost, until they&apos;re called away and it holds cash again.
+      </p>
+      {b && (
+        <p>
+          <b>Why the wheel:</b> it&apos;s the strategy already built and backtested here. On{" "}
+          {live.symbol} from {b.start} to {b.end}, it made {moneySigned(b.pnl)} (
+          {pct(b.return_on_starting_cash)}) on {money(b.starting_cash)}, with an annualized Sharpe
+          of {orDash(b.sharpe_annualized, ratio)} against the baseline PMCC&apos;s{" "}
+          {orDash(b.baseline_sharpe_annualized, ratio)} over the same weeks. It also suits Sanji,
+          which settles expiries and assignments itself, so the algorithm only has to sell one
+          option at the start of each week.{" "}
+          <Link to={`/wheel-review/${live.symbol}`}>The wheel&apos;s backtest review</Link> has
+          the rest.
+        </p>
+      )}
+      <p>
+        Earnings weeks are traded like any other, as in the backtest, which had no event filter:
+        the premium is richer and assignment likelier. The first week traded, to Nov 20, likely
+        spans {live.symbol}&apos;s earnings.
+      </p>
+      <p>The rules, each with its ID, which the run log names:</p>
+    </Note>
+  );
+}
+
+const RULE_COLUMNS: readonly TableColumn<LiveRuleOut>[] = [
+  { id: "id", header: "ID", sort: (r) => r.id, cell: (r) => r.id },
+  { id: "rule", header: "Rule", sort: (r) => r.rule, cell: (r) => r.rule },
+  { id: "words", header: "What it does", sort: (r) => r.words, cell: (r) => r.words },
+];
+
+/** The rules, each in its words with its ID, as `configs/live.yaml` holds them. */
+export function LiveRules({ live }: { live: Live }) {
+  return (
+    <DataTable label="Live wheel rules" rows={live.rules} columns={RULE_COLUMNS}
+               rowId={(r) => r.id} wrap grow />
+  );
+}
+
+// ---- open orders ----------------------------------------------------------------------------
+
+const ACTIONS: Readonly<Record<string, string>> = {
+  BUY: "Buy",
+  SEL: "Sell",
+  SHT: "Sell to open",
+  BTC: "Buy to close",
+};
+
+/** The order language's fields in its page's order, as `open_orders.json` writes them. */
+const FIELD_ORDER = ["id", "for", "order_type", "action", "qty", "underlying", "contract",
+                     "expiry", "strike", "ref", "lmt_prc"] as const;
+
+/** The orders as the file holds them: two-space indent, absent fields left out. */
+export function orderFile(orders: readonly LiveOrder[]): string {
+  const rows = orders.map((o) => Object.fromEntries(
+    FIELD_ORDER.filter((f) => o[f] !== null).map((f) => [f, o[f]])));
+  return JSON.stringify(rows, null, 2);
+}
+
+function limit(o: LiveOrder): string {
+  return o.order_type === "mkt" ? "Market" : `Limit, ${o.lmt_prc ?? "—"}`;
+}
+
+const ORDER_COLUMNS: readonly TableColumn<LiveOrder>[] = [
+  { id: "id", header: "ID", sort: (o) => o.id, cell: (o) => o.id },
+  { id: "for", header: "For", sort: (o) => o.for, cell: (o) => o.for },
+  { id: "action", header: "Action", sort: (o) => o.action,
+    cell: (o) => `${ACTIONS[o.action] ?? o.action} (${o.action})` },
+  { id: "qty", header: "Qty", num: true, sort: (o) => o.qty, cell: (o) => String(o.qty) },
+  { id: "contract", header: "Contract", sort: (o) => o.contract, cell: (o) => o.contract },
+  { id: "expiry", header: "Expiry", sort: (o) => o.expiry ?? undefined,
+    cell: (o) => o.expiry ?? "—" },
+  { id: "strike", header: "Strike", num: true, sort: (o) => strikeValue(o.strike),
+    cell: (o) => o.strike ?? "—" },
+  { id: "limit", header: "Limit", sort: limit, cell: limit },
+  { id: "ref", header: "Ref", sort: (o) => o.ref ?? undefined, cell: (o) => o.ref ?? "—" },
+];
+
+export function OpenOrders({ live }: { live: Live }) {
+  if (live.orders.length === 0) return <Empty>No open orders tonight.</Empty>;
+  return (
+    <>
+      <DataTable label="Open orders" rows={live.orders} columns={ORDER_COLUMNS}
+                 rowId={(o) => o.id} grow />
+      <Details summary="open_orders.json" table>
+        <pre className="pm-file">{orderFile(live.orders)}</pre>
+      </Details>
+    </>
+  );
+}
+
+// ---- Sanji's files ------------------------------------------------------------------------------
+
+/** One of Sanji's files, its text exactly as he wrote it: its format is unknown until he
+ * resolves an order (L5-01). */
+export function SanjiFile({ file, empty }: { file: SanjiFileOut | null; empty: string }) {
+  if (file === null) return <Empty>{empty}</Empty>;
+  return <pre className="pm-file" aria-label={file.path}>{file.text}</pre>;
+}
+
+// ---- the run log --------------------------------------------------------------------------------
+
+const OUTCOMES: Readonly<Record<string, string>> = {
+  order: "Order",
+  no_order: "No order",
+  failed: "Failed",
+};
+
+/** `$155 put, 2026-11-20`. */
+export function option(p: LivePick): string {
+  return `$${p.strike} ${p.contract}, ${p.expiry}`;
+}
+
+function quote(p: LivePick | null, value: (p: LivePick) => number | null,
+               format: (v: number) => string): string {
+  return p === null ? "" : orDash(value(p), format);
+}
+
+const RUN_COLUMNS: readonly TableColumn<LiveRun>[] = [
+  { id: "run", header: "Run (ET)", sort: (r) => r.run_at, cell: (r) => timeET(r.run_at) },
+  { id: "next", header: "Planning", sort: (r) => r.next_session, cell: (r) => r.next_session },
+  { id: "state", header: "State", sort: (r) => r.state ?? undefined,
+    cell: (r) => orDash(r.state, stateLabel) },
+  { id: "cash", header: "Cash", num: true, sort: (r) => r.cash ?? undefined,
+    cell: (r) => orDash(r.cash, money) },
+  { id: "outcome", header: "Outcome", sort: (r) => r.outcome,
+    cell: (r) => <span className={r.outcome === "failed" ? "pm-down" : undefined}>
+      {OUTCOMES[r.outcome] ?? r.outcome}</span> },
+  { id: "rule", header: "Rule", sort: (r) => r.rule,
+    cell: (r) => r.rule },
+  { id: "why", header: "Why", sort: (r) => r.reason, cell: (r) => r.reason },
+  { id: "option", header: "Option", sort: (r) => strikeValue(r.pick?.strike),
+    cell: (r) => (r.pick ? option(r.pick) : "") },
+  { id: "delta", header: "Delta", num: true, sort: (r) => r.pick?.delta,
+    cell: (r) => quote(r.pick, (p) => p.delta, ratio) },
+  { id: "iv", header: "IV", num: true, sort: (r) => r.pick?.iv,
+    cell: (r) => quote(r.pick, (p) => p.iv, iv) },
+  { id: "bid", header: "Bid", num: true, sort: (r) => r.pick?.bid ?? undefined,
+    cell: (r) => quote(r.pick, (p) => p.bid, price) },
+  { id: "ask", header: "Ask", num: true, sort: (r) => r.pick?.ask ?? undefined,
+    cell: (r) => quote(r.pick, (p) => p.ask, price) },
+  { id: "mid", header: "Mid", num: true, sort: (r) => r.pick?.mid ?? undefined,
+    cell: (r) => quote(r.pick, (p) => p.mid, price) },
+  { id: "spread", header: "Spread", num: true, sort: (r) => r.pick?.spread ?? undefined,
+    cell: (r) => quote(r.pick, (p) => p.spread, spreadPct) },
+];
+
+/** The run log, newest first. */
+export function RunLog({ live }: { live: Live }) {
+  if (live.runs.length === 0) return <Empty>No nightly run yet.</Empty>;
+  return (
+    <DataTable label="Nightly run log" rows={[...live.runs].reverse()} columns={RUN_COLUMNS}
+               rowId={(r) => r.run_at} grow />
+  );
+}

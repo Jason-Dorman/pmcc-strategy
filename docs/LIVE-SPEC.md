@@ -2,8 +2,6 @@
 
 Nov 13, 2026 · the source of truth for the live assignment, as amended by PO answers in [DECISIONS](DECISIONS.md) (`LD-nn`). The PMCC's and the wheel's docs are archived in [archive/pmcc/](archive/pmcc/README.md) and [archive/wheel/](archive/wheel/README.md) and are not requirements here (LD-01).
 
-> **Waiting on the PO:** LD-15 (no raw LSEG data on the page), LD-16 (the page's route and name). Each is asked when its backlog item starts ([BUILD-PLAN](BUILD-PLAN.md) › Questions for the PO).
-
 ## Assignment
 
 > 1. Set up a GitHub action that runs nightly, modelled on the course's nightly refresh, which runs every evening at 10pm.
@@ -116,11 +114,11 @@ NVDA's conid is 4815747 (LD-12); the strike above is a placeholder until the fir
 
 ## Run log
 
-Each run appends one row to a committed log, `live/runs.jsonl`, failed runs included: the run time; the last resolved session; the next session; the state; cash and the cost basis; the decision (an order, or no order) with its rule ID and reason; the order's `id`, strike, expiry and delta at the close. LSEG's quotes themselves are not logged for publication (LD-15).
+Each run appends one row to a committed log, `live/runs.jsonl`, failed runs included: the run time; the last resolved session; the next session; the state; cash and the cost basis; the decision (an order, or no order) with its rule ID and reason; the order's `id`, strike, expiry and delta at the close, and the picked option's bid, ask, mid and spread then (PO, LD-15).
 
 ## Site
 
-One new page on the existing site, in its existing look ([UI-SPEC](UI-SPEC.md) §6); the PMCC's and the wheel's pages are unchanged. It shows (PO, LD-10): the algorithm and why it was chosen; tonight's `open_orders.json`; Sanji's positions and fills; the nightly run log. It doesn't explain the pipeline. Its route and nav name: LD-16.
+One new page on the existing site, in its existing look ([UI-SPEC](UI-SPEC.md) §6); the PMCC's and the wheel's pages are unchanged. It shows (PO, LD-10): the algorithm and why it was chosen; tonight's `open_orders.json`; Sanji's positions and fills; the nightly run log. It doesn't explain the pipeline. It's `#/live/NVDA`, "Live" in the nav (PO, LD-16), and it may show LSEG's data: the run log shows each pick's quote at the close (PO, LD-15).
 
 ## Invariants
 

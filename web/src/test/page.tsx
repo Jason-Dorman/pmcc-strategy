@@ -7,6 +7,7 @@ import { expect, vi } from "vitest";
 
 import { IndexProvider } from "../data/IndexContext";
 import { Comparison } from "../pages/Comparison";
+import { Live } from "../pages/Live";
 import { Methodology } from "../pages/Methodology";
 import { Rules } from "../pages/Rules";
 import { Strategy } from "../pages/Strategy";
@@ -113,6 +114,19 @@ export function renderWheelReview(path = "/wheel-review/NVDA",
       <IndexProvider>
         <Routes>
           <Route path="/wheel-review/:symbol/:ruleId?" element={<WheelReview />} />
+        </Routes>
+      </IndexProvider>
+    </MemoryRouter>,
+  );
+}
+
+export function renderLive(path = "/live/NVDA", files: Record<string, unknown> = FILES) {
+  vi.stubGlobal("fetch", vi.fn(fakeFetch(files)));
+  return render(
+    <MemoryRouter initialEntries={[path]}>
+      <IndexProvider>
+        <Routes>
+          <Route path="/live/:symbol" element={<Live />} />
         </Routes>
       </IndexProvider>
     </MemoryRouter>,

@@ -19,7 +19,7 @@ Nov 13, 2026 · from the [Live spec](LIVE-SPEC.md) · **due Tue Nov 17 2026, 11:
 | L1 Foundations | Fri Nov 13 | CI green on Sanji's pushes; a headless LSEG session pulls NVDA's chain | Done 2026-11-14: CI green (L1-01); the headless session pulled NVDA's quoted chain in Actions (L1-02) |
 | L2 Algorithm | Sat Nov 14 | `pmcc live` reads the book, picks the week's option and writes a valid `open_orders.json` | Done 2026-11-15: L2-01 to L2-03; the PO's dry run against LSEG planned Monday's $155 put. Sanji isn't resolving orders yet, so the book is read as cash until its files appear (LD-24) |
 | L3 Nightly job | Sun Nov 15 | The scheduled job runs, commits and redeploys; Monday's order is in the file before Sunday's 22:00 run ends | Built 2026-11-15 (LD-27); waiting on the PO's manual run. Monday's order was placed by hand on Sunday night (L2-03), as Sunday's 22:00 slot passed before the workflow existed |
-| L4 Site | Mon Nov 16 | The live page shows the algorithm, the orders, Sanji's book and the run log | Not started |
+| L4 Site | Mon Nov 16 | The live page shows the algorithm, the orders, Sanji's book and the run log | Done 2026-11-16 (PO: LD-15, LD-16, the "why" text; LD-28) |
 | L5 Release | Tue Nov 17 | Monday's order resolved by Sanji and shown; submitted by 18:00 (deadline 23:59 ET) | Not started |
 
 **Critical path:** L3, which must place Monday Nov 16's order before the open, from the nightly run (Sunday's 22:00). It then stays in the file all week (LD-19), so the professor sees it on Tuesday. Sanji isn't resolving orders yet ("Sanji does not resolve these orders yet", the order page), so a fill before the due date isn't expected.
@@ -30,7 +30,7 @@ Nov 13, 2026 · from the [Live spec](LIVE-SPEC.md) · **due Tue Nov 17 2026, 11:
 
 | When | Asks |
 | --- | --- |
-| L4-01 | LD-15 (no raw LSEG data on the page), LD-16 (the page's route and name), the "why" text |
+| — | None open: L4-01's (LD-15, LD-16, the "why" text) were answered 2026-11-15 and 16 |
 
 ## Backlog
 
@@ -79,8 +79,8 @@ Nov 13, 2026 · from the [Live spec](LIVE-SPEC.md) · **due Tue Nov 17 2026, 11:
 
 ### L4 — Site
 
-- [ ] **L4-01 · The live page** **[PO]**
-  - Ask first: LD-15, LD-16; the PO reviews the "why" text.
+- [x] **L4-01 · The live page** **[PO]** — done 2026-11-16 (PO: LD-15, LD-16, the "why" text kept as drafted; LD-28): `live.json` from the export (`pmcc/export/live.py`), the run log's pick quote, the page `#/live/NVDA`; 21 new Python tests, 13 page tests, the smoke test's route at four widths, after a code review's fixes
+  - Asked first: LD-15 (settled 2026-11-15: not restricted; the pick's quote shown), LD-16 (settled 2026-11-15: `#/live/NVDA`, "Live"); the PO reviews the "why" text (2026-11-16: as drafted, its numbers kept).
   - Export publishes the run log and Sanji's files for the page; the page per [UI-SPEC](UI-SPEC.md) §6 › Live; the smoke test covers its route.
   - Done when: the page renders the committed files and the smoke test passes at four widths.
   - Needs: L3-01

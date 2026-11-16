@@ -21,6 +21,7 @@ from pmcc.domain.clock import ET
 from pmcc.domain.money import Money, Price
 from pmcc.live.book import Book, BookError, WheelState
 from pmcc.live.config import LiveConfig, StrikeParams, load_live_config
+from pmcc.live.names import quote_dollars
 from pmcc.live.orders import Order, parse_orders, read_orders, write_orders
 from pmcc.live.run import LiveError, Night, decide, describe_night, run_night, sessions_for
 from pmcc.live.snapshot import CloseSnapshot
@@ -122,7 +123,7 @@ def test_ld_04_the_same_file_is_written_at_the_root_and_under_mkt(
     assert read_orders(tmp_path / "open_orders.json") == night.orders
 
 
-def test_l2_03_the_run_log_gets_one_row_with_the_pick_but_no_quotes(
+def test_ld_15_the_run_log_gets_one_row_with_the_pick_and_its_quote(
     tmp_path: Path, calendar: SessionCalendar, config: LiveConfig
 ) -> None:
     night = _night(sanji_root(tmp_path, FRIDAY), calendar, config)
@@ -134,8 +135,28 @@ def test_l2_03_the_run_log_gets_one_row_with_the_pick_but_no_quotes(
     assert row["cash"] == "25000.00"
     assert row["next_session"] == "2026-11-16"
     assert row["order_id"] == night.decision.order.id  # type: ignore[union-attr]
+    picked = night.decision.pick
+    assert picked is not None
     pick = cast(dict[str, object], row["pick"])
-    assert set(pick) == {"contract", "strike", "expiry", "delta", "iv"}  # no bid, ask or mid
+    assert set(pick) == {"contract", "strike", "expiry", "delta", "iv", "bid", "ask", "mid",
+                         "spread"}  # fmt: skip
+    quote = (pick["bid"], pick["ask"], pick["mid"])
+    assert tuple(Price.from_dollars(cast(str, p)) for p in quote) == (
+        picked.bid,
+        picked.ask,
+        picked.mid,
+    )
+    assert pick["spread"] == round(picked.spread_pct, 4)
+
+
+@pytest.mark.parametrize(
+    ("dollars", "text"),
+    [("1.05", "1.05"), ("1.075", "1.075"), ("2", "2.00"), ("0.0001", "0.0001"), ("12.3", "12.30")],
+)
+def test_ld_15_a_quote_is_written_to_two_places_at_least_four_at_most(
+    dollars: str, text: str
+) -> None:
+    assert quote_dollars(Price.from_dollars(dollars)) == text
 
 
 def test_l2_03_a_dry_run_writes_nothing(

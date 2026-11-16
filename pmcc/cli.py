@@ -183,7 +183,7 @@ def live_probe(
     """Pull tonight's close snapshot over the headless LSEG session and write a report (L1-02).
 
     Needs LSEG_APP_KEY, LSEG_USERNAME and LSEG_PASSWORD in the environment (LD-05). Prints counts,
-    never prices (LD-15); the quotes are in the report file (in Actions, a one-day artifact).
+    never prices (LD-21); the quotes are in the report file (in Actions, a one-day artifact).
     """
     configure_logging("live-probe")
     sym, now = symbol.upper(), _now()
@@ -646,12 +646,16 @@ Results = Annotated[Path, typer.Option(help="The results directory.")]
 def export(
     out: Annotated[Path, typer.Option(help="Site data directory.")] = Path("web/public/data"),
     results: Results = Path("results"),
+    live: Annotated[
+        Path, typer.Option(help="The repo root holding the live wheel's files (L4-01).")
+    ] = Path("."),
     schema_only: Annotated[
         bool, typer.Option(help="Write only the JSON Schemas, which the site's types come from.")
     ] = False,
 ) -> None:
-    """Rebuild the site's data from results: JSON Schemas, the results files, index.json and
-    rules.json. Refuses results that fail pmcc verify, a dirty tree aside."""
+    """Rebuild the site's data from results: JSON Schemas, the results files, index.json,
+    rules.json and the live wheel's live.json. Refuses results that fail pmcc verify, a dirty
+    tree aside, and live files that can't be read."""
     configure_logging("export")
     if schema_only:
         try:
@@ -662,7 +666,7 @@ def export(
         _say(f"{len(written)} schemas written to {(out / 'schema').as_posix()}")
         return
     try:
-        exported = export_site(results, out)
+        exported = export_site(results, out, live)
     except (ExportError, OSError) as exc:  # OSError: no results, or --out is a file
         log.error("export.abort", message=str(exc))
         _fail(f"{exc}\nNothing was exported.")

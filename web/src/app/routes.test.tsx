@@ -41,6 +41,7 @@ const ROUTES: [string, string][] = [
   ["/wheel/NVDA", "Portfolio at a bar"],
   ["/wheel-review/NVDA", "Verdicts"],
   ["/wheel-review/NVDA/W-X2", "Rules"],
+  ["/live/NVDA", "Nightly run log"],
   ["/rules", "Entry rules"],
   ["/rules/X-S3", "Exit rules"],
   ["/methodology", "Discovery"],

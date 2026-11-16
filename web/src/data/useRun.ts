@@ -5,6 +5,7 @@
 import { useEffect, useState } from "react";
 
 import type { Index, IndexRun, IndexWheelRun } from "../types/generated/index";
+import type { Live } from "../types/generated/live";
 import type { Rules } from "../types/generated/rules";
 import type { RunResult } from "../types/generated/run_result";
 import type { WheelResult } from "../types/generated/wheel_result";
@@ -90,4 +91,9 @@ export function useUniverseFile<T>(file: string): Loaded<T> {
  * index. */
 export function useRules(): Loaded<Rules> {
   return useLoaded(() => "rules.json", "the rules", loadFile<Rules>);
+}
+
+/** `live.json`, the live wheel's page (L4-01), once the export has written it. */
+export function useLive(): Loaded<Live> {
+  return useLoaded((index) => index.live ?? undefined, "the live wheel", loadFile<Live>);
 }

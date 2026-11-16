@@ -15,6 +15,7 @@ from pmcc.export.manifest import GitState, Provenance
 from pmcc.export.models import DataSource
 from pmcc.export.results import write_result
 from pmcc.export.schema import SCHEMAS
+from pmcc.live.config import LIVE_PATH
 from pmcc.runner import Stamp, run_loaded
 from tests.fixtures.synthetic.scenarios import random_walk
 from tests.fixtures.synthetic.store import SyntheticMarkets
@@ -43,7 +44,14 @@ def results(synthetic: SyntheticMarkets, tmp_path_factory: pytest.TempPathFactor
 
 @pytest.fixture
 def workdir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    monkeypatch.chdir(tmp_path)  # logs/ lands here
+    """A repo root: logs/ lands here, and it holds the live wheel's files, which export reads
+    from the root by default (L4-01): no orders, an empty run log."""
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "open_orders.json").write_text("[]\n", encoding="utf-8")
+    (tmp_path / "live").mkdir()
+    (tmp_path / "live" / "runs.jsonl").write_text("", encoding="utf-8")
+    (tmp_path / "configs").mkdir()
+    shutil.copyfile(LIVE_PATH, tmp_path / "configs" / "live.yaml")
     return tmp_path
 
 
@@ -108,8 +116,22 @@ def test_cli_export_writes_the_site_data(workdir: Path, results: Path) -> None:
     assert code == 0, output
     assert "Exported 1 runs for 1 symbol(s), 1 results files, to site" in output
     assert "Not publishable" not in output
-    for name in ("index.json", "rules.json", "SYN/baseline_pmcc.json"):
+    for name in ("index.json", "rules.json", "live.json", "SYN/baseline_pmcc.json"):
         assert (workdir / "site" / name).is_file()
+
+
+def test_l4_01_cli_export_reads_the_live_config_from_the_root_and_refuses_one_without(
+    workdir: Path, results: Path
+) -> None:
+    (workdir / "configs" / "live.yaml").unlink()
+
+    code, output = _invoke("export", "--results", str(results), "--out", "site")
+
+    assert code == 1
+    assert "the live wheel's page:" in output
+    assert "live.yaml" in output
+    assert "Nothing was exported." in output
+    assert not (workdir / "site").exists()
 
 
 def test_cli_export_names_runs_from_a_dirty_tree(synthetic: SyntheticMarkets,

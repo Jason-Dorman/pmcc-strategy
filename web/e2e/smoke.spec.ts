@@ -15,6 +15,7 @@ const ROUTES = [
   `wheel/${SYMBOL}`,
   `wheel-review/${SYMBOL}`,
   `wheel-review/${SYMBOL}/W-X2`,
+  `live/${SYMBOL}`,
   "rules",
   "rules/X-S3",
   `methodology/${SYMBOL}`,

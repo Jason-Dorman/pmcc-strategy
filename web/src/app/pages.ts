@@ -6,6 +6,7 @@ export type PageKey =
   | "quant"
   | "wheel"
   | "wheel-review"
+  | "live"
   | "rules"
   | "methodology"
   | "universe"
@@ -23,6 +24,7 @@ export const PAGES: readonly Page[] = [
   { key: "quant", label: "Quant", symbol: "required" },
   { key: "wheel", label: "Wheel", symbol: "required" },
   { key: "wheel-review", label: "Wheel review", symbol: "required" },
+  { key: "live", label: "Live", symbol: "required" }, // the live wheel (PO, LD-16)
   { key: "rules", label: "Rules", symbol: "none" },
   { key: "methodology", label: "Methodology", symbol: "optional" },
   { key: "universe", label: "Universe", symbol: "none" },

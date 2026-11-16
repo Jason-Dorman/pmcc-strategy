@@ -58,6 +58,7 @@ class Index(Model):
     risk_free_rate: RiskFreeRate
     symbols: tuple[IndexSymbol, ...]
     universe: Mapping[str, str]  # pooled, headline, pooled_fill_check, suitability → path
+    live: str | None = None  # `live.json`, the live wheel's page, once exported (L4-01)
 
 
 # ---- rules.json ---------------------------------------------------------------------------------

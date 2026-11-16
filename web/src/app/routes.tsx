@@ -5,6 +5,7 @@ import { Empty, Loading } from "../components/Note";
 import { useIndex } from "../data/IndexContext";
 import { Comparison } from "../pages/Comparison";
 import { Data } from "../pages/Data";
+import { Live } from "../pages/Live";
 import { Methodology } from "../pages/Methodology";
 import { Rules } from "../pages/Rules";
 import { Strategy } from "../pages/Strategy";
@@ -31,6 +32,7 @@ export function AppRoutes() {
         <Route path="quant/:symbol" element={<Strategy page="quant" />} />
         <Route path="wheel/:symbol" element={<Wheel />} />
         <Route path="wheel-review/:symbol/:ruleId?" element={<WheelReview />} />
+        <Route path="live/:symbol" element={<Live />} />
         <Route path="rules/:ruleId?" element={<Rules />} />
         <Route path="methodology/:symbol?" element={<Methodology />} />
         <Route path="universe" element={<Universe />} />

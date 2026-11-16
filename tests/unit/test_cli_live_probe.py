@@ -1,7 +1,7 @@
 """`pmcc live-probe` (L1-02; LD-05): tonight's close snapshot over the headless LSEG session.
 
 It reads the credentials from the environment, writes one report and never overwrites it, prints
-counts but no prices (LD-15), never shows a credential (LINV-09), and writes nothing when LSEG
+counts but no prices (LD-21), never shows a credential (LINV-09), and writes nothing when LSEG
 fails.
 """
 
@@ -87,7 +87,7 @@ def test_l1_02_live_probe_writes_one_timestamped_report(lseg: list[FakeLseg]) ->
     assert "listed 1 puts and 0 calls" in output
 
 
-def test_ld_15_live_probe_prints_no_prices(lseg: list[FakeLseg]) -> None:
+def test_ld_21_live_probe_prints_no_prices(lseg: list[FakeLseg]) -> None:
     _, output = _probe()
 
     assert "200.00" not in output

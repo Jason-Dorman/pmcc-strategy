@@ -15,6 +15,7 @@ from typing import Any
 from pydantic import BaseModel
 
 from pmcc.export.analytics_models import SYMBOL_FILES, UNIVERSE_FILES
+from pmcc.export.live_models import Live
 from pmcc.export.models import RunResult
 from pmcc.export.site_models import Index, Rules
 from pmcc.export.wheel_models import WheelResult
@@ -25,6 +26,7 @@ SCHEMAS: Mapping[str, type[BaseModel]] = {
     "rules": Rules,
     "run_result": RunResult,
     "wheel_result": WheelResult,
+    "live": Live,
     **SYMBOL_FILES,
     **UNIVERSE_FILES,
 }

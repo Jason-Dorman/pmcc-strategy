@@ -18,6 +18,9 @@ with the runs it describes.
 The wheel's results (`{SYM}/wheel*.json`, W2-03) are verified and copied like every other file,
 for the wheel's pages (W4-01, WD-22). The pages read their rules from the result itself, so
 `rules.json` stays the PMCC's.
+
+Given the repo root (`live`), the export also writes `live.json`, the live wheel's page
+(`pmcc.export.live`, L4-01), and the index names it.
 """
 
 import shutil
@@ -32,6 +35,8 @@ from pmcc.config.matrix import Family
 from pmcc.config.strategy import Rule
 from pmcc.export import canonical
 from pmcc.export.analytics_models import SYMBOL_FILES, Robustness
+from pmcc.export.live import CONFIG, LIVE, LiveDataError, build_live, wheel_run
+from pmcc.export.live_models import Live
 from pmcc.export.models import RunResult
 from pmcc.export.schema import SCHEMA_DIR, write_schemas
 from pmcc.export.site_models import (
@@ -46,6 +51,7 @@ from pmcc.export.site_models import (
 )
 from pmcc.export.verify import UNIVERSE_DIR, Problem, kind_of, verify
 from pmcc.export.wheel_models import WheelResult
+from pmcc.live.config import LiveConfigError, load_live_config
 
 INDEX, RULES = "index.json", "rules.json"
 PUBLISHABLE_ONLY = "git_dirty"  # the one verify check a local export lets through
@@ -81,10 +87,11 @@ class _LoadedWheel:
     result: WheelResult
 
 
-def export_site(results: Path, out: Path) -> Exported:
-    """Rebuild `out` from `results`. Raises `ExportError`, before touching `out`, if a results
-    file fails verification (a dirty tree aside), the runs don't share one window and r, or a
-    symbol's runs don't share one starting cash."""
+def export_site(results: Path, out: Path, live: Path | None = None) -> Exported:
+    """Rebuild `out` from `results`, with `live.json` from the repo root `live` if given.
+    Raises `ExportError`, before touching `out`, if a results file fails verification (a
+    dirty tree aside), the runs don't share one window and r, a symbol's runs don't share one
+    starting cash, or the live wheel's files can't be read."""
     verified = verify(results)
     refused = [p for p in verified.problems if p.check != PUBLISHABLE_ONLY]
     if refused:
@@ -93,19 +100,22 @@ def export_site(results: Path, out: Path) -> Exported:
     if not runs:
         raise ExportError(f"{results} holds no runs to export")
     extras = _extras(results)
-    index = build_index(runs, extras, wheels)
+    page = None if live is None else _live(live, wheels)
+    index = build_index(runs, extras, wheels, live=page is not None)
     rules = build_rules(runs, families(results, extras))
     _clear(out)
     write_schemas(out)
     copied = _copy(results, out)
     (out / INDEX).write_bytes(canonical.to_bytes(index.model_dump()))
     (out / RULES).write_bytes(canonical.to_bytes(rules.model_dump()))
+    if page is not None:
+        (out / LIVE).write_bytes(canonical.to_bytes(page.model_dump()))
     dirty = sorted({p.path for p in verified.problems if p.check == PUBLISHABLE_ONLY})
     return Exported(len(runs) + len(wheels), len(index.symbols), copied, tuple(dirty))
 
 
 def build_index(runs: Sequence[_Loaded], extras: Sequence[str],
-                wheels: Sequence[_LoadedWheel] = ()) -> Index:  # fmt: skip
+                wheels: Sequence[_LoadedWheel] = (), live: bool = False) -> Index:  # fmt: skip
     first = runs[0].result
     for run in (*runs, *wheels):
         _check_shared(first, run.path, run.result)
@@ -119,7 +129,19 @@ def build_index(runs: Sequence[_Loaded], extras: Sequence[str],
         risk_free_rate=first.config.risk_free_rate,
         symbols=tuple(_symbol(s, runs, extras, wheels) for s in symbols),
         universe=_files_in(UNIVERSE_DIR, extras),
+        live=LIVE if live else None,
     )
+
+
+def _live(root: Path, wheels: Sequence[_LoadedWheel]) -> Live:
+    """The live wheel's page from the repo root `root`, its config included, and its backtest
+    from the wheel's own run."""
+    try:
+        config = load_live_config(root / CONFIG)
+        found = wheel_run(config.symbol, [(w.path, w.result) for w in wheels])
+        return build_live(root, config, found)
+    except (LiveConfigError, LiveDataError, OSError) as exc:
+        raise ExportError(f"the live wheel's page: {exc}") from exc
 
 
 def _files_in(folder: str, extras: Sequence[str]) -> dict[str, str]:
@@ -317,9 +339,10 @@ def check_export_dir(out: Path) -> None:
 
 
 def _exported(relative: Path) -> bool:
-    """A path an export writes: index.json, rules.json, a schema, or a results file."""
+    """A path an export writes: index.json, rules.json, live.json, a schema, or a results
+    file."""
     parts = relative.parts
-    if parts in ((INDEX,), (RULES,)):
+    if parts in ((INDEX,), (RULES,), (LIVE,)):
         return True
     if len(parts) == 2 and parts[0] == SCHEMA_DIR:
         return parts[1].endswith(".schema.json")

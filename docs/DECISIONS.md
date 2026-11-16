@@ -30,8 +30,8 @@ The user is the product owner (PO). This log tracks what the spec leaves open, t
 | LD-12 | NVDA in the course's prices, and its conid | SETTLED (PO): NVDA added to `price_history.json` | — |
 | LD-13 | Risk-free rate for delta | SETTLED (PO): DGS3MO, 4.32% on 2026-11-12 | — |
 | LD-14 | A stale or unreadable book, or a bad order in the file | SETTLED (PO): stop and fail | — |
-| LD-15 | No raw LSEG data on the page | ASK | L4-01 |
-| LD-16 | The page's route and nav name | ASK | L4-01 |
+| LD-15 | LSEG data on the page | SETTLED (PO): not restricted; the pick's quote shown | — |
+| LD-16 | The page's route and nav name | SETTLED (PO): `#/live/NVDA`, "Live" | — |
 | LD-17 | Sanji's files are exempt from the formatting hooks | ENG | — |
 | LD-18 | ID prefixes | ENG | — |
 | LD-19 | What `open_orders.json` holds; order ids | SETTLED (PO): an order stays until its week ends | — |
@@ -43,6 +43,7 @@ The user is the product owner (PO). This log tracks what the spec leaves open, t
 | LD-25 | Every night that plans a week's first session places its order | SETTLED (PO) | — |
 | LD-26 | The live picks read the close snapshot, not a MarketView | SETTLED (PO) | — |
 | LD-27 | The nightly workflow (L3-01) | ENG | — |
+| LD-28 | The live page's data and layout (L4-01) | ENG | — |
 
 ## Settled
 
@@ -153,19 +154,21 @@ The user is the product owner (PO). This log tracks what the spec leaves open, t
 - **Asked:** CLAUDE.md's hard rule "Strategies see market data only through `MarketView`" comes from the backtests, where the view stops a bar loop reading the future. The live picks read tonight's close snapshot directly.
 - **Outcome:** the rule is amended: the live wheel's picks read the close snapshot, which holds only data up to the run, so look-ahead can't happen. The backtests keep the rule. (Recommended. The alternative was a MarketView adapter over the snapshot.)
 
-## Open
+### LD-15 — LSEG data on the page
+**Status:** SETTLED · **Basis:** PO, 2026-11-15 · **Affects:** Spec › Run log, Site; UI-SPEC §6 › Live; L4-01
 
-### LD-15 — No raw LSEG data on the page
-**Status:** ASK · **Ask at:** L4-01
-
-- **Context:** in the class of Nov 10, the professor relayed the library's view that an app displaying LSEG data to the public could breach the licence: "we're not going to display it directly. We're just going to explain it."
-- **Recommendation:** the live page shows our decisions (each pick's strike, expiry and delta), our orders and Sanji's files, but no LSEG bids, asks or chains. The older pages are unchanged.
-- **Alternative:** also show the picked contract's bid and ask at the close.
+- **Asked:** in the class of Nov 10, the professor relayed the library's view that an app displaying LSEG data to the public could breach the licence: "we're not going to display it directly. We're just going to explain it." The recommendation was a page with our decisions and no LSEG quotes.
+- **Outcome:** that concern was about the professor's own app, not this work, so the page isn't restricted. Asked next whether to show the pick's quote: yes. Each run-log row carries the picked option's bid, ask, mid and spread at the close, and the page's run log shows them (Recommended). Rows logged before (Nov 15's) show "—" for them.
+- `pmcc live-probe` still prints counts only and keeps the quotes in its report (LD-21): that was its design, not this question's.
 
 ### LD-16 — The page's route and nav name
-**Status:** ASK · **Ask at:** L4-01
+**Status:** SETTLED · **Basis:** PO, 2026-11-15 · **Affects:** UI-SPEC §6, §7; L4-01
 
-- **Recommendation:** `#/live/NVDA`, "Live" in the nav after the wheel's pages; the PMCC's Compare page stays the landing page.
+- **Outcome:** `#/live/NVDA`, "Live" in the nav after the wheel's pages; the PMCC's Compare page stays the landing page. (Recommended. The alternative was the live page as the landing page.)
+
+## Open
+
+None.
 
 ## Engineering
 
@@ -190,7 +193,7 @@ The user is the product owner (PO). This log tracks what the spec leaves open, t
 - **Session:** `pmcc/data/lseg/platform.py`: `PlatformCredentials.from_env` reads the three variables as given, spaces included (a missing or blank one is named, never its value), and `platform_session` opens lseg-data's platform session (`Definition(app_key, GrantPassword(username, password), signon_control=True)`), makes it the default and checks it reports Opened before anything is asked. lseg-data 2.1.1's `Session.open()` returns Closed on a failed sign-in instead of raising, so the check matters; a contract test builds the real session offline and pins both its shape and that return. An error while building or opening the session is re-raised as an outage with every credential masked, as typed, URL-encoded and JSON-escaped, and without its original as the cause (LINV-09). It always closes.
 - **signon_control:** `True`, as in the course's nightly job: opening takes the account's sign-on from another platform session, so a session left open elsewhere can't fail the nightly run. If that turns out to sign the PO out of something they use, it's a question for the PO.
 - **The snapshot:** `pmcc/live/snapshot.py`, through the same `HistoryProvider` port and batched fetch as the backtests (single-RIC re-asks, retries, fail-soft unlisted strikes). For the last completed session: the stock's close, the last trade in the close bar (if LSEG hasn't published that bar, the snapshot stops: an earlier trade is not the close); and every put and call from 10% below the close to 10% above, in $2.50 steps, for the expiry of the week of the session after it (L-P2), each with its bid, ask and last trade in the close bar. The session after is counted from the session read, so the close and the expiry always pair; for the nightly run, after the close, it is L-S1's first session after the run's date. How L-S1 treats a run before the close is for L2-03. The band and step are L-P3's and L-C3's params in `configs/live.yaml` (L2-03; the probe uses L-P3's). A 0.30-delta weekly sits a few percent from the money. A strike LSEG doesn't list comes back unlisted. L2-03's pick reads this snapshot.
-- **The probe:** `pmcc live-probe --symbol NVDA` (`just live-probe NVDA`) writes the snapshot to `data_cache/probes/live_NVDA_{time}.json` (gitignored, never overwritten), prints counts only (LD-15), and exits 1 if no option had a valid quote at the close. `.github/workflows/live-probe.yml` runs it by hand in Actions with the repo's secrets: read-only, the secrets in that one step, the report kept as a one-day artifact. The artifact holds LSEG's quotes; the PO is fine with it as is (2026-11-13, at the code review).
+- **The probe:** `pmcc live-probe --symbol NVDA` (`just live-probe NVDA`) writes the snapshot to `data_cache/probes/live_NVDA_{time}.json` (gitignored, never overwritten), prints counts only, and exits 1 if no option had a valid quote at the close. `.github/workflows/live-probe.yml` runs it by hand in Actions with the repo's secrets: read-only, the secrets in that one step, the report kept as a one-day artifact. The artifact holds LSEG's quotes; the PO is fine with it as is (2026-11-13, at the code review).
 - **Probe result (2026-11-14, the PO's run in Actions):** the session opened headlessly; NVDA closed $162.83 on Fri Nov 13; for the Nov 20 expiry, of 30 contracts asked from $145 to $180, 28 were listed (not $147.50: NVDA's strikes are $5 apart below $150) and all 28 had a valid bid and ask at the close, spreads about 1–2% of the mid. The $162.50 pair holds put-call parity to about $0.02.
 
 ### LD-22 — Reading the order language strictly (L2-01)
@@ -213,7 +216,7 @@ The user is the product owner (PO). This log tracks what the spec leaves open, t
 - **The picks:** the backtests' chain pricer (Black-Scholes, IV from the close's mid, T from the close to the expiry session's close, ACT/365), OTM only, nearest the target delta, a tie further out of the money; a contract whose IV doesn't solve can't be picked. They read the close snapshot, not a `MarketView` (PO, LD-26).
 - **The checks:** LINV-02 to LINV-05 and LINV-07 are checked before anything is written. The root and `mkt/` order files must agree when read (L-B2), so a write that stopped between the two shows red the next night.
 - **Failures (LD-14):** once the sessions are known, anything that stops a night (a stale or unreadable book, an LSEG outage, a check, an order the language rejects, a write) logs a failed row and raises; `pmcc live` turns each into a "no new order" exit 1, never a traceback.
-- **The log:** `live/runs.jsonl`, one JSON line a run, failed runs included. Failed rows carry the rule they failed under: `L-B1`/`L-B2`; `L-P3`/`L-C3` for an LSEG outage during the pick; the decision's rule for a failed check or write; `L-S1` when the snapshot plans the wrong session. A row holds the run time, the sessions, the state, cash, the cost basis, the outcome, the rule and why, the order id, and the pick's contract, strike, expiry, delta and IV; no bid, ask or mid (LD-15 is open).
+- **The log:** `live/runs.jsonl`, one JSON line a run, failed runs included. Failed rows carry the rule they failed under: `L-B1`/`L-B2`; `L-P3`/`L-C3` for an LSEG outage during the pick; the decision's rule for a failed check or write; `L-S1` when the snapshot plans the wrong session. A row holds the run time, the sessions, the state, cash, the cost basis, the outcome, the rule and why, the order id, and the pick's contract, strike, expiry, delta and IV, with its bid, ask, mid and spread at the close (PO, LD-15; LD-28).
 
 ### LD-27 — The nightly workflow (L3-01)
 **Status:** ENG · **Affects:** Spec › Nightly job; L3-01
@@ -223,3 +226,10 @@ The user is the product owner (PO). This log tracks what the spec leaves open, t
 - **A failed night (LD-14):** `pmcc live` logs a failed row and exits 1, so the commit step runs whenever the run step ran, pass or fail. After a failure it puts both order files back as they were checked out and commits the log row alone, so a failed night never changes an order, even one written before the failure; the job stays red from the run step (neither it nor the job may continue on error). A run refused before the close, or a cancelled job, commits nothing.
 - **CI and the site (LD-06):** `ci.yml` also runs on the nightly workflow's completion (`workflow_run`, on `main`), which checks out `main`'s latest commit, the bot's included. It checks every night's commit, pass or fail, and uploads and deploys the site only after a successful night, as the spec says; a failed night's row reaches the page with the next deploy (the next good night or Sanji's push). CI shares one group on `main`: a run after the nightly never cancels another, while a push's run may cancel it, since that builds a newer `main` and deploys. A nightly that committed nothing (cancelled, refused) still starts CI on an unchanged `main`: free runner minutes on a public repo, accepted.
 - **Lateness:** GitHub can start a scheduled run late, or drop one under load. A dropped weekend night is covered by the other two (LD-25); a dropped weeknight only misses its log row. A manual run covers either.
+
+### LD-28 — The live page's data and layout (L4-01)
+**Status:** ENG · **Affects:** UI-SPEC §6 › Live; L4-01
+
+- **`live.json`:** `pmcc export` writes it beside `index.json` and `rules.json` when given the repo root (`--live`, the current directory by default; CI's export runs from the root), and the index names it (`live`). `pmcc/export/live.py` builds it at export time, like the index, so the page can't disagree with the files: the root's `open_orders.json`, read through the order language's checks; Sanji's `positions.json` and `fills.json` (under `mkt/` first), their text exactly as written and never parsed, null when absent: their format is unknown until L5-01, and a file Sanji leaves half-written must not stop the whole site's export on his push; every row of `live/runs.jsonl`, money as dollars, none before the first run; the root's `configs/live.yaml` (so `--live DIR` reads one checkout, never two): its rules in their words, the conid, the starting cash and r; and the wheel's backtest summary from its committed result. An order file or run-log row that can't be read, or a missing config, stops the export, with nothing written. Its schema, `live.schema.json`, gives the page its types. The schema version is unchanged: the index only gains a field, and every result file keeps its own.
+- **Quotes in the log (LD-15):** written as dollars to two places at least and four at most (`2.435`), so a mid on a half cent is exact; `spread` is (ask − bid) / mid, as L-T1 reads it.
+- **The page:** `web/src/pages/Live.tsx` and `pages/live/sections.tsx`, per UI-SPEC §6 › Live. Readouts come from the latest run-log row. The algorithm's prose holds the "why" text (PO, 2026-11-16), with the backtest's figures read from `live.json`, and its rules table follows the prose in the same panel. The prose restates L-P3's −0.30 and L-O1's "mid at the open", and names the first week (to Nov 20): the PO kept the numbers for readability (2026-11-16, at the code review), so a change to either rule's params changes the prose too. The decision readout goes by the row's outcome. Strikes sort by value. Sanji's files are shown as their text (a file block) until L5-01 knows their rows. The open orders' file is rebuilt in the order page's field order, absent fields left out, so it reads as the file does.

@@ -23,6 +23,7 @@ import type {
   Section,
 } from "../types/generated/run_result";
 import { SCHEMA_VERSION } from "../types/generated/version";
+import { LIVE } from "./liveFixtures";
 import { WHEEL, WHEEL_INDEX, WHEEL_SC050 } from "./wheelFixtures";
 
 export const INDEX: Index = {
@@ -39,6 +40,7 @@ export const INDEX: Index = {
   universe: { headline: "universe/headline.json", pooled: "universe/pooled.json",
               pooled_fill_check: "universe/pooled_fill_check.json",
               suitability: "universe/suitability.json" },
+  live: "live.json",
   symbols: [
     {
       symbol: "NVDA",
@@ -546,6 +548,7 @@ export const FILES: Record<string, unknown> = {
   "data/rules.json": RULES,
   "data/NVDA/wheel.json": WHEEL,
   "data/NVDA/wheel--sc050.json": WHEEL_SC050,
+  "data/live.json": LIVE,
 };
 
 /** A fetch over `files`, answering 404 for anything else. */

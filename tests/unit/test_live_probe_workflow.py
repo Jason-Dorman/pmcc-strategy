@@ -42,7 +42,7 @@ def test_ld_05_live_probe_installs_from_the_lockfile() -> None:
     assert any(s.get("run") == "uv sync --frozen" for s in _steps())
 
 
-def test_ld_15_the_report_with_quotes_is_kept_for_one_day() -> None:
+def test_ld_21_the_report_with_quotes_is_kept_for_one_day() -> None:
     upload = next(s for s in _steps() if s.get("uses", "").startswith("actions/upload-artifact"))
 
     assert upload["with"]["retention-days"] == 1

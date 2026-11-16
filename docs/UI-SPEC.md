@@ -97,7 +97,7 @@ Rule cells show what the rule did in plain words and link to that rule.
 
 **Wheel pages:** unchanged; their layouts are in the wheel's archived copy of this spec, [archive/wheel/UI-SPEC.md](archive/wheel/UI-SPEC.md) §6 (LD-01).
 
-**Live page** (PO, LD-10; route and name: LD-16, to be asked at L4-01). Readouts first, then panels in the order listed. Widths are grid columns; a prose panel is unnumbered. It shows no LSEG quotes (LD-15, to be asked at L4-01).
+**Live page** (PO, LD-10; route and name: PO, LD-16; built at L4-01, LD-28). Readouts first, then panels in the order listed. Widths are grid columns; a prose panel is unnumbered. Its data is `live.json`. It shows each pick's quote at the close (PO, LD-15).
 
 ### Live — `#/live/:symbol` (LD-16)
 
@@ -107,9 +107,9 @@ Rule cells show what the rule did in plain words and link to that rule.
 | --- | --- | --- | --- |
 | — | The algorithm | 10 | Prose: what the wheel does each week, in plain words; why it was chosen, with the backtest's result and a link to `#/wheel-review/NVDA` (Spec › Why the wheel); the rules, each in words with its ID |
 | 1 | Open orders | 10 | `open_orders.json` as the nightly run left it: a table (id, for, action, qty, contract, expiry, strike, limit, ref), then the file itself in a disclosure; "No open orders tonight" for `[]` |
-| 2 | Positions | 5 | Sanji's `positions.json`: each holding as a row, and cash; "No positions yet" before the first fill |
-| 3 | Fills | 5 | Sanji's `fills.json`: each fill as a row, newest first, with its outcome (filled, unfilled, unresolved, rejected) |
-| 4 | Nightly run log | 10 | one row per run, newest first: run time, next session, state, cash, decision (order id, or the rule and reason in words), the pick's strike, expiry and delta |
+| 2 | Positions | 5 | Sanji's `positions.json` as written (a file block), until L5-01 knows its rows: then each holding as a row, and cash; "No positions yet" before the first fill |
+| 3 | Fills | 5 | Sanji's `fills.json` as written, until L5-01: then each fill as a row, newest first, with its outcome (filled, unfilled, unresolved, rejected); "No fills yet" before the first |
+| 4 | Nightly run log | 10 | one row per run, newest first: run time, the session planned, state, cash, outcome, rule, why, the pick's option, delta and IV, and its bid, ask, mid and spread at the close ("—" on rows logged before them, PO, LD-15) |
 
 ## 7. Routes
 
@@ -122,7 +122,7 @@ Hash routing (GitHub Pages has no SPA fallback); the URL is the state. The PMCC'
 
 Every wheel rule named on the wheel pages (blotter, gate log, cycle statistics, filters) links to `#/wheel-review/:symbol/<ID>`.
 
-The live assignment adds one (LD-16, to be asked at L4-01):
+The live assignment adds one (PO, LD-16), "Live" in the nav after the wheel's pages:
 
 | Route | Page |
 | --- | --- |

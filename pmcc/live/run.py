@@ -39,7 +39,7 @@ from pmcc.domain.instruments import Right
 from pmcc.domain.sessions import Session
 from pmcc.live.book import Book, BookError, WheelState, check_current, read_book
 from pmcc.live.config import RULE_IDS, LiveConfig, LiveConfigError, StrikeParams
-from pmcc.live.names import ORDERS, RIGHT_NAMES, SANJI_DIR, dollars
+from pmcc.live.names import ORDERS, RIGHT_NAMES, SANJI_DIR, dollars, quote_dollars
 from pmcc.live.orders import Order, OrderError, order_id, read_orders, strike_token, write_orders
 from pmcc.live.rules import Pick, liquid, secured, select
 from pmcc.live.snapshot import CloseSnapshot, SnapshotError, last_completed, next_session
@@ -380,13 +380,18 @@ def _header(
 
 
 def _pick(pick: Pick) -> dict[str, object]:
-    # No bid, ask or mid: the log is published on the site, and LSEG's quotes aren't (LD-15).
+    # With its quote at the close, which the site shows (PO, LD-15); `spread` is (ask - bid) / mid,
+    # as L-T1 reads it.
     return {
         "contract": RIGHT_NAMES[pick.option.right],
         "strike": strike_token(pick.option.strike),
         "expiry": pick.option.expiry.isoformat(),
         "delta": round(pick.delta, 4),
         "iv": round(pick.iv, 4),
+        "bid": quote_dollars(pick.bid),
+        "ask": quote_dollars(pick.ask),
+        "mid": quote_dollars(pick.mid),
+        "spread": round(pick.spread_pct, 4),
     }
 
 

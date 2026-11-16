@@ -32,6 +32,7 @@ from pmcc.export.results import write_result
 from pmcc.export.schema import SCHEMAS
 from pmcc.export.site import ExportError, check_export_dir, export_site, rule_changes
 from pmcc.export.site_models import Index, Rules
+from pmcc.live.config import LIVE_PATH
 from pmcc.runner import Stamp, run_loaded
 from tests.fixtures.synthetic.scenarios import BUILDERS, random_walk
 from tests.fixtures.synthetic.store import SyntheticMarkets
@@ -414,6 +415,56 @@ def test_export_replaces_an_earlier_export_whole(runs: Runs, tmp_path: Path) -> 
     export_site(runs[0], site)
 
     assert not (site / "OLD").exists()
+
+
+def _live_root(tmp: Path) -> Path:
+    """A repo root as the nightly run leaves it: no orders tonight, one row in the log."""
+    root = tmp / "repo"
+    (root / "live").mkdir(parents=True)
+    (root / "configs").mkdir()
+    shutil.copyfile(LIVE_PATH, root / "configs" / "live.yaml")
+    (root / "open_orders.json").write_text("[]\n", encoding="utf-8")
+    row = {"run_at": "2026-11-17T22:00:03-05:00", "last_session": "2026-11-17",
+           "next_session": "2026-11-18", "state": "cash", "cash": "25000.00",
+           "cost_basis": None, "outcome": "no_order", "rule": "L-P1",
+           "reason": "not a week's first session", "order_id": None, "pick": None,
+           "open_orders": 0}  # fmt: skip
+    (root / "live" / "runs.jsonl").write_text(json.dumps(row) + "\n", encoding="utf-8")
+    return root
+
+
+def test_l4_01_export_writes_live_json_and_names_it_in_the_index(
+    runs: Runs, tmp_path: Path
+) -> None:
+    site = tmp_path / "site"
+    export_site(runs[0], site, _live_root(tmp_path))
+
+    raw = (site / "live.json").read_bytes()
+    assert canonical.to_bytes(canonical.loads(raw)) == raw
+    live = cast(Doc, json.loads(raw))
+    assert (live["symbol"], live["orders"], live["runs"][0]["rule"]) == ("NVDA", [], "L-P1")
+    assert live["backtest"] is None  # no wheel run among these results
+    assert Index.model_validate_json((site / "index.json").read_bytes()).live == "live.json"
+    assert (site / "schema" / "live.schema.json").is_file()
+
+    export_site(runs[0], site, _live_root(tmp_path / "again"))  # its own file: cleared, not foreign
+
+
+def test_l4_01_export_without_the_live_root_writes_no_live_json(exported: Path) -> None:
+    assert not (exported / "live.json").exists()
+    assert Index.model_validate_json((exported / "index.json").read_bytes()).live is None
+
+
+def test_l4_01_export_refuses_live_files_it_cant_read_and_writes_nothing(
+    runs: Runs, tmp_path: Path
+) -> None:
+    root = _live_root(tmp_path)
+    (root / "live" / "runs.jsonl").write_text("not json\n", encoding="utf-8")
+
+    with pytest.raises(ExportError, match="the live wheel's page"):
+        export_site(runs[0], tmp_path / "site", root)
+
+    assert not (tmp_path / "site").exists()
 
 
 def test_export_refuses_to_clear_a_directory_it_didnt_write(runs: Runs, tmp_path: Path) -> None:

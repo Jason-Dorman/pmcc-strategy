@@ -16,7 +16,7 @@ platform session, LD-05):
    unlisted (fetch's fail-soft guess-and-check, INV-12), never as an error.
 
 An outage raises `ProviderOutageError` from the fetch and returns nothing. The snapshot holds
-LSEG's prices, so the console summary (`describe`) carries counts only (LD-15); the full report
+LSEG's prices, so the console summary (`describe`) carries counts only (LD-21); the full report
 is written to a file (in Actions, a one-day artifact, as the PO approved: LD-21).
 """
 
@@ -225,7 +225,7 @@ def snapshot_report(snapshot: CloseSnapshot) -> Json:
 
 
 def describe(snapshot: CloseSnapshot) -> str:
-    """One line for the console and the Actions log: counts only, no prices (LD-15)."""
+    """One line for the console and the Actions log: counts only, no prices (LD-21)."""
     listed, quoted = _per_right(_listed(snapshot.options)), _per_right(_quoted(snapshot.options))
     return (
         f"{snapshot.stock_ric}: close of {snapshot.session.day} read; next session "
