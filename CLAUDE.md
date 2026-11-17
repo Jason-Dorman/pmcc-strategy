@@ -103,7 +103,7 @@ These exist once P0 is done.
 | `just export` / `just verify` | site data / results validation |
 | `just web-dev` / `just web-build` / `just e2e` / `just serve` | frontend (`web-dev` and `web-build` export first) |
 | `just reproduce` | cached data → all runs (the PMCC's batch, the wheel and its friction runs on NVDA) → verify → export → built site |
-| `just live SYM [--dry-run] [--root DIR]` | one night of the live wheel, after the close: check Sanji's book (L-B1, L-B2), decide, and write `open_orders.json` at the root and under `mkt/` and a row of `live/runs.jsonl`; asks LSEG (platform credentials in the environment) only on nights that plan a week's first session (Friday to Sunday for a Monday, LD-25); `--dry-run` writes nothing (L2-03); the `nightly` workflow runs it at 03:00 UTC and commits its files (L3-01) |
+| `just live SYM [--dry-run] [--root DIR]` | one night of the live wheel, after the close or before the next open (LD-31): check Sanji's book (L-B1, L-B2), decide, and write `open_orders.json` at the root and under `mkt/` and a row of `live/runs.jsonl`; asks LSEG (platform credentials in the environment) only on nights that plan a week's first session (Friday to Sunday for a Monday, LD-25); `--dry-run` writes nothing (L2-03); the `nightly` workflow runs it at 03:17 UTC and commits its files (L3-01) |
 
 ## Conventions
 

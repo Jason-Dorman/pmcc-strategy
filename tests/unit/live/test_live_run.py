@@ -77,6 +77,12 @@ def _night(
     return run_night(root, now, calendar, config, src, dry_run=dry_run)
 
 
+def _sanji_fills(root: Path) -> None:
+    """Sanji's fills file, as it will be once Sanji resolves an order (its format is unknown)."""
+    (root / "mkt").mkdir(exist_ok=True)
+    (root / "mkt" / "fills.json").write_text("[]" + chr(10), encoding="utf-8", newline=chr(10))
+
+
 def _log(root: Path) -> list[dict[str, object]]:
     path = root / "live" / "runs.jsonl"
     if not path.exists():
@@ -255,6 +261,19 @@ def test_ld_19_an_order_placed_by_hand_is_kept_through_its_week(
     assert len(night.orders) == 2
 
 
+def test_ld_32_a_stale_price_file_with_no_sanji_book_still_places_the_order_and_says_so(
+    tmp_path: Path, calendar: SessionCalendar, config: LiveConfig
+) -> None:
+    night = _night(sanji_root(tmp_path, date(2026, 11, 12)), calendar, config)
+
+    assert night.decision.order is not None
+    (row,) = _log(tmp_path)
+    assert (row["outcome"], row["rule"]) == ("order", "L-O1")
+    assert "L-B1 warning" in str(row["reason"])
+    assert "runs to 2026-11-12" in str(row["reason"])
+    assert "L-B1 warning" in describe_night(night, dry_run=False)
+
+
 # --- Stop and fail (PO, LD-14) --------------------------------------------------------------------
 
 
@@ -262,6 +281,7 @@ def test_l_b1_a_stale_book_writes_no_order_and_logs_the_failure(
     tmp_path: Path, calendar: SessionCalendar, config: LiveConfig
 ) -> None:
     sanji_root(tmp_path, date(2026, 11, 12))
+    _sanji_fills(tmp_path)  # a book that can have moved
     source = Source(lambda: snapshot(calendar, session=FRIDAY))
 
     with pytest.raises(BookError, match="L-B1"):
@@ -300,15 +320,45 @@ def test_l_b2_a_bad_order_already_in_the_file_writes_no_order(
     assert (tmp_path / "open_orders.json").read_bytes() == bad
 
 
-def test_ld_24_a_run_before_the_close_is_refused_and_writes_nothing(
-    tmp_path: Path, calendar: SessionCalendar, config: LiveConfig
+@pytest.mark.parametrize(("hour", "minute"), [(9, 30), (15, 0), (15, 59)])
+def test_ld_31_a_run_during_the_session_is_refused_and_writes_nothing(
+    tmp_path: Path, calendar: SessionCalendar, config: LiveConfig, hour: int, minute: int
 ) -> None:
     sanji_root(tmp_path, FRIDAY)
 
-    with pytest.raises(LiveError, match="before today's close"):
-        _night(tmp_path, calendar, config, datetime(2026, 11, 16, 15, 0, tzinfo=ET))
+    with pytest.raises(LiveError, match="during today's session"):
+        _night(tmp_path, calendar, config, datetime(2026, 11, 16, hour, minute, tzinfo=ET))
 
     assert _log(tmp_path) == []
+
+
+def test_ld_31_a_late_run_before_the_open_plans_that_days_session(
+    tmp_path: Path, calendar: SessionCalendar, config: LiveConfig
+) -> None:
+    """GitHub starts the 10 pm cron hours late: at 05:15 ET on Tuesday the last close is
+    Monday's, so the run plans Tuesday, as Monday night's would have (PO, LD-31)."""
+    friday = _night(sanji_root(tmp_path, FRIDAY), calendar, config)
+    sanji_root(tmp_path, MONDAY, extra_days=[FRIDAY])
+    source = Source(lambda: snapshot(calendar, session=MONDAY))
+
+    night = _night(tmp_path, calendar, config, datetime(2026, 11, 17, 5, 15, tzinfo=ET), source)
+
+    assert (night.row["last_session"], night.row["next_session"]) == ("2026-11-16", "2026-11-17")
+    assert (source.asked, night.decision.rule, night.decision.order) == (0, "L-P1", None)
+    assert night.orders == friday.orders
+
+
+def test_ld_31_a_monday_run_before_the_open_still_places_mondays_put(
+    tmp_path: Path, calendar: SessionCalendar, config: LiveConfig
+) -> None:
+    """A Sunday-night run that starts after midnight plans Monday from Friday's close (LD-25)."""
+    night = _night(
+        sanji_root(tmp_path, FRIDAY), calendar, config, datetime(2026, 11, 16, 9, 29, tzinfo=ET)
+    )
+
+    assert night.row["next_session"] == "2026-11-16"
+    assert night.decision.order is not None
+    assert night.decision.order.for_ == MONDAY
 
 
 def test_l_p3_an_lseg_outage_writes_no_order_and_logs_the_failure(

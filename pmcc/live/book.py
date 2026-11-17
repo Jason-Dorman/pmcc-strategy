@@ -82,16 +82,21 @@ def last_priced_session(root: Path) -> date:
     return max(days)
 
 
-def check_current(root: Path, last_completed: date) -> date:
-    """L-B1: the book is as of `last_completed`. Returns that date, or raises `BookError`."""
+def check_current(root: Path, last_completed: date) -> str | None:
+    """L-B1: the book is as of `last_completed`; None when it is. While Sanji has written no book
+    (neither positions nor fills), it has resolved nothing, so the cash book can't have moved: a
+    stale price file is then a warning, returned, and the night goes ahead (PO, LD-32). Once it
+    has, a stale price file raises `BookError`."""
     priced = last_priced_session(root)
-    if priced != last_completed:
-        raise BookError(
-            "L-B1",
-            f"{PRICE_HISTORY} runs to {priced}, but the last completed session is "
-            f"{last_completed}: Sanji hasn't caught up, so the book may be stale",
-        )
-    return priced
+    if priced == last_completed:
+        return None
+    behind = (
+        f"{PRICE_HISTORY} runs to {priced}, but the last completed session is "
+        f"{last_completed}: Sanji hasn't caught up"
+    )
+    if all(sanji_file(root, name) is None for name in (POSITIONS, FILLS)):
+        return f"{behind}; it has resolved nothing, so the cash book can't have moved"
+    raise BookError("L-B1", f"{behind}, so the book may be stale")
 
 
 def read_book(root: Path, starting_cash: Money) -> Book:

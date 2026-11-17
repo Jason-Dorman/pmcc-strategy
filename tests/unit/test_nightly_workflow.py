@@ -33,12 +33,12 @@ def _commit_lines() -> list[str]:
     return [line.strip() for line in run.splitlines()]
 
 
-def test_l3_01_nightly_runs_at_03_utc_and_by_hand() -> None:
-    # PyYAML reads the bare key `on` as True.
+def test_ld_31_nightly_runs_at_03_17_utc_and_by_hand() -> None:
+    # PyYAML reads the bare key `on` as True. Off the top of the hour, GitHub's busiest (LD-31).
     triggers = _workflow()[True]
 
     assert set(triggers) == {"schedule", "workflow_dispatch"}
-    assert triggers["schedule"] == [{"cron": "0 3 * * *"}]
+    assert triggers["schedule"] == [{"cron": "17 3 * * *"}]
 
 
 def test_l3_01_nightly_runs_only_on_main_one_at_a_time() -> None:

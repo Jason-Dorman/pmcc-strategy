@@ -1,14 +1,15 @@
 # The live wheel's nightly run (L3-01; Spec › Nightly job; LD-05, LD-06, LD-14, LD-27).
-# At 03:00 UTC (22:00 EST, 23:00 EDT), after Sanji has resolved the day's session, and by hand from
-# the Actions tab ("Run workflow"). It runs one night of `pmcc live` on NVDA with the LSEG secrets,
-# then commits only `open_orders.json` (root and mkt/) and the run log as the Actions bot, pulling
+# At 03:17 UTC (22:17 EST, 23:17 EDT), after Sanji has resolved the day's session, and by hand from
+# the Actions tab ("Run workflow"). Off the top of the hour, GitHub's busiest; a run it starts late,
+# before the next open, still plans that session (PO, LD-31). It runs one night of `pmcc live` on
+# NVDA with the LSEG secrets, then commits only `open_orders.json` (root and mkt/) and the run log as the Actions bot, pulling
 # first because Sanji pushes to the same branch. A failed night commits its failed row alone, the
 # order files left as they were, and the job stays red (LD-14). CI runs when this completes and redeploys the site (LD-06).
 name: nightly
 
 on:
   schedule:
-    - cron: "0 3 * * *"
+    - cron: "17 3 * * *"
   workflow_dispatch:
 
 permissions:

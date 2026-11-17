@@ -39,7 +39,7 @@ It's the strategy already built and tested here: its backtest on NVDA over Mar 3
 
 ## Nightly job
 
-- **Schedule:** cron `0 3 * * *` (03:00 UTC: 22:00 EST, 23:00 EDT), as the course's is, plus a manual run (`workflow_dispatch`). It runs after Sanji has resolved the day's session.
+- **Schedule:** cron `17 3 * * *` (03:17 UTC: 22:17 EST, 23:17 EDT), the course's 03:00 moved off the top of the hour, plus a manual run (`workflow_dispatch`). It runs after Sanji has resolved the day's session. GitHub can start it hours late; a run before the next open still plans that session (PO, LD-31).
 - **Steps:** check out `main`; install from `uv.lock`; run the algorithm with the LSEG credentials from the repo's GitHub secrets `LSEG_APP_KEY`, `LSEG_USERNAME` and `LSEG_PASSWORD` (a platform session: no Workspace, LD-05); commit `open_orders.json` and the run log as the Actions bot, after pulling, because Sanji pushes to the same branch (LD-06).
 - **Deploy:** the site redeploys after every successful nightly run through CI's existing deploy (LD-06). Sanji's own pushes already trigger CI.
 - **Failure:** if LSEG fails or Sanji's files can't be read, the run writes no new order, logs why, and fails visibly (LD-14). A failed request is never treated as "no data".
@@ -51,7 +51,7 @@ It's the strategy already built and tested here: its backtest on NVDA over Mar 3
 - **Delta:** Black-Scholes, implied vol solved from the close's mid, dividend yield 0, the risk-free rate in the config, the time from the close to the expiry session's close. The pricer is the one the backtests use.
 - **Risk-free rate (PO, LD-13):** FRED DGS3MO, 4.32% on 2026-11-12 (its latest when the rules were built), continuously compounded as the backtests' rate was: 4.297%. Fixed in `configs/live.yaml` with its date.
 - **Calendar:** NYSE sessions from the repo's session calendar (2025–2027).
-- **When:** the run decides from the last close, after it: a run on a trading day before its close is refused and writes nothing (LD-24).
+- **When:** the run decides from the last close, for the session after it: a run during a session, from its open to its close, is refused and writes nothing (LD-24, PO, LD-31).
 
 ## Trade rules
 
@@ -68,9 +68,9 @@ Any other book (long options, more than one short option, an odd lot) is unreada
 
 | ID | Rule | Definition |
 | --- | --- | --- |
-| L-B1 | Book is current | The latest date in `price_history.json`, over every instrument in it, is the last completed NYSE session; otherwise no new order, the run logged as failed and red (PO, LD-14) |
+| L-B1 | Book is current | The latest date in `price_history.json`, over every instrument in it, is the last completed NYSE session; otherwise no new order, the run logged as failed and red (PO, LD-14). While Sanji has written neither `positions.json` nor `fills.json`, it has resolved nothing, so a stale price file is a warning in the run's reason instead, and the night goes ahead (PO, LD-32) |
 | L-B2 | Book is readable | Sanji's book maps to one of the four states, and every order already in `open_orders.json` is valid in the order language; otherwise no new order, the run logged as failed and red (PO, LD-14) |
-| L-S1 | Next session | The order is for the first NYSE session after the run's date (ET) |
+| L-S1 | Next session | The order is for the first NYSE session after the last close: after the close, the next one; before the open, that day's (PO, LD-31) |
 | L-P1 | Put timing | Only when the next session is its week's first, in the Cash state |
 | L-P2 | Put expiry | The listed expiry on that week's last session; none listed → no order that week, logged |
 | L-P3 | Put strike | The OTM put whose delta at the close is nearest −0.30; a tie goes further out of the money (LD-11) |

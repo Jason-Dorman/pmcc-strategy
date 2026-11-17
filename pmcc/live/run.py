@@ -2,10 +2,12 @@
 
 The order of a night (LIVE-SPEC › Trade rules):
 
-1. **When:** a run on a trading day before its close, or past the session calendar, is refused
-   and writes nothing (LD-24). Otherwise the session planned is the first after the run's date
-   (L-S1), the same one the close snapshot plans.
-2. **The book:** it must be current (L-B1) and readable (L-B2); every order already in the file
+1. **When:** a run during a session (from its open to its close), or past the session calendar,
+   is refused and writes nothing (LD-24, PO, LD-31). Otherwise the session planned is the first
+   after the last close (L-S1): a run before the open plans that day's, as the night before's
+   would have. It's the same one the close snapshot plans.
+2. **The book:** it must be current (L-B1; while Sanji has written no book, a stale price file is a
+   warning in the row's reason: PO, LD-32) and readable (L-B2); every order already in the file
    must be valid (LD-22), and the root and `mkt/` copies must agree (LD-04).
 3. **The decision:** with a put or call open, nothing (Sanji expires or assigns it). Otherwise, only
    for a week's first session (L-P1, L-C1): LSEG's close snapshot is pulled, with the strike rule's
@@ -95,15 +97,21 @@ class Night:
 
 
 def sessions_for(calendar: SessionCalendar, now: datetime) -> tuple[Session, Session]:
-    """The last completed session and the one planned (L-S1). Raises `LiveError` on a trading
-    day before its close, or outside the session calendar."""
-    today = to_et(now).date()
+    """The last completed session and the one planned, the first after it (L-S1). Raises
+    `LiveError` while a session is trading, from its open to its close, or outside the session
+    calendar. Before the open, the last close is the day before's and today is planned (PO,
+    LD-31: GitHub starts the 10 pm cron hours late)."""
+    et = to_et(now)
+    today = et.date()
     try:
-        if calendar.is_session(today) and to_et(now) < calendar.session(today).close_bar_end:
-            raise LiveError(
-                f"it is {to_et(now):%Y-%m-%d %H:%M} ET, before today's close: the live wheel "
-                "decides from the close, so run it after the session ends"
-            )
+        if calendar.is_session(today):
+            session = calendar.session(today)
+            if session.opens_at <= et < session.close_bar_end:
+                raise LiveError(
+                    f"it is {et:%Y-%m-%d %H:%M} ET, during today's session: the live wheel "
+                    "decides from a close for a session not yet open, so run it after the close "
+                    "or before the open"
+                )
         return last_completed(calendar, now), next_session(calendar, now)
     except ValueError as exc:
         raise LiveError(f"{today} is outside the session calendar: {exc}") from None
@@ -124,13 +132,13 @@ def run_night(
     book: Book | None = None
     decision: Decision | None = None
     try:
-        check_current(root, last.day)
+        stale = check_current(root, last.day)
         existing = _existing_orders(root, calendar)
         book = read_book(root, config.cash)
         decision = decide(book, upcoming, calendar, config, snapshot)
         orders = merged(existing, decision, upcoming, calendar)
         check_night(book, decision, orders, last, upcoming, calendar, config)
-        row = _row(now, last, upcoming, book, decision, orders)
+        row = _row(now, last, upcoming, book, decision, orders, stale)
         if not dry_run:
             for path in (root / ORDERS, root / SANJI_DIR / ORDERS):
                 write_orders(path, orders)
@@ -202,7 +210,7 @@ def describe_night(night: Night, *, dry_run: bool) -> str:
     row, decision = night.row, night.decision
     text = (
         f"Planning {row['next_session']} from the close of {row['last_session']}, holding "
-        f"{row['state']}: {decision.rule}: {decision.reason}."
+        f"{row['state']}: {decision.rule}: {row['reason']}."
     )
     if decision.pick is not None:
         text += f" Delta at the close {decision.pick.delta:+.2f}."
@@ -364,13 +372,15 @@ def _row(
     book: Book,
     decision: Decision,
     orders: Sequence[Order],
+    stale: str | None = None,
 ) -> dict[str, object]:
     pick = decision.pick
+    reason = decision.reason if stale is None else f"{decision.reason} (L-B1 warning: {stale})"
     return {
         **_header(now, last, upcoming, book),
         "outcome": "order" if decision.order is not None else "no_order",
         "rule": decision.rule,
-        "reason": decision.reason,
+        "reason": reason,
         "order_id": decision.order.id if decision.order is not None else None,
         "strike_sent": decision.order.strike if decision.order is not None else None,
         "pick": None if pick is None else _pick(pick),

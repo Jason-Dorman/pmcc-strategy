@@ -62,6 +62,8 @@ def test_l2_03_live_dry_run_writes_nothing(repo: Path) -> None:
 
 def test_ld_14_live_on_a_stale_book_writes_no_order_and_exits_1(repo: Path) -> None:
     sanji_root(repo, date(2026, 11, 12))
+    (repo / "mkt").mkdir(exist_ok=True)
+    (repo / "mkt" / "fills.json").write_text("[]" + chr(10), encoding="utf-8", newline=chr(10))
 
     code, output = _live(repo)
 

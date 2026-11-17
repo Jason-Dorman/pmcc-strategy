@@ -14,6 +14,7 @@ from typing import final
 from pmcc.domain.clock import at_et, to_et
 
 FIRST_BAR_END = time(10)  # the 09:00-10:00 ET bar
+REGULAR_OPEN = time(9, 30)  # every session opens here, half-days too
 REGULAR_CLOSE = time(16)
 HALF_DAY_CLOSE = time(13)
 
@@ -35,6 +36,11 @@ class Session:
     @property
     def is_half_day(self) -> bool:
         return self.close < REGULAR_CLOSE
+
+    @property
+    def opens_at(self) -> datetime:
+        """The opening bell, 09:30 ET."""
+        return at_et(self.day, REGULAR_OPEN)
 
     @property
     def close_bar_end(self) -> datetime:
