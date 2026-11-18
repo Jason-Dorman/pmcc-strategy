@@ -46,11 +46,14 @@
   --spot-line: var(--text); /* the wheel's NAV chart, lower pane: the stock's price (WD-32) */
   --strike-line: var(--margin-im); /* there: the held option's strike, a dashed reference */
   --basis-line: var(--identity-line); /* there: the shares' cost basis, a dotted reference */
+  --iv-line: var(--mark); /* the live page: ATM implied vol, a quoted mark (L4-02) */
+  --rv-line: var(--nav-line); /* there: the stock's realized vol, RV20 */
 
   /* derived */
   --negative-tint: color-mix(in srgb, var(--negative) 14%, transparent); /* warning ground */
   --negative-shade: color-mix(in srgb, var(--negative) 30%, transparent); /* funds below zero */
   --shares-shade: color-mix(in srgb, var(--nav-line) 14%, transparent); /* the wheel holds shares */
+  --vol-gap-shade: color-mix(in srgb, var(--mark) 14%, transparent); /* IV vs RV20's gap */
 
   /* type stacks (self-hosted, DEC-72) */
   --font-display: "Space Grotesk", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;

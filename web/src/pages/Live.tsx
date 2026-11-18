@@ -16,6 +16,7 @@ import { holdsShares, stateLabel } from "../format/wheel";
 import { W_FULL, W_HALF } from "../theme/tokens";
 import type { Live as LiveFile, LiveRun } from "../types/generated/live";
 import { Algorithm, LiveRules, OpenOrders, option, RunLog, SanjiFile } from "./live/sections";
+import { IvRv, Smile } from "./live/vol";
 import { panel, whenLoaded } from "./placeholder";
 
 const READOUT_HINTS = [
@@ -85,6 +86,18 @@ export function Live() {
             order was first written with its strike as a number, $155, and re-sent before the open
             as its percent below Friday&apos;s close, so the run log&apos;s first rows name its
             first id.</> },
+        { ...panel("vol", "Implied against realized", W_HALF, body((l) => <IvRv live={l} />)),
+          note: "live/vol.jsonl, from LSEG each night",
+          caption: <>NVDA&apos;s ATM implied vol for the weekly expiry nearest 30 days out (the
+            call&apos;s and put&apos;s at the strike nearest the close, averaged) against its
+            realized vol over the 20 sessions to that close. The wheel sells options, so it is paid
+            when the shaded gap has IV on top: the market prices more movement than the stock then
+            delivers.</> },
+        { ...panel("smile", "This week's smile", W_HALF, body((l) => <Smile live={l} />)),
+          note: "live/smile.json, at the last close",
+          caption: <>Each out-of-the-money strike&apos;s IV for the coming week&apos;s expiry: puts
+            below the close, calls above. The dashed strike is the put L-P3 picks, nearest a 0.30
+            delta.</> },
         { ...panel("positions", "Positions", W_HALF, body((l) => (
             <SanjiFile file={l.positions} empty="No positions yet." />))),
           note: "Sanji's positions.json" },

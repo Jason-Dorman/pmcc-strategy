@@ -44,7 +44,7 @@ const PALETTE_TOKENS = [
   "accent", "accent-dim", "mark", "trade", "trade-edge", "positive", "negative", "warn",
   "nav-line", "margin-im", "margin-mm", "fit-line", "identity-line", "long-leg", "short-leg",
   "strategy-quant", "strategy-baseline", "available-funds", "spot-line", "strike-line",
-  "basis-line", "negative-shade", "shares-shade",
+  "basis-line", "iv-line", "rv-line", "negative-shade", "shares-shade", "vol-gap-shade",
 ] as const satisfies readonly (keyof Palette)[];
 
 /** Every colour and font stack a chart uses, as the document has them now. */
@@ -181,6 +181,23 @@ export function shadeSeries(name: string, data: readonly (number | null)[], fill
     silent: true,
     ...extra,
   };
+}
+
+/** A shaded band between two series, with no line and no legend entry: an invisible `floor`
+ * and the band of `height` stacked on it (the live page's IV against RV20, L4-02). A hole where
+ * either is null. */
+export function bandSeries(names: { floor: string; band: string; stack: string },
+                           floor: readonly (number | null)[],
+                           height: readonly (number | null)[], fill: string): object[] {
+  const quiet = {
+    type: "line", stack: names.stack, showSymbol: false, symbol: "none", connectNulls: false,
+    lineStyle: { width: 0, opacity: 0 }, emphasis: { disabled: true }, tooltip: { show: false },
+    silent: true,
+  };
+  return [
+    { ...quiet, name: names.floor, data: floor },
+    { ...quiet, name: names.band, data: height, areaStyle: { color: fill, opacity: 1 } },
+  ];
 }
 
 /** A horizontal reference at a value: thin, dotted, never a series hue (rule 5). */

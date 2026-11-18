@@ -1,0 +1,92 @@
+# NVDA's volatility for the live page (L4-02; Spec › Volatility; PO, LD-33; LD-34): its own nightly
+# LSEG pull, like the course's oi-plots.yml beside its deploy. At 03:47 UTC (22:47 EST), 30
+# minutes after the nightly orders, and by hand from the Actions tab ("Run workflow"), where
+# `since` backfills from a day and `plan_only` prints the request estimate first. It runs
+# `pmcc vol` with the LSEG secrets, then commits only live/vol.jsonl and live/smile.json as the
+# Actions bot, pulling first because Sanji and the nightly push to the same branch. A failed pull
+# writes and commits nothing, and the job stays red. It never touches the orders. CI runs when
+# this completes and redeploys the site (LD-06).
+name: vol
+
+on:
+  schedule:
+    - cron: "47 3 * * *"
+  workflow_dispatch:
+    inputs:
+      since:
+        description: "Backfill every session from this day (YYYY-MM-DD); empty for the usual night"
+        required: false
+        default: ""
+        type: string
+      plan_only:
+        description: "Print the request estimate and stop"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+concurrency:
+  group: vol
+  cancel-in-progress: false
+
+jobs:
+  vol:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Install from uv.lock
+        run: uv sync --frozen
+
+      - name: Pull NVDA's volatility
+        env:
+          LSEG_APP_KEY: ${{ secrets.LSEG_APP_KEY }}
+          LSEG_USERNAME: ${{ secrets.LSEG_USERNAME }}
+          LSEG_PASSWORD: ${{ secrets.LSEG_PASSWORD }}
+          SINCE: ${{ inputs.since }}
+          PLAN_ONLY: ${{ inputs.plan_only }}
+        run: |
+          set -euo pipefail
+          args=()
+          if [ -n "${SINCE:-}" ]; then
+            args+=(--since "$SINCE")
+          fi
+          if [ "${PLAN_ONLY:-false}" = "true" ]; then
+            args+=(--plan-only)
+          fi
+          uv run --frozen pmcc vol --symbol NVDA "${args[@]}"
+
+      - name: Commit the chart's data
+        if: ${{ !inputs.plan_only }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- live/vol.jsonl live/smile.json
+          if git diff --cached --quiet; then
+            echo "Nothing to commit."
+            exit 0
+          fi
+          git commit -m "Live wheel: volatility $(TZ=America/New_York date +%F)"
+          for attempt in 1 2 3; do
+            if git pull --rebase origin main && git push origin HEAD:main; then
+              exit 0
+            fi
+            git rebase --abort 2>/dev/null || true
+            if [ "$attempt" -lt 3 ]; then
+              sleep $((attempt * 10))
+            fi
+          done
+          echo "Could not push the volatility commit after 3 tries." >&2
+          exit 1

@@ -27,7 +27,7 @@ These are the professor's systems; we read their output and never write it, with
 
 ## Scope
 
-**In:** the wheel (LD-03), live, on NVDA, one contract at a time, with the same states as the backtest; a nightly GitHub Action that reads Sanji's book, pulls NVDA's data from LSEG, picks the week's option and writes `open_orders.json` at the repo root and under `mkt/` (LD-04, LD-05); a committed log of each night's run; one new page on the existing site (LD-10).
+**In:** the wheel (LD-03), live, on NVDA, one contract at a time, with the same states as the backtest; a nightly GitHub Action that reads Sanji's book, pulls NVDA's data from LSEG, picks the week's option and writes `open_orders.json` at the repo root and under `mkt/` (LD-04, LD-05); a committed log of each night's run; one new page on the existing site (LD-10); a second nightly Action that pulls NVDA's volatility from LSEG for two charts on that page (PO, LD-33).
 
 **Out:** other symbols; rolls, early closes and buy-backs; any order type besides a limit sell to open; explaining the pipeline on the site (PO, LD-10); changing the PMCC's or the wheel's code paths, results or pages.
 
@@ -112,13 +112,22 @@ Every threshold lives in `configs/live.yaml` under its rule ID (the strike band 
 
 NVDA's conid is 4815747 (LD-12). The strike above is Monday Nov 16's: the 0.30-delta put at Friday's close was $155, 4.81% below the $162.83 close, sent as a whole 5%, so Sanji takes the open × 0.95 and the nearest listed strike: $155 if NVDA opens where it closed (PO, LD-29). The order is written the night before, so a strike sent as a number would sit at another delta after a gap at the open; a percentage moves with it. Every order is validated against the order language before the file is written; an invalid one fails the run and writes nothing.
 
+## Volatility (PO, LD-33)
+
+A second workflow, `vol`, like the course's `oi-plots.yml` beside its deploy: nightly, 30 minutes after the orders' (cron `47 3 * * *`), and by hand. It asks LSEG for NVDA's volatility and commits two files for the live page's charts; it never touches the orders, and a failed pull commits nothing and fails visibly. The site redeploys after it.
+
+- **IV against RV20, a point a session:** the ATM implied vol of the weekly expiry nearest 30 calendar days out (a tie going later): the mean of the call's and the put's IV at the strike nearest the close, among strikes with both sides quoted at the close (a tie going lower); against RV20, the sample standard deviation of the 20 daily log returns ending at that session's close, × √252. IVs as the picks' (Data › Delta); closes as the last trade in the close bar.
+- **The smile:** the coming week's expiry at the last close, the out-of-the-money side (puts below the close, calls above), each strike's IV and delta, and L-P3's pick.
+- **History:** backfilled about three months by hand, after the pull's plan is shown; then each run fills the sessions since the last point.
+- **Files:** `live/vol.jsonl` (appended, one row a session) and `live/smile.json` (the last session's): numbers derived from LSEG's quotes, never the quotes (LD-34).
+
 ## Run log
 
 Each run appends one row to a committed log, `live/runs.jsonl`, failed runs included: the run time; the last resolved session; the next session; the state; cash and the cost basis; the decision (an order, or no order) with its rule ID and reason; the order's `id` and the strike it sent (LD-29), the picked option's strike, expiry and delta at the close, and its bid, ask, mid and spread then (PO, LD-15).
 
 ## Site
 
-One new page on the existing site, in its existing look ([UI-SPEC](UI-SPEC.md) §6); the PMCC's and the wheel's pages are unchanged. It shows (PO, LD-10): the algorithm and why it was chosen; tonight's `open_orders.json`; Sanji's positions and fills; the nightly run log. It doesn't explain the pipeline. It's `#/live/NVDA`, "Live" in the nav (PO, LD-16), and it may show LSEG's data: the run log shows each pick's quote at the close (PO, LD-15).
+One new page on the existing site, in its existing look ([UI-SPEC](UI-SPEC.md) §6); the PMCC's and the wheel's pages are unchanged. It shows (PO, LD-10): the algorithm and why it was chosen; tonight's `open_orders.json`; NVDA's implied against realized vol, and the coming week's smile (PO, LD-33); Sanji's positions and fills; the nightly run log. It doesn't explain the pipeline. It's `#/live/NVDA`, "Live" in the nav (PO, LD-16), and it may show LSEG's data: the run log shows each pick's quote at the close (PO, LD-15).
 
 ## Invariants
 

@@ -142,7 +142,7 @@ def take_snapshot(
     expiry = calendar.week_final(upcoming.day).day
     request = BarRequest(QUOTE_FIELDS, session.day, session.day + _DAY, Interval.HOURLY)
     stock = fetch_rics(provider, [underlying.stock_ric], request, retry=retry)
-    close = _stock_close(stock.history, underlying.stock_ric, session)
+    close = stock_close(stock.history, underlying.stock_ric, session)
     if close is None:
         raise SnapshotError(
             f"{underlying.stock_ric} has no close for {session.day}: no last trade in its "
@@ -155,8 +155,8 @@ def take_snapshot(
         for right in (Right.PUT, Right.CALL)
     ]
     fetched = fetch_contracts(provider, options, request, fetch_date=to_et(now).date(), retry=retry)
-    closing = _close_bar_rows(fetched.history, session)
-    quotes = tuple(_option_quote(o, fetched.answered, closing) for o in options)
+    closing = close_bar_rows(fetched.history, session)
+    quotes = tuple(option_quote(o, fetched.answered, closing) for o in options)
     return CloseSnapshot(
         now,
         session,
@@ -175,14 +175,14 @@ def _bar_start(bar_end: datetime) -> datetime:
     return (bar_end - BAR).astimezone(UTC)
 
 
-def _close_bar_rows(history: RawHistory, session: Session) -> pl.DataFrame:
+def close_bar_rows(history: RawHistory, session: Session) -> pl.DataFrame:
     return history.rows.filter(pl.col("bar_start") == _bar_start(session.close_bar_end))
 
 
-def _stock_close(history: RawHistory, ric: str, session: Session) -> Price | None:
+def stock_close(history: RawHistory, ric: str, session: Session) -> Price | None:
     """The last trade in the session's close bar, or None if it has none."""
     trades = (
-        _close_bar_rows(history, session)
+        close_bar_rows(history, session)
         .filter((pl.col("ric") == ric) & (pl.col("field") == "TRDPRC_1"))
         .get_column("value")
         .to_list()
@@ -190,7 +190,7 @@ def _stock_close(history: RawHistory, ric: str, session: Session) -> Price | Non
     return Price.from_dollars(trades[0]) if trades else None
 
 
-def _option_quote(
+def option_quote(
     option: OptionId, answered: Mapping[OptionId, str], closing: pl.DataFrame
 ) -> OptionQuote:
     ric = answered.get(option)

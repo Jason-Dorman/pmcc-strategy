@@ -14,6 +14,7 @@ backtest. Pure functions of the snapshot: they read no files and ask LSEG nothin
 """
 
 import math
+from collections.abc import Sequence
 from dataclasses import dataclass
 from decimal import ROUND_CEILING, Decimal
 from typing import final
@@ -108,16 +109,24 @@ def _priced(
     rate: float,
     calendar: SessionCalendar,
 ) -> PricedQuotes:
-    closes = [q.close for q in quotes]
     years = years_between(
         snapshot.session.close_bar_end, calendar.session(snapshot.expiry).close_bar_end
     )
+    return price_at_close(quotes, snapshot.close, years, rate, right)
+
+
+def price_at_close(
+    quotes: Sequence[OptionQuote], close: Price, years: float, rate: float, right: Right
+) -> PricedQuotes:
+    """IV and Greeks of `quotes`, all of one right, from their mids at the close (LD-11): the
+    stock at `close`, `years` to the expiry's close. A lane whose IV doesn't solve is NaN."""
+    closes = [q.close for q in quotes]
     return price_quotes(
         strike=np.array([q.option.strike.units for q in quotes], dtype=np.int64),
         bid=np.array([c.bid.units if c and c.bid else 0 for c in closes], dtype=np.int64),
         ask=np.array([c.ask.units if c and c.ask else 0 for c in closes], dtype=np.int64),
         valid=np.ones(len(quotes), dtype=np.bool_),
-        spot=float(snapshot.close.units),
+        spot=float(close.units),
         years=years,
         rate=rate,
         is_call=right is Right.CALL,

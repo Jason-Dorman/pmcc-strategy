@@ -119,7 +119,7 @@ def _ci() -> dict[Any, Any]:
 
 def test_ld_06_ci_runs_when_the_nightly_completes() -> None:
     assert _ci()[True]["workflow_run"] == {
-        "workflows": [_workflow()["name"]],
+        "workflows": [_workflow()["name"], "vol"],  # and the volatility workflow's (LD-34)
         "types": ["completed"],
         "branches": ["main"],
     }

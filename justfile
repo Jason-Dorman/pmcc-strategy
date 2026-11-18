@@ -42,6 +42,12 @@ live-probe SYM:
 live SYM *ARGS:
     {{uv}} pmcc live --symbol {{SYM}} {{ARGS}}
 
+# NVDA's volatility for the live page's charts (L4-02): ATM IV ~30 days out and RV20 into
+# live/vol.jsonl, the week's smile into live/smile.json. Add --since DAY to backfill, after
+# --plan-only. Platform credentials in the environment, as `live`'s
+vol SYM *ARGS:
+    {{uv}} pmcc vol --symbol {{SYM}} {{ARGS}}
+
 # Pull a symbol from LSEG into the cache (local; Workspace signed in). Add --plan-only for the estimate
 fetch SYM START END *ARGS:
     {{uv}} pmcc fetch --symbol {{SYM}} --start {{START}} --end {{END}} {{ARGS}}

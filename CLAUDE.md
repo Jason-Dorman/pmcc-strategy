@@ -68,7 +68,7 @@ These are working rules, kept for the wheel (WD-01) and the live wheel (LD-01); 
   - Two automated writers exist, by design: Sanji (the professor's server, with the PO's token) pushes its files, and the nightly workflow's Actions bot commits only `open_orders.json` and the run log (LD-06).
 - **Credentials:** never print, read out, copy or commit `lseg-data.config.json` (it's gitignored) or the platform credentials (`LSEG_APP_KEY`, `LSEG_USERNAME`, `LSEG_PASSWORD`: GitHub secrets, or environment variables locally; LD-05). Only `pmcc/data/lseg/` reads either.
 - **LSEG access:**
-  - Only `pmcc fetch`, `pmcc probe`, `pmcc live-probe` and the live wheel's run (`pmcc live`, from the workflows or the PO's machine; LD-05) contact LSEG. Tests, the CI checks, builds and the site never do.
+  - Only `pmcc fetch`, `pmcc probe`, `pmcc live-probe`, the live wheel's run (`pmcc live`) and its volatility pull (`pmcc vol`, LD-34), from the workflows or the PO's machine (LD-05), contact LSEG. Tests, the CI checks, builds and the site never do.
   - `lseg.data` and `pandas` are imported only under `pmcc/data/lseg/`.
   - Before any pull longer than about 2 minutes, show the PO the `--plan-only` estimate. A Workspace (desktop) session needs Workspace signed in throughout; the live wheel's platform session doesn't.
   - Never overwrite cached data. Never record a failed request as "no data": an outage aborts and writes nothing.
@@ -104,6 +104,7 @@ These exist once P0 is done.
 | `just web-dev` / `just web-build` / `just e2e` / `just serve` | frontend (`web-dev` and `web-build` export first) |
 | `just reproduce` | cached data → all runs (the PMCC's batch, the wheel and its friction runs on NVDA) → verify → export → built site |
 | `just live SYM [--dry-run] [--root DIR]` | one night of the live wheel, after the close or before the next open (LD-31): check Sanji's book (L-B1, L-B2), decide, and write `open_orders.json` at the root and under `mkt/` and a row of `live/runs.jsonl`; asks LSEG (platform credentials in the environment) only on nights that plan a week's first session (Friday to Sunday for a Monday, LD-25); `--dry-run` writes nothing (L2-03); the `nightly` workflow runs it at 03:17 UTC and commits its files (L3-01) |
+| `just vol SYM [--since DAY] [--plan-only]` | NVDA's volatility for the live page's charts (L4-02): ATM IV ~30 days out and RV20, a point a session, into `live/vol.jsonl`, and the coming week's smile into `live/smile.json`; platform credentials in the environment; asks LSEG nothing when both are current; `--since` backfills, after `--plan-only`; the `vol` workflow runs it at 03:47 UTC and commits the two files (LD-34) |
 
 ## Conventions
 

@@ -10,6 +10,10 @@ import { LIVE, QUOTED } from "../test/liveFixtures";
 import { bodyRows, column, panel, readout, renderLive, rowAt, sortBy } from "../test/page";
 import { orderFile, strikeValue } from "./live/sections";
 
+function cells(row: HTMLElement): string[] {
+  return [...row.querySelectorAll("td")].map((td) => td.textContent ?? "");
+}
+
 afterEach(() => {
   cleanup();
   clearRunCache();
@@ -49,14 +53,45 @@ describe("readouts", () => {
 });
 
 describe("the panels", () => {
-  it("lead with the algorithm, unnumbered, then the orders, Sanji's files and the log", async () => {
+  it("lead with the algorithm, unnumbered, then the orders, the volatility, Sanji's files and the log",
+     async () => {
     renderLive();
     await screen.findByRole("table", { name: "Nightly run log" });
     const names = screen.getAllByRole("region").map((r) => r.getAttribute("aria-label"));
-    expect(names).toEqual(["The algorithm", "Open orders", "Positions", "Fills",
-                           "Nightly run log"]);
+    expect(names).toEqual(["The algorithm", "Open orders", "Implied against realized",
+                           "This week's smile", "Positions", "Fills", "Nightly run log"]);
     expect(within(await panel("Open orders")).getByText("[1]")).toBeDefined();
-    expect(within(await panel("Nightly run log")).getByText("[4]")).toBeDefined();
+    expect(within(await panel("Nightly run log")).getByText("[6]")).toBeDefined();
+  });
+
+  it("chart IV against RV20 by session, its values newest first (L4-02)", async () => {
+    renderLive();
+    const vol = await panel("Implied against realized");
+    expect(await within(vol).findByRole("figure",
+      { name: "NVDA's ATM IV, ~30 days and RV20 at each close" })).toBeDefined();
+    const table = within(vol).getByRole("table", { name: "Volatility by session" });
+    expect(column(table, 0)).toEqual(["2026-11-17", "2026-11-16", "2026-11-13"]);
+    expect(cells(rowAt(table, 0))).toEqual(["2026-11-17", "48.0%", "52.0%", "−4.0", "$155.46",
+                                     "2026-12-18", "$155.00"]);
+    expect(cells(rowAt(table, 1)).slice(1, 4)).toEqual(["—", "49.0%", "—"]);
+  });
+
+  it("chart the coming week's smile, its values by strike (L4-02)", async () => {
+    renderLive();
+    const smile = await panel("This week's smile");
+    expect(await within(smile).findByRole("figure",
+      { name: "IV by strike for the 2026-11-20 expiry at the 2026-11-17 close" })).toBeDefined();
+    const table = within(smile).getByRole("table", { name: "The smile by strike" });
+    expect(column(table, 0)).toEqual(["$145.00", "$147.50", "$160.00"]);
+    expect(cells(rowAt(table, 1))).toEqual(["$147.50", "put", "58.0%", "−0.30"]);
+  });
+
+  it("say so before the volatility workflow's first run", async () => {
+    renderLive("/live/NVDA", { ...FILES, "data/live.json": { ...LIVE, vol: [], smile: null } });
+    expect(await within(await panel("Implied against realized"))
+      .findByText("No volatility pulled yet.")).toBeDefined();
+    expect(within(await panel("This week's smile")).getByText("No smile pulled yet."))
+      .toBeDefined();
   });
 
   it("say why the wheel, from the backtest, and link to its review", async () => {

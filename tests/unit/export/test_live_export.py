@@ -186,3 +186,67 @@ def test_l4_01_live_json_round_trips_through_its_model(tmp_path: Path, config: L
     assert again.orders == live.orders
     assert again.runs[1].pick == live.runs[1].pick
     assert b'"for":"2026-11-16"' in raw
+
+
+# --- Volatility (L4-02; PO, LD-33; LD-34) ---------------------------------------------------------
+
+POINT: Row = {"session": "2026-11-17", "close": "155.46", "expiry": "2026-12-18",
+              "strike": "155.00", "call_iv": 0.512, "put_iv": 0.524, "atm_iv": 0.518,
+              "rv20": 0.471}  # fmt: skip
+NO_ATM: Row = {**POINT, "session": "2026-11-16", "strike": None, "call_iv": None,
+               "put_iv": None, "atm_iv": None}  # fmt: skip
+SMILE: Row = {"session": "2026-11-17", "expiry": "2026-11-20", "close": "155.46",
+              "pick": "147.50", "points": [
+                  {"strike": "147.50", "right": "put", "iv": 0.58, "delta": -0.31},
+                  {"strike": "160.00", "right": "call", "iv": 0.49, "delta": 0.27}]}  # fmt: skip
+
+
+def _vol(root: Path, *rows: Row, smile: Row | None = SMILE) -> Path:
+    lines = "".join(json.dumps(row) + "\n" for row in rows)
+    (root / "live" / "vol.jsonl").write_text(lines, encoding="utf-8", newline="\n")
+    if smile is not None:
+        (root / "live" / "smile.json").write_text(json.dumps(smile), encoding="utf-8")
+    return root
+
+
+def test_ld_34_the_volatility_points_are_by_session_and_money_in_dollars(
+    tmp_path: Path, config: LiveConfig
+) -> None:
+    live = build_live(_vol(_root(tmp_path), POINT, NO_ATM), config, None)
+
+    assert [p.session for p in live.vol] == ["2026-11-16", "2026-11-17"]  # by session
+    assert live.vol[0].atm_iv is None
+    assert live.vol[1].close == Decimal("155.46")
+    assert live.vol[1].rv20 == 0.471
+
+
+def test_ld_34_the_smile_is_published_with_its_pick(tmp_path: Path, config: LiveConfig) -> None:
+    smile = build_live(_vol(_root(tmp_path), POINT), config, None).smile
+
+    assert smile is not None
+    assert (smile.expiry, smile.pick) == ("2026-11-20", Decimal("147.50"))
+    assert [p.right for p in smile.points] == ["put", "call"]
+
+
+def test_ld_34_no_volatility_yet_means_none(tmp_path: Path, config: LiveConfig) -> None:
+    live = build_live(_root(tmp_path), config, None)
+
+    assert (live.vol, live.smile) == ((), None)
+
+
+VOL_DAMAGE: list[tuple[Callable[[Path], object], str]] = [
+    (_write("live/vol.jsonl", "{}\n"), "vol.jsonl line 1"),
+    (_write("live/vol.jsonl", json.dumps(POINT) + "\n" + json.dumps(POINT) + "\n"), "twice"),
+    (_write("live/smile.json", "{"), "smile.json"),
+]
+
+
+@pytest.mark.parametrize(("damage", "names"), VOL_DAMAGE)
+def test_ld_34_a_volatility_file_the_page_cant_read_stops_the_export(
+    tmp_path: Path, config: LiveConfig, damage: Callable[[Path], object], names: str
+) -> None:
+    root = _vol(_root(tmp_path), POINT)
+    damage(root)
+
+    with pytest.raises(LiveDataError, match=names):
+        build_live(root, config, None)

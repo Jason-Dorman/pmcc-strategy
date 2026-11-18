@@ -1,7 +1,8 @@
 """The `pmcc` command line. A command not built yet is a stub naming its backlog item."""
 
 import os
-from datetime import datetime
+from contextlib import AbstractContextManager
+from datetime import date, datetime
 from pathlib import Path
 from typing import Annotated, NoReturn
 
@@ -28,16 +29,19 @@ from pmcc.config.yaml_file import parse_yaml
 from pmcc.data import coverage, estimate
 from pmcc.data.cache import WHEEL_PART, CacheError, SymbolCache
 from pmcc.data.calendar import CalendarMismatchError
+from pmcc.data.fetch import Retry
 from pmcc.data.files import replace_file
 from pmcc.data.load import load_symbol
 from pmcc.data.lseg import PlatformCredentials, lseg_session, platform_session
 from pmcc.data.probe import ProbeStoppedError, probe_path, run_probe, write_report
-from pmcc.data.provider import ProviderOutageError
+from pmcc.data.provider import HistoryProvider, ProviderOutageError
 from pmcc.data.pull import PlanError, Target, prepare, prepare_wheel, pull_units
 from pmcc.domain.calendar import SessionCalendar
 from pmcc.domain.clock import ET
 from pmcc.domain.errors import EngineError
+from pmcc.domain.instruments import Right
 from pmcc.domain.money import Money
+from pmcc.domain.sessions import Session
 from pmcc.export.manifest import ProvenanceError, provenance
 from pmcc.export.models import DataSource
 from pmcc.export.results import Result, write_result
@@ -49,14 +53,30 @@ from pmcc.export.wheel_models import ThesisVerdict
 from pmcc.live.book import BookError
 from pmcc.live.config import LiveConfig, LiveConfigError, StrikeParams, load_live_config
 from pmcc.live.orders import OrderError
+from pmcc.live.rules import select
 from pmcc.live.run import LiveError, describe_night, run_night
 from pmcc.live.snapshot import (
     CloseSnapshot,
     SnapshotError,
     describe,
+    last_completed,
     snapshot_report,
     take_snapshot,
 )
+from pmcc.live.vol import (
+    SMILE,
+    VOL_LOG,
+    Smile,
+    VolError,
+    VolPoint,
+    append_points,
+    read_points,
+    read_smile_session,
+    sessions_to_fill,
+    smile,
+    write_smile,
+)
+from pmcc.live.vol_fetch import fetch_points, plan_points
 from pmcc.log import configure_logging
 from pmcc.runner import Market, Stamp, run_symbol
 from pmcc.wheel.benchmarks import BENCHMARKS_PATH, BenchmarkError, load_benchmarks
@@ -243,6 +263,108 @@ def live(
     ) as exc:
         _fail(f"{sym}: no new order: {exc}")
     _say(describe_night(night, dry_run=dry_run))
+
+
+@app.command()
+def vol(
+    symbol: Symbol,
+    since: Annotated[
+        datetime | None,
+        typer.Option(formats=["%Y-%m-%d"], help="Backfill every session from this day."),
+    ] = None,
+    plan_only: Annotated[bool, typer.Option(help="Print the request estimate and stop.")] = False,
+    root: Annotated[Path, typer.Option(help="The repo root, where live/ is.")] = Path("."),
+) -> None:
+    """NVDA's volatility for the live page (L4-02): ATM IV about 30 days out and RV20, a point a
+    session, into live/vol.jsonl; and the coming week's smile, into live/smile.json.
+
+    Needs LSEG_APP_KEY, LSEG_USERNAME and LSEG_PASSWORD in the environment (LD-05); asks LSEG
+    nothing when both files are current. Prints counts, never prices (LD-21). A backfill
+    (--since) is shown with --plan-only first.
+    """
+    configure_logging("vol")
+    sym, now = symbol.upper(), _now()
+    config = _live_config()
+    if sym != config.symbol:
+        _fail(f"{sym}: configs/live.yaml trades {config.symbol}")
+    calendar = load_calendar()
+    underlying = _underlying(sym, _universe(calendar))
+    last = last_completed(calendar, now)
+    try:
+        sessions, smile_due = _vol_due(root, calendar, last, since)
+    except (VolError, OSError, ValueError, KeyError) as exc:
+        _fail(f"{sym}: no volatility written: {exc}")
+    if not sessions and not smile_due:
+        _say(f"{sym}: volatility is up to date through {last.day}; LSEG wasn't asked.")
+        return
+    try:
+        with _platform() as provider:
+            pulled = _vol_pull(provider, underlying, calendar, config, now, sessions, smile_due,
+                               plan_only=plan_only)  # fmt: skip
+    except (ProviderOutageError, SnapshotError, VolError) as exc:
+        _fail(f"{sym}: no volatility written: {exc}")
+    if pulled is not None:
+        _say(_vol_written(root, sym, *pulled))
+
+
+def _vol_due(
+    root: Path, calendar: SessionCalendar, last: Session, since: datetime | None
+) -> tuple[tuple[Session, ...], bool]:
+    """The sessions to make points for, and whether the smile is behind `last`."""
+    done = frozenset(date.fromisoformat(str(r["session"])) for r in read_points(root / VOL_LOG))
+    sessions = sessions_to_fill(calendar, last, done, None if since is None else since.date())
+    return sessions, read_smile_session(root / SMILE) != last.day
+
+
+def _vol_pull(
+    provider: HistoryProvider,
+    underlying: Underlying,
+    calendar: SessionCalendar,
+    config: LiveConfig,
+    now: datetime,
+    sessions: tuple[Session, ...],
+    smile_due: bool,
+    *,
+    plan_only: bool,
+) -> tuple[tuple[VolPoint, ...], Smile | None] | None:
+    """The points and the smile, or None after printing the plan."""
+    rate, retry = config.risk_free.rate, Retry()
+    plan = (
+        plan_points(provider, underlying.stock_ric, calendar, sessions, now.date(), retry)
+        if sessions
+        else None
+    )
+    if plan_only:
+        _say(plan.describe() if plan is not None else "No sessions to fill.")
+        if smile_due:
+            _say("The smile: one close snapshot of the coming week's chain, as the nightly run's.")
+        return None
+    points = () if plan is None else fetch_points(provider, plan, underlying.option_root,
+                                                  calendar, rate, retry)  # fmt: skip
+    if not smile_due:
+        return points, None
+    band = config.strike("L-P3")
+    snap = take_snapshot(provider, underlying, calendar, now, band)
+    pick = select(snap, Right.PUT, band.target_delta, rate, calendar)
+    return points, smile(snap, rate, calendar, pick)
+
+
+def _vol_written(root: Path, sym: str, points: tuple[VolPoint, ...], curve: Smile | None) -> str:
+    """Writes what was pulled, and says so in counts."""
+    said = [f"{sym}: {len(points)} point(s) added to {VOL_LOG.as_posix()}"]
+    if points:
+        append_points(root / VOL_LOG, points)
+        said[0] += f" ({points[0].session} to {points[-1].session})"
+    if curve is not None:
+        write_smile(root / SMILE, curve)
+        said.append(f"the smile for the {curve.expiry} expiry, {len(curve.points)} strikes, to "
+                    f"{SMILE.as_posix()}")  # fmt: skip
+    return "; ".join(said) + "."
+
+
+def _platform() -> AbstractContextManager[HistoryProvider]:
+    """The headless LSEG session, from the environment's credentials (LD-05)."""
+    return platform_session(PlatformCredentials.from_env(os.environ))
 
 
 def _live_config() -> LiveConfig:

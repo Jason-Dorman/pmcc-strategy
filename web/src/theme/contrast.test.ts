@@ -125,6 +125,9 @@ const DEC_04: Record<string, ColorToken> = {
   "spot-line": "text",
   "strike-line": "margin-im",
   "basis-line": "identity-line",
+  // the live page's volatility (L4-02; PO, LD-33)
+  "iv-line": "mark",
+  "rv-line": "nav-line",
 };
 
 describe("chart roles (DEC-04)", () => {
@@ -148,6 +151,10 @@ describe("chart roles (DEC-04)", () => {
 
   it("shades the wheel's bars holding shares in NAV_LINE (WD-32)", () => {
     expect(TOKENS).toContain("--shares-shade: color-mix(in srgb, var(--nav-line) 14%, transparent)");
+  });
+
+  it("shades the gap between IV and RV20 in MARK (L4-02)", () => {
+    expect(TOKENS).toContain("--vol-gap-shade: color-mix(in srgb, var(--mark) 14%, transparent)");
   });
 });
 

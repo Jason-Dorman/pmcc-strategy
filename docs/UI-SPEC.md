@@ -49,8 +49,8 @@ No rounded corners, no shadows, no floating cards, no whitespace gaps. shadcn/ui
 | `WARN` | `--warn` | skip reasons (words only) |
 | `NAV_LINE` | `--nav-line` | the NAV series |
 | `FIT_LINE` / `IDENTITY_LINE` | `--fit-line` / `--identity-line` | OLS fit / y = x |
-| chart roles | `var()` of a palette colour, named in `tokens.ts`'s `ROLE_TOKENS` | charts name a role, never a colour. The wheel's NAV chart adds `--spot-line` (TEXT), `--strike-line` (MARGIN_IM) and `--basis-line` (IDENTITY_LINE) (WD-32) |
-| derived | `--negative-tint` / `--negative-shade` / `--shares-shade` | `NEGATIVE` at 14% (a warning's ground) / 30% (a shaded breach); `NAV_LINE` at 14% (the wheel's bars holding shares, WD-32) |
+| chart roles | `var()` of a palette colour, named in `tokens.ts`'s `ROLE_TOKENS` | charts name a role, never a colour. The wheel's NAV chart adds `--spot-line` (TEXT), `--strike-line` (MARGIN_IM) and `--basis-line` (IDENTITY_LINE) (WD-32); the live page's volatility adds `--iv-line` (MARK: implied vol, a quoted mark's) and `--rv-line` (NAV_LINE: the stock's realized) (LD-33) |
+| derived | `--negative-tint` / `--negative-shade` / `--shares-shade` / `--vol-gap-shade` | `NEGATIVE` at 14% (a warning's ground) / 30% (a shaded breach); `NAV_LINE` at 14% (the wheel's bars holding shares, WD-32); `MARK` at 14% (the live page's gap between IV and RV20, LD-33) |
 | `FONT_DISPLAY` / `FONT_BODY` / `FONT_MONO` | `--font-display` / `--font-body` / `--font-mono` | Space Grotesk / Inter / JetBrains Mono, self-hosted |
 
 **Layout constants** live typed in `web/src/theme/tokens.ts` and are never re-typed as literals: the grid (`GRID_COLUMNS` 10, `W_FULL`, `W_HALF`, `W_HERO`, `W_SIDECAR`), breakpoints, figure heights (`PANEL_FIGURE_HEIGHT`, `HERO_FIGURE_HEIGHT`, `FIGURE_MIN_WIDTH`), table sizes (`TABLE_MIN_WIDTH`, `TABLE_MAX_HEIGHT`, `TABLE_FONT_SIZE`, `TABLE_ROW_HEIGHT`, `TABLE_OVERSCAN`), account line weights and marker sizes.
@@ -107,9 +107,11 @@ Rule cells show what the rule did in plain words and link to that rule.
 | --- | --- | --- | --- |
 | — | The algorithm | 10 | Prose: what the wheel does each week, in plain words; why it was chosen, with the backtest's result and a link to `#/wheel-review/NVDA` (Spec › Why the wheel); the rules, each in words with its ID |
 | 1 | Open orders | 10 | `open_orders.json` as the nightly run left it: a table (id, for, action, qty, contract, expiry, strike, limit, ref), then the file itself in a disclosure; "No open orders tonight" for `[]` |
-| 2 | Positions | 5 | Sanji's `positions.json` as written (a file block), until L5-01 knows its rows: then each holding as a row, and cash; "No positions yet" before the first fill |
-| 3 | Fills | 5 | Sanji's `fills.json` as written, until L5-01: then a blotter (PO, LD-30), each fill as a row, newest first, joined to the night and order that placed it: time, contract, side, quantity, limit, fill, outcome (filled, unfilled, unresolved, rejected), cash change, the rule, and once settled its P&L; "No fills yet" before the first |
-| 4 | Nightly run log | 10 | one row per run, newest first: run time, the session planned, state, cash, outcome, rule, why, the option picked at the close, the strike sent (LD-29), its delta and IV, and its bid, ask, mid and spread at the close ("—" on rows logged before them, PO, LD-15) |
+| 2 | Implied against realized | 5 | `live/vol.jsonl` (PO, LD-33): ATM IV about 30 days out (`--iv-line`) and RV20 (`--rv-line`) by session on the trading-time axis, the gap between them shaded (`--vol-gap-shade`), a hole where either is missing; the y axis in whole percents with room above for the legend; the tooltip gives both, the gap in points and the expiry and strike; the values in a table under it, newest first; "No volatility pulled yet" before the first |
+| 3 | This week's smile | 5 | `live/smile.json` (PO, LD-33): each out-of-the-money strike's IV at the last close, by strike, in `--iv-line` with markers; the close a solid reference (`--spot-line`) and L-P3's pick a dashed strike (`--strike-line`), each labelled inside the plot; the tooltip gives the right, IV and delta; the values in a table under it; "No smile pulled yet" before the first |
+| 4 | Positions | 5 | Sanji's `positions.json` as written (a file block), until L5-01 knows its rows: then each holding as a row, and cash; "No positions yet" before the first fill |
+| 5 | Fills | 5 | Sanji's `fills.json` as written, until L5-01: then a blotter (PO, LD-30), each fill as a row, newest first, joined to the night and order that placed it: time, contract, side, quantity, limit, fill, outcome (filled, unfilled, unresolved, rejected), cash change, the rule, and once settled its P&L; "No fills yet" before the first |
+| 6 | Nightly run log | 10 | one row per run, newest first: run time, the session planned, state, cash, outcome, rule, why, the option picked at the close, the strike sent (LD-29), its delta and IV, and its bid, ask, mid and spread at the close ("—" on rows logged before them, PO, LD-15) |
 
 ## 7. Routes
 

@@ -104,6 +104,37 @@ class LiveBacktest(Model):
     baseline_sharpe_annualized: float | None  # the baseline PMCC's, same symbol, window and r
 
 
+class VolPointOut(Model):
+    """A row of `live/vol.jsonl`: a session's ATM IV about 30 days out, and RV20 (PO, LD-33)."""
+
+    session: str
+    close: Dollars
+    expiry: str  # the tenor's: the weekly expiry nearest 30 days out
+    strike: Dollars | None  # the ATM strike; null when no strike had both sides quoted
+    call_iv: float | None
+    put_iv: float | None
+    atm_iv: float | None  # the call's and the put's mean
+    rv20: float | None  # the 20 daily log returns ending at the session's close, × √252
+
+
+class SmilePointOut(Model):
+    strike: Dollars
+    right: Literal["put", "call"]
+    iv: float
+    delta: float
+
+
+class SmileOut(Model):
+    """`live/smile.json`: the coming week's out-of-the-money IVs at a session's close (PO,
+    LD-33), and the put L-P3 picked from them."""
+
+    session: str
+    expiry: str
+    close: Dollars
+    pick: Dollars | None
+    points: tuple[SmilePointOut, ...]  # by strike: puts below the close, calls above
+
+
 class Live(Model):
     """`live.json`: the live wheel as the nightly run and Sanji last left it."""
 
@@ -118,3 +149,5 @@ class Live(Model):
     fills: SanjiFileOut | None
     runs: tuple[LiveRun, ...]  # the run log, oldest first, as logged; none before the first run
     backtest: LiveBacktest | None
+    vol: tuple[VolPointOut, ...]  # by session; none before the volatility workflow's first run
+    smile: SmileOut | None  # null before it
