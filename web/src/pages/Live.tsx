@@ -81,7 +81,10 @@ export function Live() {
           note: "its rules from configs/live.yaml" },
         { ...panel("orders", "Open orders", W_FULL, body((l) => <OpenOrders live={l} />)),
           note: "open_orders.json, as the nightly run left it",
-          caption: <>An order stays in the file until the week it&apos;s for has ended; Sanji
+          caption: <>Picked at the close is the option the nightly run chose from LSEG&apos;s
+            chain at the last close; Sent as is the strike Sanji gets, a put&apos;s as its percent
+            below the close, which Sanji applies to the open so the strike moves with a gap
+            (LD-29). An order stays in the file until the week it&apos;s for has ended; Sanji
             acts on it only on its own session, and never fills an id twice. Monday Nov 16&apos;s
             order was first written with its strike as a number, $155, and re-sent before the open
             as its percent below Friday&apos;s close, so the run log&apos;s first rows name its
@@ -96,8 +99,8 @@ export function Live() {
         { ...panel("smile", "This week's smile", W_HALF, body((l) => <Smile live={l} />)),
           note: "live/smile.json, at the last close",
           caption: <>Each out-of-the-money strike&apos;s IV for the coming week&apos;s expiry: puts
-            below the close, calls above. The dashed strike is the put L-P3 picks, nearest a 0.30
-            delta.</> },
+            below the close, calls above. The dashed strike is the put L-P3 would pick from this
+            close, nearest a 0.30 delta; an order goes in only for a week&apos;s first session.</> },
         { ...panel("positions", "Positions", W_HALF, body((l) => (
             <SanjiFile file={l.positions} empty="No positions yet." />))),
           note: "Sanji's positions.json" },

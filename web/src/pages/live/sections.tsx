@@ -107,7 +107,24 @@ function limit(o: LiveOrder): string {
   return o.order_type === "mkt" ? "Market" : `Limit, ${o.lmt_prc ?? "—"}`;
 }
 
-const ORDER_COLUMNS: readonly TableColumn<LiveOrder>[] = [
+/** An open order with the option the nightly run picked for it from LSEG (PO, LD-35). */
+type OrderRow = LiveOrder & { picked: LivePick | null };
+
+/** The pick an order was sent for: the latest run-log row that ordered, for the order's session,
+ * the same contract and expiry. Matched by those, not the id, since Monday Nov 16's order was
+ * re-sent under a new id (LD-29). None when no row matches. */
+export function pickFor(order: LiveOrder, runs: readonly LiveRun[]): LivePick | null {
+  const row = runs.findLast((r) => r.outcome === "order" && r.next_session === order.for
+    && r.pick?.contract === order.contract && r.pick.expiry === order.expiry);
+  return row?.pick ?? null;
+}
+
+/** `$155, delta −0.32`. */
+function picked(p: LivePick | null): string {
+  return p === null ? "—" : `$${p.strike}, delta ${ratio(p.delta)}`;
+}
+
+const ORDER_COLUMNS: readonly TableColumn<OrderRow>[] = [
   { id: "id", header: "ID", sort: (o) => o.id, cell: (o) => o.id },
   { id: "for", header: "For", sort: (o) => o.for, cell: (o) => o.for },
   { id: "action", header: "Action", sort: (o) => o.action,
@@ -116,17 +133,21 @@ const ORDER_COLUMNS: readonly TableColumn<LiveOrder>[] = [
   { id: "contract", header: "Contract", sort: (o) => o.contract, cell: (o) => o.contract },
   { id: "expiry", header: "Expiry", sort: (o) => o.expiry ?? undefined,
     cell: (o) => o.expiry ?? "—" },
-  { id: "strike", header: "Strike", num: true, sort: (o) => strikeValue(o.strike),
+  { id: "picked", header: "Picked at the close", num: true,
+    sort: (o) => strikeValue(o.picked?.strike), cell: (o) => picked(o.picked) },
+  { id: "strike", header: "Sent as", num: true, sort: (o) => strikeValue(o.strike),
     cell: (o) => o.strike ?? "—" },
   { id: "limit", header: "Limit", sort: limit, cell: limit },
   { id: "ref", header: "Ref", sort: (o) => o.ref ?? undefined, cell: (o) => o.ref ?? "—" },
 ];
 
+/** The open orders, each with the strike LSEG gave the run beside the token Sanji gets. */
 export function OpenOrders({ live }: { live: Live }) {
   if (live.orders.length === 0) return <Empty>No open orders tonight.</Empty>;
+  const rows = live.orders.map((o) => ({ ...o, picked: pickFor(o, live.runs) }));
   return (
     <>
-      <DataTable label="Open orders" rows={live.orders} columns={ORDER_COLUMNS}
+      <DataTable label="Open orders" rows={rows} columns={ORDER_COLUMNS}
                  rowId={(o) => o.id} grow />
       <Details summary="open_orders.json" table>
         <pre className="pm-file">{orderFile(live.orders)}</pre>

@@ -127,7 +127,7 @@ Each run appends one row to a committed log, `live/runs.jsonl`, failed runs incl
 
 ## Site
 
-One new page on the existing site, in its existing look ([UI-SPEC](UI-SPEC.md) §6); the PMCC's and the wheel's pages are unchanged. It shows (PO, LD-10): the algorithm and why it was chosen; tonight's `open_orders.json`; NVDA's implied against realized vol, and the coming week's smile (PO, LD-33); Sanji's positions and fills; the nightly run log. It doesn't explain the pipeline. It's `#/live/NVDA`, "Live" in the nav (PO, LD-16), and it may show LSEG's data: the run log shows each pick's quote at the close (PO, LD-15).
+One new page on the existing site, in its existing look ([UI-SPEC](UI-SPEC.md) §6); the PMCC's and the wheel's pages are unchanged. It shows (PO, LD-10): the algorithm and why it was chosen; tonight's `open_orders.json`, each order beside the strike LSEG gave the run at the close (PO, LD-35); NVDA's implied against realized vol, and the coming week's smile (PO, LD-33); Sanji's positions and fills; the nightly run log. It doesn't explain the pipeline. It's `#/live/NVDA`, "Live" in the nav (PO, LD-16), and it may show LSEG's data: the run log shows each pick's quote at the close (PO, LD-15).
 
 ## Invariants
 

@@ -50,6 +50,7 @@ The user is the product owner (PO). This log tracks what the spec leaves open, t
 | LD-32 | A stale price file is a warning while Sanji has written no book | SETTLED (PO): warn, don't stop, until positions or fills exist | — |
 | LD-33 | A volatility workflow and its charts: IV against RV20, and the smile | SETTLED (PO): its own workflow, a 3-month backfill, drawn on the site | — |
 | LD-34 | The volatility workflow's files, pulls and schedule (L4-02) | ENG | — |
+| LD-35 | The open orders show the strike LSEG gave the run beside the one sent | SETTLED (PO): on the page only; the order Sanji gets is unchanged (LD-29) | — |
 
 ## Settled
 
@@ -293,3 +294,11 @@ None.
 - **Failure:** an outage, or a session with no close (LSEG hasn't published it), writes nothing and exits 1; the workflow commits nothing and stays red. The orders are never touched.
 - **The workflow:** `.github/workflows/vol.yml`, cron `47 3 * * *` (03:47 UTC: 22:47 EST), 30 minutes after the nightly's, and by hand with `since` and `plan_only` inputs, passed to the command through the environment, never pasted into the script. Main only, one run at a time, contents write; the secrets in the pull's step alone. The Actions bot commits only the two files, after a pull, three tries, as the nightly does; a plan commits nothing. CI's `workflow_run` lists it beside the nightly, so the site redeploys after a successful pull.
 - **Export and page:** `live.json` gains `vol` (the points by session; a session twice stops the export) and `smile` (null before the first). The page's two panels and their tokens are UI-SPEC §6 › Live's and §3's: `--iv-line` (MARK), `--rv-line` (NAV_LINE), `--vol-gap-shade` (MARK at 14%). Each chart's values are in a table in a disclosure under it.
+
+### LD-35 — The open orders show the strike LSEG gave the run beside the one sent
+**Status:** SETTLED · **Basis:** PO, 2026-11-18 · **Affects:** Spec › Site; UI-SPEC §6 › Live (Open orders); L4-02's follow-up
+
+- **Asked:** the open orders' strike should come from the nightly run's LSEG data. The Open orders panel showed only the token Sanji gets, `pct:-5` (LD-29), not the $155 put the run picked from LSEG's chain at the close. The options: show LSEG's strike beside the token, on the page only; or send it to Sanji as a number, reversing LD-29, so a gap at the open leaves the put at another delta.
+- **Outcome:** the page only. The Open orders table shows "Picked at the close", the strike and delta LSEG gave the run, beside "Sent as", the token in `open_orders.json`, which is unchanged. (Recommended.)
+- **How the page finds it:** from the run log in `live.json`, the latest row that ordered, for the order's session, the same contract and expiry; matched by those, not the id, since Monday Nov 16's order was re-sent under a new id (LD-29). A dash when no row matches. No change to the export or the run.
+- **With it:** the smile's caption says its dashed strike is the put L-P3 *would* pick from that close, since an order goes in only for a week's first session.

@@ -8,7 +8,7 @@ import { clearRunCache } from "../data/loader";
 import { FILES } from "../test/fixtures";
 import { LIVE, QUOTED } from "../test/liveFixtures";
 import { bodyRows, column, panel, readout, renderLive, rowAt, sortBy } from "../test/page";
-import { orderFile, strikeValue } from "./live/sections";
+import { orderFile, pickFor, strikeValue } from "./live/sections";
 
 function cells(row: HTMLElement): string[] {
   return [...row.querySelectorAll("td")].map((td) => td.textContent ?? "");
@@ -111,7 +111,8 @@ describe("the panels", () => {
     const orders = await screen.findByRole("table", { name: "Open orders" });
     const cells = [...rowAt(orders, 0).querySelectorAll("td")].map((c) => c.textContent);
     expect(cells).toEqual(["wheel-2026-11-16-P-155", "2026-11-16", "Sell to open (SHT)", "1",
-                           "put", "2026-11-20", "155", "Limit, mid", "open"]);
+                           "put", "2026-11-20", "$155, delta −0.32", "155", "Limit, mid",
+                           "open"]);
     const file = (await panel("Open orders")).querySelector("pre")?.textContent ?? "";
     expect(JSON.parse(file)).toEqual([{ id: "wheel-2026-11-16-P-155", for: "2026-11-16",
       order_type: "lmt", action: "SHT", qty: 1, underlying: 4815747, contract: "put",
@@ -158,8 +159,25 @@ describe("the panels", () => {
     const orders = [at("155"), at("92.5"), at("1000")];
     renderLive("/live/NVDA", { ...FILES, "data/live.json": { ...LIVE, orders } });
     const table = await screen.findByRole("table", { name: "Open orders" });
-    await sortBy(table, /Strike/);
-    expect(column(table, 6)).toEqual(["92.5", "155", "1000"]);
+    await sortBy(table, /Sent as/);
+    expect(column(table, 7)).toEqual(["92.5", "155", "1000"]);
+  });
+
+  it("show beside each order the strike LSEG gave the run, matched by session and contract",
+     async () => {
+    const [order] = LIVE.orders;
+    if (!order) throw new Error("no order");
+    const resent = { ...order, id: "wheel-2026-11-16-P-pct-5", strike: "pct:-5" }; // LD-29
+    const unmatched = { ...order, id: "wheel-2026-11-23-P-pct-4", for: "2026-11-23",
+                        expiry: "2026-11-27", strike: "pct:-4" };
+    expect(pickFor(resent, LIVE.runs)?.strike).toBe("155");
+    expect(pickFor({ ...order, contract: "call" }, LIVE.runs)).toBeNull();
+    expect(pickFor(order, [])).toBeNull();
+    renderLive("/live/NVDA", { ...FILES, "data/live.json": {
+      ...LIVE, orders: [resent, unmatched] } });
+    const table = await screen.findByRole("table", { name: "Open orders" });
+    expect(column(table, 6)).toEqual(["$155, delta −0.32", "—"]);
+    expect(column(table, 7)).toEqual(["pct:-5", "pct:-4"]);
   });
 
   it("log every night, newest first, with each pick's quote and a dash before it was kept",
