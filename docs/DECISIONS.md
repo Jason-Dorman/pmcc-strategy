@@ -50,7 +50,7 @@ The user is the product owner (PO). This log tracks what the spec leaves open, t
 | LD-32 | A stale price file is a warning while Sanji has written no book | SETTLED (PO): warn, don't stop, until positions or fills exist | — |
 | LD-33 | A volatility workflow and its charts: IV against RV20, and the smile | SETTLED (PO): its own workflow, a 3-month backfill, drawn on the site | — |
 | LD-34 | The volatility workflow's files, pulls and schedule (L4-02) | ENG | — |
-| LD-35 | The open orders show the strike LSEG gave the run beside the one sent | SETTLED (PO): on the page only; the order Sanji gets is unchanged (LD-29) | — |
+| LD-35 | The open orders show the strike LSEG gave the run beside the one sent | SETTLED (PO): on the page only; the order Sanji gets is unchanged (LD-29); the rule table moves to the page's end | — |
 
 ## Settled
 
@@ -302,3 +302,4 @@ None.
 - **Outcome:** the page only. The Open orders table shows "Picked at the close", the strike and delta LSEG gave the run, beside "Sent as", the token in `open_orders.json`, which is unchanged. (Recommended.)
 - **How the page finds it:** from the run log in `live.json`, the latest row that ordered, for the order's session, the same contract and expiry; matched by those, not the id, since Monday Nov 16's order was re-sent under a new id (LD-29). A dash when no row matches. No change to the export or the run.
 - **With it:** the smile's caption says its dashed strike is the put L-P3 *would* pick from that close, since an order goes in only for a week's first session.
+- **The rules last (PO, the same day):** the rule table leaves the algorithm panel for its own, "The rules", the last on the page; the algorithm's prose ends with a line pointing to it.

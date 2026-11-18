@@ -53,15 +53,17 @@ describe("readouts", () => {
 });
 
 describe("the panels", () => {
-  it("lead with the algorithm, unnumbered, then the orders, the volatility, Sanji's files and the log",
-     async () => {
+  it("lead with the algorithm, unnumbered, then the orders, the volatility, Sanji's files, the "
+     + "log, and the rules last", async () => {
     renderLive();
     await screen.findByRole("table", { name: "Nightly run log" });
     const names = screen.getAllByRole("region").map((r) => r.getAttribute("aria-label"));
     expect(names).toEqual(["The algorithm", "Open orders", "Implied against realized",
-                           "This week's smile", "Positions", "Fills", "Nightly run log"]);
+                           "This week's smile", "Positions", "Fills", "Nightly run log",
+                           "The rules"]);
     expect(within(await panel("Open orders")).getByText("[1]")).toBeDefined();
     expect(within(await panel("Nightly run log")).getByText("[6]")).toBeDefined();
+    expect(within(await panel("The rules")).getByText("[7]")).toBeDefined();
   });
 
   it("chart IV against RV20 by session, its values newest first (L4-02)", async () => {
@@ -97,12 +99,14 @@ describe("the panels", () => {
   it("say why the wheel, from the backtest, and link to its review", async () => {
     renderLive();
     const algorithm = await panel("The algorithm");
-    await within(algorithm).findByRole("table", { name: "Live wheel rules" });
+    await within(algorithm).findByRole("link", { name: "The wheel's backtest review" });
     expect(algorithm.textContent).toContain("+$4,171.50 (16.7%) on $25,000.00");
     expect(algorithm.textContent).toContain("Sharpe of 1.57 against the baseline PMCC's 1.24");
     const link = within(algorithm).getByRole("link", { name: "The wheel's backtest review" });
     expect(link.getAttribute("href")).toBe("/wheel-review/NVDA");
-    const rules = within(algorithm).getByRole("table", { name: "Live wheel rules" });
+    expect(within(algorithm).queryByRole("table")).toBeNull();
+    const rules = within(await panel("The rules")).getByRole("table",
+                                                             { name: "Live wheel rules" });
     expect(column(rules, 0)).toEqual(["L-B1", "L-P3", "L-O1"]);
   });
 

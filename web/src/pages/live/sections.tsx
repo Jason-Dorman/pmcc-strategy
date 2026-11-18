@@ -64,7 +64,7 @@ export function Algorithm({ live }: { live: Live }) {
         the premium is richer and assignment likelier. The first week traded, to Nov 20, likely
         spans {live.symbol}&apos;s earnings.
       </p>
-      <p>The rules, each with its ID, which the run log names:</p>
+      <p>The rules, each with the ID the run log names, are the last panel on the page.</p>
     </Note>
   );
 }

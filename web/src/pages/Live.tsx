@@ -76,9 +76,8 @@ export function Live() {
     <PageFrame
       readouts={state.kind === "ready" ? readouts(state.value) : PENDING}
       panels={[
-        { ...panel("algorithm", "The algorithm", W_FULL, body((l) => (
-            <><Algorithm live={l} /><LiveRules live={l} /></>)), false),
-          note: "its rules from configs/live.yaml" },
+        { ...panel("algorithm", "The algorithm", W_FULL, body((l) => <Algorithm live={l} />),
+                   false) },
         { ...panel("orders", "Open orders", W_FULL, body((l) => <OpenOrders live={l} />)),
           note: "open_orders.json, as the nightly run left it",
           caption: <>Picked at the close is the option the nightly run chose from LSEG&apos;s
@@ -112,6 +111,8 @@ export function Live() {
           caption: <>One row a night, failed nights included. The option is the night&apos;s
             pick: its delta and IV are Black-Scholes from the mid at the close, and its bid, ask,
             mid and spread are its quote then (— before the log kept them).</> },
+        { ...panel("rules", "The rules", W_FULL, body((l) => <LiveRules live={l} />)),
+          note: "configs/live.yaml" },
       ]}
     />
   );
