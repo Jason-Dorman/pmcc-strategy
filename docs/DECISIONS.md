@@ -55,6 +55,7 @@ The user is the product owner (PO). This log tracks what the spec leaves open, t
 | LD-37 | The home page's look: modern, less text, a moving background | SETTLED (PO): tiles, no charts; a big headline and big figures; a drifting background; a modern break from the terminal look, home only | — |
 | LD-38 | The site calls the live wheel "Wheel forward test"; its home tile tells the week's trade | SETTLED (PO): "Wheel forward test", its page "Overview"; the tile reads "Selling a $155 put" with its delta, IV and expiry | — |
 | LD-39 | The smile chart is named a skew | SETTLED (PO): "This week's skew", the data unchanged, the caption saying why | — |
+| LD-40 | The algorithm's and the skew's copy, the PO's own | SETTLED (PO): the PO's text, with five accuracy fixes | — |
 
 ## Settled
 
@@ -346,3 +347,16 @@ None.
 
 - **Asked:** the chart doesn't look like a smile. Why: stock options show a skew (puts dearer than calls), not a currency-style smile; this week's expiry spans earnings, whose expected jump lifts every strike's IV about equally and flattens the curve; and the strikes reach only 10% from the close, short of the wings where a smile curves. Offered: this week's and the ~30-day expiry together, strikes out to ±25% (recommended); rename it and keep the data; switch to the ~30-day expiry.
 - **Outcome:** rename it, keep the data. The panel is "This week's skew"; its caption says stock options skew rather than smile, and an expiry that spans earnings sits high and flat. The pull, `live/smile.json` and its code keep the name "smile".
+
+### LD-40 — The algorithm's and the skew's copy, the PO's own
+**Status:** SETTLED · **Basis:** PO, 2026-11-19 · **Affects:** UI-SPEC §6 › Live (the algorithm; panel 3's caption); L4-02's follow-up
+
+- **Asked:** the PO wrote both texts, in the first person, and asked for an accuracy check.
+- **Outcome:** the PO's text, as written but for these fixes, each against the code or the results:
+  - **Cash check:** "enough cash to cover 100 shares" → "enough cash to buy 100 shares at the strike, with a 10% cushion for a gap at the open" (L-P4's `gap_allowance`, LD-29).
+  - **The Sharpe it's compared with:** "my original PMCC strategy" → "my baseline PMCC strategy": 1.24 is the baseline's; quant's was 1.11.
+  - **The workflows:** "One checks for updates to open orders" → it reads Sanji's book, decides the next order and writes `open_orders.json`, asking LSEG for option prices on the nights it trades; "the other pulls the latest market data" → NVDA's volatility, for the page's charts (L3-01, L4-02).
+  - **The rules kept:** "the same rules I used in the backtest" → "the backtest's rules for choosing trades": the selection (the 0.30-delta put and call, the cost-basis floor) is the backtest's, but an order is now decided from the prior close, its strike sent as a percent, with the gap cushion.
+  - **The rules panel:** "their corresponding run-log IDs" → "the IDs the run log cites": the IDs are the rules', and the run log cites them.
+  - Smaller: "the previous day's" → "the previous trading day's" (Monday's order is from Friday's close); the earnings risk is "the bigger move it prices", not the higher IV itself; in the skew's caption, "the impact of earnings on certain expirations" → "the impact of earnings: when an expiration includes an earnings announcement…", since the chart shows one expiration at a time.
+- **Checked:** NVIDIA reported fiscal Q3 2027 after the close on Tue Nov 17, 2026, inside the week ending Nov 20, so "NVDA's earnings fall during that period" holds. The backtest's figures ($4,171.50, 16.7%, $25,000, Sharpe 1.57 against 1.24, Mar 30 – Sep 25, 2026) are read from `live.json`, not typed in. The link to the review is the site's own route, not the github.io URL, so it works on any host.

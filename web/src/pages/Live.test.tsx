@@ -99,10 +99,13 @@ describe("the panels", () => {
   it("say why the wheel, from the backtest, and link to its review", async () => {
     renderLive();
     const algorithm = await panel("The algorithm");
-    await within(algorithm).findByRole("link", { name: "The wheel's backtest review" });
-    expect(algorithm.textContent).toContain("+$4,171.50 (16.7%) on $25,000.00");
-    expect(algorithm.textContent).toContain("Sharpe of 1.57 against the baseline PMCC's 1.24");
-    const link = within(algorithm).getByRole("link", { name: "The wheel's backtest review" });
+    await within(algorithm).findByRole("link", { name: "my wheel backtest review" });
+    expect(algorithm.textContent).toContain(
+      "From March 30 through September 25, 2026, the strategy returned $4,171.50 (16.7%) on "
+      + "$25,000 in starting capital");
+    expect(algorithm.textContent).toContain(
+      "annualized Sharpe ratio of 1.57 compared with 1.24 for my baseline PMCC strategy");
+    const link = within(algorithm).getByRole("link", { name: "my wheel backtest review" });
     expect(link.getAttribute("href")).toBe("/wheel-review/NVDA");
     expect(within(algorithm).queryByRole("table")).toBeNull();
     const rules = within(await panel("The rules")).getByRole("table",

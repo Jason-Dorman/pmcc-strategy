@@ -326,6 +326,9 @@ body {
   padding: 8px 12px 0 12px;
   min-height: calc(2 * 1.45em + 8px);
 }
+.pm-caption p {
+  margin: 0 0 6px;
+}
 .pm-figure {
   min-width: 520px; /* FIGURE_MIN_WIDTH: the panel scrolls rather than squeeze a chart */
 }

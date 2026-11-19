@@ -6,7 +6,7 @@ import { Link } from "react-router-dom";
 
 import { DataTable, type TableColumn } from "../../components/DataTable";
 import { Empty, Note } from "../../components/Note";
-import { money, moneySigned, price } from "../../format/money";
+import { money, price } from "../../format/money";
 import { iv, orDash, pct, ratio, spreadPct } from "../../format/number";
 import { timeET } from "../../format/time";
 import { stateLabel } from "../../format/wheel";
@@ -29,43 +29,74 @@ export function strikeValue(strike: string | null | undefined): number | undefin
 
 // ---- the algorithm ------------------------------------------------------------------------------
 
-/** What the wheel does each week, why it was chosen, from the backtest's numbers. */
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August",
+                "September", "October", "November", "December"];
+
+/** `2026-03-30` → `March 30`. */
+function longDate(date: string): string {
+  const [, m, d] = date.split("-").map(Number);
+  return `${MONTHS[(m ?? 1) - 1] ?? ""} ${String(d ?? "")}`;
+}
+
+/** `$25,000.00` → `$25,000`: a whole amount without its cents. */
+function wholeDollars(value: number): string {
+  return money(value).replace(/\.00$/, "");
+}
+
+/** The PO's account of the forward test, in the first person (PO, LD-40); the backtest's
+ * figures read from `live.json`. */
 export function Algorithm({ live }: { live: Live }) {
   const b = live.backtest;
+  const sym = live.symbol;
   return (
     <Note>
       <p>
-        Each week the wheel forward test sells one option on {live.symbol}, one contract at a time, and
-        writes it to <code>open_orders.json</code> for Sanji, the course&apos;s order system, to
-        fill. While it holds only cash, it sells a <b>put</b> for the week&apos;s first trading
-        session. From the close the night before, it finds the out-of-the-money put expiring that
-        week whose delta is nearest −0.30, and sends its strike as a distance below the close in
-        percent: Sanji sets the strike that far below the open, so a gap overnight moves it with
-        the stock. The limit is the put&apos;s mid at the open, and it&apos;s sold only if the
-        cash covers the strike picked at the close × 100, with room for a gap at the open. If the
-        put expires worthless, it keeps the premium and sells another the next week. If
-        it&apos;s assigned, it holds 100 shares and sells a <b>covered call</b> each week instead,
-        never below what the shares cost, until they&apos;re called away and it holds cash again.
+        For my forward test, I&apos;m running a weekly wheel strategy on {sym}, trading one
+        options contract at a time. The strategy starts by selling a cash-secured put. Using the
+        previous trading day&apos;s closing data, it selects an out-of-the-money put expiring that
+        week with a delta closest to −0.30. The strike is calculated as a percentage below the
+        closing price, allowing it to adjust if {sym} gaps up or down at the next open. The order
+        uses the option&apos;s midpoint price at the open, and the strategy checks that there&apos;s
+        enough cash to buy 100 shares at the strike, with a 10% cushion for a gap at the open,
+        before entering the trade.
+      </p>
+      <p>
+        If the put expires worthless, I keep the premium and repeat the process the following
+        week. If I&apos;m assigned, I switch to selling covered calls against the 100 shares. The
+        calls are written at or above my cost basis until the shares are called away, at which
+        point the strategy starts over with cash-secured puts.
       </p>
       {b && (
         <p>
-          <b>Why the wheel:</b> it&apos;s the strategy already built and backtested here. On{" "}
-          {live.symbol} from {b.start} to {b.end}, it made {moneySigned(b.pnl)} (
-          {pct(b.return_on_starting_cash)}) on {money(b.starting_cash)}, with an annualized Sharpe
-          of {orDash(b.sharpe_annualized, ratio)} against the baseline PMCC&apos;s{" "}
-          {orDash(b.baseline_sharpe_annualized, ratio)} over the same weeks. It also suits Sanji,
-          which settles expiries and assignments itself, so the algorithm only has to sell one
-          option at the start of each week.{" "}
-          <Link to={`/wheel-review/${live.symbol}`}>The wheel&apos;s backtest review</Link> has
-          the rest.
+          I chose the wheel because I&apos;d already built and backtested it, and the results were
+          encouraging. From {longDate(b.start)} through {longDate(b.end)}, {b.end.slice(0, 4)},
+          the strategy returned {money(b.pnl)} ({pct(b.return_on_starting_cash)}) on{" "}
+          {wholeDollars(b.starting_cash)} in starting capital, with an annualized Sharpe ratio of{" "}
+          {orDash(b.sharpe_annualized, ratio)} compared with{" "}
+          {orDash(b.baseline_sharpe_annualized, ratio)} for my baseline PMCC strategy over the
+          same period. The full results are available in{" "}
+          <Link to={`/wheel-review/${sym}`}>my wheel backtest review</Link>.
         </p>
       )}
       <p>
-        Earnings weeks are traded like any other, as in the backtest, which had no event filter:
-        the premium is richer and assignment likelier. The first week traded, to Nov 20, likely
-        spans {live.symbol}&apos;s earnings.
+        I&apos;ve also automated the daily process using two nightly GitHub Actions workflows. One
+        runs the strategy: it reads Sanji&apos;s book, decides the next order and writes{" "}
+        <code>open_orders.json</code>, pulling {sym}&apos;s option prices from LSEG on the nights
+        it places a trade. The other pulls {sym}&apos;s volatility from LSEG for the charts on this
+        page. This keeps the data and trading records updated without having to run everything
+        manually.
       </p>
-      <p>The rules, each with the ID the run log names, are the last panel on the page.</p>
+      <p>
+        For now, I&apos;m keeping the backtest&apos;s rules for choosing trades, including trading
+        through earnings weeks. That&apos;s particularly relevant for the first week ending
+        November 20, since {sym}&apos;s earnings fall during that period. Higher implied volatility
+        can mean more premium, but the bigger move it prices also brings a greater risk of
+        assignment.
+      </p>
+      <p>
+        The complete trading rules, with the IDs the run log cites, are listed in the final panel
+        below.
+      </p>
     </Note>
   );
 }

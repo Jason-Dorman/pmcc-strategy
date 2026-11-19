@@ -97,12 +97,19 @@ export function Live() {
             delivers.</> },
         { ...panel("smile", "This week's skew", W_HALF, body((l) => <Smile live={l} />)),
           note: "live/smile.json, at the last close",
-          caption: <>Each out-of-the-money strike&apos;s IV for the coming week&apos;s expiry: puts
-            below the close, calls above. Stock options show a skew rather than a smile: puts
-            carry more IV than calls. An expiry that spans earnings lifts every strike&apos;s IV
-            about equally, so its curve sits high and flat. The dashed strike is the put L-P3
-            would pick from this close, nearest a 0.30 delta; an order goes in only for a
-            week&apos;s first session.</> },
+          caption: <>
+            <p>This chart shows implied volatility across the out-of-the-money options expiring
+              at the end of the coming week, with puts below the stock&apos;s closing price and
+              calls above it.</p>
+            <p>One thing that stands out is the volatility skew. Rather than a symmetrical smile,
+              the puts generally have higher implied volatility than the calls. You can also see
+              the impact of earnings: when an expiration includes an earnings announcement,
+              implied volatility tends to increase across the strikes, pushing the entire curve
+              higher and sometimes making it flatter.</p>
+            <p>The dashed line marks the put strike my L-P3 rule would select based on the
+              closing price, targeting a delta closest to −0.30. The chart shows where that strike
+              falls, although the strategy only submits an order for the first trading session of
+              each week.</p></> },
         { ...panel("positions", "Positions", W_HALF, body((l) => (
             <SanjiFile file={l.positions} empty="No positions yet." />))),
           note: "Sanji's positions.json" },
