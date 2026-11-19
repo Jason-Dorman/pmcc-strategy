@@ -95,11 +95,14 @@ export function Live() {
             realized vol over the 20 sessions to that close. The wheel sells options, so it is paid
             when the shaded gap has IV on top: the market prices more movement than the stock then
             delivers.</> },
-        { ...panel("smile", "This week's smile", W_HALF, body((l) => <Smile live={l} />)),
+        { ...panel("smile", "This week's skew", W_HALF, body((l) => <Smile live={l} />)),
           note: "live/smile.json, at the last close",
           caption: <>Each out-of-the-money strike&apos;s IV for the coming week&apos;s expiry: puts
-            below the close, calls above. The dashed strike is the put L-P3 would pick from this
-            close, nearest a 0.30 delta; an order goes in only for a week&apos;s first session.</> },
+            below the close, calls above. Stock options show a skew rather than a smile: puts
+            carry more IV than calls. An expiry that spans earnings lifts every strike&apos;s IV
+            about equally, so its curve sits high and flat. The dashed strike is the put L-P3
+            would pick from this close, nearest a 0.30 delta; an order goes in only for a
+            week&apos;s first session.</> },
         { ...panel("positions", "Positions", W_HALF, body((l) => (
             <SanjiFile file={l.positions} empty="No positions yet." />))),
           note: "Sanji's positions.json" },

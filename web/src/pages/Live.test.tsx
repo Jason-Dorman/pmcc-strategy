@@ -59,7 +59,7 @@ describe("the panels", () => {
     await screen.findByRole("table", { name: "Nightly run log" });
     const names = screen.getAllByRole("region").map((r) => r.getAttribute("aria-label"));
     expect(names).toEqual(["The algorithm", "Open orders", "Implied against realized",
-                           "This week's smile", "Positions", "Fills", "Nightly run log",
+                           "This week's skew", "Positions", "Fills", "Nightly run log",
                            "The rules"]);
     expect(within(await panel("Open orders")).getByText("[1]")).toBeDefined();
     expect(within(await panel("Nightly run log")).getByText("[6]")).toBeDefined();
@@ -78,12 +78,12 @@ describe("the panels", () => {
     expect(cells(rowAt(table, 1)).slice(1, 4)).toEqual(["—", "49.0%", "—"]);
   });
 
-  it("chart the coming week's smile, its values by strike (L4-02)", async () => {
+  it("chart the coming week's skew, its values by strike (L4-02)", async () => {
     renderLive();
-    const smile = await panel("This week's smile");
+    const smile = await panel("This week's skew");
     expect(await within(smile).findByRole("figure",
       { name: "IV by strike for the 2026-11-20 expiry at the 2026-11-17 close" })).toBeDefined();
-    const table = within(smile).getByRole("table", { name: "The smile by strike" });
+    const table = within(smile).getByRole("table", { name: "The skew by strike" });
     expect(column(table, 0)).toEqual(["$145.00", "$147.50", "$160.00"]);
     expect(cells(rowAt(table, 1))).toEqual(["$147.50", "put", "58.0%", "−0.30"]);
   });
@@ -92,7 +92,7 @@ describe("the panels", () => {
     renderLive("/live/NVDA", { ...FILES, "data/live.json": { ...LIVE, vol: [], smile: null } });
     expect(await within(await panel("Implied against realized"))
       .findByText("No volatility pulled yet.")).toBeDefined();
-    expect(within(await panel("This week's smile")).getByText("No smile pulled yet."))
+    expect(within(await panel("This week's skew")).getByText("No skew pulled yet."))
       .toBeDefined();
   });
 

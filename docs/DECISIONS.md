@@ -54,6 +54,7 @@ The user is the product owner (PO). This log tracks what the spec leaves open, t
 | LD-36 | The site's name, home page and menus | SETTLED (PO): "Algo Trading Strategies"; a card per strategy at `#/`, live first; a menu per strategy; no symbol picker or ident line; Universe and Data off the menus; a strategy label on each page | — |
 | LD-37 | The home page's look: modern, less text, a moving background | SETTLED (PO): tiles, no charts; a big headline and big figures; a drifting background; a modern break from the terminal look, home only | — |
 | LD-38 | The site calls the live wheel "Wheel forward test"; its home tile tells the week's trade | SETTLED (PO): "Wheel forward test", its page "Overview"; the tile reads "Selling a $155 put" with its delta, IV and expiry | — |
+| LD-39 | The smile chart is named a skew | SETTLED (PO): "This week's skew", the data unchanged, the caption saying why | — |
 
 ## Settled
 
@@ -339,3 +340,9 @@ None.
 - **Outcome:** "Wheel forward test", the industry's term for running a backtested strategy forward on data it hasn't seen, beside "Wheel backtest". Its one page is named "Overview" (an engineering call, the PO's to overrule), so its label reads "Wheel forward test › Overview". And the tile tells this week's trade: "Selling a $155 put", then "Delta −0.32 · IV 88.2% · expires Nov 20", the pick's at the close (LD-35); "No trade open" when there's none. The kicker is "Forward test · nightly", the headline's pill "Last nightly run …".
 - **"Selling", not "Short":** the preview the PO chose read "Short a $155 put"; the page says "Selling", since the order is open and Sanji hasn't filled it, so nothing is held yet.
 - **Unchanged:** the route `#/live/NVDA`, so links already shared still work; and the project's docs, commands and files, which keep "the live wheel" as the project's name.
+
+### LD-39 — The smile chart is named a skew
+**Status:** SETTLED · **Basis:** PO, 2026-11-18 · **Affects:** UI-SPEC §6 › Live (panel 3); Spec › Site; L4-02
+
+- **Asked:** the chart doesn't look like a smile. Why: stock options show a skew (puts dearer than calls), not a currency-style smile; this week's expiry spans earnings, whose expected jump lifts every strike's IV about equally and flattens the curve; and the strikes reach only 10% from the close, short of the wings where a smile curves. Offered: this week's and the ~30-day expiry together, strikes out to ±25% (recommended); rename it and keep the data; switch to the ~30-day expiry.
+- **Outcome:** rename it, keep the data. The panel is "This week's skew"; its caption says stock options skew rather than smile, and an expiry that spans earnings sits high and flat. The pull, `live/smile.json` and its code keep the name "smile".

@@ -71,13 +71,13 @@ export function Smile({ live }: { live: Live }) {
   const smile = live.smile;
   const build = useCallback((p: Palette) => (smile ? smileOption(p, smile) : {}), [smile]);
   if (smile === null || smile.points.length === 0) {
-    return <Empty>No smile pulled yet.</Empty>;
+    return <Empty>No skew pulled yet.</Empty>;
   }
   return (
     <>
       <Chart build={build} label={smileLabel(smile)} />
       <Details summary="The values" table>
-        <DataTable label="The smile by strike" rows={smile.points} columns={SMILE_COLUMNS}
+        <DataTable label="The skew by strike" rows={smile.points} columns={SMILE_COLUMNS}
                    rowId={(r) => `${r.right}-${r.strike}`} />
       </Details>
     </>
