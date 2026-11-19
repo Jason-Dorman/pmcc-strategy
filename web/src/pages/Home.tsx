@@ -144,11 +144,9 @@ export function Home() {
       <header className="pm-hero">
         <div className="pm-hero-eyebrow">{symbol ?? "NVDA"} · options · LSEG data</div>
         <h1 className="pm-hero-title">
-          Selling premium, <span className="pm-hero-glow">one week at a time.</span>
+          Harvesting the <span className="pm-hero-glow">volatility risk premium.</span>
         </h1>
-        <p className="pm-hero-lede">
-          A wheel that trades live every night, and the two backtests that led to it.
-        </p>
+        <p className="pm-hero-lede">Systematic options strategies</p>
         <Status live={live} />
       </header>
       <div className="pm-tiles">

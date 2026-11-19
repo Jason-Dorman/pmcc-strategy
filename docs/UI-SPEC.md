@@ -99,7 +99,7 @@ Rule cells show what the rule did in plain words and link to that rule.
 A modern break from the terminal look, on this page alone (PO, LD-37): no readouts, no panel chrome, no strategy label; rounded, layered tiles over a slowly moving backdrop. Its styles are `web/src/theme/home.css`, every colour a token or a mix of tokens.
 
 - **Backdrop:** three large blurred lights in the palette's amber, cyan and violet (`--accent`, `--mark`, `--nav-line`) drifting slowly behind the page, and a faint grid fading out from the top, drifting too. Decoration only: it shows no data. Still when the system asks for reduced motion.
-- **Headline:** an eyebrow (`NVDA · OPTIONS · LSEG DATA`, mono caps), the title "Selling premium, one week at a time." in the display font (its second half an amber → cyan → violet gradient), one line under it, and a pill with a green dot: "Live · last run …" from the run log's last row.
+- **Headline:** an eyebrow (`NVDA · OPTIONS · LSEG DATA`, mono caps), the title "Harvesting the volatility risk premium." in the display font ("volatility risk premium." an amber → cyan → violet gradient), the subtitle "Systematic options strategies" (PO, LD-37), and a pill with a green dot: "Live · last run …" from the run log's last row.
 - **Tiles**, three across (one column at ≤ 1100px), the live wheel first. Each: a kicker (mono caps: "Live · nightly", or "Backtest · Mar 30 – Sep 25"), the strategy's name linking to its first page, one big amber figure, a mono detail line, one sentence on what it does, and its pages as pill links. A tile lifts and its edge turns amber on hover or focus.
 
 | Tile | Figure | Detail | From |
