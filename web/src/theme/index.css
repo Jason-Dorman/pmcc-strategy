@@ -7,6 +7,7 @@
 @import "tailwindcss";
 @import "./tokens.css";
 @import "./shell.css";
+@import "./home.css"; /* the home page's own look (PO, LD-37) */
 
 @theme inline {
   /* Tailwind's own palette and font stacks off: only the tokens exist (DEC-70) */

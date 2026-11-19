@@ -94,18 +94,21 @@ Rule cells show what the rule did in plain words and link to that rule.
 
 ## 6. Pages
 
-### Home — `#/` (PO, LD-36)
+### Home — `#/` (PO, LD-36, LD-37)
 
-No readouts. Prose panels, unnumbered, each card's note its status:
+A modern break from the terminal look, on this page alone (PO, LD-37): no readouts, no panel chrome, no strategy label; rounded, layered tiles over a slowly moving backdrop. Its styles are `web/src/theme/home.css`, every colour a token or a mix of tokens.
 
-| Panel | Width | Content |
-| --- | --- | --- |
-| What's here | 10 | One paragraph: options strategies on LSEG data, a wheel trading live each night through the course's order system and the two backtests behind it |
-| Live wheel | 10 | What it does; open orders and the last run (time, outcome, rule) from `live.json`; a link to Live. Note: "live, nightly" |
-| Wheel backtest | 5 | What it is and its window; its P&L, return on its starting cash and Sharpe, from `live.json`'s `backtest`; links to Wheel and Wheel review. Note: "backtest, hourly" |
-| PMCC backtest | 5 | What it is and its window (the index's); each strategy's P&L and return, from `universe/headline.json`; links to its five menu pages. Note: "backtest, hourly" |
+- **Backdrop:** three large blurred lights in the palette's amber, cyan and violet (`--accent`, `--mark`, `--nav-line`) drifting slowly behind the page, and a faint grid fading out from the top, drifting too. Decoration only: it shows no data. Still when the system asks for reduced motion.
+- **Headline:** an eyebrow (`NVDA · OPTIONS · LSEG DATA`, mono caps), the title "Selling premium, one week at a time." in the display font (its second half an amber → cyan → violet gradient), one line under it, and a pill with a green dot: "Live · last run …" from the run log's last row.
+- **Tiles**, three across (one column at ≤ 1100px), the live wheel first. Each: a kicker (mono caps: "Live · nightly", or "Backtest · Mar 30 – Sep 25"), the strategy's name linking to its first page, one big amber figure, a mono detail line, one sentence on what it does, and its pages as pill links. A tile lifts and its edge turns amber on hover or focus.
 
-A card's figures are left out while its file loads or if it's missing; its links always show.
+| Tile | Figure | Detail | From |
+| --- | --- | --- | --- |
+| Live wheel | the open order's option as LSEG picked it, `$155 put` (LD-35); "No open order" when there's none | `Open order · expires Nov 20` | `live.json` |
+| Wheel backtest | its P&L | its return and Sharpe | `live.json`'s `backtest` |
+| PMCC backtest | the baseline's P&L | the baseline's return, quant's P&L | `universe/headline.json` |
+
+A tile's figure is "—" while its file loads or if it's missing; its links always show.
 
 **PMCC pages:** unchanged; their layouts are in the archived spec. Each now carries the strategy label (§2).
 

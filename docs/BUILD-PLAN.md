@@ -19,7 +19,7 @@ Nov 13, 2026 · from the [Live spec](LIVE-SPEC.md) · **due Tue Nov 17 2026, 11:
 | L1 Foundations | Fri Nov 13 | CI green on Sanji's pushes; a headless LSEG session pulls NVDA's chain | Done 2026-11-14: CI green (L1-01); the headless session pulled NVDA's quoted chain in Actions (L1-02) |
 | L2 Algorithm | Sat Nov 14 | `pmcc live` reads the book, picks the week's option and writes a valid `open_orders.json` | Done 2026-11-15: L2-01 to L2-03; the PO's dry run against LSEG planned Monday's $155 put. Sanji isn't resolving orders yet, so the book is read as cash until its files appear (LD-24) |
 | L3 Nightly job | Sun Nov 15 | The scheduled job runs, commits and redeploys; Monday's order is in the file before Sunday's 22:00 run ends | Done 2026-11-18 (LD-27): the scheduled run fired at 06:40 ET Wed Nov 18, 8 hours late, committed its row and redeployed. Monday's order was placed by hand on Sunday night (L2-03), as Sunday's 22:00 slot passed before the workflow existed. Monday night's scheduled run hadn't started by 06:51 UTC, so a late run before the open now plans that day, cron 03:17 UTC (PO, LD-31). Sanji's price file stopped at Nov 13 (the course's server last pushed then), so while Sanji has written no book a stale price file is a warning, not a red run (PO, LD-32) |
-| L4 Site | Mon Nov 16 | The live page shows the algorithm, the orders, Sanji's book and the run log | L4-01 done 2026-11-16 (PO: LD-15, LD-16, the "why" text; LD-28). L4-02, the volatility workflow and its two charts (PO, LD-33; LD-34), built 2026-11-18, backfilled the same day; the open orders show LSEG's strike (PO, LD-35): waiting on its first nightly run. L4-03, the site's name, home page and menus (PO, LD-36), done 2026-11-18 |
+| L4 Site | Mon Nov 16 | The live page shows the algorithm, the orders, Sanji's book and the run log | L4-01 done 2026-11-16 (PO: LD-15, LD-16, the "why" text; LD-28). L4-02, the volatility workflow and its two charts (PO, LD-33; LD-34), built 2026-11-18, backfilled the same day; the open orders show LSEG's strike (PO, LD-35): waiting on its first nightly run. L4-03, the site's name, home page and menus (PO, LD-36), and L4-04, the home page's redesign (PO, LD-37), done 2026-11-18 |
 | L5 Release | Tue Nov 17 | Monday's order resolved by Sanji and shown; submitted by 18:00 (deadline 23:59 ET) | Not started |
 
 **Critical path:** L3, which must place Monday Nov 16's order before the open, from the nightly run (Sunday's 22:00). It then stays in the file all week (LD-19), so the professor sees it on Tuesday. Sanji isn't resolving orders yet ("Sanji does not resolve these orders yet", the order page), so a fill before the due date isn't expected.
@@ -98,6 +98,10 @@ Nov 13, 2026 · from the [Live spec](LIVE-SPEC.md) · **due Tue Nov 17 2026, 11:
   - Asked first (2026-11-18): the name, the home page, the order, the picker, the ident line, Universe and Data, the label (LD-36).
   - Done when: `#/` shows the four panels, the bar holds the three entries, every page names its strategy, and `just check` and `just e2e` are green.
   - Needs: L4-01
+- [x] **L4-04 · The home page, redesigned** **[PO]** — done 2026-11-18 (PO, LD-37): a big headline over three rounded tiles, one big figure each, on a drifting background of the palette's lights (`web/src/pages/Home.tsx`, `web/src/theme/home.css`); still under reduced motion. 3 home tests replace L4-03's two; checked by eye at desktop and phone widths
+  - Asked first (2026-11-18): the layout, the motion, the look (LD-37).
+  - Done when: `#/` shows the headline and the three tiles with their figures and pages, and `just check` and `just e2e` are green.
+  - Needs: L4-03
 
 ### L5 — Release
 

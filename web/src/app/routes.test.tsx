@@ -59,34 +59,49 @@ describe("routes", () => {
     expect(screen.queryByRole("contentinfo")).toBeNull();
   });
 
-  it("opens the home page from #/: a card per strategy, the live wheel first (LD-36)",
-     async () => {
+  it("opens the home page from #/: a headline, then a tile per strategy, live first (LD-36, "
+     + "LD-37)", async () => {
     renderAt("/");
-    expect(await panelNames()).toEqual(["What's here", "Live wheel", "Wheel backtest",
-                                        "PMCC backtest"]);
+    expect(await screen.findByRole("heading", { level: 1 })).toBeDefined();
+    const tiles = screen.getAllByRole("region").map((r) => r.querySelector("h2")?.textContent);
+    expect(tiles).toEqual(["Live wheel", "Wheel backtest", "PMCC backtest"]);
     expect(document.querySelector(".pm-crumb")).toBeNull();
-    const links = (name: string) => within(screen.getByRole("region", { name }))
+    const chips = (name: string) => within(screen.getByRole("list", { name: `${name} pages` }))
       .getAllByRole("link").map((a) => [a.textContent, a.getAttribute("href")]);
-    expect(links("Live wheel")).toEqual([["Live", "/live/NVDA"]]);
-    expect(links("Wheel backtest")).toEqual([["Wheel", "/wheel/NVDA"],
-                                             ["Wheel review", "/wheel-review/NVDA"]]);
-    expect(links("PMCC backtest")).toEqual([
-      ["Compare", "/compare/NVDA"], ["Baseline", "/baseline/NVDA"], ["Quant", "/quant/NVDA"],
-      ["Rules", "/rules"], ["Methodology", "/methodology/NVDA"]]);
+    expect(chips("Live wheel")).toEqual([["Live →", "/live/NVDA"]]);
+    expect(chips("Wheel backtest")).toEqual([["Wheel →", "/wheel/NVDA"],
+                                             ["Wheel review →", "/wheel-review/NVDA"]]);
+    expect(chips("PMCC backtest")).toEqual([
+      ["Compare →", "/compare/NVDA"], ["Baseline →", "/baseline/NVDA"],
+      ["Quant →", "/quant/NVDA"], ["Rules →", "/rules"],
+      ["Methodology →", "/methodology/NVDA"]]);
+    const name = within(screen.getByRole("region", { name: "PMCC backtest" }))
+      .getByRole("heading", { level: 2 });
+    expect(within(name).getByRole("link").getAttribute("href")).toBe("/compare/NVDA");
   });
 
-  it("gives each card its headline from its own file", async () => {
+  it("gives each tile its figure from its own file, and says when the live wheel last ran",
+     async () => {
     renderAt("/");
     const live = await screen.findByRole("region", { name: "Live wheel" });
-    expect(await within(live).findByText(/Open orders:/)).toBeDefined();
-    expect(live.textContent).toContain("Open orders: 1.");
-    expect(live.textContent).toContain("Last run: 2026-11-17 22:00 ET, failed (L-B1).");
+    expect(await within(live).findByText("$155 put")).toBeDefined(); // LSEG's pick (LD-35)
+    expect(live.textContent).toContain("Open order · expires Nov 20");
+    expect(screen.getByText(/Live · last run 2026-11-17 22:00 ET/)).toBeDefined();
     const wheel = screen.getByRole("region", { name: "Wheel backtest" });
-    expect(wheel.textContent).toContain("+$4,171.50 (16.7%) on $25,000.00, a Sharpe of 1.57");
+    expect(within(wheel).getByText("+$4,171.50")).toBeDefined();
+    expect(wheel.textContent).toContain("16.7% · Sharpe 1.57");
+    expect(wheel.textContent).toContain("Backtest · Mar 30 – Sep 25");
     const pmcc = screen.getByRole("region", { name: "PMCC backtest" });
-    expect(await within(pmcc).findByText(/baseline \+\$3,672\.50 \(24\.5%\); quant/))
-      .toBeDefined();
-    expect(pmcc.textContent).toContain(`${INDEX.window.start} to ${INDEX.window.end}`);
+    expect(await within(pmcc).findByText("+$3,672.50")).toBeDefined();
+    expect(pmcc.textContent).toContain("24.5% baseline · quant +$3,303.50");
+  });
+
+  it("says so on the live tile when there's no open order", async () => {
+    vi.stubGlobal("fetch", vi.fn(fakeFetch({ ...FILES,
+      "data/live.json": { ...(FILES["data/live.json"] as object), orders: [] } })));
+    renderAt("/");
+    const live = await screen.findByRole("region", { name: "Live wheel" });
+    expect(await within(live).findByText("No open order")).toBeDefined();
   });
 
   it("marks the current strategy, and the current page in its menu", async () => {
@@ -267,6 +282,6 @@ describe("the strategy menus (PO, LD-36)", () => {
   it("lead home from the wordmark", async () => {
     await bar();
     fireEvent.click(screen.getByRole("link", { name: "Algo Trading Strategies" }));
-    expect(await screen.findByRole("region", { name: "What's here" })).toBeDefined();
+    expect(await screen.findByRole("region", { name: "Live wheel" })).toBeDefined();
   });
 });

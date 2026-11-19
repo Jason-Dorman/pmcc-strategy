@@ -1,123 +1,135 @@
-// The home page, `#/` (UI-SPEC §6 › Home; PO, LD-36): what the site holds, then a card per
-// strategy, the live wheel first and full width, the two backtests side by side under it. Each
-// card says what the strategy does, where it stands, one headline from its own file, and links to
-// its pages. From `live.json` (the live wheel, and the wheel backtest's result it carries) and
+// The home page, `#/` (UI-SPEC §6 › Home; PO, LD-36, LD-37): a headline over a tile per strategy,
+// the live wheel first, on a slowly moving background. Each tile is a kicker, the strategy's
+// name, one big figure from its own file, a line on what it does, and its pages. A modern break
+// from the terminal look behind it (PO, LD-37): rounded, layered tiles, larger type, no panel
+// chrome. From `live.json` (the live wheel, and the wheel backtest's result it carries) and
 // `universe/headline.json` (the PMCC's).
 import type { ReactNode } from "react";
+import { useId } from "react";
 import { Link } from "react-router-dom";
 
 import { pageOf, pagePath, STRATEGIES, type StrategyKey } from "../app/pages";
-import { Note } from "../components/Note";
-import { PageFrame } from "../components/PageFrame";
+import { shortDate } from "../components/charts/axis";
 import { useIndex } from "../data/IndexContext";
 import type { Loaded } from "../data/state";
 import { useLive, useUniverseFile } from "../data/useRun";
-import { money, moneySigned } from "../format/money";
+import { moneySigned } from "../format/money";
 import { orDash, pct, ratio } from "../format/number";
 import { timeET } from "../format/time";
-import { W_FULL, W_HALF } from "../theme/tokens";
-import type { Headline, HeadlineRow } from "../types/generated/headline";
+import type { Headline } from "../types/generated/headline";
 import type { Live } from "../types/generated/live";
-import { panel } from "./placeholder";
-
-const OUTCOMES: Readonly<Record<string, string>> = {
-  order: "an order",
-  no_order: "no order",
-  failed: "failed",
-};
+import { pickFor } from "./live/sections";
 
 /** The value once loaded; nothing while loading or when the file is missing. */
 function ready<T>(state: Loaded<T>): T | undefined {
   return state.kind === "ready" ? state.value : undefined;
 }
 
-/** A strategy's pages, as links in its menu's order. */
-function PageLinks({ strategy, symbol }: { strategy: StrategyKey; symbol: string | undefined }) {
-  const menu = STRATEGIES.find((s) => s.key === strategy)?.menu ?? [];
+function span(start: string, end: string): string {
+  return `${shortDate(start)} – ${shortDate(end)}`;
+}
+
+interface TileProps {
+  strategy: StrategyKey;
+  kicker: string;
+  figure: string;
+  detail: string;
+  blurb: string;
+  symbol: string | undefined;
+  live?: boolean;
+}
+
+/** A strategy's tile: its name links to its first page, its pages are the chips below. */
+function Tile({ strategy, kicker, figure, detail, blurb, symbol, live = false }: TileProps) {
+  const id = useId();
+  const s = STRATEGIES.find((x) => x.key === strategy);
+  const pages = (s?.menu ?? []).map(pageOf);
+  const [first] = pages;
   return (
-    <ul className="pm-home-links" aria-label="Pages">
-      {menu.map((key) => {
-        const page = pageOf(key);
-        return <li key={key}><Link to={pagePath(page, symbol)}>{page.label}</Link></li>;
-      })}
-    </ul>
+    <section className="pm-tile" aria-labelledby={id}>
+      <div className="pm-tile-kicker">
+        {live && <span className="pm-live-dot" aria-hidden="true" />}
+        {kicker}
+      </div>
+      <h2 id={id} className="pm-tile-name">
+        {first ? <Link to={pagePath(first, symbol)}>{s?.label}</Link> : s?.label}
+      </h2>
+      <div className="pm-tile-figure">{figure}</div>
+      <div className="pm-tile-detail">{detail}</div>
+      <p className="pm-tile-blurb">{blurb}</p>
+      <ul className="pm-tile-pages" aria-label={`${s?.label ?? strategy} pages`}>
+        {pages.map((page) => (
+          <li key={page.key}><Link to={pagePath(page, symbol)}>{page.label} →</Link></li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
-function card(strategy: StrategyKey, width: typeof W_FULL | typeof W_HALF, note: string,
-              body: ReactNode) {
-  const label = STRATEGIES.find((s) => s.key === strategy)?.label ?? strategy;
-  return { ...panel(strategy, label, width, body, false), note };
+/** The open order's option as LSEG picked it (LD-35), else as sent; or why there's none. */
+function liveFigure(live: Live | undefined): string {
+  if (!live) return "—";
+  const [order] = live.orders;
+  if (!order) return "No open order";
+  const pick = pickFor(order, live.runs);
+  return pick ? `$${pick.strike} ${pick.contract}` : `${order.strike ?? ""} ${order.contract}`;
 }
 
-function LiveCard({ live, symbol }: { live: Live | undefined; symbol: string | undefined }) {
-  const last = live?.runs.at(-1);
-  return (
-    <Note>
-      <p>
-        A GitHub Action runs each night after the close and sells one {symbol} option a week: a
-        put near a 0.30 delta while it holds cash, covered calls if it&apos;s assigned. It writes
-        the order to <code>open_orders.json</code> for Sanji, the course&apos;s order system, to
-        fill. A second Action pulls {symbol}&apos;s volatility from LSEG for the page&apos;s
-        charts.
-      </p>
-      {live && (
-        <p>
-          <b>Open orders:</b> {live.orders.length}.{" "}
-          {last && <><b>Last run:</b> {timeET(last.run_at)},{" "}
-            {OUTCOMES[last.outcome] ?? last.outcome} ({last.rule}).</>}
-        </p>
-      )}
-      <PageLinks strategy="live" symbol={symbol} />
-    </Note>
-  );
+function liveTile(live: Live | undefined, symbol: string | undefined): TileProps {
+  const expiry = live?.orders[0]?.expiry;
+  const detail = expiry ? `Open order · expires ${shortDate(expiry)}`
+    : "The next order goes in for a week's first session";
+  return { strategy: "live", kicker: "Live · nightly", figure: liveFigure(live), detail, symbol,
+           live: true,
+           blurb: `Sells one ${symbol ?? ""} option a week from a nightly GitHub Action; the `
+             + "course's order system fills it." };
 }
 
-function WheelCard({ live, symbol }: { live: Live | undefined; symbol: string | undefined }) {
+function wheelTile(live: Live | undefined, symbol: string | undefined): TileProps {
   const b = live?.backtest;
+  return {
+    strategy: "wheel", kicker: b ? `Backtest · ${span(b.start, b.end)}` : "Backtest", symbol,
+    figure: b ? moneySigned(b.pnl) : "—",
+    detail: b ? `${pct(b.return_on_starting_cash)} · Sharpe ${orDash(b.sharpe_annualized, ratio)}`
+      : "",
+    blurb: "Cash-secured weekly puts, then covered calls once assigned, on hourly LSEG data.",
+  };
+}
+
+function pmccTile(headline: Headline | undefined, symbol: string | undefined,
+                  window: { start: string; end: string } | undefined): TileProps {
+  const rows = headline?.rows.filter((r) => r.symbol === symbol) ?? [];
+  const base = rows.find((r) => r.strategy_id === "baseline_pmcc");
+  const quant = rows.find((r) => r.strategy_id === "quant_pmcc");
+  return {
+    strategy: "pmcc", kicker: window ? `Backtest · ${span(window.start, window.end)}` : "Backtest",
+    symbol, figure: base ? moneySigned(base.pnl) : "—",
+    detail: [base && `${pct(base.return_on_starting_nav)} baseline`,
+             quant && `quant ${moneySigned(quant.pnl)}`].filter(Boolean).join(" · "),
+    blurb: "A deep in-the-money call held as the stock, a short call sold against it each week.",
+  };
+}
+
+/** Slow drifting light behind the page: decoration only, still when the system asks for less
+ * motion (PO, LD-37). */
+function Backdrop() {
   return (
-    <Note>
-      <p>
-        The same wheel, backtested on {symbol}&apos;s hourly LSEG data
-        {b ? ` from ${b.start} to ${b.end}` : ""}: a put each week, then covered calls once
-        assigned. The review page tests whether it did what its thesis said.
-      </p>
-      {b && (
-        <p>
-          <b>Result:</b> {moneySigned(b.pnl)} ({pct(b.return_on_starting_cash)}) on{" "}
-          {money(b.starting_cash)}, a Sharpe of {orDash(b.sharpe_annualized, ratio)}.
-        </p>
-      )}
-      <PageLinks strategy="wheel" symbol={symbol} />
-    </Note>
+    <div className="pm-home-bg" aria-hidden="true">
+      <div className="pm-orb pm-orb-a" />
+      <div className="pm-orb pm-orb-b" />
+      <div className="pm-orb pm-orb-c" />
+    </div>
   );
 }
 
-function result(row: HeadlineRow | undefined): string {
-  return row ? `${moneySigned(row.pnl)} (${pct(row.return_on_starting_nav)})` : "—";
-}
-
-function PmccCard({ headline, symbol, window }: {
-  headline: Headline | undefined; symbol: string | undefined;
-  window: { start: string; end: string } | undefined;
-}) {
-  const rows = headline?.rows.filter((r) => r.symbol === symbol) ?? [];
-  const of = (id: string) => rows.find((r) => r.strategy_id === id);
+function Status({ live }: { live: Live | undefined }): ReactNode {
+  const last = live?.runs.at(-1);
+  if (!last) return null;
   return (
-    <Note>
-      <p>
-        A poor man&apos;s covered call on {symbol}
-        {window ? `, ${window.start} to ${window.end}` : ""}: a deep in-the-money call held as a
-        stand-in for the stock, a short call sold against it each week. A quant variant, with
-        gates that skip poorly paid weeks, against a fixed-delta baseline.
-      </p>
-      {rows.length > 0 && (
-        <p>
-          <b>Result:</b> baseline {result(of("baseline_pmcc"))}; quant {result(of("quant_pmcc"))}.
-        </p>
-      )}
-      <PageLinks strategy="pmcc" symbol={symbol} />
-    </Note>
+    <div className="pm-home-status">
+      <span className="pm-live-dot" aria-hidden="true" />
+      Live · last run {timeET(last.run_at)}
+    </div>
   );
 }
 
@@ -127,19 +139,23 @@ export function Home() {
   const headline = ready(useUniverseFile<Headline>("headline"));
   const symbol = index?.symbols[0]?.symbol;
   return (
-    <PageFrame panels={[
-      { ...panel("about", "What's here", W_FULL, (
-          <Note>
-            <p>
-              Options strategies built on LSEG market data: a wheel that trades live each night
-              through the course&apos;s order system, and the two backtests behind it. Each card below links to its strategy&apos;s pages, as do the menus above.
-            </p>
-          </Note>), false) },
-      card("live", W_FULL, "live, nightly",
-           <LiveCard live={live} symbol={live?.symbol ?? symbol} />),
-      card("wheel", W_HALF, "backtest, hourly", <WheelCard live={live} symbol={symbol} />),
-      card("pmcc", W_HALF, "backtest, hourly",
-           <PmccCard headline={headline} symbol={symbol} window={index?.window} />),
-    ]} />
+    <main className="pm-home">
+      <Backdrop />
+      <header className="pm-hero">
+        <div className="pm-hero-eyebrow">{symbol ?? "NVDA"} · options · LSEG data</div>
+        <h1 className="pm-hero-title">
+          Selling premium, <span className="pm-hero-glow">one week at a time.</span>
+        </h1>
+        <p className="pm-hero-lede">
+          A wheel that trades live every night, and the two backtests that led to it.
+        </p>
+        <Status live={live} />
+      </header>
+      <div className="pm-tiles">
+        <Tile {...liveTile(live, live?.symbol ?? symbol)} />
+        <Tile {...wheelTile(live, symbol)} />
+        <Tile {...pmccTile(headline, symbol, index?.window)} />
+      </div>
+    </main>
   );
 }

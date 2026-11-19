@@ -52,6 +52,7 @@ The user is the product owner (PO). This log tracks what the spec leaves open, t
 | LD-34 | The volatility workflow's files, pulls and schedule (L4-02) | ENG | — |
 | LD-35 | The open orders show the strike LSEG gave the run beside the one sent | SETTLED (PO): on the page only; the order Sanji gets is unchanged (LD-29); the rule table moves to the page's end | — |
 | LD-36 | The site's name, home page and menus | SETTLED (PO): "Algo Trading Strategies"; a card per strategy at `#/`, live first; a menu per strategy; no symbol picker or ident line; Universe and Data off the menus; a strategy label on each page | — |
+| LD-37 | The home page's look: modern, less text, a moving background | SETTLED (PO): tiles, no charts; a big headline and big figures; a drifting background; a modern break from the terminal look, home only | — |
 
 ## Settled
 
@@ -319,3 +320,13 @@ None.
 - **Universe and Data off the menus:** on the public site Data says only that a data connection is needed, and Universe screens one symbol. Their routes still work. (Recommended.)
 - **A strategy label:** each page but home names its strategy under the bar, `PMCC BACKTEST › QUANT`. (Recommended.)
 - **How the menus work (ENG):** a disclosure, not an ARIA menu, as site navigation should be: a button that shows a list of links, closed by a link, Escape (focus back on the button), or a click or focus outside. No new dependency.
+
+### LD-37 — The home page's look: modern, less text, a moving background
+**Status:** SETTLED · **Basis:** PO, 2026-11-18 · **Affects:** UI-SPEC §6 (Home); amends LD-36's home page; L4-04
+
+- **Asked:** make the home page less text-heavy, more dynamic and modern: clean and minimal with an interesting design. Asked: the layout (tiles with small charts, recommended; a live hero over compact rows; plain rows), the motion (subtle, home only, recommended; none), and the look (the same palette made airier, recommended; a modern break).
+- **Layout:** tiles, no charts; the text made more interesting, like a modern homepage (the PO). So: a big headline, one big figure per tile, one sentence each, the pages as pill links.
+- **Motion:** "something in the background", not tied to the data (the PO). So: three blurred lights in the palette's amber, cyan and violet drifting slowly, and a faint drifting grid; still under reduced motion. The charts' no-animation rule (UI-SPEC §4) is unchanged.
+- **Look:** a modern break (the PO, over the recommended airier terminal look): rounded, translucent tiles that lift on hover, display type, no panel chrome. The home page only; the pages behind it keep the square terminal look (DEC-71's square corners and no shadows hold there).
+- **Copy (ENG, the PO's to change):** the headline "Selling premium, one week at a time.", since both strategies sell a weekly option; the lede "A wheel that trades live every night, and the two backtests that led to it."
+- **Styles:** `web/src/theme/home.css`, colours only as tokens or `color-mix` of tokens, so no new palette value.
