@@ -50,7 +50,7 @@ async function settled(page: Page): Promise<void> {
   await expect(page.getByRole("main")).toBeVisible();
   await expect(page.getByRole("contentinfo")).toHaveCount(0);
   await expect(page.getByRole("status", { name: "Loading" })).toHaveCount(0);
-  await expect(page.getByText("PMCC Backtest", { exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Algo Trading Strategies" })).toBeVisible();
 }
 
 for (const route of ROUTES) {
@@ -83,6 +83,7 @@ test("a deep link survives a reload", async ({ page }) => {
   await page.reload();
   await settled(page);
   await expect(page.getByRole("region", { name: "Gate log" })).toBeVisible();
+  await page.getByRole("button", { name: /PMCC backtest/ }).click();
   await expect(page.getByRole("link", { name: "Quant" })).toHaveAttribute("aria-current", "page");
 });
 
@@ -277,8 +278,10 @@ async function weekLabels(page: Page) {
 test("week labels never overlap, and the first week is always labelled", async ({ page }) => {
   await page.goto(`./#/quant/${SYMBOL}`);
   await settled(page);
-  const ident = (await page.locator(".pm-ident").textContent()) ?? "";
-  const start = /(\d{4})-(\d{2})-(\d{2}) →/.exec(ident);
+  // The backtest window's first day, from the index (the header no longer shows it, LD-36).
+  const window = await page.evaluate(async () =>
+    ((await (await fetch("data/index.json")).json()) as { window: { start: string } }).window);
+  const start = /(\d{4})-(\d{2})-(\d{2})/.exec(window.start);
   const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   const first = start ? `${months[Number(start[2]) - 1]} ${Number(start[3])}` : "";
   for (const width of WIDTHS) {

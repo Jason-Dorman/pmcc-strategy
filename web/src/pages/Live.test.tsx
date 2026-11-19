@@ -1,5 +1,5 @@
 // The live page (L4-01; UI-SPEC §6 › Live) over the fixture `live.json`: the readouts from the
-// latest night, the algorithm with its rules, the open orders and the file itself, Sanji's files
+// latest night, the algorithm, the open orders with LSEG's strikes, the rules last, Sanji's files
 // before he writes them, and the run log, newest first, with each pick's quote (PO, LD-15).
 import { cleanup, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -8,7 +8,7 @@ import { clearRunCache } from "../data/loader";
 import { FILES } from "../test/fixtures";
 import { LIVE, QUOTED } from "../test/liveFixtures";
 import { bodyRows, column, panel, readout, renderLive, rowAt, sortBy } from "../test/page";
-import { orderFile, pickFor, strikeValue } from "./live/sections";
+import { pickFor, strikeValue } from "./live/sections";
 
 function cells(row: HTMLElement): string[] {
   return [...row.querySelectorAll("td")].map((td) => td.textContent ?? "");
@@ -110,26 +110,16 @@ describe("the panels", () => {
     expect(column(rules, 0)).toEqual(["L-B1", "L-P3", "L-O1"]);
   });
 
-  it("list the open orders, and the file as it's written", async () => {
+  it("list the open orders as a table, and nothing else", async () => {
     renderLive();
     const orders = await screen.findByRole("table", { name: "Open orders" });
     const cells = [...rowAt(orders, 0).querySelectorAll("td")].map((c) => c.textContent);
     expect(cells).toEqual(["wheel-2026-11-16-P-155", "2026-11-16", "Sell to open (SHT)", "1",
                            "put", "2026-11-20", "$155, delta −0.32", "155", "Limit, mid",
                            "open"]);
-    const file = (await panel("Open orders")).querySelector("pre")?.textContent ?? "";
-    expect(JSON.parse(file)).toEqual([{ id: "wheel-2026-11-16-P-155", for: "2026-11-16",
-      order_type: "lmt", action: "SHT", qty: 1, underlying: 4815747, contract: "put",
-      expiry: "2026-11-20", strike: "155", ref: "open", lmt_prc: "mid" }]);
-  });
-
-  it("write the file in the order page's field order, absent fields left out", () => {
-    const [order] = LIVE.orders;
-    if (!order) throw new Error("no order");
-    const shares = { ...order, contract: "underlying", expiry: null, strike: null, ref: null };
-    expect(Object.keys((JSON.parse(orderFile([shares])) as object[])[0] ?? {})).toEqual(
-      ["id", "for", "order_type", "action", "qty", "underlying", "contract", "lmt_prc"]);
-    expect(orderFile([])).toBe("[]");
+    const panelBody = await panel("Open orders");
+    expect(panelBody.querySelector("pre")).toBeNull();
+    expect(panelBody.querySelector("details")).toBeNull();
   });
 
   it("say so when there are no open orders", async () => {

@@ -1,10 +1,10 @@
 // The route table (UI-SPEC §7, DEC-73). App wraps it in a HashRouter; tests in a MemoryRouter.
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Route, Routes } from "react-router-dom";
 
-import { Empty, Loading } from "../components/Note";
-import { useIndex } from "../data/IndexContext";
+import { Empty } from "../components/Note";
 import { Comparison } from "../pages/Comparison";
 import { Data } from "../pages/Data";
+import { Home } from "../pages/Home";
 import { Live } from "../pages/Live";
 import { Methodology } from "../pages/Methodology";
 import { Rules } from "../pages/Rules";
@@ -14,14 +14,7 @@ import { Wheel } from "../pages/Wheel";
 import { WheelReview } from "../pages/WheelReview";
 import { AppShell } from "./AppShell";
 
-/** `#/` opens the comparison page of the index's first symbol. */
-function Home() {
-  const index = useIndex();
-  if (index.kind === "loading") return <Loading />;
-  const first = index.kind === "ready" ? index.value.symbols[0]?.symbol : undefined;
-  return first ? <Navigate to={`/compare/${first}`} replace /> : <Empty>No results yet.</Empty>;
-}
-
+// `#/` is the home page: the site's strategies, each linked to its pages (PO, LD-36).
 export function AppRoutes() {
   return (
     <Routes>

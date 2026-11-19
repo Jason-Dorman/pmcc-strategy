@@ -55,32 +55,57 @@ describe("routes", () => {
   it.each(ROUTES)("%s renders its panels", async (path, panel) => {
     renderAt(path);
     expect(await screen.findByRole("region", { name: panel })).toBeDefined();
-    expect(screen.getByText("PMCC Backtest")).toBeDefined();
+    expect(screen.getByText("Algo Trading Strategies")).toBeDefined();
     expect(screen.queryByRole("contentinfo")).toBeNull();
   });
 
-  it("opens the first symbol's comparison page from #/", async () => {
+  it("opens the home page from #/: a card per strategy, the live wheel first (LD-36)",
+     async () => {
     renderAt("/");
-    expect(await panelNames()).toContain("NAV — baseline vs quant");
-    const window = `${INDEX.window.start} → ${INDEX.window.end}`;
-    expect(screen.getByText(`NVDA · hourly · ${window}`)).toBeDefined();
+    expect(await panelNames()).toEqual(["What's here", "Live wheel", "Wheel backtest",
+                                        "PMCC backtest"]);
+    expect(document.querySelector(".pm-crumb")).toBeNull();
+    const links = (name: string) => within(screen.getByRole("region", { name }))
+      .getAllByRole("link").map((a) => [a.textContent, a.getAttribute("href")]);
+    expect(links("Live wheel")).toEqual([["Live", "/live/NVDA"]]);
+    expect(links("Wheel backtest")).toEqual([["Wheel", "/wheel/NVDA"],
+                                             ["Wheel review", "/wheel-review/NVDA"]]);
+    expect(links("PMCC backtest")).toEqual([
+      ["Compare", "/compare/NVDA"], ["Baseline", "/baseline/NVDA"], ["Quant", "/quant/NVDA"],
+      ["Rules", "/rules"], ["Methodology", "/methodology/NVDA"]]);
   });
 
-  it("marks the current page in the nav", async () => {
+  it("gives each card its headline from its own file", async () => {
+    renderAt("/");
+    const live = await screen.findByRole("region", { name: "Live wheel" });
+    expect(await within(live).findByText(/Open orders:/)).toBeDefined();
+    expect(live.textContent).toContain("Open orders: 1.");
+    expect(live.textContent).toContain("Last run: 2026-11-17 22:00 ET, failed (L-B1).");
+    const wheel = screen.getByRole("region", { name: "Wheel backtest" });
+    expect(wheel.textContent).toContain("+$4,171.50 (16.7%) on $25,000.00, a Sharpe of 1.57");
+    const pmcc = screen.getByRole("region", { name: "PMCC backtest" });
+    expect(await within(pmcc).findByText(/baseline \+\$3,672\.50 \(24\.5%\); quant/))
+      .toBeDefined();
+    expect(pmcc.textContent).toContain(`${INDEX.window.start} to ${INDEX.window.end}`);
+  });
+
+  it("marks the current strategy, and the current page in its menu", async () => {
     renderAt("/quant/NVDA");
     await panelNames();
-    const nav = screen.getByRole("navigation", { name: "Pages" });
+    const nav = screen.getByRole("navigation", { name: "Strategies" });
+    const pmcc = within(nav).getByRole("button", { name: /PMCC backtest/ });
+    expect(pmcc.classList.contains("on")).toBe(true);
+    expect(within(nav).getByRole("button", { name: /Wheel backtest/ }).classList.contains("on"))
+      .toBe(false);
+    fireEvent.click(pmcc);
     const quant = within(nav).getByRole("link", { name: "Quant" });
     expect(quant.getAttribute("aria-current")).toBe("page");
   });
 
-  it("links the pages without a symbol back to the last symbol shown", async () => {
-    renderAt("/rules");
+  it("names the page's strategy above it", async () => {
+    renderAt("/wheel-review/NVDA");
     await panelNames();
-    const nav = screen.getByRole("navigation", { name: "Pages" });
-    expect(within(nav).getByRole("link", { name: "Quant" }).getAttribute("href")).toBe(
-      "/quant/NVDA",
-    );
+    expect(document.querySelector(".pm-crumb")?.textContent).toBe("Wheel backtest›Wheel review");
   });
 
   it("shows the quant page's optional sections", async () => {
@@ -130,7 +155,7 @@ describe("routes, after review", () => {
   it("shows no synthetic banner on real results", async () => {
     renderAt("/rules");
     await panelNames();
-    await screen.findByText(/NVDA · hourly/);
+    await screen.findByRole("table", { name: /entry rules/i });
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
@@ -146,16 +171,19 @@ describe("routes, after review", () => {
     );
   });
 
-  it("links a page without a symbol back to the last symbol shown", async () => {
+  it("links the menus to the route's symbol, and from a page without one to the index's",
+     async () => {
     renderAt("/quant/QQQ");
     await panelNames();
-    const nav = screen.getByRole("navigation", { name: "Pages" });
-    fireEvent.click(within(nav).getByRole("link", { name: "Rules" }));
+    const nav = () => screen.getByRole("navigation", { name: "Strategies" });
+    fireEvent.click(within(nav()).getByRole("button", { name: /PMCC backtest/ }));
+    expect(within(nav()).getByRole("link", { name: "Baseline" }).getAttribute("href"))
+      .toBe("/baseline/QQQ");
+    fireEvent.click(within(nav()).getByRole("link", { name: "Rules" }));
     await screen.findByRole("region", { name: "Entry rules" });
-    const quant = within(screen.getByRole("navigation", { name: "Pages" })).getByRole("link", {
-      name: "Quant",
-    });
-    expect(quant.getAttribute("href")).toBe("/quant/QQQ");
+    fireEvent.click(within(nav()).getByRole("button", { name: /PMCC backtest/ }));
+    expect(within(nav()).getByRole("link", { name: "Quant" }).getAttribute("href"))
+      .toBe("/quant/NVDA");
   });
 
   it("numbers only figure and table panels: the comparison's NAV panel is [1]", async () => {
@@ -191,24 +219,54 @@ describe("the Data page", () => {
   });
 });
 
-describe("the symbol select", () => {
-  beforeEach(() => {
-    // jsdom lacks what Radix's Select calls when it opens.
-    Element.prototype.hasPointerCapture = () => false;
-    Element.prototype.releasePointerCapture = () => undefined;
-    Element.prototype.scrollIntoView = () => undefined;
-  });
-
-  it("keeps the page and swaps the symbol", async () => {
+describe("the strategy menus (PO, LD-36)", () => {
+  async function bar() {
     renderAt("/quant/NVDA");
     await screen.findByRole("table", { name: "Gate log" });
-    const trigger = screen.getByRole("combobox", { name: "Symbol" });
-    fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false, pointerType: "mouse" });
-    fireEvent.click(await screen.findByRole("option", { name: "QQQ" }));
-    expect(await screen.findAllByText("No results for QQQ / quant_pmcc.")).not.toHaveLength(0);
-    const nav = screen.getByRole("navigation", { name: "Pages" });
-    expect(within(nav).getByRole("link", { name: "Baseline" }).getAttribute("href")).toBe(
-      "/baseline/QQQ",
-    );
+    return screen.getByRole("navigation", { name: "Strategies" });
+  }
+
+  it("list the strategies, the live wheel first, a link for its one page", async () => {
+    const nav = await bar();
+    expect([...nav.children].map((c) => c.textContent)).toEqual(
+      ["Live wheel", "Wheel backtest▾", "PMCC backtest▾"]);
+    expect(within(nav).getByRole("link", { name: "Live wheel" }).getAttribute("href"))
+      .toBe("/live/NVDA");
+  });
+
+  it("keep Universe and Data out of every menu, and show no symbol picker or ident",
+     async () => {
+    const nav = await bar();
+    for (const button of within(nav).getAllByRole("button")) fireEvent.click(button);
+    const labels = within(nav).getAllByRole("link").map((a) => a.textContent);
+    expect(labels).toEqual(["Live wheel", "Wheel", "Wheel review", "Compare", "Baseline",
+                            "Quant", "Rules", "Methodology"]);
+    expect(screen.queryByRole("combobox", { name: "Symbol" })).toBeNull();
+    expect(screen.queryByText(/hourly ·/)).toBeNull();
+  });
+
+  it("open on a click, and close on Escape, a click outside, or a link", async () => {
+    const nav = await bar();
+    const wheel = within(nav).getByRole("button", { name: /Wheel backtest/ });
+    expect(wheel.getAttribute("aria-expanded")).toBe("false");
+    expect(within(nav).queryByRole("link", { name: "Wheel review" })).toBeNull();
+    fireEvent.click(wheel);
+    expect(wheel.getAttribute("aria-expanded")).toBe("true");
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(wheel.getAttribute("aria-expanded")).toBe("false");
+    expect(document.activeElement).toBe(wheel);
+    fireEvent.click(wheel);
+    fireEvent.pointerDown(document.body);
+    expect(within(nav).queryByRole("link", { name: "Wheel review" })).toBeNull();
+    fireEvent.click(wheel);
+    fireEvent.click(within(nav).getByRole("link", { name: "Wheel review" }));
+    expect(await screen.findByRole("region", { name: "Verdicts" })).toBeDefined();
+    expect(within(nav).queryByRole("link", { name: "Wheel review" })).toBeNull();
+  });
+
+  it("lead home from the wordmark", async () => {
+    await bar();
+    fireEvent.click(screen.getByRole("link", { name: "Algo Trading Strategies" }));
+    expect(await screen.findByRole("region", { name: "What's here" })).toBeDefined();
   });
 });

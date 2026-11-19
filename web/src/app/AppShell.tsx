@@ -1,20 +1,14 @@
-// The frame every page shares (UI-SPEC §2): the command bar, the page-level banners, then the
-// page. The symbol comes from the route; a page without one keeps the last symbol shown, so the
-// nav can link back to it (UI-SPEC §7).
-import { useState } from "react";
-import { Outlet, useLocation, useNavigate } from "react-router-dom";
+// The frame every page shares (UI-SPEC §2): the command bar, the page's strategy and name, the
+// page-level banners, then the page. Every strategy runs on one symbol, so there is no symbol
+// picker (PO, LD-36): the symbol comes from the route, or is the index's first.
+import { Outlet, useLocation } from "react-router-dom";
 
 import { CommandBar } from "../components/CommandBar";
 import { WarningBanner } from "../components/WarningBanner";
 import { useIndex } from "../data/IndexContext";
 import type { Loaded } from "../data/state";
 import type { Index } from "../types/generated/index";
-import { pagePath, parsePath } from "./pages";
-
-function ident(index: Index, symbol: string | undefined): string {
-  const window = `${index.window.start} → ${index.window.end}`;
-  return symbol ? `${symbol} · hourly · ${window}` : `hourly · ${window}`;
-}
+import { parsePath, strategyOf, type Page } from "./pages";
 
 function synthetic(index: Index): boolean {
   return index.symbols.some((s) => s.runs.some((r) => r.data_source === "synthetic"));
@@ -33,28 +27,25 @@ function Banners({ index }: { index: Loaded<Index> }) {
   return null;
 }
 
+/** `PMCC backtest › Quant`: which strategy a page belongs to (PO, LD-36). */
+function Crumb({ page }: { page: Page }) {
+  return (
+    <div className="pm-crumb">
+      <span>{strategyOf(page).label}</span>
+      <span className="pm-crumb-sep" aria-hidden="true">›</span>
+      <span>{page.label}</span>
+    </div>
+  );
+}
+
 export function AppShell() {
   const index = useIndex();
-  const navigate = useNavigate();
   const { page, symbol: routed } = parsePath(useLocation().pathname);
-  const [last, setLast] = useState<string | undefined>(undefined);
-  const symbols = index.kind === "ready" ? index.value.symbols.map((s) => s.symbol) : [];
-  const symbol = routed ?? last ?? symbols[0];
-  if (routed !== undefined && routed !== last) setLast(routed);
-
-  const onSymbol = (next: string) => {
-    setLast(next);
-    if (page && page.symbol !== "none") navigate(pagePath(page, next));
-  };
+  const symbol = routed ?? (index.kind === "ready" ? index.value.symbols[0]?.symbol : undefined);
   return (
     <>
-      <CommandBar
-        ident={index.kind === "ready" ? ident(index.value, symbol) : ""}
-        current={page}
-        symbol={symbol}
-        symbols={symbols}
-        onSymbol={onSymbol}
-      />
+      <CommandBar current={page} symbol={symbol} />
+      {page && <Crumb page={page} />}
       <Banners index={index} />
       <Outlet />
     </>

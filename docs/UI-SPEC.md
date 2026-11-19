@@ -18,8 +18,9 @@ No rounded corners, no shadows, no floating cards, no whitespace gaps. shadcn/ui
 
 | Block | React component | Notes |
 | --- | --- | --- |
-| Command bar | `CommandBar` | **Left:** the wordmark (display font, amber, uppercase, tracked). **Right:** the ident (symbol · bar size · window), the nav (wrapping on a phone), the symbol select |
-| Nav | inside `CommandBar` | Muted at rest; the current page is amber. The wheel's two entries, Wheel and Wheel review, follow Quant (PO, WD-22) |
+| Command bar | `CommandBar` | **Left:** the wordmark, "Algo Trading Strategies" (display font, amber, uppercase, tracked), a link to the home page. **Right:** the nav, wrapping on a phone. No ident line and no symbol select: every strategy runs on NVDA alone (PO, LD-36) |
+| Nav | `CommandBar`, `NavMenu` | A menu per strategy, in this order (PO, LD-36): **Live wheel** (one page, so a plain link to Live); **Wheel backtest** ▾ Wheel, Wheel review; **PMCC backtest** ▾ Compare, Baseline, Quant, Rules, Methodology. Universe and Data are in no menu; their routes still work. A menu is a disclosure: a button showing a list of links under it, closed by a link, Escape, or a click or focus outside. Muted at rest; the current strategy's entry and the current page in its list are amber |
+| Strategy label | `AppShell` | Under the bar on every page but home: the page's strategy and name, `PMCC BACKTEST › QUANT` (mono caps, muted; the page's name in text, the › amber) (PO, LD-36) |
 | Readout strip | `Readouts` | Per KPI: label (muted caps), value (amber mono), and a one-line hint defining the number |
 | Panel grid | `PanelGrid` | 10 columns. Widths: 10 (full), 5 + 5, 6 + 4. A row's widths sum to 10 |
 | Panel | `Panel` | **Header:** `[n]` (amber mono), NAME (display caps), note (mono muted, one line, truncated). **Body:** figure or table. **Caption:** HTML below the body |
@@ -93,7 +94,20 @@ Rule cells show what the rule did in plain words and link to that rule.
 
 ## 6. Pages
 
-**PMCC pages:** unchanged; their layouts are in the archived spec.
+### Home — `#/` (PO, LD-36)
+
+No readouts. Prose panels, unnumbered, each card's note its status:
+
+| Panel | Width | Content |
+| --- | --- | --- |
+| What's here | 10 | One paragraph: options strategies on LSEG data, a wheel trading live each night through the course's order system and the two backtests behind it |
+| Live wheel | 10 | What it does; open orders and the last run (time, outcome, rule) from `live.json`; a link to Live. Note: "live, nightly" |
+| Wheel backtest | 5 | What it is and its window; its P&L, return on its starting cash and Sharpe, from `live.json`'s `backtest`; links to Wheel and Wheel review. Note: "backtest, hourly" |
+| PMCC backtest | 5 | What it is and its window (the index's); each strategy's P&L and return, from `universe/headline.json`; links to its five menu pages. Note: "backtest, hourly" |
+
+A card's figures are left out while its file loads or if it's missing; its links always show.
+
+**PMCC pages:** unchanged; their layouts are in the archived spec. Each now carries the strategy label (§2).
 
 **Wheel pages:** unchanged; their layouts are in the wheel's archived copy of this spec, [archive/wheel/UI-SPEC.md](archive/wheel/UI-SPEC.md) §6 (LD-01).
 
@@ -106,7 +120,7 @@ Rule cells show what the rule did in plain words and link to that rule.
 | # | Panel | Width | Content |
 | --- | --- | --- | --- |
 | — | The algorithm | 10 | Prose: what the wheel does each week, in plain words; why it was chosen, with the backtest's result and a link to `#/wheel-review/NVDA` (Spec › Why the wheel); a line pointing to the rules, the last panel (PO, LD-35) |
-| 1 | Open orders | 10 | `open_orders.json` as the nightly run left it: a table (id, for, action, qty, contract, expiry, the strike and delta LSEG gave the run at the close, from the run log, "—" when no row matches (PO, LD-35), the strike as sent, limit, ref), then the file itself in a disclosure; "No open orders tonight" for `[]` |
+| 1 | Open orders | 10 | `open_orders.json` as the nightly run left it: a table (id, for, action, qty, contract, expiry, the strike and delta LSEG gave the run at the close, from the run log, "—" when no row matches (PO, LD-35), the strike as sent, limit, ref), the table alone (PO, LD-35); "No open orders tonight" for `[]` |
 | 2 | Implied against realized | 5 | `live/vol.jsonl` (PO, LD-33): ATM IV about 30 days out (`--iv-line`) and RV20 (`--rv-line`) by session on the trading-time axis, the gap between them shaded (`--vol-gap-shade`), a hole where either is missing; the y axis in whole percents with room above for the legend; the tooltip gives both, the gap in points and the expiry and strike; the values in a table under it, newest first; "No volatility pulled yet" before the first |
 | 3 | This week's smile | 5 | `live/smile.json` (PO, LD-33): each out-of-the-money strike's IV at the last close, by strike, in `--iv-line` with markers; the close a solid reference (`--spot-line`) and L-P3's pick a dashed strike (`--strike-line`), each labelled inside the plot; the tooltip gives the right, IV and delta; the values in a table under it; "No smile pulled yet" before the first |
 | 4 | Positions | 5 | Sanji's `positions.json` as written (a file block), until L5-01 knows its rows: then each holding as a row, and cash; "No positions yet" before the first fill |
@@ -116,7 +130,7 @@ Rule cells show what the rule did in plain words and link to that rule.
 
 ## 7. Routes
 
-Hash routing (GitHub Pages has no SPA fallback); the URL is the state. The PMCC's routes are in the archived spec; the wheel adds two (PO, WD-22), and `#/` still opens the PMCC's Compare page:
+Hash routing (GitHub Pages has no SPA fallback); the URL is the state. The PMCC's routes are in the archived spec; the wheel adds two (PO, WD-22). `#/` is the home page (PO, LD-36); it used to open the PMCC's Compare page:
 
 | Route | Page |
 | --- | --- |
@@ -125,7 +139,7 @@ Hash routing (GitHub Pages has no SPA fallback); the URL is the state. The PMCC'
 
 Every wheel rule named on the wheel pages (blotter, gate log, cycle statistics, filters) links to `#/wheel-review/:symbol/<ID>`.
 
-The live assignment adds one (PO, LD-16), "Live" in the nav after the wheel's pages:
+The live assignment adds one (PO, LD-16), the "Live wheel" entry first in the nav (PO, LD-36):
 
 | Route | Page |
 | --- | --- |

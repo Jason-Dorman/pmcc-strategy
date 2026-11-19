@@ -51,6 +51,7 @@ The user is the product owner (PO). This log tracks what the spec leaves open, t
 | LD-33 | A volatility workflow and its charts: IV against RV20, and the smile | SETTLED (PO): its own workflow, a 3-month backfill, drawn on the site | — |
 | LD-34 | The volatility workflow's files, pulls and schedule (L4-02) | ENG | — |
 | LD-35 | The open orders show the strike LSEG gave the run beside the one sent | SETTLED (PO): on the page only; the order Sanji gets is unchanged (LD-29); the rule table moves to the page's end | — |
+| LD-36 | The site's name, home page and menus | SETTLED (PO): "Algo Trading Strategies"; a card per strategy at `#/`, live first; a menu per strategy; no symbol picker or ident line; Universe and Data off the menus; a strategy label on each page | — |
 
 ## Settled
 
@@ -303,3 +304,18 @@ None.
 - **How the page finds it:** from the run log in `live.json`, the latest row that ordered, for the order's session, the same contract and expiry; matched by those, not the id, since Monday Nov 16's order was re-sent under a new id (LD-29). A dash when no row matches. No change to the export or the run.
 - **With it:** the smile's caption says its dashed strike is the put L-P3 *would* pick from that close, since an order goes in only for a week's first session.
 - **The rules last (PO, the same day):** the rule table leaves the algorithm panel for its own, "The rules", the last on the page; the algorithm's prose ends with a line pointing to it.
+- **The table alone (PO, the same day):** the Open orders panel drops its `open_orders.json` disclosure, the file's text, and shows only the table; the file is still in the repo for Sanji.
+
+### LD-36 — The site's name, home page and menus
+**Status:** SETTLED · **Basis:** PO, 2026-11-18 · **Affects:** Spec › Site; UI-SPEC §2, §6 (Home), §7; L4-03
+
+- **Asked:** the site has outgrown its header: "PMCC Backtest" names one of three strategies, and ten pages sit in one flat row. A home page with a title and a link to each strategy; a new name; a dropdown per strategy holding its pages.
+- **The name:** "Algo Trading Strategies", in the bar and the browser tab. (Recommended. The others: "Options Strategy Backtests"; "FINTECH 535: Algo Trading".)
+- **The home page:** `#/`, which opened the PMCC's Compare page, is now a card per strategy: what it does, its status, one headline from its own file (the live wheel's open orders and last run; the wheel's P&L and Sharpe; the PMCC's P&L by strategy), and links to its pages. (Recommended. The other: a plain linked list.)
+- **The order:** the live wheel first, then the wheel backtest, then the PMCC backtest, in the menus and on the home page. (Recommended. The other: oldest first.)
+- **The menus:** one per strategy, its pages inside. The live wheel has one page, so its entry is a plain link (an engineering call, the PO's to overrule).
+- **No symbol picker:** every strategy has data for NVDA alone, so the picker goes (the PO: "there's no data for any other ticker"). The routes keep their symbol, so every link still works.
+- **No ident line:** the grey "NVDA · hourly · 2026-03-30 → 2026-09-25" showed the PMCC's window on every page, the live page's included; it goes. (The PO, over the recommended per-strategy line.)
+- **Universe and Data off the menus:** on the public site Data says only that a data connection is needed, and Universe screens one symbol. Their routes still work. (Recommended.)
+- **A strategy label:** each page but home names its strategy under the bar, `PMCC BACKTEST › QUANT`. (Recommended.)
+- **How the menus work (ENG):** a disclosure, not an ARIA menu, as site navigation should be: a button that shows a list of links, closed by a link, Escape (focus back on the button), or a click or focus outside. No new dependency.

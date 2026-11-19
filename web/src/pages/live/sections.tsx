@@ -1,10 +1,11 @@
-// The live page's panels (L4-01; UI-SPEC §6 › Live): the algorithm in words, the open orders and
-// the file itself, Sanji's positions and fills as he writes them, and the nightly run log with
-// each pick's quote at the close (PO, LD-15). Every value is read from `live.json`.
+// The live page's panels (L4-01; UI-SPEC §6 › Live): the algorithm in words, the open orders
+// with the strike LSEG gave each (PO, LD-35), Sanji's positions and fills as he writes them, the
+// nightly run log with each pick's quote at the close (PO, LD-15), and the rules. Every value is
+// read from `live.json`.
 import { Link } from "react-router-dom";
 
 import { DataTable, type TableColumn } from "../../components/DataTable";
-import { Details, Empty, Note } from "../../components/Note";
+import { Empty, Note } from "../../components/Note";
 import { money, moneySigned, price } from "../../format/money";
 import { iv, orDash, pct, ratio, spreadPct } from "../../format/number";
 import { timeET } from "../../format/time";
@@ -92,17 +93,6 @@ const ACTIONS: Readonly<Record<string, string>> = {
   BTC: "Buy to close",
 };
 
-/** The order language's fields in its page's order, as `open_orders.json` writes them. */
-const FIELD_ORDER = ["id", "for", "order_type", "action", "qty", "underlying", "contract",
-                     "expiry", "strike", "ref", "lmt_prc"] as const;
-
-/** The orders as the file holds them: two-space indent, absent fields left out. */
-export function orderFile(orders: readonly LiveOrder[]): string {
-  const rows = orders.map((o) => Object.fromEntries(
-    FIELD_ORDER.filter((f) => o[f] !== null).map((f) => [f, o[f]])));
-  return JSON.stringify(rows, null, 2);
-}
-
 function limit(o: LiveOrder): string {
   return o.order_type === "mkt" ? "Market" : `Limit, ${o.lmt_prc ?? "—"}`;
 }
@@ -145,15 +135,8 @@ const ORDER_COLUMNS: readonly TableColumn<OrderRow>[] = [
 export function OpenOrders({ live }: { live: Live }) {
   if (live.orders.length === 0) return <Empty>No open orders tonight.</Empty>;
   const rows = live.orders.map((o) => ({ ...o, picked: pickFor(o, live.runs) }));
-  return (
-    <>
-      <DataTable label="Open orders" rows={rows} columns={ORDER_COLUMNS}
-                 rowId={(o) => o.id} grow />
-      <Details summary="open_orders.json" table>
-        <pre className="pm-file">{orderFile(live.orders)}</pre>
-      </Details>
-    </>
-  );
+  return <DataTable label="Open orders" rows={rows} columns={ORDER_COLUMNS}
+                    rowId={(o) => o.id} grow />;
 }
 
 // ---- Sanji's files ------------------------------------------------------------------------------

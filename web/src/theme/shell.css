@@ -42,45 +42,113 @@ body {
   letter-spacing: 2px;
   color: var(--accent);
   text-transform: uppercase;
+  text-decoration: none;
 }
-.pm-bar-right {
-  display: flex;
-  align-items: baseline;
-  justify-content: flex-end;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-.pm-ident {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--text-muted);
-  letter-spacing: 0.5px;
-  text-align: right;
-}
-.pm-ident b {
-  color: var(--text);
-  font-weight: 700;
-}
+/* A menu per strategy (PO, LD-36): wraps on a phone, never overflows. */
 .pm-nav {
   display: flex;
-  flex-wrap: wrap; /* seven pages, not the baseline's two: they wrap on a phone, never overflow */
-  column-gap: 16px;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 18px;
   row-gap: 6px;
   font-family: var(--font-mono);
   font-size: 11px;
   letter-spacing: 1px;
   text-transform: uppercase;
 }
-.pm-nav a {
+.pm-menu {
+  position: relative;
+}
+.pm-menu-button {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  padding: 0 0 2px;
+  color: var(--text);
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.pm-menu-button:hover,
+.pm-menu-button.on,
+.pm-menu-button[aria-expanded="true"] {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+.pm-menu-caret {
+  color: var(--accent);
+}
+.pm-menu-list {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 10;
+  min-width: 100%;
+  margin: 0;
+  padding: 4px 0;
+  list-style: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+.pm-menu-list a {
+  display: block;
+  padding: 5px 12px;
   color: var(--text);
   text-decoration: none;
-  border-bottom: 1px solid var(--border);
-  padding-bottom: 2px;
   white-space: nowrap;
 }
-.pm-nav a:hover,
-.pm-nav a.on {
+.pm-menu-list a:hover,
+.pm-menu-list a:focus-visible {
+  background: var(--surface-alt);
   color: var(--accent);
+}
+.pm-menu-list a.on {
+  color: var(--accent);
+}
+
+/* The page's strategy and name, under the bar (PO, LD-36). */
+.pm-crumb {
+  margin-top: 10px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.pm-crumb span:last-child {
+  color: var(--text);
+}
+.pm-crumb-sep {
+  margin: 0 8px;
+  color: var(--accent);
+}
+
+/* The home page's links to a strategy's pages. */
+.pm-home-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.pm-home-links a {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px solid var(--accent-dim);
+  padding-bottom: 2px;
+}
+.pm-home-links a:hover {
   border-bottom-color: var(--accent);
 }
 

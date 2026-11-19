@@ -12,24 +12,55 @@ export type PageKey =
   | "universe"
   | "data";
 
+export type StrategyKey = "live" | "wheel" | "pmcc";
+
 export interface Page {
   key: PageKey;
   label: string;
   symbol: "required" | "optional" | "none";
+  strategy: StrategyKey;
 }
 
 export const PAGES: readonly Page[] = [
-  { key: "compare", label: "Compare", symbol: "required" },
-  { key: "baseline", label: "Baseline", symbol: "required" },
-  { key: "quant", label: "Quant", symbol: "required" },
-  { key: "wheel", label: "Wheel", symbol: "required" },
-  { key: "wheel-review", label: "Wheel review", symbol: "required" },
-  { key: "live", label: "Live", symbol: "required" }, // the live wheel (PO, LD-16)
-  { key: "rules", label: "Rules", symbol: "none" },
-  { key: "methodology", label: "Methodology", symbol: "optional" },
-  { key: "universe", label: "Universe", symbol: "none" },
-  { key: "data", label: "Data", symbol: "optional" },
+  { key: "compare", label: "Compare", symbol: "required", strategy: "pmcc" },
+  { key: "baseline", label: "Baseline", symbol: "required", strategy: "pmcc" },
+  { key: "quant", label: "Quant", symbol: "required", strategy: "pmcc" },
+  { key: "wheel", label: "Wheel", symbol: "required", strategy: "wheel" },
+  { key: "wheel-review", label: "Wheel review", symbol: "required", strategy: "wheel" },
+  { key: "live", label: "Live", symbol: "required", strategy: "live" }, // PO, LD-16
+  { key: "rules", label: "Rules", symbol: "none", strategy: "pmcc" },
+  { key: "methodology", label: "Methodology", symbol: "optional", strategy: "pmcc" },
+  { key: "universe", label: "Universe", symbol: "none", strategy: "pmcc" },
+  { key: "data", label: "Data", symbol: "optional", strategy: "pmcc" },
 ];
+
+export interface Strategy {
+  key: StrategyKey;
+  label: string;
+  /** Its pages in its header menu, in order. Universe and Data are in none (PO, LD-36). */
+  menu: readonly PageKey[];
+}
+
+/** The site's strategies, the live wheel first (PO, LD-36): the header's menus and the home
+ * page's cards, in this order. */
+export const STRATEGIES: readonly Strategy[] = [
+  { key: "live", label: "Live wheel", menu: ["live"] },
+  { key: "wheel", label: "Wheel backtest", menu: ["wheel", "wheel-review"] },
+  { key: "pmcc", label: "PMCC backtest",
+    menu: ["compare", "baseline", "quant", "rules", "methodology"] },
+];
+
+export function pageOf(key: PageKey): Page {
+  const page = PAGES.find((p) => p.key === key);
+  if (!page) throw new Error(`no page ${key}`);
+  return page;
+}
+
+export function strategyOf(page: Page): Strategy {
+  const strategy = STRATEGIES.find((s) => s.key === page.strategy);
+  if (!strategy) throw new Error(`no strategy ${page.strategy}`);
+  return strategy;
+}
 
 /** The strategy each strategy page shows; the page never checks it otherwise (UI-SPEC §6.2). */
 export const STRATEGY_PAGES = { baseline: "baseline_pmcc", quant: "quant_pmcc" } as const;
