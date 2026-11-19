@@ -106,7 +106,7 @@ describe("the panels", () => {
     expect(link.getAttribute("href")).toBe("/wheel-review/NVDA");
     expect(within(algorithm).queryByRole("table")).toBeNull();
     const rules = within(await panel("The rules")).getByRole("table",
-                                                             { name: "Live wheel rules" });
+                                                             { name: "Forward test rules" });
     expect(column(rules, 0)).toEqual(["L-B1", "L-P3", "L-O1"]);
   });
 
@@ -190,7 +190,7 @@ describe("the panels", () => {
   it("say when the route's symbol isn't the one the live wheel trades", async () => {
     renderLive("/live/QQQ");
     const orders = await panel("Open orders");
-    expect(await within(orders).findByText("The live wheel trades NVDA, not QQQ.")).toBeDefined();
+    expect(await within(orders).findByText("The wheel forward test trades NVDA, not QQQ.")).toBeDefined();
   });
 
   it("say when the export wrote no live file", async () => {
@@ -198,6 +198,6 @@ describe("the panels", () => {
                                                    live: null } };
     renderLive("/live/NVDA", files);
     const orders = await panel("Open orders");
-    expect(await within(orders).findByText("No results for the live wheel.")).toBeDefined();
+    expect(await within(orders).findByText("No results for the wheel forward test.")).toBeDefined();
   });
 });

@@ -19,7 +19,7 @@ No rounded corners, no shadows, no floating cards, no whitespace gaps. shadcn/ui
 | Block | React component | Notes |
 | --- | --- | --- |
 | Command bar | `CommandBar` | **Left:** the wordmark, "Algo Trading Strategies" (display font, amber, uppercase, tracked), a link to the home page. **Right:** the nav, wrapping on a phone. No ident line and no symbol select: every strategy runs on NVDA alone (PO, LD-36) |
-| Nav | `CommandBar`, `NavMenu` | A menu per strategy, in this order (PO, LD-36): **Live wheel** (one page, so a plain link to Live); **Wheel backtest** ▾ Wheel, Wheel review; **PMCC backtest** ▾ Compare, Baseline, Quant, Rules, Methodology. Universe and Data are in no menu; their routes still work. A menu is a disclosure: a button showing a list of links under it, closed by a link, Escape, or a click or focus outside. Muted at rest; the current strategy's entry and the current page in its list are amber |
+| Nav | `CommandBar`, `NavMenu` | A menu per strategy, in this order (PO, LD-36): **Wheel forward test** (PO, LD-38; one page, Overview, so a plain link to it); **Wheel backtest** ▾ Wheel, Wheel review; **PMCC backtest** ▾ Compare, Baseline, Quant, Rules, Methodology. Universe and Data are in no menu; their routes still work. A menu is a disclosure: a button showing a list of links under it, closed by a link, Escape, or a click or focus outside. Muted at rest; the current strategy's entry and the current page in its list are amber |
 | Strategy label | `AppShell` | Under the bar on every page but home: the page's strategy and name, `PMCC BACKTEST › QUANT` (mono caps, muted; the page's name in text, the › amber) (PO, LD-36) |
 | Readout strip | `Readouts` | Per KPI: label (muted caps), value (amber mono), and a one-line hint defining the number |
 | Panel grid | `PanelGrid` | 10 columns. Widths: 10 (full), 5 + 5, 6 + 4. A row's widths sum to 10 |
@@ -99,12 +99,12 @@ Rule cells show what the rule did in plain words and link to that rule.
 A modern break from the terminal look, on this page alone (PO, LD-37): no readouts, no panel chrome, no strategy label; rounded, layered tiles over a slowly moving backdrop. Its styles are `web/src/theme/home.css`, every colour a token or a mix of tokens.
 
 - **Backdrop:** three large blurred lights in the palette's amber, cyan and violet (`--accent`, `--mark`, `--nav-line`) drifting slowly behind the page, and a faint grid fading out from the top, drifting too. Decoration only: it shows no data. Still when the system asks for reduced motion.
-- **Headline:** an eyebrow (`NVDA · OPTIONS · LSEG DATA`, mono caps), the title "Harvesting the volatility risk premium." in the display font ("volatility risk premium." an amber → cyan → violet gradient), the subtitle "Systematic options strategies" (PO, LD-37), and a pill with a green dot: "Live · last run …" from the run log's last row.
-- **Tiles**, three across (one column at ≤ 1100px), the live wheel first. Each: a kicker (mono caps: "Live · nightly", or "Backtest · Mar 30 – Sep 25"), the strategy's name linking to its first page, one big amber figure, a mono detail line, one sentence on what it does, and its pages as pill links. A tile lifts and its edge turns amber on hover or focus.
+- **Headline:** an eyebrow (`NVDA · OPTIONS · LSEG DATA`, mono caps), the title "Harvesting the volatility risk premium." in the display font ("volatility risk premium." an amber → cyan → violet gradient), the subtitle "Systematic options strategies" (PO, LD-37), and a pill with a green dot: "Last nightly run …" from the run log's last row (PO, LD-38).
+- **Tiles**, three across (one column at ≤ 1100px), the forward test first. Each: a kicker (mono caps: "Forward test · nightly", or "Backtest · Mar 30 – Sep 25"), the strategy's name linking to its first page, one big amber figure, a mono detail line, one sentence on what it does, and its pages as pill links. A tile lifts and its edge turns amber on hover or focus.
 
 | Tile | Figure | Detail | From |
 | --- | --- | --- | --- |
-| Live wheel | the open order's option as LSEG picked it, `$155 put` (LD-35); "No open order" when there's none | `Open order · expires Nov 20` | `live.json` |
+| Wheel forward test | this week's trade as a story (PO, LD-38): `Selling a $155 put`, the open order's option as LSEG picked it (LD-35), a step smaller than the other figures so it fits a line; "No trade open" when there's none | `Delta −0.32 · IV 88.2% · expires Nov 20`, the pick's at the close | `live.json` |
 | Wheel backtest | its P&L | its return and Sharpe | `live.json`'s `backtest` |
 | PMCC backtest | the baseline's P&L | the baseline's return, quant's P&L | `universe/headline.json` |
 
@@ -142,7 +142,7 @@ Hash routing (GitHub Pages has no SPA fallback); the URL is the state. The PMCC'
 
 Every wheel rule named on the wheel pages (blotter, gate log, cycle statistics, filters) links to `#/wheel-review/:symbol/<ID>`.
 
-The live assignment adds one (PO, LD-16), the "Live wheel" entry first in the nav (PO, LD-36):
+The live assignment adds one (PO, LD-16), the "Wheel forward test" entry first in the nav (PO, LD-36, LD-38), its page named Overview:
 
 | Route | Page |
 | --- | --- |

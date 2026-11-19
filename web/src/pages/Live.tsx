@@ -65,7 +65,7 @@ function readouts(live: LiveFile): Readout[] {
 function forSymbol(state: Loaded<LiveFile>, symbol: string): Loaded<LiveFile> {
   if (state.kind !== "ready" || state.value.symbol === symbol) return state;
   return { kind: "error",
-           message: `The live wheel trades ${state.value.symbol}, not ${symbol}.` };
+           message: `The wheel forward test trades ${state.value.symbol}, not ${symbol}.` };
 }
 
 export function Live() {

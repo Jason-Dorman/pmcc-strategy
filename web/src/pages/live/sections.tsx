@@ -35,7 +35,7 @@ export function Algorithm({ live }: { live: Live }) {
   return (
     <Note>
       <p>
-        Each week the live wheel sells one option on {live.symbol}, one contract at a time, and
+        Each week the wheel forward test sells one option on {live.symbol}, one contract at a time, and
         writes it to <code>open_orders.json</code> for Sanji, the course&apos;s order system, to
         fill. While it holds only cash, it sells a <b>put</b> for the week&apos;s first trading
         session. From the close the night before, it finds the out-of-the-money put expiring that
@@ -79,7 +79,7 @@ const RULE_COLUMNS: readonly TableColumn<LiveRuleOut>[] = [
 /** The rules, each in its words with its ID, as `configs/live.yaml` holds them. */
 export function LiveRules({ live }: { live: Live }) {
   return (
-    <DataTable label="Live wheel rules" rows={live.rules} columns={RULE_COLUMNS}
+    <DataTable label="Forward test rules" rows={live.rules} columns={RULE_COLUMNS}
                rowId={(r) => r.id} wrap grow />
   );
 }

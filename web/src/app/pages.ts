@@ -27,7 +27,7 @@ export const PAGES: readonly Page[] = [
   { key: "quant", label: "Quant", symbol: "required", strategy: "pmcc" },
   { key: "wheel", label: "Wheel", symbol: "required", strategy: "wheel" },
   { key: "wheel-review", label: "Wheel review", symbol: "required", strategy: "wheel" },
-  { key: "live", label: "Live", symbol: "required", strategy: "live" }, // PO, LD-16
+  { key: "live", label: "Overview", symbol: "required", strategy: "live" }, // LD-16, LD-38
   { key: "rules", label: "Rules", symbol: "none", strategy: "pmcc" },
   { key: "methodology", label: "Methodology", symbol: "optional", strategy: "pmcc" },
   { key: "universe", label: "Universe", symbol: "none", strategy: "pmcc" },
@@ -41,10 +41,10 @@ export interface Strategy {
   menu: readonly PageKey[];
 }
 
-/** The site's strategies, the live wheel first (PO, LD-36): the header's menus and the home
+/** The site's strategies, the forward test first (PO, LD-36): the header's menus and the home
  * page's cards, in this order. */
 export const STRATEGIES: readonly Strategy[] = [
-  { key: "live", label: "Live wheel", menu: ["live"] },
+  { key: "live", label: "Wheel forward test", menu: ["live"] }, // PO, LD-38
   { key: "wheel", label: "Wheel backtest", menu: ["wheel", "wheel-review"] },
   { key: "pmcc", label: "PMCC backtest",
     menu: ["compare", "baseline", "quant", "rules", "methodology"] },

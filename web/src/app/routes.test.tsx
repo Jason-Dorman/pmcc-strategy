@@ -64,11 +64,11 @@ describe("routes", () => {
     renderAt("/");
     expect(await screen.findByRole("heading", { level: 1 })).toBeDefined();
     const tiles = screen.getAllByRole("region").map((r) => r.querySelector("h2")?.textContent);
-    expect(tiles).toEqual(["Live wheel", "Wheel backtest", "PMCC backtest"]);
+    expect(tiles).toEqual(["Wheel forward test", "Wheel backtest", "PMCC backtest"]);
     expect(document.querySelector(".pm-crumb")).toBeNull();
     const chips = (name: string) => within(screen.getByRole("list", { name: `${name} pages` }))
       .getAllByRole("link").map((a) => [a.textContent, a.getAttribute("href")]);
-    expect(chips("Live wheel")).toEqual([["Live →", "/live/NVDA"]]);
+    expect(chips("Wheel forward test")).toEqual([["Overview →", "/live/NVDA"]]);
     expect(chips("Wheel backtest")).toEqual([["Wheel →", "/wheel/NVDA"],
                                              ["Wheel review →", "/wheel-review/NVDA"]]);
     expect(chips("PMCC backtest")).toEqual([
@@ -83,10 +83,10 @@ describe("routes", () => {
   it("gives each tile its figure from its own file, and says when the live wheel last ran",
      async () => {
     renderAt("/");
-    const live = await screen.findByRole("region", { name: "Live wheel" });
-    expect(await within(live).findByText("$155 put")).toBeDefined(); // LSEG's pick (LD-35)
-    expect(live.textContent).toContain("Open order · expires Nov 20");
-    expect(screen.getByText(/Live · last run 2026-11-17 22:00 ET/)).toBeDefined();
+    const live = await screen.findByRole("region", { name: "Wheel forward test" });
+    expect(await within(live).findByText("Selling a $155 put")).toBeDefined(); // LSEG's pick (LD-35)
+    expect(live.textContent).toContain("Delta −0.32 · IV 88.2% · expires Nov 20");
+    expect(screen.getByText(/Last nightly run 2026-11-17 22:00 ET/)).toBeDefined();
     const wheel = screen.getByRole("region", { name: "Wheel backtest" });
     expect(within(wheel).getByText("+$4,171.50")).toBeDefined();
     expect(wheel.textContent).toContain("16.7% · Sharpe 1.57");
@@ -100,8 +100,8 @@ describe("routes", () => {
     vi.stubGlobal("fetch", vi.fn(fakeFetch({ ...FILES,
       "data/live.json": { ...(FILES["data/live.json"] as object), orders: [] } })));
     renderAt("/");
-    const live = await screen.findByRole("region", { name: "Live wheel" });
-    expect(await within(live).findByText("No open order")).toBeDefined();
+    const live = await screen.findByRole("region", { name: "Wheel forward test" });
+    expect(await within(live).findByText("No trade open")).toBeDefined();
   });
 
   it("marks the current strategy, and the current page in its menu", async () => {
@@ -244,8 +244,8 @@ describe("the strategy menus (PO, LD-36)", () => {
   it("list the strategies, the live wheel first, a link for its one page", async () => {
     const nav = await bar();
     expect([...nav.children].map((c) => c.textContent)).toEqual(
-      ["Live wheel", "Wheel backtest▾", "PMCC backtest▾"]);
-    expect(within(nav).getByRole("link", { name: "Live wheel" }).getAttribute("href"))
+      ["Wheel forward test", "Wheel backtest▾", "PMCC backtest▾"]);
+    expect(within(nav).getByRole("link", { name: "Wheel forward test" }).getAttribute("href"))
       .toBe("/live/NVDA");
   });
 
@@ -254,7 +254,7 @@ describe("the strategy menus (PO, LD-36)", () => {
     const nav = await bar();
     for (const button of within(nav).getAllByRole("button")) fireEvent.click(button);
     const labels = within(nav).getAllByRole("link").map((a) => a.textContent);
-    expect(labels).toEqual(["Live wheel", "Wheel", "Wheel review", "Compare", "Baseline",
+    expect(labels).toEqual(["Wheel forward test", "Wheel", "Wheel review", "Compare", "Baseline",
                             "Quant", "Rules", "Methodology"]);
     expect(screen.queryByRole("combobox", { name: "Symbol" })).toBeNull();
     expect(screen.queryByText(/hourly ·/)).toBeNull();
@@ -282,6 +282,6 @@ describe("the strategy menus (PO, LD-36)", () => {
   it("lead home from the wordmark", async () => {
     await bar();
     fireEvent.click(screen.getByRole("link", { name: "Algo Trading Strategies" }));
-    expect(await screen.findByRole("region", { name: "Live wheel" })).toBeDefined();
+    expect(await screen.findByRole("region", { name: "Wheel forward test" })).toBeDefined();
   });
 });

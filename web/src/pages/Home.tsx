@@ -14,7 +14,7 @@ import { useIndex } from "../data/IndexContext";
 import type { Loaded } from "../data/state";
 import { useLive, useUniverseFile } from "../data/useRun";
 import { moneySigned } from "../format/money";
-import { orDash, pct, ratio } from "../format/number";
+import { iv, orDash, pct, ratio } from "../format/number";
 import { timeET } from "../format/time";
 import type { Headline } from "../types/generated/headline";
 import type { Live } from "../types/generated/live";
@@ -39,6 +39,11 @@ interface TileProps {
   live?: boolean;
 }
 
+/** The forward test's figure is a sentence, so it's set a step smaller to fit a line. */
+function figureClass(sentence: boolean): string {
+  return sentence ? "pm-tile-figure pm-tile-words" : "pm-tile-figure";
+}
+
 /** A strategy's tile: its name links to its first page, its pages are the chips below. */
 function Tile({ strategy, kicker, figure, detail, blurb, symbol, live = false }: TileProps) {
   const id = useId();
@@ -54,7 +59,7 @@ function Tile({ strategy, kicker, figure, detail, blurb, symbol, live = false }:
       <h2 id={id} className="pm-tile-name">
         {first ? <Link to={pagePath(first, symbol)}>{s?.label}</Link> : s?.label}
       </h2>
-      <div className="pm-tile-figure">{figure}</div>
+      <div className={figureClass(live)}>{figure}</div>
       <div className="pm-tile-detail">{detail}</div>
       <p className="pm-tile-blurb">{blurb}</p>
       <ul className="pm-tile-pages" aria-label={`${s?.label ?? strategy} pages`}>
@@ -66,23 +71,27 @@ function Tile({ strategy, kicker, figure, detail, blurb, symbol, live = false }:
   );
 }
 
-/** The open order's option as LSEG picked it (LD-35), else as sent; or why there's none. */
-function liveFigure(live: Live | undefined): string {
-  if (!live) return "—";
+/** This week's trade as a story (PO, LD-38): the option the open order sells, as LSEG picked
+ * it at the close (LD-35), with its delta, IV and expiry; or that none is open. */
+function weekTrade(live: Live | undefined): { figure: string; detail: string } {
+  if (!live) return { figure: "—", detail: "" };
   const [order] = live.orders;
-  if (!order) return "No open order";
+  if (!order) {
+    return { figure: "No trade open", detail: "The next put is sold for a week's first session" };
+  }
   const pick = pickFor(order, live.runs);
-  return pick ? `$${pick.strike} ${pick.contract}` : `${order.strike ?? ""} ${order.contract}`;
+  const expires = order.expiry ? `expires ${shortDate(order.expiry)}` : "";
+  if (!pick) return { figure: `Selling a ${order.contract}`, detail: expires };
+  return { figure: `Selling a $${pick.strike} ${pick.contract}`,
+           detail: [`Delta ${ratio(pick.delta)}`, `IV ${iv(pick.iv)}`, expires]
+             .filter(Boolean).join(" · ") };
 }
 
 function liveTile(live: Live | undefined, symbol: string | undefined): TileProps {
-  const expiry = live?.orders[0]?.expiry;
-  const detail = expiry ? `Open order · expires ${shortDate(expiry)}`
-    : "The next order goes in for a week's first session";
-  return { strategy: "live", kicker: "Live · nightly", figure: liveFigure(live), detail, symbol,
+  return { strategy: "live", kicker: "Forward test · nightly", ...weekTrade(live), symbol,
            live: true,
-           blurb: `Sells one ${symbol ?? ""} option a week from a nightly GitHub Action; the `
-             + "course's order system fills it." };
+           blurb: `Each week it sells one ${symbol ?? ""} option; the course's order system `
+             + "fills it." };
 }
 
 function wheelTile(live: Live | undefined, symbol: string | undefined): TileProps {
@@ -128,7 +137,7 @@ function Status({ live }: { live: Live | undefined }): ReactNode {
   return (
     <div className="pm-home-status">
       <span className="pm-live-dot" aria-hidden="true" />
-      Live · last run {timeET(last.run_at)}
+      Last nightly run {timeET(last.run_at)}
     </div>
   );
 }

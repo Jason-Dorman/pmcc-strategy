@@ -189,6 +189,11 @@
   color: var(--accent);
   font-variant-numeric: tabular-nums;
 }
+.pm-tile-words {
+  font-size: clamp(26px, 2.2vw, 32px);
+  line-height: 1.15;
+  letter-spacing: -0.6px;
+}
 .pm-tile-detail {
   margin-top: 10px;
   min-height: 1.4em;

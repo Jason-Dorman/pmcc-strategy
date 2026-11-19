@@ -53,6 +53,7 @@ The user is the product owner (PO). This log tracks what the spec leaves open, t
 | LD-35 | The open orders show the strike LSEG gave the run beside the one sent | SETTLED (PO): on the page only; the order Sanji gets is unchanged (LD-29); the rule table moves to the page's end | — |
 | LD-36 | The site's name, home page and menus | SETTLED (PO): "Algo Trading Strategies"; a card per strategy at `#/`, live first; a menu per strategy; no symbol picker or ident line; Universe and Data off the menus; a strategy label on each page | — |
 | LD-37 | The home page's look: modern, less text, a moving background | SETTLED (PO): tiles, no charts; a big headline and big figures; a drifting background; a modern break from the terminal look, home only | — |
+| LD-38 | The site calls the live wheel "Wheel forward test"; its home tile tells the week's trade | SETTLED (PO): "Wheel forward test", its page "Overview"; the tile reads "Selling a $155 put" with its delta, IV and expiry | — |
 
 ## Settled
 
@@ -330,3 +331,11 @@ None.
 - **Look:** a modern break (the PO, over the recommended airier terminal look): rounded, translucent tiles that lift on hover, display type, no panel chrome. The home page only; the pages behind it keep the square terminal look (DEC-71's square corners and no shadows hold there).
 - **Copy (PO, the same day):** the headline "Harvesting the volatility risk premium.", the subtitle "Systematic options strategies". First drafted as "Selling premium, one week at a time." over a line about the live wheel; the PO asked for professional copy, a subtitle not about the live wheel. Offered: the volatility risk premium (recommended), "Trading volatility, not direction." (set aside as overstated: both strategies are net long delta), and the Greeks; the PO took the first's headline with the shortest subtitle.
 - **Styles:** `web/src/theme/home.css`, colours only as tokens or `color-mix` of tokens, so no new palette value.
+
+### LD-38 — The site calls the live wheel "Wheel forward test"; its home tile tells the week's trade
+**Status:** SETTLED · **Basis:** PO, 2026-11-18 · **Affects:** UI-SPEC §2, §6 (Home), §7; Spec › Site; L4-04's follow-up
+
+- **Asked:** "live" misdescribes it: the strategy isn't trading live, it runs each night and another system (Sanji) fills its orders. And the home tile's `$155 put` over `Open order · expires Nov 20` didn't tell the story. Offered for the name: "Wheel forward test" (recommended), "Paper wheel", "Nightly wheel"; for the tile: the volatility premium it's harvesting (recommended), this week's trade as a story, the capital at work.
+- **Outcome:** "Wheel forward test", the industry's term for running a backtested strategy forward on data it hasn't seen, beside "Wheel backtest". Its one page is named "Overview" (an engineering call, the PO's to overrule), so its label reads "Wheel forward test › Overview". And the tile tells this week's trade: "Selling a $155 put", then "Delta −0.32 · IV 88.2% · expires Nov 20", the pick's at the close (LD-35); "No trade open" when there's none. The kicker is "Forward test · nightly", the headline's pill "Last nightly run …".
+- **"Selling", not "Short":** the preview the PO chose read "Short a $155 put"; the page says "Selling", since the order is open and Sanji hasn't filled it, so nothing is held yet.
+- **Unchanged:** the route `#/live/NVDA`, so links already shared still work; and the project's docs, commands and files, which keep "the live wheel" as the project's name.

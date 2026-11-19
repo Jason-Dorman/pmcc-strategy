@@ -95,5 +95,5 @@ export function useRules(): Loaded<Rules> {
 
 /** `live.json`, the live wheel's page (L4-01), once the export has written it. */
 export function useLive(): Loaded<Live> {
-  return useLoaded((index) => index.live ?? undefined, "the live wheel", loadFile<Live>);
+  return useLoaded((index) => index.live ?? undefined, "the wheel forward test", loadFile<Live>);
 }

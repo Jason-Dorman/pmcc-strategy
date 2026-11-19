@@ -100,6 +100,7 @@ Nov 13, 2026 · from the [Live spec](LIVE-SPEC.md) · **due Tue Nov 17 2026, 11:
   - Needs: L4-01
 - [x] **L4-04 · The home page, redesigned** **[PO]** — done 2026-11-18 (PO, LD-37): a big headline over three rounded tiles, one big figure each, on a drifting background of the palette's lights (`web/src/pages/Home.tsx`, `web/src/theme/home.css`); still under reduced motion. 3 home tests replace L4-03's two; checked by eye at desktop and phone widths
   - Asked first (2026-11-18): the layout, the motion, the look (LD-37).
+  - Then (PO, 2026-11-18): the copy, "Harvesting the volatility risk premium." over "Systematic options strategies" (LD-37); and the site calls the live wheel "Wheel forward test", its page "Overview", its tile telling the week's trade (LD-38).
   - Done when: `#/` shows the headline and the three tiles with their figures and pages, and `just check` and `just e2e` are green.
   - Needs: L4-03
 
