@@ -71,7 +71,7 @@ def last_priced_session(root: Path) -> date:
     if the file is missing, unreadable, or holds no bars."""
     path = root / PRICE_HISTORY
     if not path.is_file():
-        raise BookError("L-B1", f"no {PRICE_HISTORY}: Sanji's price job hasn't written one")
+        raise BookError("L-B1", f"no {PRICE_HISTORY}: the course's price job hasn't written one")
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
         days = [date.fromisoformat(day) for entry in _entries(data) for day in _bars(entry)]
@@ -92,7 +92,7 @@ def check_current(root: Path, last_completed: date) -> str | None:
         return None
     behind = (
         f"{PRICE_HISTORY} runs to {priced}, but the last completed session is "
-        f"{last_completed}: Sanji hasn't caught up"
+        f"{last_completed}: the course's price job hasn't caught up"
     )
     if all(sanji_file(root, name) is None for name in (POSITIONS, FILLS)):
         return f"{behind}; it has resolved nothing, so the cash book can't have moved"
@@ -108,8 +108,8 @@ def read_book(root: Path, starting_cash: Money) -> Book:
     names = ", ".join(str(path.relative_to(root)) for path in found)
     raise BookError(
         "L-B2",
-        f"Sanji has written {names}, whose format isn't known yet (Sanji wasn't resolving orders "
-        "when the live wheel was built); read it before trading on it (L5-01)",
+        f"the course's order system has written {names}, whose format isn't known yet (it wasn't "
+        "resolving orders when the live wheel was built); read it before trading on it (L5-01)",
     )
 
 

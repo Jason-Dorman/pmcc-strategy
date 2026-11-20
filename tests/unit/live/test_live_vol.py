@@ -13,6 +13,7 @@ from pmcc.domain.calendar import SessionCalendar
 from pmcc.domain.instruments import Right
 from pmcc.domain.money import Price
 from pmcc.live.rules import select
+from pmcc.live.snapshot import CloseSnapshot
 from pmcc.live.vol import (
     VolError,
     VolPoint,
@@ -187,6 +188,53 @@ def test_ld_33_the_smile_leaves_out_a_contract_without_a_quote(calendar: Session
     assert curve.pick is None
 
 
+# --- The expected move: the ATM straddle (PO, LD-41) ----------------------------------------------
+
+
+def _mid(snap: CloseSnapshot, strike: str, right: Right) -> int:
+    quote = next(
+        q.close
+        for q in snap.options
+        if q.option.strike == _price(strike) and q.option.right is right
+    )
+    assert quote is not None
+    assert quote.bid is not None
+    assert quote.ask is not None
+    return (quote.bid.units + quote.ask.units) // 2
+
+
+def test_ld_41_the_straddle_is_the_call_and_put_mids_at_the_strike_nearest_the_close(
+    calendar: SessionCalendar,
+) -> None:
+    snap = snapshot(calendar)  # closes at $162.83
+
+    curve = smile(snap, RATE, calendar, None)
+
+    assert curve.straddle is not None
+    assert curve.straddle.strike == _price("162.50")
+    expected = _mid(snap, "162.50", Right.CALL) + _mid(snap, "162.50", Right.PUT)
+    assert abs(curve.straddle.price.units - expected) <= 1  # each mid rounds half-even
+
+
+def test_ld_41_the_straddle_skips_a_strike_without_both_sides_quoted(
+    calendar: SessionCalendar,
+) -> None:
+    snap = snapshot(calendar, unquoted=["162.50"])
+
+    curve = smile(snap, RATE, calendar, None)
+
+    assert curve.straddle is not None
+    assert curve.straddle.strike == _price("165.00")
+
+
+def test_ld_41_no_strike_with_both_sides_quoted_has_no_straddle(
+    calendar: SessionCalendar,
+) -> None:
+    snap = snapshot(calendar, strikes=["160.00", "165.00"], unquoted=["160.00", "165.00"])
+
+    assert smile(snap, RATE, calendar, None).straddle is None
+
+
 # --- Which sessions a run fills -------------------------------------------------------------------
 
 
@@ -266,6 +314,9 @@ def test_ld_34_the_smile_file_is_replaced_and_names_its_session(
     assert doc["expiry"] == snap.expiry.isoformat()
     assert doc["close"] == "162.83"
     assert doc["pick"] is None
+    assert set(doc["straddle"]) == {"strike", "price"}  # LD-41
+    assert doc["straddle"]["strike"] == "162.50"
+    assert float(doc["straddle"]["price"]) > 0
     first = doc["points"][0]
     assert set(first) == {"strike", "right", "iv", "delta"}
     assert first["right"] == "put"

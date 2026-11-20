@@ -159,9 +159,11 @@ def decide(
 ) -> Decision:
     """Tonight's decision for `upcoming`. Pulls the snapshot only when an option may be sold."""
     if book.state is WheelState.PUT:
-        return Decision("L-P1", "a put is open: Sanji expires it or assigns the shares")
+        return Decision("L-P1", "a put is open: the order system expires it or assigns the shares")
     if book.state is WheelState.CALL:
-        return Decision("L-C1", "a call is open: Sanji expires it or calls the shares away")
+        return Decision(
+            "L-C1", "a call is open: the order system expires it or calls the shares away"
+        )
     right = Right.PUT if book.state is WheelState.CASH else Right.CALL
     timing = "L-P1" if right is Right.PUT else "L-C1"
     week_open = calendar.week_open(upcoming.day)

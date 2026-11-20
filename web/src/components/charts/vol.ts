@@ -112,6 +112,35 @@ function smileMarks(p: Palette, smile: SmileOut) {
   return { silent: true, symbol: "none", data };
 }
 
+/** The market's expected move to expiry (PO, LD-41): the ATM straddle's price either side of
+ * the close, as a share of the close, and where the pick sits against it. None without a
+ * straddle. */
+export function expectedMove(smile: SmileOut) {
+  const s = smile.straddle;
+  if (s === null) return null;
+  const low = smile.close - s.price;
+  const high = smile.close + s.price;
+  const pick = smile.pick === null ? null : {
+    strike: smile.pick,
+    below: (smile.close - smile.pick) / smile.close,
+    inside: smile.pick >= low && smile.pick <= high,
+  };
+  return { move: s.price, share: s.price / smile.close, low, high, strike: s.strike, pick };
+}
+
+/** The expected move, a neutral band across the strikes it spans (`--move-shade`). */
+function moveBand(p: Palette, smile: SmileOut) {
+  const move = expectedMove(smile);
+  if (move === null) return undefined;
+  return {
+    silent: true,
+    itemStyle: { color: p["move-shade"] },
+    label: { formatter: "Expected move", position: "insideTop", color: p["text-muted"],
+             fontFamily: p.fontMono },
+    data: [[{ xAxis: move.low }, { xAxis: move.high }]],
+  };
+}
+
 export function smileOption(p: Palette, smile: SmileOut) {
   const base = baseOption(p);
   const name = "IV at the close";
@@ -145,6 +174,7 @@ export function smileOption(p: Palette, smile: SmileOut) {
         symbol: "circle",
         symbolSize: 2 * SIZE_MARK,
         markLine: smileMarks(p, smile),
+        markArea: moveBand(p, smile),
       },
     ],
   };

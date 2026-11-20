@@ -52,51 +52,37 @@ export function Algorithm({ live }: { live: Live }) {
     <Note>
       <p>
         For my forward test, I&apos;m running a weekly wheel strategy on {sym}, trading one
-        options contract at a time. The strategy starts by selling a cash-secured put. Using the
-        previous trading day&apos;s closing data, it selects an out-of-the-money put expiring that
-        week with a delta closest to −0.30. The strike is calculated as a percentage below the
-        closing price, allowing it to adjust if {sym} gaps up or down at the next open. The order
-        uses the option&apos;s midpoint price at the open, and the strategy checks that there&apos;s
-        enough cash to buy 100 shares at the strike, with a 10% cushion for a gap at the open,
-        before entering the trade.
-      </p>
-      <p>
-        If the put expires worthless, I keep the premium and repeat the process the following
-        week. If I&apos;m assigned, I switch to selling covered calls against the 100 shares. The
-        calls are written at or above my cost basis until the shares are called away, at which
-        point the strategy starts over with cash-secured puts.
+        contract at a time. Each week, the algorithm selects an out-of-the-money put with a delta
+        closest to −0.30, using the previous trading day&apos;s closing data. The strike adjusts
+        for overnight price gaps, and I require enough cash to buy 100 shares at the strike, plus
+        a 10% cushion. If the put expires worthless, I collect the premium and repeat. If
+        assigned, I sell covered calls at or above my cost basis until the shares are called away.
       </p>
       {b && (
         <p>
-          I chose the wheel because I&apos;d already built and backtested it, and the results were
-          encouraging. From {longDate(b.start)} through {longDate(b.end)}, {b.end.slice(0, 4)},
-          the strategy returned {money(b.pnl)} ({pct(b.return_on_starting_cash)}) on{" "}
-          {wholeDollars(b.starting_cash)} in starting capital, with an annualized Sharpe ratio of{" "}
-          {orDash(b.sharpe_annualized, ratio)} compared with{" "}
-          {orDash(b.baseline_sharpe_annualized, ratio)} for my baseline PMCC strategy over the
-          same period. The full results are available in{" "}
-          <Link to={`/wheel-review/${sym}`}>my wheel backtest review</Link>.
+          I chose this strategy because I&apos;d already built and backtested it with encouraging
+          results. From {longDate(b.start)} through {longDate(b.end)}, {b.end.slice(0, 4)}, the
+          wheel returned {pct(b.return_on_starting_cash)} on {wholeDollars(b.starting_cash)}, with
+          an annualized Sharpe ratio of {orDash(b.sharpe_annualized, ratio)} compared with{" "}
+          {orDash(b.baseline_sharpe_annualized, ratio)} for my baseline PMCC. The full results are
+          in <Link to={`/wheel-review/${sym}`}>my backtest review</Link>.
         </p>
       )}
       <p>
-        I&apos;ve also automated the daily process using two nightly GitHub Actions workflows. One
-        runs the strategy: it reads Sanji&apos;s book, decides the next order and writes{" "}
-        <code>open_orders.json</code>, pulling {sym}&apos;s option prices from LSEG on the nights
-        it places a trade. The other pulls {sym}&apos;s volatility from LSEG for the charts on this
-        page. This keeps the data and trading records updated without having to run everything
-        manually.
+        <b>I&apos;m testing two main ideas.</b> First, whether targeting −0.30 delta provides a
+        reasonable balance between collecting premium and limiting assignment risk. Second,
+        whether the additional premium available during periods of elevated implied volatility is
+        enough to compensate for the greater risk of being assigned shares above their market
+        value. I&apos;m keeping earnings weeks in the strategy to see how both assumptions hold up
+        under more volatile conditions.
       </p>
       <p>
-        For now, I&apos;m keeping the backtest&apos;s rules for choosing trades, including trading
-        through earnings weeks. That&apos;s particularly relevant for the first week ending
-        November 20, since {sym}&apos;s earnings fall during that period. Higher implied volatility
-        can mean more premium, but the bigger move it prices also brings a greater risk of
-        assignment.
+        The process is automated through two nightly GitHub Actions workflows. One checks my
+        current positions and fills, determines the next trade, writes it to{" "}
+        <code>open_orders.json</code> and pulls LSEG option prices when needed. The other
+        retrieves updated volatility data from LSEG for the charts.
       </p>
-      <p>
-        The complete trading rules, with the IDs the run log cites, are listed in the final panel
-        below.
-      </p>
+      <p>The complete trading rules, with the IDs the run log cites, are listed below.</p>
     </Note>
   );
 }

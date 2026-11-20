@@ -88,6 +88,22 @@ describe("the panels", () => {
     expect(cells(rowAt(table, 1))).toEqual(["$147.50", "put", "58.0%", "−0.30"]);
   });
 
+  it("state the expected move under the skew, and where the pick sits (LD-41)", async () => {
+    renderLive();
+    const smile = await panel("This week's skew");
+    await within(smile).findByRole("figure", { name: /IV by strike/ });
+    expect(smile.textContent).toContain(
+      "Expected move by Nov 20: ±$8.45 (±5.4%), $147.01 to $163.91: the price of the $155.00 "
+      + "straddle at the close. The pick, $147.50, is 5.1% below the close, inside the move.");
+  });
+
+  it("say when there's no expected move for the close", async () => {
+    renderLive("/live/NVDA", { ...FILES, "data/live.json": {
+      ...LIVE, smile: { ...LIVE.smile, straddle: null } } });
+    const smile = await panel("This week's skew");
+    expect(await within(smile).findByText(/No expected move for this close/)).toBeDefined();
+  });
+
   it("say so before the volatility workflow's first run", async () => {
     renderLive("/live/NVDA", { ...FILES, "data/live.json": { ...LIVE, vol: [], smile: null } });
     expect(await within(await panel("Implied against realized"))
@@ -99,13 +115,12 @@ describe("the panels", () => {
   it("say why the wheel, from the backtest, and link to its review", async () => {
     renderLive();
     const algorithm = await panel("The algorithm");
-    await within(algorithm).findByRole("link", { name: "my wheel backtest review" });
+    await within(algorithm).findByRole("link", { name: "my backtest review" });
     expect(algorithm.textContent).toContain(
-      "From March 30 through September 25, 2026, the strategy returned $4,171.50 (16.7%) on "
-      + "$25,000 in starting capital");
-    expect(algorithm.textContent).toContain(
-      "annualized Sharpe ratio of 1.57 compared with 1.24 for my baseline PMCC strategy");
-    const link = within(algorithm).getByRole("link", { name: "my wheel backtest review" });
+      "From March 30 through September 25, 2026, the wheel returned 16.7% on $25,000, with an "
+      + "annualized Sharpe ratio of 1.57 compared with 1.24 for my baseline PMCC.");
+    expect(algorithm.textContent).toContain("I'm testing two main ideas.");
+    const link = within(algorithm).getByRole("link", { name: "my backtest review" });
     expect(link.getAttribute("href")).toBe("/wheel-review/NVDA");
     expect(within(algorithm).queryByRole("table")).toBeNull();
     const rules = within(await panel("The rules")).getByRole("table",

@@ -41,6 +41,7 @@ export const VOL: VolPointOut[] = [
 
 export const SMILE: SmileOut = {
   session: "2026-11-17", expiry: "2026-11-20", close: 155.46, pick: 147.5,
+  straddle: { strike: 155, price: 8.45 }, // the expected move (LD-41)
   points: [
     { strike: 145, right: "put", iv: 0.62, delta: -0.18 },
     { strike: 147.5, right: "put", iv: 0.58, delta: -0.3 },

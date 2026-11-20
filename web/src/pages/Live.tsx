@@ -20,8 +20,8 @@ import { IvRv, Smile } from "./live/vol";
 import { panel, whenLoaded } from "./placeholder";
 
 const READOUT_HINTS = [
-  ["State", "What Sanji's book holds, read each night"],
-  ["Cash", "Sanji starts no book: the starting cash until the first fill"],
+  ["State", "What the account holds, read each night"],
+  ["Cash", "The starting cash until the first fill"],
   ["Cost basis", "Of the shares, while they're held"],
   ["Next session", "The session the last run planned"],
   ["Tonight's decision", "The last run's order, or why there was none"],
@@ -81,10 +81,11 @@ export function Live() {
         { ...panel("orders", "Open orders", W_FULL, body((l) => <OpenOrders live={l} />)),
           note: "open_orders.json, as the nightly run left it",
           caption: <>Picked at the close is the option the nightly run chose from LSEG&apos;s
-            chain at the last close; Sent as is the strike Sanji gets, a put&apos;s as its percent
-            below the close, which Sanji applies to the open so the strike moves with a gap
-            (LD-29). An order stays in the file until the week it&apos;s for has ended; Sanji
-            acts on it only on its own session, and never fills an id twice. Monday Nov 16&apos;s
+            chain at the last close; Sent as is the strike the course&apos;s order system gets, a
+            put&apos;s as its percent below the close, which it applies to the open so the strike
+            moves with a gap (LD-29). An order stays in the file until the week it&apos;s for has
+            ended; the order system acts on it only on its own session, and never fills an id
+            twice. Monday Nov 16&apos;s
             order was first written with its strike as a number, $155, and re-sent before the open
             as its percent below Friday&apos;s close, so the run log&apos;s first rows name its
             first id.</> },
@@ -97,25 +98,18 @@ export function Live() {
             delivers.</> },
         { ...panel("smile", "This week's skew", W_HALF, body((l) => <Smile live={l} />)),
           note: "live/smile.json, at the last close",
-          caption: <>
-            <p>This chart shows implied volatility across the out-of-the-money options expiring
-              at the end of the coming week, with puts below the stock&apos;s closing price and
-              calls above it.</p>
-            <p>One thing that stands out is the volatility skew. Rather than a symmetrical smile,
-              the puts generally have higher implied volatility than the calls. You can also see
-              the impact of earnings: when an expiration includes an earnings announcement,
-              implied volatility tends to increase across the strikes, pushing the entire curve
-              higher and sometimes making it flatter.</p>
-            <p>The dashed line marks the put strike my L-P3 rule would select based on the
-              closing price, targeting a delta closest to −0.30. The chart shows where that strike
-              falls, although the strategy only submits an order for the first trading session of
-              each week.</p></> },
+          caption: <>This chart shows implied volatility across this week&apos;s out-of-the-money
+            puts and calls. It helps us see how the market is pricing upside versus downside risk
+            and where volatility is concentrated. Higher IV generally means more premium for the
+            options we&apos;re selling, but also greater expected price movement and assignment
+            risk. The dashed line marks the put strike the strategy would select from this
+            close.</> },
         { ...panel("positions", "Positions", W_HALF, body((l) => (
             <SanjiFile file={l.positions} empty="No positions yet." />))),
-          note: "Sanji's positions.json" },
+          note: "positions.json, from the course's order system" },
         { ...panel("fills", "Fills", W_HALF, body((l) => (
             <SanjiFile file={l.fills} empty="No fills yet." />))),
-          note: "Sanji's fills.json" },
+          note: "fills.json, from the course's order system" },
         { ...panel("runs", "Nightly run log", W_FULL, body((l) => <RunLog live={l} />)),
           note: "newest first, from live/runs.jsonl",
           caption: <>One row a night, failed nights included. The option is the night&apos;s

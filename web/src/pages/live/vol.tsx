@@ -4,11 +4,12 @@
 import { useCallback } from "react";
 
 import { Chart } from "../../components/charts/Chart";
-import { ivRvOption, smileOption, VOL_SERIES } from "../../components/charts/vol";
+import { shortDate } from "../../components/charts/axis";
+import { expectedMove, ivRvOption, smileOption, VOL_SERIES } from "../../components/charts/vol";
 import { DataTable, type TableColumn } from "../../components/DataTable";
-import { Details, Empty } from "../../components/Note";
+import { Details, Empty, Note } from "../../components/Note";
 import { money } from "../../format/money";
-import { iv, orDash, ratio } from "../../format/number";
+import { iv, orDash, pct, ratio } from "../../format/number";
 import type { Palette } from "../../theme/echarts";
 import type { Live, SmileOut, SmilePointOut, VolPointOut } from "../../types/generated/live";
 
@@ -66,7 +67,29 @@ function smileLabel(smile: SmileOut): string {
   return `IV by strike for the ${smile.expiry} expiry at the ${smile.session} close`;
 }
 
-/** The coming week's out-of-the-money IVs at the last close. */
+/** The expected move in words (PO, LD-41): its size, its range, the straddle it's from, and
+ * where the pick sits against it. */
+export function MoveLine({ smile }: { smile: SmileOut }) {
+  const move = expectedMove(smile);
+  if (move === null) {
+    // null in a file pulled before LD-41, or when no strike had its call and put both quoted
+    return <Note><p>No expected move for this close.</p></Note>;
+  }
+  const { pick } = move;
+  return (
+    <Note>
+      <p>
+        <b>Expected move by {shortDate(smile.expiry)}:</b> ±{money(move.move)} (±
+        {pct(move.share)}), {money(move.low)} to {money(move.high)}: the price of the{" "}
+        {money(move.strike)} straddle at the close.
+        {pick && <> The pick, {money(pick.strike)}, is {pct(pick.below)} below the close,{" "}
+          {pick.inside ? "inside" : "outside"} the move.</>}
+      </p>
+    </Note>
+  );
+}
+
+/** The coming week's out-of-the-money IVs at the last close, and the expected move. */
 export function Smile({ live }: { live: Live }) {
   const smile = live.smile;
   const build = useCallback((p: Palette) => (smile ? smileOption(p, smile) : {}), [smile]);
@@ -76,6 +99,7 @@ export function Smile({ live }: { live: Live }) {
   return (
     <>
       <Chart build={build} label={smileLabel(smile)} />
+      <MoveLine smile={smile} />
       <Details summary="The values" table>
         <DataTable label="The skew by strike" rows={smile.points} columns={SMILE_COLUMNS}
                    rowId={(r) => `${r.right}-${r.strike}`} />

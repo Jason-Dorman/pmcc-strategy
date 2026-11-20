@@ -32,8 +32,9 @@ from pmcc.data.files import replace_file
 from pmcc.domain.calendar import SessionCalendar
 from pmcc.domain.instruments import Right
 from pmcc.domain.money import UNITS_PER_CENT, Price
+from pmcc.domain.quotes import Quote as BidAsk
 from pmcc.domain.sessions import Session
-from pmcc.live.names import RIGHT_NAMES, dollars
+from pmcc.live.names import RIGHT_NAMES, dollars, quote_dollars
 from pmcc.live.rules import Pick, price_at_close
 from pmcc.live.snapshot import CloseSnapshot, OptionQuote
 from pmcc.pricing.expiry import years_between
@@ -101,14 +102,30 @@ class SmilePoint:
 
 @final
 @dataclass(frozen=True, slots=True)
+class Straddle:
+    """The expiry's at-the-money straddle at the close (PO, LD-41): the strike nearest the close
+    with both sides quoted (a tie goes lower), and its call's and put's mids summed, the market's
+    expected move to expiry. A price derived from two quotes, not a quote."""
+
+    strike: Price
+    price: Price
+
+    def doc(self) -> Json:
+        return {"strike": dollars(self.strike), "price": quote_dollars(self.price)}
+
+
+@final
+@dataclass(frozen=True, slots=True)
 class Smile:
-    """The coming week's out-of-the-money IVs at a session's close, and L-P3's pick."""
+    """The coming week's out-of-the-money IVs at a session's close, L-P3's pick, and the
+    expiry's ATM straddle (LD-41)."""
 
     session: date
     expiry: date
     close: Price
     points: tuple[SmilePoint, ...]
     pick: Price | None
+    straddle: Straddle | None = None
 
     def doc(self) -> Json:
         return {
@@ -116,6 +133,7 @@ class Smile:
             "expiry": self.expiry.isoformat(),
             "close": dollars(self.close),
             "pick": None if self.pick is None else dollars(self.pick),
+            "straddle": None if self.straddle is None else self.straddle.doc(),
             "points": [
                 {
                     "strike": dollars(p.strike),
@@ -153,15 +171,45 @@ def atm_point(
     rv20: float | None,
 ) -> VolPoint:
     """The session's point from the tenor's quotes at its close."""
-    quoted = {(q.option.right, q.option.strike.units): q for q in quotes if q.quoted_at_close}
-    paired = [k for right, k in quoted if right is Right.CALL and (Right.PUT, k) in quoted]
-    if not paired:
+    quoted = _quoted(quotes)
+    strike = _atm_strike(quoted, close)
+    if strike is None:
         return VolPoint(session.day, close, expiry.day, None, None, None, rv20)
-    strike = min(paired, key=lambda k: (abs(k - close.units), k))
     years = years_between(session.close_bar_end, expiry.close_bar_end)
     call = _iv(quoted[(Right.CALL, strike)], close, years, rate)
     put = _iv(quoted[(Right.PUT, strike)], close, years, rate)
     return VolPoint(session.day, close, expiry.day, Price(strike), call, put, rv20)
+
+
+type _Quoted = dict[tuple[Right, int], OptionQuote]
+
+
+def _quoted(quotes: Sequence[OptionQuote]) -> _Quoted:
+    """The contracts with a valid quote in the close bar, by right and strike."""
+    return {(q.option.right, q.option.strike.units): q for q in quotes if q.quoted_at_close}
+
+
+def _atm_strike(quoted: _Quoted, close: Price) -> int | None:
+    """The strike nearest the close with both its call and put quoted; a tie goes lower."""
+    paired = [k for right, k in quoted if right is Right.CALL and (Right.PUT, k) in quoted]
+    return min(paired, key=lambda k: (abs(k - close.units), k)) if paired else None
+
+
+def _mid(quote: OptionQuote) -> Price:
+    bar = quote.close
+    if bar is None or bar.bid is None or bar.ask is None:
+        raise VolError(f"{quote.ric} has no quote at the close")
+    return BidAsk(bar.bid, bar.ask).mid
+
+
+def straddle(snapshot: CloseSnapshot) -> Straddle | None:
+    """The snapshot's ATM straddle (PO, LD-41); None when no strike has both sides quoted."""
+    quoted = _quoted(snapshot.options)
+    strike = _atm_strike(quoted, snapshot.close)
+    if strike is None:
+        return None
+    call, put = _mid(quoted[(Right.CALL, strike)]), _mid(quoted[(Right.PUT, strike)])
+    return Straddle(Price(strike), Price(call.units + put.units))
 
 
 def _iv(quote: OptionQuote, close: Price, years: float, rate: float) -> float | None:
@@ -194,6 +242,7 @@ def smile(
         snapshot.close,
         tuple(sorted(points, key=lambda p: p.strike)),
         None if pick is None else pick.option.strike,
+        straddle(snapshot),
     )
 
 

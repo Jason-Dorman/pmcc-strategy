@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import { SMILE, VOL } from "../../test/liveFixtures";
 import type { Palette } from "../../theme/echarts";
-import { gapBand, ivRvOption, smileOption, VOL_SERIES, withHeadroom } from "./vol";
+import { expectedMove, gapBand, ivRvOption, smileOption, VOL_SERIES, withHeadroom } from "./vol";
 
 const P = new Proxy({} as Palette, { get: (_t, key) => String(key) });
 
@@ -15,6 +15,7 @@ interface Series {
   lineStyle: { color?: string; width: number; type?: string };
   areaStyle?: { color: string };
   markLine?: { data: { xAxis: number; lineStyle: { color: string; type: string } }[] };
+  markArea?: { itemStyle: { color: string }; data: [{ xAxis: number }, { xAxis: number }][] };
 }
 
 function series(option: { series: unknown[] }, name: string): Series {
@@ -86,6 +87,39 @@ describe("the smile", () => {
     expect(html).toContain("Put $147.50");
     expect(html).toContain("58.0%");
     expect(html).toContain("−0.30");
+  });
+});
+
+describe("the expected move (PO, LD-41)", () => {
+  function moveOf(smile: typeof SMILE) {
+    const move = expectedMove(smile);
+    if (move === null) throw new Error("no expected move");
+    return move;
+  }
+
+  it("is the ATM straddle's price either side of the close", () => {
+    const move = moveOf(SMILE); // $155.46 close, an $8.45 straddle
+    expect(move.move).toBe(8.45);
+    expect(move.share).toBeCloseTo(8.45 / 155.46, 10);
+    expect(move.low).toBeCloseTo(147.01, 10);
+    expect(move.high).toBeCloseTo(163.91, 10);
+  });
+
+  it("places the pick inside or outside it", () => {
+    expect(moveOf(SMILE).pick).toEqual({ strike: 147.5, below: (155.46 - 147.5) / 155.46,
+                                         inside: true });
+    expect(moveOf({ ...SMILE, pick: 145 }).pick).toMatchObject({ inside: false });
+    expect(moveOf({ ...SMILE, pick: null }).pick).toBeNull();
+  });
+
+  it("is a neutral band across the strikes it spans, and none without a straddle", () => {
+    const band = series(smileOption(P, SMILE), "IV at the close").markArea;
+    if (!band) throw new Error("no band");
+    expect(band.itemStyle.color).toBe("move-shade");
+    expect(band.data.flat().map((d) => d.xAxis)).toEqual([155.46 - 8.45, 155.46 + 8.45]);
+    expect(expectedMove({ ...SMILE, straddle: null })).toBeNull();
+    const none = series(smileOption(P, { ...SMILE, straddle: null }), "IV at the close");
+    expect(none.markArea).toBeUndefined();
   });
 });
 

@@ -124,15 +124,25 @@ class SmilePointOut(Model):
     delta: float
 
 
+class StraddleOut(Model):
+    """The expiry's ATM straddle at the close: its strike, and its call's and put's mids summed,
+    the market's expected move to expiry (PO, LD-41)."""
+
+    strike: Dollars
+    price: Dollars
+
+
 class SmileOut(Model):
     """`live/smile.json`: the coming week's out-of-the-money IVs at a session's close (PO,
-    LD-33), and the put L-P3 picked from them."""
+    LD-33), the put L-P3 picked from them, and the expiry's ATM straddle (PO, LD-41)."""
 
     session: str
     expiry: str
     close: Dollars
     pick: Dollars | None
     points: tuple[SmilePointOut, ...]  # by strike: puts below the close, calls above
+    # null when no strike had both sides quoted, and in a file written before LD-41
+    straddle: StraddleOut | None = None
 
 
 class Live(Model):

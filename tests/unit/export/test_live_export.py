@@ -228,6 +228,24 @@ def test_ld_34_the_smile_is_published_with_its_pick(tmp_path: Path, config: Live
     assert [p.right for p in smile.points] == ["put", "call"]
 
 
+def test_ld_41_the_smile_carries_its_atm_straddle(tmp_path: Path, config: LiveConfig) -> None:
+    with_straddle = {**SMILE, "straddle": {"strike": "155.00", "price": "8.4525"}}
+    smile = build_live(_vol(_root(tmp_path), POINT, smile=with_straddle), config, None).smile
+
+    assert smile is not None
+    assert smile.straddle is not None
+    assert (smile.straddle.strike, smile.straddle.price) == (Decimal("155.00"), Decimal("8.4525"))
+
+
+def test_ld_41_a_smile_written_before_the_straddle_reads_as_none(
+    tmp_path: Path, config: LiveConfig
+) -> None:
+    smile = build_live(_vol(_root(tmp_path), POINT), config, None).smile  # SMILE has no straddle
+
+    assert smile is not None
+    assert smile.straddle is None
+
+
 def test_ld_34_no_volatility_yet_means_none(tmp_path: Path, config: LiveConfig) -> None:
     live = build_live(_root(tmp_path), config, None)
 

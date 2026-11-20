@@ -156,6 +156,10 @@ describe("chart roles (DEC-04)", () => {
   it("shades the gap between IV and RV20 in MARK (L4-02)", () => {
     expect(TOKENS).toContain("--vol-gap-shade: color-mix(in srgb, var(--mark) 14%, transparent)");
   });
+
+  it("shades the expected move in TEXT, neutral, never amber (LD-41)", () => {
+    expect(TOKENS).toContain("--move-shade: color-mix(in srgb, var(--text) 9%, transparent)");
+  });
 });
 
 describe("shell.css's fixed table row follows tokens.ts", () => {

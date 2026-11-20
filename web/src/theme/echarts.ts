@@ -45,6 +45,7 @@ const PALETTE_TOKENS = [
   "nav-line", "margin-im", "margin-mm", "fit-line", "identity-line", "long-leg", "short-leg",
   "strategy-quant", "strategy-baseline", "available-funds", "spot-line", "strike-line",
   "basis-line", "iv-line", "rv-line", "negative-shade", "shares-shade", "vol-gap-shade",
+  "move-shade",
 ] as const satisfies readonly (keyof Palette)[];
 
 /** Every colour and font stack a chart uses, as the document has them now. */

@@ -54,6 +54,7 @@
   --negative-shade: color-mix(in srgb, var(--negative) 30%, transparent); /* funds below zero */
   --shares-shade: color-mix(in srgb, var(--nav-line) 14%, transparent); /* the wheel holds shares */
   --vol-gap-shade: color-mix(in srgb, var(--mark) 14%, transparent); /* IV vs RV20's gap */
+  --move-shade: color-mix(in srgb, var(--text) 9%, transparent); /* the expected move, LD-41 */
 
   /* type stacks (self-hosted, DEC-72) */
   --font-display: "Space Grotesk", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;

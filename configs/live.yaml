@@ -17,15 +17,15 @@ rules:
   - id: L-B1
     rule: Book is current
     text: >-
-      Sanji's price file shows the last completed trading session, so the book is up to date.
-      If it doesn't, no order is written and the run fails; but while Sanji has written no
-      positions or fills, it has resolved nothing and the cash book can't have moved, so the
-      run goes ahead and logs a warning.
+      The course's price file shows the last completed trading session, so the book is up to
+      date. If it doesn't, no order is written and the run fails; but while the course's order
+      system has written no positions or fills, it has resolved nothing and the cash book can't
+      have moved, so the run goes ahead and logs a warning.
   - id: L-B2
     rule: Book is readable
     text: >-
-      Sanji's book reads as one of the four states, and every order already in the order file is
-      valid. If not, no order is written and the run fails.
+      The order system's book reads as one of the four states, and every order already in the
+      order file is valid. If not, no order is written and the run fails.
   - id: L-S1
     rule: Next session
     text: The order is for the first trading session after the last close, so a nightly run GitHub starts late, before the open, still plans that day's session.
@@ -77,9 +77,9 @@ rules:
     params: {order_type: lmt, lmt_prc: mid, ref: open, qty: 1, pct_step: 1}
     text: >-
       Sell to open {qty} contract at a limit of the {lmt_prc} at the {ref}, naming the expiry by
-      date. A put's strike is sent as its distance below the close in whole percents, so Sanji
-      sets it that far below the {ref} and it moves with a gap; a call's strike is sent as its
-      number.
+      date. A put's strike is sent as its distance below the close in whole percents, so the
+      order system sets it that far below the {ref} and it moves with a gap; a call's strike is
+      sent as its number.
   - id: L-O2
     rule: Unfilled
     text: A week whose order doesn't fill is skipped; it is not retried later in the week.
