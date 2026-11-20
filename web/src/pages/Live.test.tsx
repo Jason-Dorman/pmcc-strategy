@@ -88,13 +88,26 @@ describe("the panels", () => {
     expect(cells(rowAt(table, 1))).toEqual(["$147.50", "put", "58.0%", "−0.30"]);
   });
 
-  it("state the expected move under the skew, and where the pick sits (LD-41)", async () => {
+  it("state the expected move under the skew, and where the order sits (LD-41, LD-43)",
+     async () => {
     renderLive();
     const smile = await panel("This week's skew");
     await within(smile).findByRole("figure", { name: /IV by strike/ });
     expect(smile.textContent).toContain(
       "Expected move by Nov 20: ±$8.45 (±5.4%), $147.01 to $163.91: the price of the $155.00 "
-      + "straddle at the close. The pick, $147.50, is 5.1% below the close, inside the move.");
+      + "straddle at the close. The order's $155.00 put is 0.3% below the close, out of the "
+      + "money, inside the move."); // the open order's strike, as LSEG picked it (LD-43)
+  });
+
+  it("mark no strike when no open order expires on the skew's date (LD-43)", async () => {
+    const [order] = LIVE.orders;
+    if (!order) throw new Error("no order");
+    renderLive("/live/NVDA", { ...FILES, "data/live.json": {
+      ...LIVE, orders: [{ ...order, expiry: "2026-11-27" }] } });
+    const smile = await panel("This week's skew");
+    await within(smile).findByRole("figure", { name: /IV by strike/ });
+    expect(smile.textContent).toContain("Expected move by Nov 20");
+    expect(smile.textContent).not.toContain("The order's");
   });
 
   it("say when there's no expected move for the close", async () => {

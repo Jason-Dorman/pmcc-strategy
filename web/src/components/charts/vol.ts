@@ -1,8 +1,8 @@
 // The live page's volatility (UI-SPEC §6 › Live; L4-02; PO, LD-33). NVDA's ATM implied vol about
 // 30 days out against its 20-day realized vol, a point a session, the gap between them shaded:
 // the wheel sells premium, which pays when implied vol runs above what the stock then realizes.
-// And the coming week's smile at the last close: each out-of-the-money strike's IV, the close a
-// line and the put L-P3 picked a dashed strike.
+// And the coming week's skew at the last close: each out-of-the-money strike's IV, the close a
+// line, the open order's strike dashed (PO, LD-43), the expected move a band (PO, LD-41).
 import { money } from "../../format/money";
 import { iv, orDash, ratio } from "../../format/number";
 import {
@@ -99,8 +99,15 @@ export function ivRvOption(p: Palette, points: readonly VolPointOut[]) {
   };
 }
 
-/** The close, a solid reference, and the pick, a dashed strike (UI-SPEC §4 rule 5). */
-function smileMarks(p: Palette, smile: SmileOut) {
+/** The open order's option, when it expires on the skew's date: the trade the strategy has on
+ * (PO, LD-43). */
+export interface ChartOrder {
+  strike: number;
+  right: "put" | "call";
+}
+
+/** The close, a solid reference, and the open order's strike, dashed (UI-SPEC §4 rule 5). */
+function smileMarks(p: Palette, smile: SmileOut, order: ChartOrder | null) {
   const mark = (x: number, color: string, type: "solid" | "dashed", text: string) => ({
     xAxis: x,
     lineStyle: { color, width: LINE.ruler, type },
@@ -108,24 +115,28 @@ function smileMarks(p: Palette, smile: SmileOut) {
              fontFamily: p.fontMono },
   });
   const data = [mark(smile.close, p["spot-line"], "solid", "Close")];
-  if (smile.pick !== null) data.push(mark(smile.pick, p["strike-line"], "dashed", "Pick"));
+  if (order !== null) data.push(mark(order.strike, p["strike-line"], "dashed", "Order"));
   return { silent: true, symbol: "none", data };
 }
 
+/** Where the order's strike sits against the close: its signed share of the close (above is
+ * positive), and whether that puts the option in the money. */
+function placed(smile: SmileOut, order: ChartOrder, low: number, high: number) {
+  const inMoney = order.right === "put" ? order.strike > smile.close : order.strike < smile.close;
+  return { ...order, distance: (order.strike - smile.close) / smile.close, inMoney,
+           inside: order.strike >= low && order.strike <= high };
+}
+
 /** The market's expected move to expiry (PO, LD-41): the ATM straddle's price either side of
- * the close, as a share of the close, and where the pick sits against it. None without a
- * straddle. */
-export function expectedMove(smile: SmileOut) {
+ * the close, as a share of the close, and where the open order's strike sits against it (PO,
+ * LD-43). None without a straddle. */
+export function expectedMove(smile: SmileOut, order: ChartOrder | null = null) {
   const s = smile.straddle;
   if (s === null) return null;
   const low = smile.close - s.price;
   const high = smile.close + s.price;
-  const pick = smile.pick === null ? null : {
-    strike: smile.pick,
-    below: (smile.close - smile.pick) / smile.close,
-    inside: smile.pick >= low && smile.pick <= high,
-  };
-  return { move: s.price, share: s.price / smile.close, low, high, strike: s.strike, pick };
+  return { move: s.price, share: s.price / smile.close, low, high, strike: s.strike,
+           order: order === null ? null : placed(smile, order, low, high) };
 }
 
 /** The expected move, a neutral band across the strikes it spans (`--move-shade`). */
@@ -141,7 +152,7 @@ function moveBand(p: Palette, smile: SmileOut) {
   };
 }
 
-export function smileOption(p: Palette, smile: SmileOut) {
+export function smileOption(p: Palette, smile: SmileOut, order: ChartOrder | null = null) {
   const base = baseOption(p);
   const name = "IV at the close";
   return {
@@ -173,7 +184,7 @@ export function smileOption(p: Palette, smile: SmileOut) {
         showSymbol: true,
         symbol: "circle",
         symbolSize: 2 * SIZE_MARK,
-        markLine: smileMarks(p, smile),
+        markLine: smileMarks(p, smile, order),
         markArea: moveBand(p, smile),
       },
     ],

@@ -4,7 +4,17 @@ import { describe, expect, it } from "vitest";
 
 import { SMILE, VOL } from "../../test/liveFixtures";
 import type { Palette } from "../../theme/echarts";
-import { expectedMove, gapBand, ivRvOption, smileOption, VOL_SERIES, withHeadroom } from "./vol";
+import {
+  expectedMove,
+  gapBand,
+  ivRvOption,
+  smileOption,
+  VOL_SERIES,
+  withHeadroom,
+  type ChartOrder,
+} from "./vol";
+
+const PUT_155: ChartOrder = { strike: 155, right: "put" }; // the fixture's open order
 
 const P = new Proxy({} as Palette, { get: (_t, key) => String(key) });
 
@@ -72,14 +82,14 @@ describe("the smile", () => {
     expect(curve.lineStyle.color).toBe("iv-line");
   });
 
-  it("marks the close as a line and the pick as a dashed strike", () => {
-    expect(curve.markLine?.data.map((d) => [d.xAxis, d.lineStyle.color, d.lineStyle.type]))
-      .toEqual([[155.46, "spot-line", "solid"], [147.5, "strike-line", "dashed"]]);
+  it("marks the close as a line and the open order's strike as a dashed one (LD-43)", () => {
+    const ordered = series(smileOption(P, SMILE, PUT_155), "IV at the close");
+    expect(ordered.markLine?.data.map((d) => [d.xAxis, d.lineStyle.color, d.lineStyle.type]))
+      .toEqual([[155.46, "spot-line", "solid"], [155, "strike-line", "dashed"]]);
   });
 
-  it("leaves the pick out when there is none", () => {
-    const none = series(smileOption(P, { ...SMILE, pick: null }), "IV at the close");
-    expect(none.markLine?.data).toHaveLength(1);
+  it("marks no strike without an open order, whatever L-P3 would pick", () => {
+    expect(curve.markLine?.data).toHaveLength(1); // SMILE has a pick; no order is passed
   });
 
   it("tells a strike's right, IV and delta", () => {
@@ -91,8 +101,8 @@ describe("the smile", () => {
 });
 
 describe("the expected move (PO, LD-41)", () => {
-  function moveOf(smile: typeof SMILE) {
-    const move = expectedMove(smile);
+  function moveOf(smile: typeof SMILE, order: ChartOrder | null = null) {
+    const move = expectedMove(smile, order);
     if (move === null) throw new Error("no expected move");
     return move;
   }
@@ -105,11 +115,14 @@ describe("the expected move (PO, LD-41)", () => {
     expect(move.high).toBeCloseTo(163.91, 10);
   });
 
-  it("places the pick inside or outside it", () => {
-    expect(moveOf(SMILE).pick).toEqual({ strike: 147.5, below: (155.46 - 147.5) / 155.46,
-                                         inside: true });
-    expect(moveOf({ ...SMILE, pick: 145 }).pick).toMatchObject({ inside: false });
-    expect(moveOf({ ...SMILE, pick: null }).pick).toBeNull();
+  it("places the open order's strike: its distance, in or out of the money, inside or not", () => {
+    expect(moveOf(SMILE, PUT_155).order).toEqual({ ...PUT_155, inMoney: false, inside: true,
+                                                   distance: (155 - 155.46) / 155.46 });
+    expect(moveOf(SMILE, { strike: 160, right: "put" }).order)
+      .toMatchObject({ inMoney: true, inside: true });
+    expect(moveOf(SMILE, { strike: 140, right: "put" }).order).toMatchObject({ inside: false });
+    expect(moveOf(SMILE, { strike: 150, right: "call" }).order).toMatchObject({ inMoney: true });
+    expect(moveOf(SMILE).order).toBeNull();
   });
 
   it("is a neutral band across the strikes it spans, and none without a straddle", () => {

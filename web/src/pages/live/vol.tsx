@@ -1,17 +1,24 @@
 // The live page's volatility panels (UI-SPEC §6 › Live; L4-02; PO, LD-33): ATM IV about 30 days
 // out against RV20 by session, and the coming week's smile at the last close, each chart's values
 // in a table under it. From `live/vol.jsonl` and `live/smile.json`, the volatility workflow's.
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 
 import { Chart } from "../../components/charts/Chart";
 import { shortDate } from "../../components/charts/axis";
-import { expectedMove, ivRvOption, smileOption, VOL_SERIES } from "../../components/charts/vol";
+import {
+  expectedMove,
+  ivRvOption,
+  smileOption,
+  VOL_SERIES,
+  type ChartOrder,
+} from "../../components/charts/vol";
 import { DataTable, type TableColumn } from "../../components/DataTable";
 import { Details, Empty, Note } from "../../components/Note";
 import { money } from "../../format/money";
 import { iv, orDash, pct, ratio } from "../../format/number";
 import type { Palette } from "../../theme/echarts";
 import type { Live, SmileOut, SmilePointOut, VolPointOut } from "../../types/generated/live";
+import { pickFor } from "./sections";
 
 const MINUS = "−";
 
@@ -67,39 +74,59 @@ function smileLabel(smile: SmileOut): string {
   return `IV by strike for the ${smile.expiry} expiry at the ${smile.session} close`;
 }
 
+/** The open order's option, when it expires on the skew's date: its strike as LSEG picked it
+ * (LD-35), else as sent when that's a number (a call's). The trade the strategy has on (PO,
+ * LD-43); none when no order is open for that expiry. */
+export function chartOrder(live: Live, smile: SmileOut): ChartOrder | null {
+  const order = live.orders.find((o) => o.expiry === smile.expiry);
+  if (!order || (order.contract !== "put" && order.contract !== "call")) return null;
+  const strike = Number(pickFor(order, live.runs)?.strike ?? order.strike);
+  return Number.isFinite(strike) ? { strike, right: order.contract } : null;
+}
+
+/** `is 0.3% below the close, out of the money`. */
+function where(order: { distance: number; inMoney: boolean }): string {
+  const side = order.distance < 0 ? "below" : "above";
+  return `is ${pct(Math.abs(order.distance))} ${side} the close, `
+    + (order.inMoney ? "in the money" : "out of the money");
+}
+
 /** The expected move in words (PO, LD-41): its size, its range, the straddle it's from, and
- * where the pick sits against it. */
-export function MoveLine({ smile }: { smile: SmileOut }) {
-  const move = expectedMove(smile);
+ * where the open order's strike sits against it (PO, LD-43). */
+export function MoveLine({ smile, order }: { smile: SmileOut; order: ChartOrder | null }) {
+  const move = expectedMove(smile, order);
   if (move === null) {
     // null in a file pulled before LD-41, or when no strike had its call and put both quoted
     return <Note><p>No expected move for this close.</p></Note>;
   }
-  const { pick } = move;
+  const placed = move.order;
   return (
     <Note>
       <p>
         <b>Expected move by {shortDate(smile.expiry)}:</b> ±{money(move.move)} (±
         {pct(move.share)}), {money(move.low)} to {money(move.high)}: the price of the{" "}
         {money(move.strike)} straddle at the close.
-        {pick && <> The pick, {money(pick.strike)}, is {pct(pick.below)} below the close,{" "}
-          {pick.inside ? "inside" : "outside"} the move.</>}
+        {placed && <> The order&apos;s {money(placed.strike)} {placed.right} {where(placed)},{" "}
+          {placed.inside ? "inside" : "outside"} the move.</>}
       </p>
     </Note>
   );
 }
 
-/** The coming week's out-of-the-money IVs at the last close, and the expected move. */
+/** The coming week's out-of-the-money IVs at the last close, the open order's strike, and the
+ * expected move. */
 export function Smile({ live }: { live: Live }) {
   const smile = live.smile;
-  const build = useCallback((p: Palette) => (smile ? smileOption(p, smile) : {}), [smile]);
+  const order = useMemo(() => (smile ? chartOrder(live, smile) : null), [live, smile]);
+  const build = useCallback((p: Palette) => (smile ? smileOption(p, smile, order) : {}),
+                            [smile, order]);
   if (smile === null || smile.points.length === 0) {
     return <Empty>No skew pulled yet.</Empty>;
   }
   return (
     <>
       <Chart build={build} label={smileLabel(smile)} />
-      <MoveLine smile={smile} />
+      <MoveLine smile={smile} order={order} />
       <Details summary="The values" table>
         <DataTable label="The skew by strike" rows={smile.points} columns={SMILE_COLUMNS}
                    rowId={(r) => `${r.right}-${r.strike}`} />

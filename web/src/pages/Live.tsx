@@ -102,8 +102,7 @@ export function Live() {
             puts and calls. It helps us see how the market is pricing upside versus downside risk
             and where volatility is concentrated. Higher IV generally means more premium for the
             options we&apos;re selling, but also greater expected price movement and assignment
-            risk. The dashed line marks the put strike the strategy would select from this
-            close.</> },
+            risk. The dashed line marks the strike of the open order.</> },
         { ...panel("positions", "Positions", W_HALF, body((l) => (
             <SanjiFile file={l.positions} empty="No positions yet." />))),
           note: "positions.json, from the course's order system" },

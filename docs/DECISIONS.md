@@ -58,6 +58,7 @@ The user is the product owner (PO). This log tracks what the spec leaves open, t
 | LD-40 | The algorithm's and the skew's copy, the PO's own | SETTLED (PO): the PO's text, with five accuracy fixes | — |
 | LD-41 | The skew shows the market's expected move, from the ATM straddle | SETTLED (PO): the straddle's price either side of the close, a band on the skew and a line under it | — |
 | LD-42 | The site doesn't name Sanji | SETTLED (PO): "the course's order system" on the page, in the rule texts and in the run's reasons | — |
+| LD-43 | The skew marks the open order's strike, not tonight's pick | SETTLED (PO): the order's strike, labelled "Order", placed against the close and the expected move | — |
 
 ## Settled
 
@@ -381,3 +382,10 @@ None.
 - **Asked:** readers don't know what "Sanji" is, and the PO has been taking the name out of the page's copy. It also reached the page from the rule texts (the rules table) and the reasons the nightly run logs (the run log, the decision readout). Offered: both (recommended), the rule texts only, or neither.
 - **Outcome:** both. On the page: the readout hints ("What the account holds"; "The starting cash until the first fill"), the Open orders caption and the Positions and Fills notes say "the course's order system" or "the account". The rule texts of L-B1, L-B2 and L-O1 say "the course's price file", "the order system". The run's reasons say "the order system expires it…" (L-P1, L-C1) and "the course's price job hasn't caught up" (L-B1); L-B2's failure, "the course's order system has written…".
 - **Unchanged:** run-log rows already written keep their words; nothing the strategy decides changes; the project's docs, code and commands keep "Sanji" as the course's system's name (the spec's §The course's side defines it), as does the CLI's help, which only the PO reads.
+
+### LD-43 — The skew marks the open order's strike, not tonight's pick
+**Status:** SETTLED · **Basis:** PO, 2026-11-20 · **Affects:** UI-SPEC §6 › Live (panel 3); amends LD-33's dashed pick and LD-41's line; L4-02's follow-up
+
+- **Asked:** the skew's dashed $145 (L-P3's pick from Nov 18's close) beside the open order's $155 (picked from Nov 13's) made no sense to the PO: why show a pick that isn't part of the strategy? Mid-week the strategy trades nothing, so the line marked a trade it wasn't making. Offered: the open order's strike (recommended), no line, or both, labelled.
+- **Outcome:** the open order's strike. The dashed line is the open order's, labelled "Order", when its expiry is the skew's: its strike as LSEG picked it at the close (LD-35), else as sent when that's a number (a call's). No line when no order expires that day. On the night a week's order is chosen, the order is that night's pick, so the two never differ then. The line under the chart says where it sits: "The order's $155.00 put is 2.7% above the close, in the money, inside the move."
+- **Unchanged:** `live/smile.json` still keeps L-P3's pick (the page no longer shows it); the caption's last sentence now reads "The dashed line marks the strike of the open order."
