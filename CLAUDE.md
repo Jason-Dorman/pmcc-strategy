@@ -1,15 +1,15 @@
-# CLAUDE.md — Options Strategies (PMCC and Wheel done, Live Wheel in progress)
+# CLAUDE.md — Options Strategies (PMCC and Wheel done; Live Wheel running; Volatility Thesis in progress)
 
-One engine on LSEG data, publishing results as a static GitHub Pages site. Two backtests are finished, and their code, results and pages stay live and unchanged: the **PMCC** (docs archived in `docs/archive/pmcc/`) and the **Wheel** on NVDA (docs archived in `docs/archive/wheel/`). The current work is the **Live Wheel**: a nightly GitHub Action that runs the wheel live on NVDA and writes `open_orders.json`, which the course's order system, Sanji, fills.
+One engine on LSEG data, publishing results as a static GitHub Pages site. Two backtests are finished, and their code, results and pages stay live and unchanged: the **PMCC** (docs archived in `docs/archive/pmcc/`) and the **Wheel** on NVDA (docs archived in `docs/archive/wheel/`). The **Live Wheel** is built and keeps running: a nightly GitHub Action that runs the wheel live on NVDA and writes `open_orders.json`, which the course's order system, Sanji, fills. The current work is the **Volatility Thesis**: a thesis that options overprice the market's moves after a VIX spike while credit stays calm, with a daily tracker of it on the site, kept current by a nightly workflow. This assignment builds only the thesis, its tracker and their page, not the spec's trading test (TD-03).
 
-**Dates:** the live wheel is due Tue Nov 17 2026, 11:59 pm ET (LD-02); submit target 18:00.
+**Dates:** the thesis is due Tue Nov 24 2026, 11:59 pm ET (TD-02). The live wheel was due Tue Nov 17 (LD-02).
 
 ## The user is the PO: ask, don't assume
 
 The user is the product owner (PO).
 
 - When a question comes up (about what to build, how a rule behaves, what gets reported, or how the site looks), ask the PO and wait for the answer. Don't fill the gap with an assumption, even a reasonable one.
-- Known open questions are the `ASK` entries in `docs/DECISIONS.md`, each with a recommendation. They're answered **just in time**, not up front:
+- Known open questions are the `ASK` entries in `docs/DECISIONS.md` (`TD-nn` for the thesis, `LD-nn` for the live wheel), each with a recommendation. They're answered **just in time**, not up front:
   - When you pick up a backlog item, put its **Ask first** questions to the PO in one message, each with its recommendation.
   - Ask the next item's questions while finishing the current one, so the answers are ready.
   - `docs/BUILD-PLAN.md` › Questions for the PO shows when each question comes up.
@@ -21,8 +21,9 @@ The user is the product owner (PO).
 
 ## Sources of truth
 
-- **`docs/LIVE-SPEC.md` is the source of truth for the live wheel**, as amended by PO answers in `docs/DECISIONS.md` (`LD-nn` entries).
-- `docs/BUILD-PLAN.md` (the live wheel's backlog) and `docs/UI-SPEC.md` (the site's styling, and the live page) elaborate it. If one disagrees with the spec or a PO answer, fix it.
+- **`docs/THESIS-SPEC.md` is the source of truth for the volatility thesis**, as amended by PO answers in `docs/DECISIONS.md` (`TD-nn` entries, in its own part). Its "Scope for this assignment" section says which parts are built now (TD-03); the rest waits for the backtesting assignment and isn't built ahead of it.
+- **`docs/LIVE-SPEC.md` is the source of truth for the live wheel**, as amended by PO answers in `docs/DECISIONS.md` (`LD-nn` entries). The thesis's `TD` entries decide nothing for it, nor its `LD` entries anything for the thesis.
+- `docs/BUILD-PLAN.md` (the thesis's backlog, then the live wheel's) and `docs/UI-SPEC.md` (the site's styling, and the live page) elaborate it. If one disagrees with the spec or a PO answer, fix it.
 - `docs/ENGINEERING-PRINCIPLES.md` says how code is written.
 - **`docs/archive/pmcc/` and `docs/archive/wheel/` are frozen records, not live requirements** (PO, WD-01, LD-01): don't carry a PMCC or wheel decision into the live work; if one seems to apply, ask. Their code cites them (`DEC-nn`, `ARCHITECTURE §n`, `P3-04`, `WD-nn`, `W2-03`, …); each folder's README maps each citation to a file. Edit an archive only to fix a citation its code depends on.
 - **The course's side** (Spec › The course's side): the order language page, <https://jakevestal.github.io/server-logic-533/order.html>, defines `open_orders.json`. Sanji's files (`price_history.json` at the root; `positions.json` and `fills.json` under `mkt/` or at the root) are the professor's: read them, never edit them, except to add a tracked instrument to `price_history.json` in its own format, as the course provides for (LD-12). Sanji isn't resolving orders yet; its book's format is unknown until it does (L5-01).
@@ -39,6 +40,7 @@ A doc that disagrees with the code is a bug. Fix it when you find it; don't defe
 
 | When the change touches… | Update |
 | --- | --- |
+| what the thesis's tracker computes, its scope, data, criteria or workflow (a PO-approved change) | `docs/THESIS-SPEC.md`, plus its TD entry |
 | what the live wheel does, its scope, data, orders or nightly job (a PO-approved change) | `docs/LIVE-SPEC.md`, plus its LD entry |
 | a decision, a PO answer, an engineering choice, or a probe result | `docs/DECISIONS.md` |
 | pages, panels, tokens, charts, tables | `docs/UI-SPEC.md` |
@@ -51,7 +53,7 @@ A doc that disagrees with the code is a bug. Fix it when you find it; don't defe
 - `docs/BUILD-PLAN.md` is the backlog. Take the first unchecked item whose **Needs** are all checked, unless the PO says otherwise.
 - Ask its **Ask first** questions before building on them.
 - Write tests first. An item is done when its **Done when** line holds and `just check` is green.
-- One commit per backlog item, prefixed with its ID (`L2-01: orders in the order language`). It includes the item's doc updates and its tick (`- [x] … — done YYYY-MM-DD`). **The PO makes the commit** (DEC-59): leave the work in the tree and hand over the file list and a proposed message.
+- One commit per backlog item, prefixed with its ID (`T2-01: the tracker`, `L2-01: orders in the order language`). It includes the item's doc updates and its tick (`- [x] … — done YYYY-MM-DD`). **The PO makes the commit** (DEC-59): leave the work in the tree and hand over the file list and a proposed message.
 
 ## Environment
 
@@ -62,16 +64,17 @@ A doc that disagrees with the code is a bug. Fix it when you find it; don't defe
 
 ## Hard rules
 
-These are working rules, kept for the wheel (WD-01) and the live wheel (LD-01); a `DEC-nn` beside one is its origin in the archived PMCC log.
+These are working rules, kept for the wheel (WD-01), the live wheel (LD-01) and the thesis (TD-01); a `DEC-nn` beside one is its origin in the archived PMCC log.
 
 - **Git and GitHub (DEC-59):** the PO does all of it: repo setup, init, staging, commits, pushes, branches, tags, GitHub settings, secrets. You may run read-only git (`status`, `diff`, `log`, `show`, `ls-files`, `check-ignore`); never a git or gh command that changes the repo or GitHub.
-  - Two automated writers exist, by design: Sanji (the professor's server, with the PO's token) pushes its files, and the nightly workflow's Actions bot commits only `open_orders.json` and the run log (LD-06).
+  - Automated writers exist, by design: Sanji (the professor's server, with the PO's token) pushes its files; the nightly workflow's Actions bot commits only `open_orders.json` and the run log (LD-06); the `vol` workflow's only `live/vol.jsonl` and `live/smile.json` (LD-34); and the `thesis` workflow's only `live/thesis/*.json` (TD-09).
 - **Credentials:** never print, read out, copy or commit `lseg-data.config.json` (it's gitignored) or the platform credentials (`LSEG_APP_KEY`, `LSEG_USERNAME`, `LSEG_PASSWORD`: GitHub secrets, or environment variables locally; LD-05). Only `pmcc/data/lseg/` reads either.
 - **LSEG access:**
-  - Only `pmcc fetch`, `pmcc probe`, `pmcc live-probe`, the live wheel's run (`pmcc live`) and its volatility pull (`pmcc vol`, LD-34), from the workflows or the PO's machine (LD-05), contact LSEG. Tests, the CI checks, builds and the site never do.
+  - Only `pmcc fetch`, `pmcc probe`, `pmcc live-probe`, the live wheel's run (`pmcc live`) and its volatility pull (`pmcc vol`, LD-34), and the thesis's probe and run (`thesis probe`, `thesis run`: the thesis's own command, TD-04, TD-13), from the workflows or the PO's machine (LD-05), contact LSEG. Tests, the CI checks, builds and the site never do.
   - `lseg.data` and `pandas` are imported only under `pmcc/data/lseg/`.
   - Before any pull longer than about 2 minutes, show the PO the `--plan-only` estimate. A Workspace (desktop) session needs Workspace signed in throughout; the live wheel's platform session doesn't.
   - Never overwrite cached data. Never record a failed request as "no data": an outage aborts and writes nothing.
+- **FRED (TD-05):** only the thesis's probe and run contact it, for the high-yield spread if LSEG lacks its history, through its public CSV with the standard library, sending nothing about the user or the project. Same rules as LSEG: never from tests, CI checks, builds or the site; an outage writes nothing.
 - **Strategies:**
   - Strategies see market data only through `MarketView`. No rule touches a dataframe. The live wheel's picks read the close snapshot instead, which holds only the past (PO, LD-26).
   - Every threshold lives in YAML under a rule ID, and every blotter and gate-log row carries one.
@@ -114,5 +117,6 @@ These exist once P0 is done.
   - The live wheel decides once a night, from the last close, for the next NYSE session; an order's `for` is that session's date.
 - **Logging:** log through `structlog.get_logger()` with dotted event names (ARCHITECTURE §15). Only `pmcc.cli` imports `pmcc.log` to configure it (DEC-80).
 - **IDs:**
+  - The thesis keeps the spec's IDs exactly: `R1`–`R7`, `K1`–`K3`, its config keys (§13); decisions `TD-nn`, backlog `T0-01`… (TD-11).
   - Live wheel rule IDs match `docs/LIVE-SPEC.md` exactly (`L-B1`, `L-P3`, `L-O1`, …); its invariants are `LINV-01`…`LINV-09` in the spec's order (LD-18). The wheel keeps its own (`W-T1`, `WINV-01`…, archived spec) and the PMCC its own (`E-T1`, `G-3`, `INV-01`…).
 - **Test names:** `test_<rule-or-inv>_<behaviour>`, e.g. `test_l_c3_never_sells_below_cost_basis`.

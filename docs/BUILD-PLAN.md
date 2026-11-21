@@ -1,17 +1,108 @@
-# Live Wheel — Build Plan and Backlog
+# Build Plan and Backlog — Volatility Thesis and Live Wheel
 
-Nov 13, 2026 · from the [Live spec](LIVE-SPEC.md) · **due Tue Nov 17 2026, 11:59 pm ET** (LD-02; submit target 18:00) · the wheel's finished plan is archived in [archive/wheel/BUILD-PLAN.md](archive/wheel/BUILD-PLAN.md)
+Two backlogs: the **volatility thesis** (current, from Nov 21) and the **live wheel** (from Nov 13, its nightly runs still going). The wheel's finished plan is archived in [archive/wheel/BUILD-PLAN.md](archive/wheel/BUILD-PLAN.md).
 
 ## How to use this plan
 
 - **Order:** take the first unchecked item whose **Needs** are all checked, unless the PO says otherwise.
-- **Ask first:** when picking up an item, put its **Ask first** questions to the PO in one message, each with the recommendation from [DECISIONS](DECISIONS.md), and ask the next item's while finishing the current one. Record every answer in DECISIONS.
-- **Done means:** the **Done when** line holds, `just check` is green, every doc the work touched is updated, and the work is handed to the PO with its file list and a proposed commit message (`L1-01: …`). The PO commits.
-- **Ticking:** `- [x] **L1-01 · …** — done YYYY-MM-DD; notes`, in the same commit as the work.
+- **Ask first:** when picking up an item, put its **Ask first** questions to the PO in one message, each with the recommendation from [DECISIONS](DECISIONS.md) (`TD-nn` for the thesis, `LD-nn` for the live wheel), and ask the next item's while finishing the current one. Record every answer in DECISIONS.
+- **Done means:** the **Done when** line holds, `just check` is green, every doc the work touched is updated, and the work is handed to the PO with its file list and a proposed commit message (`T1-01: …`, `L1-01: …`). The PO commits.
+- **Ticking:** `- [x] **T1-01 · …** — done YYYY-MM-DD; notes`, in the same commit as the work.
 - **Tags:** **[PO]** needs a PO answer or review; **[LSEG]** contacts LSEG (the PO runs it locally with the credentials in the environment, or in Actions).
-- **Not overdoing it:** each item builds what the spec asks for and no more. The wheel's pricer, calendar and site pieces are reused; the PMCC's and the wheel's results and pages must not change.
+- **Not overdoing it:** each item builds what its spec asks for and no more; the thesis builds only its assignment's scope (TD-03). The wheel's pricer, calendar and site pieces are reused; the PMCC's and the wheel's results and pages must not change.
 
-## Status board
+## Volatility thesis
+
+Nov 21, 2026 · from the [Thesis spec](THESIS-SPEC.md), as scoped for this assignment (TD-03) · **due Tue Nov 24 2026, 11:59 pm ET** (TD-02)
+
+The current work. It builds the thesis, its daily tracker and their page, nothing of the spec's trading test (TD-03). The live wheel's nightly runs keep going beside it, untouched.
+
+### Status board
+
+| Phase | Dates | Exit criteria | Status |
+| --- | --- | --- | --- |
+| T0 Docs | Sat Nov 21 | Spec scoped, decisions and backlog live | In progress: T0-01 drafted, waiting on the PO's review |
+| T1 Data | Sat Nov 21 | A headless probe shows the index's, VIX's and the credit series' coverage, and an SPXW chain | Not started |
+| T2 Tracker | Sun Nov 22 | The tracker, K1 and R5's note computed from series in memory, tested | Not started |
+| T3 Nightly | Sun Nov 22 | `thesis run` writes `live/thesis/`; the `thesis` workflow commits it and the site redeploys | Not started |
+| T4 Site | Mon Nov 23 | `#/thesis` shows R1–R7 from the committed files | Not started |
+| T5 Release | Tue Nov 24 | A scheduled run after Monday's close has updated the page; the URL is submitted | Not started |
+
+**Critical path:** T3-02, live before Monday night, so the scheduled run after Monday's close (04:17 UTC Tue, which GitHub may start hours late, LD-27) updates the page before the deadline: the tracker staying current day to day. A manual run covers a dropped one.
+
+**Cut order if time runs short** (the PO confirms each cut): the home tile → the current-state summary's percentile and RV lines (keep the date and the gap) → R5's measured SPXW cost (keep the stated cost assumption). **Never cut:** R1–R7 visible, the tracker chart on real data, the nightly workflow, K1 computed with its sample gate.
+
+### Questions for the PO
+
+| When | Asks |
+| --- | --- |
+| T2-02 | R5's form: the edge's measure and the cost input (TD-07's recommendation) |
+| T4-01 | The page's panel order and copy, the two charts' design, the home tile's figure (TD-10) |
+| T5-01 | The submit target time |
+
+### Backlog
+
+#### T0 — Docs
+
+- [ ] **T0-01 · The thesis assignment's docs** **[PO]** — drafted 2026-11-21; TD-01 to TD-10 settled
+  - Rename the spec to `docs/THESIS-SPEC.md` with its scope section; the `TD-nn` part of DECISIONS; this phase; CLAUDE.md and README.
+  - Done when: the PO has reviewed the scope section and the entries; `just check` is green.
+
+#### T1 — Data
+
+- [ ] **T1-01 · Probe: the index, VIX, the credit spread and an SPXW chain** **[LSEG]** **[PO]**
+  - The thesis's own command, `thesis` (TD-13): a second entry point in `pyproject.toml`, its first subcommand `thesis probe` (`just thesis-probe`), over the platform session (TD-04), and FRED's CSV (TD-05): the S&P 500 index's and VIX's daily closes from 2014-01-01 (count, first and last session, sessions missing against each other); whether LSEG has ICE BofA US High Yield OAS, its history and units; FRED's BAMLH0A0HYM2 (first, last, count); for the SPXW expiry nearest 30 days, the contracts' settlement, exercise style and multiplier, and the bid and ask at the close of the strikes nearest ±0.20 delta and their wings. Counts on screen, the report in `data_cache/probes/` (gitignored); runnable by hand in Actions.
+  - Done when: the PO's run shows each series' coverage, recorded as a TD entry. If either closes series is missing, or the credit series exists nowhere, take it to the PO before T3.
+  - Needs: T0-01
+
+#### T2 — Tracker
+
+- [ ] **T2-01 · The tracker: features, horizons, outcomes, episodes, candidates, credit**
+  - `configs/thesis.yaml` (spec §13's keys that the tracker reads) and `pmcc/thesis/`, pure, on series in memory: log returns, EWMA and RV5/RV20 (§5.1); `N_t`, the forecast and the matured realized variance on one calendar convention (§5.2); shock episodes and their fixed search windows (§5.3); the first candidate, chosen without credit (§5.4); the credit condition, as-of its assumed publication time, in basis points (§4.4, §5.5).
+  - Done when: spec §14's tests 1–4 pass on fixtures (future data changing nothing at t; credit available a day late not used; 3.52 → 352; repeated shocks not extending a window; the credit filter not moving a candidate; weekends, holidays, a leap year and a DST change; immature outcomes null), and `just check` is green.
+  - Needs: T0-01
+- [ ] **T2-02 · Evidence: K1–K3, R5's note, the statuses, the current state** **[PO]**
+  - Ask first: R5's form (TD-07).
+  - K1 over the latest 30 matured stable-credit candidates, `INSUFFICIENT_DATA` below 30 (TD-08); K2 and K3 as definitions only; R5's rough note; `run_status`, `data_status`, `signal_status`, `thesis_status`, `evidence_status` (spec §9, as scoped); the dated current-state summary from the tracked series (TD-10).
+  - Done when: K1's sample gate is tested (spec §14 test 12: insufficient never passes), R5's numbers are reproduced from a fixture, and `just check` is green.
+  - Needs: T2-01
+
+#### T3 — Nightly
+
+- [ ] **T3-01 · `thesis run`: pull, compute, write `live/thesis/`** **[LSEG]**
+  - Pulls the closes from LSEG and the credit series (TD-04, TD-05), runs T2's tracker, and writes `live/thesis/*.json`: a schema version, the config's hash, `generated_at`, `data_through`, `data_status` and each series' source (spec §10), nulls explicit, no NaN or Infinity; `--plan-only` first; an outage writes nothing. `pmcc export` publishes it for the page.
+  - Done when: spec §14 test 13 (schema, no NaN, no fixture data in the live files) and 14 (a fixture's inputs to its expected episodes, criteria and JSON) pass, a real run writes the files on the PO's machine or in Actions, and `just check` is green.
+  - Needs: T1-01, T2-02
+- [ ] **T3-02 · The `thesis` workflow** **[PO]**
+  - `.github/workflows/thesis.yml`: cron `17 4 * * *` and by hand; `thesis run` (`just thesis`), the LSEG secrets in its step alone; commits only `live/thesis/*.json` as the bot after a pull (TD-09); `ci.yml` runs on its completion and redeploys.
+  - Done when: a manual run commits the files and the site redeploys.
+  - Needs: T3-01
+
+#### T4 — Site
+
+- [ ] **T4-01 · The thesis page** **[PO]**
+  - Ask first: the panel order and copy, the two charts, the home tile (TD-10).
+  - `#/thesis`, a "Volatility thesis" menu and a home tile, per a new UI-SPEC section: the thesis and its statuses; the horizons and mechanism; the tracker chart (VIX, the 30-day forecast vol and the matured realized vol, the candidates marked, pending outcomes shown as gaps); the credit spread with its 450 bps line (TD-06) and the stable/unstable outcomes; the K1–K3 cards; R5's note; the macro paragraph with the current state; methodology and sources. Accessible tables beside the charts.
+  - Done when: the page renders the committed files, the smoke test passes at four widths, and `just check` and `just e2e` are green.
+  - Needs: T3-01
+
+#### T5 — Release
+
+- [ ] **T5-01 · Submit** **[PO]** — the site's URL, with a scheduled run after Monday Nov 23's close on the page. Needs: T3-02, T4-01
+
+### Thesis risks
+
+- **Credit history.** FRED supplies about three years of BAMLH0A0HYM2 (spec §4.2). If LSEG lacks it, few episodes carry a credit flag, and K1 and R5's cohorts stay `INSUFFICIENT_DATA` or exploratory: shown as such, never relaxed (TD-08).
+- **Entitlement.** The platform session pulled NVDA's chain (LD-21); the index, VIX and SPXW are unproven until T1-01.
+- **ICE's terms.** The raw spread is charted (TD-06) and its values committed in public JSON. ICE's copyright notice is shown; if the course or ICE objects, the chart falls back to the flag.
+- **Few episodes.** VIX shocks are rare. Even with history from 2015, K1's 30 matured stable-credit candidates may not exist: `INSUFFICIENT_DATA` is the expected, honest state.
+- **Timing.** Scheduled runs start late or are dropped (LD-27); Monday night's must land before the deadline.
+
+## Live wheel
+
+Nov 13, 2026 · from the [Live spec](LIVE-SPEC.md) · due Tue Nov 17 2026, 11:59 pm ET (LD-02; submit target 18:00)
+
+### Status board
 
 | Phase | Dates | Exit criteria | Status |
 | --- | --- | --- | --- |
@@ -26,21 +117,21 @@ Nov 13, 2026 · from the [Live spec](LIVE-SPEC.md) · **due Tue Nov 17 2026, 11:
 
 **Cut order if time runs short** (the PO confirms each cut): the page's run-log history (keep tonight's row) → the call side's rules (L-C1 to L-C3; no call can be due before Fri Nov 20's expiry). **Never cut:** the nightly job, a valid `open_orders.json`, the cash-secured and book checks, the page's algorithm write-up and orders.
 
-## Questions for the PO
+### Questions for the PO
 
 | When | Asks |
 | --- | --- |
 | — | None open: L4-01's (LD-15, LD-16, the "why" text) were answered 2026-11-15 and 16 |
 
-## Backlog
+### Backlog
 
-### L0 — Docs
+#### L0 — Docs
 
 - [ ] **L0-01 · Archive the wheel's docs; write the live assignment's** **[PO]** — drafted 2026-11-13; LD-01 to LD-10 settled
   - Move the wheel's spec, plan and decisions to `docs/archive/wheel/` (with a copy of the UI spec) and close its last items; write LIVE-SPEC, DECISIONS, this plan, the UI spec's page section; update CLAUDE.md and README.
   - Done when: the PO has reviewed the spec; `just check` is green.
 
-### L1 — Foundations
+#### L1 — Foundations
 
 - [x] **L1-01 · CI green on Sanji's pushes** — done 2026-11-13: the hook exempts Sanji's files, two repo-policy tests pin it; CI green on the PO's push
   - Exclude Sanji's files from the file-fixing hooks (LD-17), pinned by the repo-policy test.
@@ -52,7 +143,7 @@ Nov 13, 2026 · from the [Live spec](LIVE-SPEC.md) · **due Tue Nov 17 2026, 11:
   - Done when: the probe, run by the PO locally (or by a manual Actions run), shows NVDA's close and a full quoted chain for next week's expiry. If the platform session lacks the entitlement, take it to the PO before L2.
   - Needs: L0-01
 
-### L2 — Algorithm
+#### L2 — Algorithm
 
 - [x] **L2-01 · Orders in the order language** — done 2026-11-14 (LD-22): `pmcc/live/orders.py`; 117 tests: the page's examples, each field rule, every token form on the page and its near misses, nulls, an expiry before its session, the file's format, encoding and round trip, and an invalid order failing with the file untouched. A code review's fixes are in; whether a bad order in the file stops the run moved to LD-14
   - A typed order and a writer for `open_orders.json`: the fields and tokens the order page defines, every rejection rule checked before writing (LINV-01), canonical JSON, LF, a final newline; ids per LD-19.
@@ -75,14 +166,14 @@ Nov 13, 2026 · from the [Live spec](LIVE-SPEC.md) · **due Tue Nov 17 2026, 11:
   - Done when: a put order carries `pct:X`, a call order a number, and Monday's order is converted in both files.
   - Needs: L2-03
 
-### L3 — Nightly job
+#### L3 — Nightly job
 
 - [x] **L3-01 · The nightly workflow** **[PO]** — done 2026-11-18 (LD-27, PO: LD-31, LD-32): `nightly.yml` and `ci.yml`'s `workflow_run`; 14 new tests, after a code review's fixes, and the commit step run against a scratch remote (a shallow clone, a push landing mid-run, a failed night). The manual run (Sun Nov 15, 23:25 ET) committed Monday's order and the site redeployed. The first scheduled run that fired, Tuesday night's 03:17 UTC slot, started at 06:40 ET on Wed Nov 18, 8 hours 23 minutes late (GitHub's delay; the course's own runs start 7 to 8 hours late), planned Wednesday from Tuesday's close (LD-31), wrote no order (L-P1) and kept Monday's, committed its run-log row as the bot, and CI redeployed. Sanji's price file had caught up to Nov 17, so no L-B1 warning
   - `.github/workflows/nightly.yml`: cron `17 3 * * *` (PO, LD-31) and a manual run; `uv sync --frozen`; `pmcc live` with the secrets; commit `open_orders.json` and the run log as the bot after a pull (LD-06). `ci.yml` also runs on that workflow's completion and deploys from `main` (LD-06).
   - Done when: a manual run commits Monday's order and the site redeploys; the PO confirms the scheduled run on Sunday night. Sunday's slot (03:00 UTC Nov 16) passed before the workflow existed, so Monday night's run (03:00 UTC Nov 17, planning Tuesday, keeping Monday's order: LD-19) is the first scheduled one. It hadn't started by 06:51 UTC: GitHub starts the cron hours late (the course's started near 10:00 UTC each night), which LD-24 refused before the close. Now a run before the open plans that day, and the cron is 03:17 UTC (PO, LD-31). Its price file also stopped at Nov 13, which L-B1 would refuse every night: while Sanji has written no book that is now a warning (PO, LD-32).
   - Needs: L2-03, L1-01
 
-### L4 — Site
+#### L4 — Site
 
 - [x] **L4-01 · The live page** **[PO]** — done 2026-11-16 (PO: LD-15, LD-16, the "why" text kept as drafted; LD-28): `live.json` from the export (`pmcc/export/live.py`), the run log's pick quote, the page `#/live/NVDA`; 21 new Python tests, 13 page tests, the smoke test's route at four widths, after a code review's fixes
   - Asked first: LD-15 (settled 2026-11-15: not restricted; the pick's quote shown), LD-16 (settled 2026-11-15: `#/live/NVDA`, "Live"); the PO reviews the "why" text (2026-11-16: as drafted, its numbers kept).
@@ -104,14 +195,14 @@ Nov 13, 2026 · from the [Live spec](LIVE-SPEC.md) · **due Tue Nov 17 2026, 11:
   - Done when: `#/` shows the headline and the three tiles with their figures and pages, and `just check` and `just e2e` are green.
   - Needs: L4-03
 
-### L5 — Release
+#### L5 — Release
 
 - [ ] **L5-01 · Sanji's book read** **[PO]** — once Sanji resolves an order (not expected before the due date: "Sanji does not resolve these orders yet")
   - Read the real `positions.json` and `fills.json` into the book (state, cash, cost basis), with tests on the real files, so the run stops failing L-B2 on them; then the scripted week through Sanji's files (L2-03); and the page's fills as a blotter (PO, LD-30). Until then, confirm Monday night's run keeps Monday's order (LD-19).
   - Needs: L4-01
 - [ ] **L5-02 · Submit** **[PO]** — the site's URL, by 18:00 Tue Nov 17. Needs: L5-01
 
-## Risks
+### Live wheel risks
 
 - **NVDA not in the course's prices (LD-12).** Closed 2026-11-14: NVDA (4815747) is tracked in `price_history.json`, as the course's setup provides; its bars start with the price job's next run (16:00 ET Monday).
 - **Sanji isn't resolving orders.** The order page says so, with no date. The run writes correct orders now; the book stays cash; when Sanji's files appear, the run fails red (L-B2) until L5-01 reads them.

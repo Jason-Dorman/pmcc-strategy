@@ -1,8 +1,8 @@
-# Decisions — Live Wheel
+# Decisions — Live Wheel and Volatility Thesis
 
-Nov 13, 2026 · companion to the [Live spec](LIVE-SPEC.md), the source of truth for the live assignment
+Nov 13, 2026 · companion to the [Live spec](LIVE-SPEC.md), the source of truth for the live assignment. Since Nov 21 also the [Thesis spec](THESIS-SPEC.md)'s log, in its own part at the end: [Volatility thesis (`TD-nn`)](#volatility-thesis-td-nn)
 
-The user is the product owner (PO). This log tracks what the spec leaves open, the PO's answers, and engineering choices. It starts fresh for the live assignment; the PMCC's log (`DEC-nn`) and the wheel's (`WD-nn`) are archived in [archive/pmcc/DECISIONS.md](archive/pmcc/DECISIONS.md) and [archive/wheel/DECISIONS.md](archive/wheel/DECISIONS.md) and decide nothing here (LD-01). Entries are `LD-nn`, so they never collide with a citation in the older code.
+The user is the product owner (PO). This log tracks what the spec leaves open, the PO's answers, and engineering choices. It starts fresh for the live assignment; the PMCC's log (`DEC-nn`) and the wheel's (`WD-nn`) are archived in [archive/pmcc/DECISIONS.md](archive/pmcc/DECISIONS.md) and [archive/wheel/DECISIONS.md](archive/wheel/DECISIONS.md) and decide nothing here (LD-01). Entries are `LD-nn` for the live wheel and `TD-nn` for the thesis (TD-11), so they never collide with a citation in the older code.
 
 | Status | Meaning |
 | --- | --- |
@@ -389,3 +389,108 @@ None.
 - **Asked:** the skew's dashed $145 (L-P3's pick from Nov 18's close) beside the open order's $155 (picked from Nov 13's) made no sense to the PO: why show a pick that isn't part of the strategy? Mid-week the strategy trades nothing, so the line marked a trade it wasn't making. Offered: the open order's strike (recommended), no line, or both, labelled.
 - **Outcome:** the open order's strike. The dashed line is the open order's, labelled "Order", when its expiry is the skew's: its strike as LSEG picked it at the close (LD-35), else as sent when that's a number (a call's). No line when no order expires that day. On the night a week's order is chosen, the order is that night's pick, so the two never differ then. The line under the chart says where it sits: "The order's $155.00 put is 2.7% above the close, in the money, inside the move."
 - **Unchanged:** `live/smile.json` still keeps L-P3's pick (the page no longer shows it); the caption's last sentence now reads "The dashed line marks the strike of the open order."
+
+# Volatility thesis (`TD-nn`)
+
+Nov 21, 2026 · companion to the [Thesis spec](THESIS-SPEC.md), the source of truth for the thesis assignment as amended here. The statuses and maintenance rules above apply; the live wheel's `LD-nn` entries decide nothing here, nor these anything there.
+
+## Thesis index
+
+| ID | Decision | Status | Ask at |
+| --- | --- | --- | --- |
+| TD-01 | The thesis assignment's docs | SETTLED (PO): the spec as `docs/THESIS-SPEC.md` with a scope section; `TD-nn` here; a T phase in the build plan; the live wheel's docs stay live | — |
+| TD-02 | Due date | SETTLED (PO): Tue Nov 24 2026, 11:59 pm ET | — |
+| TD-03 | Scope: the thesis, its daily tracker and their page | SETTLED (PO): spec §6–8, §11 and §12's Sanji part out; the live wheel untouched | — |
+| TD-04 | S&P 500 and VIX closes from LSEG's platform session | SETTLED (PO): from 2014; a probe first | — |
+| TD-05 | The credit series: LSEG if it has the history, else FRED | SETTLED (PO): FRED's public CSV approved as a new outside source | — |
+| TD-06 | The raw credit spread is charted | SETTLED (PO): whatever tells the story best; charted, its 450 bps line drawn | — |
+| TD-07 | R5: a rough, evidence-informed estimate | SETTLED (PO): explicit cost assumptions and limitations; trade-level net P&L waits for the backtest | T2-02 (its form) |
+| TD-08 | K1–K3 kept as written; only K1 calculated | SETTLED (PO): K2 and K3 "Not yet evaluated — requires strategy backtesting" | — |
+| TD-09 | A `thesis` workflow commits the tracker's files | SETTLED (PO): 04:17 UTC and by hand; commits only `live/thesis/`; widens LD-06 | — |
+| TD-10 | One thesis page, in the site's look | SETTLED (PO): `#/thesis`, a "Volatility thesis" menu, a home tile; no trading-comparison or forward-record panels | T4-01 (layout, copy) |
+| TD-11 | ID prefixes | ENG | — |
+| TD-12 | Code layout | ENG | — |
+| TD-13 | The thesis's own command, not `pmcc` | SETTLED (PO): `thesis probe` and `thesis run`, a second entry point; the code stays in the package | — |
+
+## Thesis settled
+
+### TD-01 — The thesis assignment's docs
+**Status:** SETTLED · **Basis:** PO, 2026-11-21 · **Affects:** all docs; CLAUDE.md; README; T0-01
+
+- The spec the PO supplied (`FINTECH_535_Volatility_Thesis_System_Spec.md`) becomes `docs/THESIS-SPEC.md`, its body unchanged, with a "Scope for this assignment" section at the top (TD-03). It is the thesis's source of truth, as amended by `TD-nn` entries.
+- Its decisions are this part of DECISIONS (`TD-nn`); its backlog is a T phase in the [build plan](BUILD-PLAN.md). The live wheel keeps running, so its spec, decisions and plan stay live, not archived. (Recommended.)
+
+### TD-02 — Due date
+**Status:** SETTLED · **Basis:** PO, 2026-11-21
+
+- Due Tue Nov 24 2026, 11:59 pm ET.
+
+### TD-03 — Scope: the thesis, its daily tracker and their page
+**Status:** SETTLED · **Basis:** PO, 2026-11-21 · **Affects:** Thesis spec › Scope for this assignment
+
+- **Asked:** the spec describes a whole research system (contract selection, a ledger and NAV, a trade backtest, policy comparisons A–F, a bootstrap, private storage, a Sanji adapter); the assignment asks for R1–R7.
+- **Outcome:** this assignment builds the tracker (§5: the EWMA forecast, VIX against 30-day forecast vol and the matured realized vol, the shock episodes, one candidate per episode, the credit condition), the thesis page with all seven items, and a nightly workflow that keeps it current. Spec §6–8 (options, execution, backtest), §11 (beyond the public JSON's provenance) and §12's Sanji part wait for the backtesting assignment and the final project. The live wheel runs on, unchanged. (Recommended.)
+
+### TD-04 — S&P 500 and VIX closes from LSEG's platform session
+**Status:** SETTLED · **Basis:** PO, 2026-11-21 · **Affects:** Thesis spec §4.2; CLAUDE.md › Hard rules (LSEG access); T1-01, T3-01
+
+- The S&P 500 price index's and VIX's daily closes come from LSEG, over the headless platform session the live wheel uses (LD-05, LD-21), from 2014-01-01: the 252 sessions of warmup before the spec's 2015 start. (Recommended.)
+- A probe comes first (T1-01): it checks the index and VIX histories' coverage, the credit series LSEG offers, and a current SPXW chain, before anything is built on them.
+
+### TD-05 — The credit series: LSEG if it has the history, else FRED
+**Status:** SETTLED · **Basis:** PO, 2026-11-21 · **Affects:** Thesis spec §4.2; CLAUDE.md › Hard rules; T1-01, T3-01
+
+- **Asked:** FRED's BAMLH0A0HYM2 (ICE BofA US High Yield OAS) now supplies only about three years, so a FRED-only tracker has few credit-tagged episodes and its credit tests are exploratory.
+- **Outcome:** use LSEG's series of the same definition if the probe finds a long history; otherwise FRED's public CSV (no API key, read with the standard library, so no new dependency). FRED is approved as a new outside source: only the thesis's probe and nightly run contact it, sending nothing about the user or the project. No other credit metric is substituted and no series is spliced silently (spec §4.2). (Recommended.)
+
+### TD-06 — The raw credit spread is charted
+**Status:** SETTLED · **Basis:** PO, 2026-11-21 · **Affects:** Thesis spec §4.2, §10 (component 4); UI-SPEC (T4-01)
+
+- **Asked:** the spec shows only the stable/unstable flag unless raw credit values are authorized, since ICE and FRED restrict redistribution. Recommended: the flag and its three checks.
+- **Outcome:** the PO leaned towards charting the raw spread, "whatever tells the story better and is clear for a human to understand what we're showing and why". Charted: the OAS in basis points, with its 450 bps line and the periods it fails the stability checks marked, beside the VIX chart. A level against its threshold during a VIX spike shows the thesis at a glance; a flag alone doesn't. The page names the source and its copyright holder. This is the PO's authorization under §10 component 4.
+- **Risk:** the committed JSON holds the raw values, so it is downloadable. ICE's terms are ICE's, not the course's; see the build plan's thesis risks.
+
+### TD-07 — R5: a rough, evidence-informed estimate
+**Status:** SETTLED · **Basis:** PO, 2026-11-21 · **Affects:** Thesis spec §2 (R5), §8 › R5; T2-02
+
+- **Asked:** the spec shows "NOT YET ESTIMATED" until a trade backtest exists; the assignment wants a rough note now.
+- **Outcome:** "For now, that section can provide a rough, evidence-informed estimate with explicit cost assumptions and limitations. A full trade-level net-P&L analysis can wait for the backtesting assignment." (PO.) It is labelled a gross economic premium, not tradable alpha.
+- **Recommended form (to confirm at T2-02):** the edge is the mean and median 30-day variance premium (VIX against the realized vol that followed), on all days and on candidate days, stable and unstable credit apart, with counts. The cost is the round-trip natural spread of a 0.20-delta, 30-day SPXW condor from the probe's chain snapshot, plus spec §7.2's $2 per contract transaction, as a share of its credit.
+
+### TD-08 — K1–K3 kept as written; only K1 calculated
+**Status:** SETTLED · **Basis:** PO, 2026-11-21 · **Affects:** Thesis spec §9 › R4; T2-02, T4-01
+
+- **Asked:** K2 and K3 need trades, and K1 may fall short of its sample of 30. Keep them frozen as written, or swap K2 and K3 for versions the tracker can measure now.
+- **Outcome (PO):** keep K1–K3 and their thresholds as written; trade-based evaluation belongs to the backtesting phase.
+  - **K1:** calculated from the matured tracker observations available. Shown: its formula, threshold, available sample count and provisional current value. Fewer than 30 qualifying episodes is `INSUFFICIENT_DATA`; the threshold is never lowered to produce a result.
+  - **K2 and K3:** shown with their definitions, thresholds and required sample sizes, labelled "Not yet evaluated — requires strategy backtesting"; their current value and observed sample count shown as unavailable. No trade simulator or P&L is built for this milestone.
+  - No condition is replaced merely to make every card calculable. Insufficient evidence never displays as passing. The conditions are kept for the later backtest; only what the tracker supports is calculated now.
+  - Completion here means clearly defining the conditions and honestly showing what can be assessed today.
+
+### TD-09 — A `thesis` workflow commits the tracker's files
+**Status:** SETTLED · **Basis:** PO, 2026-11-21 · **Affects:** CLAUDE.md › Hard rules (automated writers); amends LD-06 for this workflow; T3-02
+
+- Its own workflow, like `vol` (LD-33): nightly at 04:17 UTC, after the orders' (03:17) and the volatility's (03:47), and by hand. It re-pulls the history each night (a few thousand daily rows), so no private store is needed. Its Actions bot commits only `live/thesis/*.json`, which hold the tracker's derived series and the inputs' daily closes and spreads, never option quotes. A failed pull commits nothing and the job stays red. CI runs on its completion and redeploys the site. (Recommended.)
+
+### TD-10 — One thesis page, in the site's look
+**Status:** SETTLED · **Basis:** PO, 2026-11-21 · **Affects:** Thesis spec §10; UI-SPEC (T4-01)
+
+- One page, `#/thesis`, in the existing look, with its own "Volatility thesis" menu and a home tile. It shows spec §10's components 1–4 and 7–10; it leaves out the trading comparison (5) and the forward record (6) rather than show placeholders. Its dated current-state summary is generated only from the tracked series (VIX's level and percentile, RV5 and RV20, the forecast gap, the credit state): no Treasury yields, no news. (Recommended.) The layout and copy are asked at T4-01.
+
+### TD-13 — The thesis's own command, not `pmcc`
+**Status:** SETTLED · **Basis:** PO, 2026-11-21 · **Affects:** TD-12; CLAUDE.md › LSEG access; T1-01, T3-01, T3-02
+
+- **Asked:** the PO: why `pmcc thesis`, when the thesis has nothing to do with the PMCC? `pmcc` is only the package's and its command's name, left from the first assignment; the live wheel runs through it too. The options: a command of the thesis's own; `just` recipes over `pmcc thesis`; renaming the whole package.
+- **Outcome:** the thesis gets its own command, `thesis`, a second entry point in `pyproject.toml` beside `pmcc`: `thesis probe` (`just thesis-probe`) and `thesis run` (`just thesis`). The code stays in the package, since it reuses the LSEG session, the calendar, logging and the export; the `thesis` workflow runs `thesis run`. The entry point is added with the first subcommand (T1-01). The live wheel's commands keep their names. Renaming the package waits until after the final project, if ever. (Recommended.)
+
+## Thesis engineering
+
+### TD-11 — ID prefixes
+**Status:** ENG
+
+- Decisions `TD-nn`, backlog items `T0-01` …. The spec's own IDs are kept as written: deliverables `R1`–`R7`, wrong-if conditions `K1`–`K3`, sources `S1`–`S7`, and its config keys (§13). None collides with the PMCC's (`DEC-nn`, `E-T1`'s rule form), the wheel's (`WD-nn`, `W-…`) or the live wheel's (`LD-nn`, `L-…`).
+
+### TD-12 — Code layout
+**Status:** ENG
+
+- `pmcc/thesis/`: the tracker, pure (features, horizons, outcomes, episodes, candidates, the credit condition, K1, R5's note, the public files), reading the spec's keys from `configs/thesis.yaml`. LSEG's pulls live under `pmcc/data/lseg/` (CLAUDE.md › LSEG access); the FRED reader uses only the standard library. The commands are the thesis's own (TD-13): `thesis probe` (T1-01) and `thesis run` (T3-01); `live/thesis/` holds the committed files. Details are recorded at each item.
