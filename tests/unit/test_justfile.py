@@ -12,6 +12,7 @@ RECIPES = [
     "probe",
     "live-probe",
     "thesis-probe",
+    "thesis",
     "live",
     "fetch",
     "run",

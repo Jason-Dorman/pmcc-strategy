@@ -32,8 +32,11 @@ from pmcc.export.results import write_result
 from pmcc.export.schema import SCHEMAS
 from pmcc.export.site import ExportError, check_export_dir, export_site, rule_changes
 from pmcc.export.site_models import Index, Rules
+from pmcc.export.thesis_models import Thesis
 from pmcc.live.config import LIVE_PATH
 from pmcc.runner import Stamp, run_loaded
+from pmcc.thesis.run import write as write_thesis
+from tests.fakes.thesis_tracker import spike_thesis
 from tests.fixtures.synthetic.scenarios import BUILDERS, random_walk
 from tests.fixtures.synthetic.store import SyntheticMarkets
 from tests.scenario import inv13_run
@@ -462,6 +465,46 @@ def test_l4_01_export_refuses_live_files_it_cant_read_and_writes_nothing(
     (root / "live" / "runs.jsonl").write_text("not json\n", encoding="utf-8")
 
     with pytest.raises(ExportError, match="the live wheel's page"):
+        export_site(runs[0], tmp_path / "site", root)
+
+    assert not (tmp_path / "site").exists()
+
+
+def test_t3_01_export_writes_thesis_json_and_names_it_in_the_index(
+    runs: Runs, tmp_path: Path
+) -> None:
+    root = _live_root(tmp_path)
+    write_thesis(root, spike_thesis())
+    site = tmp_path / "site"
+    export_site(runs[0], site, root)
+
+    raw = (site / "thesis.json").read_bytes()
+    assert canonical.to_bytes(canonical.loads(raw)) == raw
+    assert Thesis.model_validate_json(raw).data_through == spike_thesis().data_through
+    assert Index.model_validate_json((site / "index.json").read_bytes()).thesis == "thesis.json"
+    assert (site / "schema" / "thesis.schema.json").is_file()
+
+    export_site(runs[0], site, root)  # its own file: cleared, not foreign
+
+
+def test_t3_01_export_before_the_first_thesis_run_names_none(runs: Runs, tmp_path: Path) -> None:
+    site = tmp_path / "site"
+    export_site(runs[0], site, _live_root(tmp_path))
+
+    assert not (site / "thesis.json").exists()
+    assert Index.model_validate_json((site / "index.json").read_bytes()).thesis is None
+
+
+def test_t3_01_export_refuses_a_thesis_file_its_model_rejects_and_writes_nothing(
+    runs: Runs, tmp_path: Path
+) -> None:
+    root = _live_root(tmp_path)
+    path = write_thesis(root, spike_thesis())
+    doc = cast(Doc, json.loads(path.read_bytes()))
+    doc["series"][0]["vix"] = "high"
+    path.write_text(json.dumps(doc), encoding="utf-8")
+
+    with pytest.raises(ExportError, match="the thesis's page"):
         export_site(runs[0], tmp_path / "site", root)
 
     assert not (tmp_path / "site").exists()

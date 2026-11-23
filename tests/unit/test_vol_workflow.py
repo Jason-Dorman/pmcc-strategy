@@ -90,7 +90,7 @@ def test_ld_34_a_failed_pull_or_a_plan_commits_nothing_and_stays_red() -> None:
 def test_ld_34_ci_redeploys_after_the_nightly_and_after_vol() -> None:
     ci = yaml.safe_load((WORKFLOWS / "ci.yml").read_text(encoding="utf-8"))
 
-    assert ci[True]["workflow_run"]["workflows"] == ["nightly", _workflow()["name"]]
+    assert ci[True]["workflow_run"]["workflows"][:2] == ["nightly", _workflow()["name"]]
 
 
 def test_ld_34_vol_asks_lseg_only_through_pmcc_vol() -> None:

@@ -128,6 +128,40 @@ class CostSampleConfig(_Section):
         return self
 
 
+class R5CostConfig(_Section):
+    """R5's measured cost (PO, TD-21): one dated sample of SPXW's spreads at a close, from the
+    probe (TD-20), for the legs within an absolute-delta band; and the stressed case's multiples."""
+
+    sample_session: str
+    sample_expiry: str
+    sample_vix_points: float = Field(gt=0)
+    sample_probe: str = Field(min_length=1)
+    absolute_delta_low: float = Field(gt=0, lt=1)
+    absolute_delta_high: float = Field(gt=0, lt=1)
+    put_legs: int = Field(ge=1)
+    put_median_spread_points: float = Field(gt=0)
+    put_median_mid_points: float = Field(gt=0)
+    put_median_spread_fraction_of_mid: float = Field(gt=0)
+    call_legs: int = Field(ge=1)
+    call_median_spread_points: float = Field(gt=0)
+    call_median_mid_points: float = Field(gt=0)
+    call_median_spread_fraction_of_mid: float = Field(gt=0)
+    stressed_spread_multiple: float = Field(ge=1)
+    stressed_fee_multiple: float = Field(ge=1)
+    spec_condor: str = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def _dates(self) -> Self:
+        for name in ("sample_session", "sample_expiry"):
+            try:
+                date.fromisoformat(getattr(self, name))
+            except ValueError:
+                raise ValueError(f"r5_cost.{name} must be YYYY-MM-DD") from None
+        if self.absolute_delta_low >= self.absolute_delta_high:
+            raise ValueError("r5_cost's delta band's low must be below its high")
+        return self
+
+
 class ThesisConfig(_Section):
     strategy_id: str = Field(min_length=1)
     model_version: str = Field(min_length=1)
@@ -140,6 +174,7 @@ class ThesisConfig(_Section):
     credit: CreditConfig
     evidence: EvidenceConfig
     cost_sample: CostSampleConfig
+    r5_cost: R5CostConfig
 
     @model_validator(mode="after")
     def _formats(self) -> Self:

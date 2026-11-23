@@ -20,7 +20,9 @@ for the wheel's pages (W4-01, WD-22). The pages read their rules from the result
 `rules.json` stays the PMCC's.
 
 Given the repo root (`live`), the export also writes `live.json`, the live wheel's page
-(`pmcc.export.live`, L4-01), and the index names it.
+(`pmcc.export.live`, L4-01), and the index names it. If the root holds the volatility thesis's
+`live/thesis/thesis.json` (T3-01), the export checks it against its model and writes it as
+`thesis.json`, which the index names too; a file that fails the check stops the export.
 """
 
 import shutil
@@ -49,11 +51,13 @@ from pmcc.export.site_models import (
     Rules,
     StrategyRules,
 )
+from pmcc.export.thesis_models import Thesis
 from pmcc.export.verify import UNIVERSE_DIR, Problem, kind_of, verify
 from pmcc.export.wheel_models import WheelResult
 from pmcc.live.config import LiveConfigError, load_live_config
 
-INDEX, RULES = "index.json", "rules.json"
+INDEX, RULES, THESIS = "index.json", "rules.json", "thesis.json"
+THESIS_SOURCE = Path("live") / "thesis" / THESIS  # where `thesis run` writes it
 PUBLISHABLE_ONLY = "git_dirty"  # the one verify check a local export lets through
 
 
@@ -101,7 +105,8 @@ def export_site(results: Path, out: Path, live: Path | None = None) -> Exported:
         raise ExportError(f"{results} holds no runs to export")
     extras = _extras(results)
     page = None if live is None else _live(live, wheels)
-    index = build_index(runs, extras, wheels, live=page is not None)
+    thesis = None if live is None else _thesis(live)
+    index = build_index(runs, extras, wheels, live=page is not None, thesis=thesis is not None)
     rules = build_rules(runs, families(results, extras))
     _clear(out)
     write_schemas(out)
@@ -110,12 +115,15 @@ def export_site(results: Path, out: Path, live: Path | None = None) -> Exported:
     (out / RULES).write_bytes(canonical.to_bytes(rules.model_dump()))
     if page is not None:
         (out / LIVE).write_bytes(canonical.to_bytes(page.model_dump()))
+    if thesis is not None:
+        (out / THESIS).write_bytes(canonical.to_bytes(thesis.model_dump(mode="json")))
     dirty = sorted({p.path for p in verified.problems if p.check == PUBLISHABLE_ONLY})
     return Exported(len(runs) + len(wheels), len(index.symbols), copied, tuple(dirty))
 
 
 def build_index(runs: Sequence[_Loaded], extras: Sequence[str],
-                wheels: Sequence[_LoadedWheel] = (), live: bool = False) -> Index:  # fmt: skip
+                wheels: Sequence[_LoadedWheel] = (), live: bool = False,
+                thesis: bool = False) -> Index:  # fmt: skip
     first = runs[0].result
     for run in (*runs, *wheels):
         _check_shared(first, run.path, run.result)
@@ -130,6 +138,7 @@ def build_index(runs: Sequence[_Loaded], extras: Sequence[str],
         symbols=tuple(_symbol(s, runs, extras, wheels) for s in symbols),
         universe=_files_in(UNIVERSE_DIR, extras),
         live=LIVE if live else None,
+        thesis=THESIS if thesis else None,
     )
 
 
@@ -142,6 +151,17 @@ def _live(root: Path, wheels: Sequence[_LoadedWheel]) -> Live:
         return build_live(root, config, found)
     except (LiveConfigError, LiveDataError, OSError) as exc:
         raise ExportError(f"the live wheel's page: {exc}") from exc
+
+
+def _thesis(root: Path) -> Thesis | None:
+    """The thesis's page from `root/live/thesis/thesis.json`, or None before its first run."""
+    path = root / THESIS_SOURCE
+    if not path.is_file():
+        return None
+    try:
+        return Thesis.model_validate_json(path.read_bytes())
+    except ValueError as exc:  # pydantic's ValidationError is a ValueError
+        raise ExportError(f"the thesis's page, {path.as_posix()}: {exc}") from exc
 
 
 def _files_in(folder: str, extras: Sequence[str]) -> dict[str, str]:
@@ -342,7 +362,7 @@ def _exported(relative: Path) -> bool:
     """A path an export writes: index.json, rules.json, live.json, a schema, or a results
     file."""
     parts = relative.parts
-    if parts in ((INDEX,), (RULES,), (LIVE,)):
+    if parts in ((INDEX,), (RULES,), (LIVE,), (THESIS,)):
         return True
     if len(parts) == 2 and parts[0] == SCHEMA_DIR:
         return parts[1].endswith(".schema.json")

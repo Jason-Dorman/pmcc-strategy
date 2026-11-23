@@ -20,7 +20,7 @@ def _defs(name: str) -> dict[str, Schema]:
 
 
 def test_schema_every_file_the_site_reads_has_one() -> None:
-    site = ["index", "rules", "run_result", "wheel_result", "live"]
+    site = ["index", "rules", "run_result", "wheel_result", "live", "thesis"]
     analytics = [
         "robustness",
         "fill_check",

@@ -10,6 +10,7 @@ from typing import Annotated, NoReturn
 import structlog
 import typer
 import yaml
+from pydantic import ValidationError
 
 from pmcc.batch import BatchOutcome, SymbolJob, SymbolOutcome, run_batch
 from pmcc.calibration import Calibration, CalibrationError
@@ -83,10 +84,16 @@ from pmcc.log import configure_logging
 from pmcc.runner import Market, Stamp, run_symbol
 from pmcc.thesis.calendar import load_thesis_calendar
 from pmcc.thesis.config import ThesisConfigError, load_thesis_config
+from pmcc.thesis.features import TrackerInputError
 from pmcc.thesis.fred import FredKey, FredUnavailableError, http_get
 from pmcc.thesis.probe import Sources, has_closes
 from pmcc.thesis.probe import describe as describe_thesis_probe
 from pmcc.thesis.probe import run_probe as run_thesis_probe
+from pmcc.thesis.run import ThesisRunError
+from pmcc.thesis.run import build as thesis_build
+from pmcc.thesis.run import plan as thesis_plan
+from pmcc.thesis.run import pull as thesis_pull
+from pmcc.thesis.run import write as thesis_write
 from pmcc.wheel.benchmarks import BENCHMARKS_PATH, BenchmarkError, load_benchmarks
 from pmcc.wheel.config import WHEEL_PATH, WheelConfigError, WheelRunConfig, load_wheel_run
 from pmcc.wheel.result import run_wheel_symbol
@@ -889,3 +896,46 @@ def thesis_probe(
     _say(f"Report written to {path}")
     if not has_closes(report):
         _fail("the index's or VIX's closes didn't come back; see the report.")
+
+
+@thesis_app.command("run")
+def thesis_run(
+    plan_only: Annotated[bool, typer.Option(help="Print the request estimate and stop.")] = False,
+    root: Annotated[Path, typer.Option(help="The repo root, where live/ is.")] = Path("."),
+) -> None:
+    """The night's tracker (T3-01): the index's and VIX's closes from LSEG and the high-yield
+    spread from FRED, the tracker, its evidence and statuses, into live/thesis/thesis.json.
+
+    Needs LSEG_APP_KEY, LSEG_USERNAME and LSEG_PASSWORD (LD-05, TD-04) and FRED_API_KEY (TD-17)
+    in the environment. Re-derives everything each night; nothing is cached. An outage, or a
+    source without what the tracker needs, writes nothing. Prints counts and dates, no values.
+    """
+    configure_logging("thesis-run")
+    now = _now()
+    if plan_only:
+        _say(thesis_plan(now))
+        return
+    try:
+        config = load_thesis_config()
+    except ThesisConfigError as exc:
+        _fail(str(exc))
+    calendar = load_thesis_calendar()
+    try:
+        fred_key = FredKey.from_env(os.environ)
+        with _platform() as provider:
+            inputs = thesis_pull(provider, http_get, fred_key, calendar, now)
+        thesis = thesis_build(inputs, calendar, config, now)
+    except (
+        ProviderOutageError,
+        FredUnavailableError,
+        ThesisRunError,
+        TrackerInputError,
+        ValidationError,
+    ) as exc:
+        _fail(f"the thesis run stopped and wrote nothing: {exc}")
+    path = thesis_write(root, thesis)
+    _say(
+        f"Thesis tracker written to {path.as_posix()}: data through {thesis.data_through}, "
+        f"{len(thesis.series)} sessions, {len(thesis.episodes)} episodes; data "
+        f"{thesis.data_status}, signal {thesis.signal.status} ({thesis.signal.assessment})."
+    )

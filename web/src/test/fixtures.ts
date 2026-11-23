@@ -41,6 +41,7 @@ export const INDEX: Index = {
               pooled_fill_check: "universe/pooled_fill_check.json",
               suitability: "universe/suitability.json" },
   live: "live.json",
+  thesis: null,
   symbols: [
     {
       symbol: "NVDA",

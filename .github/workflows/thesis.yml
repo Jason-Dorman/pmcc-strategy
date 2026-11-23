@@ -1,0 +1,83 @@
+# The volatility thesis's tracker (T3-02; TD-09): its own nightly run, after the live wheel's
+# orders (03:17 UTC) and volatility (03:47 UTC), at 04:17 UTC (23:17 EST), and by hand from the
+# Actions tab ("Run workflow"), where `plan_only` prints the request estimate first. It runs
+# `thesis run` with the LSEG secrets and FRED's key (TD-17), re-deriving the whole tracker from
+# its sources, then commits only live/thesis/thesis.json as the Actions bot, pulling first because
+# Sanji and the other nightly jobs push to the same branch. A failed run writes and commits
+# nothing, and the job stays red. CI runs when this completes and redeploys the site.
+name: thesis
+
+on:
+  schedule:
+    - cron: "17 4 * * *"
+  workflow_dispatch:
+    inputs:
+      plan_only:
+        description: "Print the request estimate and stop"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+concurrency:
+  group: thesis
+  cancel-in-progress: false
+
+jobs:
+  thesis:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Install from uv.lock
+        run: uv sync --frozen
+
+      - name: Run the thesis's tracker
+        env:
+          LSEG_APP_KEY: ${{ secrets.LSEG_APP_KEY }}
+          LSEG_USERNAME: ${{ secrets.LSEG_USERNAME }}
+          LSEG_PASSWORD: ${{ secrets.LSEG_PASSWORD }}
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+          PLAN_ONLY: ${{ inputs.plan_only }}
+        run: |
+          set -euo pipefail
+          args=()
+          if [ "${PLAN_ONLY:-false}" = "true" ]; then
+            args+=(--plan-only)
+          fi
+          uv run --frozen thesis run "${args[@]}"
+
+      - name: Commit the tracker
+        if: ${{ !inputs.plan_only }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- live/thesis/thesis.json
+          if git diff --cached --quiet; then
+            echo "Nothing to commit."
+            exit 0
+          fi
+          git commit -m "Volatility thesis: tracker $(TZ=America/New_York date +%F)"
+          for attempt in 1 2 3; do
+            if git pull --rebase origin main && git push origin HEAD:main; then
+              exit 0
+            fi
+            git rebase --abort 2>/dev/null || true
+            if [ "$attempt" -lt 3 ]; then
+              sleep $((attempt * 10))
+            fi
+          done
+          echo "Could not push the tracker's commit after 3 tries." >&2
+          exit 1

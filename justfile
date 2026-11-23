@@ -54,6 +54,9 @@ vol SYM *ARGS:
 thesis-probe:
     {{uv}} thesis probe
 
+thesis *ARGS:
+    {{uv}} thesis run {{ARGS}}
+
 # Pull a symbol from LSEG into the cache (local; Workspace signed in). Add --plan-only for the estimate
 fetch SYM START END *ARGS:
     {{uv}} pmcc fetch --symbol {{SYM}} --start {{START}} --end {{END}} {{ARGS}}

@@ -22,9 +22,9 @@ The current work. It builds the thesis, its daily tracker and their page, nothin
 | Phase | Dates | Exit criteria | Status |
 | --- | --- | --- | --- |
 | T0 Docs | Sat Nov 21 | Spec scoped, decisions and backlog live | In progress: T0-01 drafted, waiting on the PO's review |
-| T1 Data | Sat Nov 21 | A headless probe shows the index's, VIX's and the credit series' coverage, and an SPXW chain | T1-01: closes proven (TD-18); credit from FRED, LSEG not entitled (TD-19); SPXW's cost sample waiting on a third run |
-| T2 Tracker | Sun Nov 22 | The tracker, K1 and R5's note computed from series in memory, tested | T2-01 done 2026-11-21 (TD-15, TD-16); T2-02 next |
-| T3 Nightly | Sun Nov 22 | `thesis run` writes `live/thesis/`; the `thesis` workflow commits it and the site redeploys | Not started |
+| T1 Data | Sat Nov 21 | A headless probe shows the index's, VIX's and the credit series' coverage, and an SPXW chain | Done 2026-11-22: closes proven (TD-18); credit from FRED, LSEG not entitled (TD-19); SPXW's chain quoted, no spec condor that day (TD-20) |
+| T2 Tracker | Sun Nov 22 | The tracker, K1 and R5's note computed from series in memory, tested | Done 2026-11-23: T2-01 (TD-15, TD-16), T2-02 (TD-21 to TD-26) |
+| T3 Nightly | Sun Nov 22 | `thesis run` writes `live/thesis/`; the `thesis` workflow commits it and the site redeploys | Built 2026-11-23 (TD-27): waiting on the PO's manual run of the `thesis` workflow |
 | T4 Site | Mon Nov 23 | `#/thesis` shows R1–R7 from the committed files | Not started |
 | T5 Release | Tue Nov 24 | A scheduled run after Monday's close has updated the page; the URL is submitted | Not started |
 
@@ -36,7 +36,7 @@ The current work. It builds the thesis, its daily tracker and their page, nothin
 
 | When | Asks |
 | --- | --- |
-| T2-02 | R5's form: the edge's measure and the cost input (TD-07's recommendation) |
+| T2-02 | Answered 2026-11-23: R5's form (TD-21), the evidence section (TD-23), K1's latch (TD-24), the signal states (TD-25) |
 | T4-01 | The page's panel order and copy, the two charts' design, the home tile's figure (TD-10) |
 | T5-01 | The submit target time |
 
@@ -50,10 +50,11 @@ The current work. It builds the thesis, its daily tracker and their page, nothin
 
 #### T1 — Data
 
-- [ ] **T1-01 · Probe: the index, VIX, the credit spread and an SPXW chain** **[LSEG]** **[PO]** — built 2026-11-21 (TD-13, TD-14): `thesis probe` (`just thesis-probe`), `pmcc/thesis/probe.py`, `spxw.py`, `fred.py`, `pmcc/data/lseg/discovery.py`, the `thesis-probe` workflow, its thresholds in `configs/thesis.yaml`'s `cost_sample`; 73 tests and the recipe's, after a code review's fixes (FRED's empty cells, outages writing nothing, the history calendar checked against the tape). The contracts' settlement, exercise style and multiplier aren't read from LSEG: the probe settles the RIC spelling, and the profile rests on Cboe's SPXW specification [S5] (TD-14). Waiting on the PO's run
+- [x] **T1-01 · Probe: the index, VIX, the credit spread and an SPXW chain** **[LSEG]** **[PO]** — done 2026-11-22 (TD-18 to TD-20): the index and VIX from 2014, credit from FRED from 2023-11-21, SPXW's Dec 24 chain, no spec condor that day. Built 2026-11-21 (TD-13, TD-14): `thesis probe` (`just thesis-probe`), `pmcc/thesis/probe.py`, `spxw.py`, `fred.py`, `pmcc/data/lseg/discovery.py`, the `thesis-probe` workflow, its thresholds in `configs/thesis.yaml`'s `cost_sample`; 73 tests and the recipe's, after a code review's fixes (FRED's empty cells, outages writing nothing, the history calendar checked against the tape). The contracts' settlement, exercise style and multiplier aren't read from LSEG: the probe settles the RIC spelling, and the profile rests on Cboe's SPXW specification [S5] (TD-14). Waiting on the PO's run
   - First run (Actions, 2026-11-22): FRED's public CSV timed out, so it wrote nothing; FRED moved to its official API with a key (PO, TD-17), with retries (TD-14).
   - First full run (Actions, 2026-11-22 22:37 ET; TD-18): the index's and VIX's closes from 2014, the index's matching the calendar day for day; FRED's spread from 2023-11-21 only; LSEG's search found `.MERH0A0` but didn't read it; no SPXW spelling answered hourly. The probe now reads each search's index RICs first, tries SPXW daily, and searches for SPXW's RICs.
-  - Second run (Actions, 2026-11-22 23:18 ET; TD-19): LSEG has ICE's indexes but the account isn't entitled to them, so credit is FRED's, from 2023-11-21 (TD-05's rule). SPXW's spelling and entitlement are proven by LSEG's own RICs; Wed Dec 23 wasn't a listed expiration. The probe now asks every session 28–35 days out and uses the nearest listed: waiting on a third run, for the cost sample.
+  - Second run (Actions, 2026-11-22 23:18 ET; TD-19): LSEG has ICE's indexes but the account isn't entitled to them, so credit is FRED's, from 2023-11-21 (TD-05's rule). SPXW's spelling and entitlement are proven by LSEG's own RICs; Wed Dec 23 wasn't a listed expiration. The probe now asks every session 28–35 days out and uses the nearest listed.
+  - Third run (Actions, 2026-11-22 23:42 ET; TD-20): Dec 24's chain, 76 contracts quoted, 55 inside the spread test, the short legs at −0.201 and 0.204 delta; no wing pair at 35–52 points passes, so §6.2 skips the condor that day. The legs' measured spreads are R5's cost evidence (T2-02).
   - To run: add the `FRED_API_KEY` secret (Settings › Secrets and variables › Actions); then in Actions, "Run workflow" on `thesis-probe`, and download the `thesis-probe-report` artifact into `data_cache/probes/`. Or locally, `just thesis-probe` with the three LSEG variables and `FRED_API_KEY` in the environment.
   - The thesis's own command, `thesis` (TD-13): a second entry point in `pyproject.toml`, its first subcommand `thesis probe` (`just thesis-probe`), over the platform session (TD-04), and FRED's CSV (TD-05): the S&P 500 index's and VIX's daily closes from 2014-01-01 (count, first and last session, sessions missing against each other); whether LSEG has ICE BofA US High Yield OAS, its history and units; FRED's BAMLH0A0HYM2 (first, last, count); for the SPXW expiry nearest 30 days, the contracts' settlement, exercise style and multiplier, and the bid and ask at the close of the strikes nearest ±0.20 delta and their wings. Counts on screen, the report in `data_cache/probes/` (gitignored); runnable by hand in Actions.
   - Done when: the PO's run shows each series' coverage, recorded as a TD entry. If either closes series is missing, or the credit series exists nowhere, take it to the PO before T3.
@@ -65,19 +66,19 @@ The current work. It builds the thesis, its daily tracker and their page, nothin
   - `configs/thesis.yaml` (spec §13's keys that the tracker reads) and `pmcc/thesis/`, pure, on series in memory: log returns, EWMA and RV5/RV20 (§5.1); `N_t`, the forecast and the matured realized variance on one calendar convention (§5.2); shock episodes and their fixed search windows (§5.3); the first candidate, chosen without credit (§5.4); the credit condition, as-of its assumed publication time, in basis points (§4.4, §5.5).
   - Done when: spec §14's tests 1–4 pass on fixtures (future data changing nothing at t; credit available a day late not used; 3.52 → 352; repeated shocks not extending a window; the credit filter not moving a candidate; weekends, holidays, a leap year and a DST change; immature outcomes null), and `just check` is green.
   - Needs: T0-01
-- [ ] **T2-02 · Evidence: K1–K3, R5's note, the statuses, the current state** **[PO]**
-  - Ask first: R5's form (TD-07).
+- [x] **T2-02 · Evidence: K1–K3, R5's note, the statuses, the current state** **[PO]** — done 2026-11-23 (TD-21 to TD-26): `pmcc/thesis/evidence.py`, `status.py`, `configs/thesis.yaml`'s `r5_cost`; 25 tests, among them spec §14 test 12
+  - Ask first: R5's form (TD-07). Answered: TD-21 to TD-25.
   - K1 over the latest 30 matured stable-credit candidates, `INSUFFICIENT_DATA` below 30 (TD-08); K2 and K3 as definitions only; R5's rough note; `run_status`, `data_status`, `signal_status`, `thesis_status`, `evidence_status` (spec §9, as scoped); the dated current-state summary from the tracked series (TD-10).
   - Done when: K1's sample gate is tested (spec §14 test 12: insufficient never passes), R5's numbers are reproduced from a fixture, and `just check` is green.
   - Needs: T2-01
 
 #### T3 — Nightly
 
-- [ ] **T3-01 · `thesis run`: pull, compute, write `live/thesis/`** **[LSEG]**
+- [ ] **T3-01 · `thesis run`: pull, compute, write `live/thesis/`** **[LSEG]** — built 2026-11-23 (TD-27): `thesis run` (`just thesis`), `pmcc/thesis/run.py`, `publish.py`, `pmcc/export/thesis_models.py`, the export's `thesis.json`; 25 tests, among them spec §14 tests 13 and 14. Waiting on a real run (T3-02's manual run)
   - Pulls the closes from LSEG and the credit series (TD-04, TD-05), runs T2's tracker, and writes `live/thesis/*.json`: a schema version, the config's hash, `generated_at`, `data_through`, `data_status` and each series' source (spec §10), nulls explicit, no NaN or Infinity; `--plan-only` first; an outage writes nothing. `pmcc export` publishes it for the page.
   - Done when: spec §14 test 13 (schema, no NaN, no fixture data in the live files) and 14 (a fixture's inputs to its expected episodes, criteria and JSON) pass, a real run writes the files on the PO's machine or in Actions, and `just check` is green.
   - Needs: T1-01, T2-02
-- [ ] **T3-02 · The `thesis` workflow** **[PO]**
+- [ ] **T3-02 · The `thesis` workflow** **[PO]** — built 2026-11-23 (TD-27): `.github/workflows/thesis.yml`, `ci.yml` on its completion; 8 tests. To run: Actions › thesis › "Run workflow" (it needs the `FRED_API_KEY` secret, already set for the probe)
   - `.github/workflows/thesis.yml`: cron `17 4 * * *` and by hand; `thesis run` (`just thesis`), the LSEG secrets in its step alone; commits only `live/thesis/*.json` as the bot after a pull (TD-09); `ci.yml` runs on its completion and redeploys.
   - Done when: a manual run commits the files and the site redeploys.
   - Needs: T3-01

@@ -18,6 +18,7 @@ from pmcc.export.analytics_models import SYMBOL_FILES, UNIVERSE_FILES
 from pmcc.export.live_models import Live
 from pmcc.export.models import RunResult
 from pmcc.export.site_models import Index, Rules
+from pmcc.export.thesis_models import Thesis
 from pmcc.export.wheel_models import WheelResult
 
 SCHEMA_DIR = "schema"
@@ -27,6 +28,7 @@ SCHEMAS: Mapping[str, type[BaseModel]] = {
     "run_result": RunResult,
     "wheel_result": WheelResult,
     "live": Live,
+    "thesis": Thesis,
     **SYMBOL_FILES,
     **UNIVERSE_FILES,
 }

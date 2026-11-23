@@ -61,3 +61,26 @@ cost_sample:
   put_window_high: 1.04
   call_window_low: 0.97
   call_window_high: 1.04
+# R5's measured cost (PO, TD-21): one dated sample, never a trade. The probe's third run (TD-20)
+# read SPXW's chain at the Fri Nov 20 2026 close (itself a VIX spike), the Dec 24 expiry; these
+# are the medians over the quoted legs whose absolute delta is from 0.10 to 0.30. Spec §6.2's
+# condor was skipped that day, so no condor round trip exists to quote. Replace the whole section
+# only with a newer probe's measurements, never by hand.
+r5_cost:
+  sample_session: '2026-11-20'
+  sample_expiry: '2026-12-24'
+  sample_vix_points: 35.89
+  sample_probe: thesis_20261122T234215
+  absolute_delta_low: 0.10
+  absolute_delta_high: 0.30
+  put_legs: 20
+  put_median_spread_points: 9.65
+  put_median_mid_points: 106.225
+  put_median_spread_fraction_of_mid: 0.0971
+  call_legs: 24
+  call_median_spread_points: 8.65
+  call_median_mid_points: 35.55
+  call_median_spread_fraction_of_mid: 0.1961
+  stressed_spread_multiple: 1.5
+  stressed_fee_multiple: 2.0
+  spec_condor: 'skipped on the sample day: no put and call wing pair from 35 to 52 points passed the spread test (TD-20)'

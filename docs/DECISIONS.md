@@ -417,6 +417,14 @@ Nov 21, 2026 · companion to the [Thesis spec](THESIS-SPEC.md), the source of tr
 | TD-17 | FRED through its official API, with a key | SETTLED (PO): `FRED_API_KEY`, a GitHub secret; amends TD-05 | — |
 | TD-18 | The probe's first full run, and what it changed (T1-01) | ENG | — |
 | TD-19 | The probe's second run: credit from FRED, SPXW's expiry (T1-01) | ENG: LSEG not entitled to ICE's OAS, so FRED (TD-05's rule) | — |
+| TD-20 | The probe's third run: SPXW's chain, and no spec condor that day (T1-01) | ENG | — |
+| TD-21 | R5's form: the premium beside the measured spreads | SETTLED (PO): measured leg spreads, stressed 1.5× and 2× | — |
+| TD-22 | The probe stays strict about outages | SETTLED (PO) | — |
+| TD-23 | "Preliminary historical evidence", without an evidence classification | SETTLED (PO) | — |
+| TD-24 | K1: a current rolling assessment, no latch yet | SETTLED (PO): the latch deferred to backtesting | — |
+| TD-25 | Two more signal states, a blocked assessment that stops nothing | SETTLED (PO) | — |
+| TD-26 | The evidence and statuses' conventions (T2-02) | ENG | — |
+| TD-27 | `thesis run`, its file and its workflow (T3-01, T3-02) | ENG | — |
 
 ## Thesis settled
 
@@ -461,7 +469,7 @@ Nov 21, 2026 · companion to the [Thesis spec](THESIS-SPEC.md), the source of tr
 
 - **Asked:** the spec shows "NOT YET ESTIMATED" until a trade backtest exists; the assignment wants a rough note now.
 - **Outcome:** "For now, that section can provide a rough, evidence-informed estimate with explicit cost assumptions and limitations. A full trade-level net-P&L analysis can wait for the backtesting assignment." (PO.) It is labelled a gross economic premium, not tradable alpha.
-- **Recommended form (to confirm at T2-02):** the edge is the mean and median 30-day variance premium (VIX against the realized vol that followed), on all days and on candidate days, stable and unstable credit apart, with counts. The cost is the round-trip natural spread of a 0.20-delta, 30-day SPXW condor from the probe's chain snapshot, plus spec §7.2's $2 per contract transaction, as a share of its credit.
+- **Recommended form (confirmed and completed by TD-21):** the edge is the mean and median 30-day variance premium (VIX against the realized vol that followed), on all days and on candidate days, stable and unstable credit apart, with counts. The cost is the round-trip natural spread of a 0.20-delta, 30-day SPXW condor from the probe's chain snapshot, plus spec §7.2's $2 per contract transaction, as a share of its credit.
 
 ### TD-08 — K1–K3 kept as written; only K1 calculated
 **Status:** SETTLED · **Basis:** PO, 2026-11-21 · **Affects:** Thesis spec §9 › R4; T2-02, T4-01
@@ -497,6 +505,47 @@ Nov 21, 2026 · companion to the [Thesis spec](THESIS-SPEC.md), the source of tr
 - **The key** is read only by `pmcc/thesis/fred.py` (`FredKey.from_env`), never printed: not in a repr, an error or a log; every message is masked, the key as typed and URL-encoded, since it rides in the URL. A missing key stops the probe before anything is asked.
 - **Answers:** FRED not answering (a connection, a timeout, a cut-off body, HTTP 429 or a 5xx) is retried as TD-14 says, then an outage; FRED refusing (another 4xx: a bad key, an unknown series) or an unreadable answer is a `FredError` at once, carrying FRED's own `error_message`.
 - **Unchanged:** FRED is still only the fallback if LSEG lacks the history (TD-05), and still read with the standard library.
+
+### TD-21 — R5's form: the premium beside the measured spreads
+**Status:** SETTLED · **Basis:** PO, 2026-11-23 · **Affects:** completes TD-07; Thesis spec §8 › R5; T2-02, T4-01
+
+- **Asked:** the probe's Nov 20 chain was quoted but spec §6.2's condor was skipped that day (TD-20), so no condor round trip exists. The options: the legs' measured spreads; those and a Monday re-probe; a stated assumption only.
+- **Outcome (PO):** the measured leg spreads. From that snapshot, the legs from 0.10 to 0.30 absolute delta: median spreads of 9.65 points on puts (9.71% of the mid) and 8.65 on calls (19.61%), plus $2 a contract a transaction, with a stressed case at 1.5× the spread and 2× the fees. That the spec's condor was skipped that day, and why, is said plainly. One dated sample, `configs/thesis.yaml`'s `r5_cost`. (Recommended.)
+- **The edge (PO):** the 30-day variance premium (implied less the realized that followed), mean and median, on all matured sessions and on candidate days, stable- and unstable-credit candidates apart, each with its count; beside the cost, labelled "gross economic premium, not tradable alpha". Candidates without credit data are their own group. (Recommended.)
+- **Built** (`pmcc.thesis.evidence`): a round trip at the natural price gives up about one full spread a leg, so a leg's cost is its spread share of the mid plus two fees over the mid; stressed, 1.5× the spread share and 2× the fees. To set the edge on a comparable scale, each cohort also carries the mean share by which VIX overstated the realized vol that followed, labelled rough (an option's value isn't proportional to vol).
+
+### TD-22 — The probe stays strict about outages
+**Status:** SETTLED · **Basis:** PO, 2026-11-23 · **Affects:** TD-14; T1-01
+
+- **Asked:** should the probe write the other sections when one source goes down, and exit 1?
+- **Outcome (PO):** no: T1-01 is done, so the probe keeps its rule, an outage writes nothing. (Recommended.)
+
+### TD-23 — "Preliminary historical evidence", without an evidence classification
+**Status:** SETTLED · **Basis:** PO, 2026-11-23 · **Affects:** Thesis spec §8.4, §9 (`evidence_status`), §10 component 4; T2-02, T4-01
+
+- **Asked:** `evidence_status` is `INSUFFICIENT_EVIDENCE` until 20 matured stable- and 20 unstable-credit candidates exist (§8.4); the spec doesn't define `SUPPORTIVE`, `MIXED` or `UNSUPPORTIVE`, and credit from 2023-11-21 won't reach the gate for years.
+- **Outcome (PO):** scoped to the thesis assignment and the daily tracker.
+  - The 20 per cohort is documented as a future validation target. It never blocks the website or stops the pipeline, reached or not.
+  - The section is titled "Preliminary historical evidence". It shows the matured observations: their date range, count, mean realized variance premium, and the stable-against-unstable comparison where both groups exist.
+  - The results are described in plain language ("The average premium was positive in the available stable-credit episodes"), saying clearly that a small sample doesn't establish a reliable edge.
+  - With one group empty: "Credit-regime comparison unavailable in this sample." With nothing matured, that is said directly, and the daily forecast tracker stays.
+  - No `SUPPORTIVE` / `MIXED` / `UNSUPPORTIVE` classification: two sample means alone would make those labels sound more definitive than the analysis warrants.
+  - It updates normally whatever the sample size; the qualifying-event rules are never changed to make more observations. Full statistical validation and trade-based profitability testing stay outside this assignment.
+- **Built:** `evidence_status` is always `INSUFFICIENT_EVIDENCE` in this milestone, the gate's counts shown beside it; `pmcc.thesis.evidence.statements` writes the sentences.
+
+### TD-24 — K1: a current rolling assessment, no latch yet
+**Status:** SETTLED · **Basis:** PO, 2026-11-23 · **Affects:** Thesis spec §9 › R4 ("A FAIL cannot be erased …"); T2-02, T4-01
+
+- **Asked:** the nightly run recomputes K1 from scratch, so a `FAIL` could vanish when a loss rolls out of its 30-episode window; the spec forbids that. Build a latch now, or defer it?
+- **Outcome (PO):** defer the persistent latch to the backtesting phase. K1 shows its current rolling value, sample count, threshold and assessment date, labelled a current rolling assessment. That persistent failure tracking and resumption controls aren't implemented in this milestone is documented. The condition is shown as defined.
+
+### TD-25 — Two more signal states, a blocked assessment that stops nothing
+**Status:** SETTLED · **Basis:** PO, 2026-11-23 · **Affects:** Thesis spec §9 (`signal_status`); T2-02, T3-01, T4-01
+
+- **Asked:** a candidate whose credit is unavailable, and a search a missing feature blocked, fit none of the spec's `signal_status` values.
+- **Outcome (PO):** add `CREDIT_UNAVAILABLE` and `INCOMPLETE_CANDIDATE_SEARCH`. Neither is read as eligible, filtered out, or a confirmed absence of a candidate. The signal's assessment is marked blocked, but all available tracker data still update and show: a blocked assessment never stops the nightly pipeline or its publication.
+- **The page's labels (PO):** "Credit data unavailable — eligibility cannot be assessed" and "Incomplete observation window — candidate assessment unavailable", each with the affected date or episode and a brief reason.
+- **Built** (`pmcc.thesis.status`): `signal` carries the status, an `assessment` (`OK` or `BLOCKED`), the episode's ID, shock, candidate and window end, and the reason.
 
 ## Thesis engineering
 
@@ -569,3 +618,34 @@ Nov 21, 2026 · companion to the [Thesis spec](THESIS-SPEC.md), the source of tr
 - **SPXW's spelling is proven:** LSEG's own search gives `SPXWa292777300.U` for the Jan 29 2027 7,730 call and `SPXWm292777300.U` for the put: root `SPXW`, a lower-case month letter, the strike in tenths, as `spxw.option_ric` builds it. All eight RICs checked answer the Nov 20 session, hourly and daily, so the platform session is entitled to SPXW.
 - **What failed was the expiry.** The probe asked Wed Dec 23 2026, the session nearest 30 days, in every spelling, and nothing answered: that day wasn't a listed SPXW expiration. The probe had read §6.2's "an expiration 28–35 calendar days from the intended execution session, closest to 30 days" as any session. Now every session in the window is a candidate, nearest 30 first and a tie earlier (`spxw.candidate_expiries`); the at-the-money pair is asked at each, in each spelling, and the nearest expiry LSEG lists is used. That is the spec's rule as written, not a change to it.
 - **Next:** a third run, for the cost sample.
+
+### TD-20 — The probe's third run: SPXW's chain, and no spec condor that day (T1-01)
+**Status:** ENG · **Affects:** Thesis spec §6.2, §6.3, §7.2; TD-07, TD-19; T1-01, T2-02
+
+- **Run:** Actions, 2026-11-22 23:42 ET (`data_cache/probes/thesis_20261122T234215.json`, gitignored), with TD-19's change. The close it reads, Fri Nov 20, is itself a VIX spike: VIX 35.89, the index 6,910.39.
+- **Expiry:** Thu Dec 24 2026, 31 days from Mon Nov 23: the third candidate. Dec 23 and Dec 22 aren't listed; Dec 24 is, at the at-the-money pair, hourly, `SPXW` with a lower-case month letter.
+- **The chain:** 239 contracts asked, 76 listed, all 76 quoted at the close bar and priced, 55 inside §6.3's spread test. The parity spot is 6,901.85. Puts that far out are listed every 25 points, not 5 (6,225, 6,250, 6,275, 6,300 …); calls near 7,400 every 5 or 10.
+- **The short legs exist:** the 6,300 put at −0.201 delta (95.9 / 105.5) and the 7,400 call at 0.204 (54.7 / 61.3), both inside the spread test. IVs: puts near 0.20 delta about 40%, calls about 25%.
+- **No spec condor:** §6.2 step 4's widths run from 0.005 × 6,910 ≈ 35 to 1.5 × that ≈ 52 points. The only put wing in that range is the 6,250 at 50, quoted 88.5 / 122.5: a 34-point spread, past the test's 21, and a mid above the 6,300 put's. The call side has 7,440 at 40, which the put side doesn't. So, by §6.2, the trade is skipped that day, and the probe reports no condor. Nothing was widened or rounded to make one (§6.2 step 8).
+- **What the quotes do show,** for R5's cost (TD-07): legs between 0.10 and 0.30 absolute delta have median spreads of 9.65 points on puts (n = 20, 9.7% of the mid) and 8.65 on calls (n = 24, 19.6%). A natural round trip gives up about one spread a leg; the fee is $2 a contract a transaction, 0.16 points for a condor's eight.
+- **T1-01 is done:** every source's coverage is shown and recorded (TD-18 to TD-20). How R5 uses these quotes is T2-02's question to the PO.
+
+### TD-26 — The evidence and statuses' conventions (T2-02)
+**Status:** ENG · **Affects:** Thesis spec §8, §9, §10; T2-02, T3-01
+
+- **Code:** `pmcc/thesis/evidence.py` (the cohorts, the statements, K1–K3, R5's cost) and `pmcc/thesis/status.py` (the statuses, the current state), pure, on a `Tracker`.
+- **Matured only:** a cohort or K1 reads a session only when its outcome is `MATURED`, with its VIX. K1's "latest 30" are the 30 latest stable-credit candidates by candidate day; below 30 it is `INSUFFICIENT_DATA`, and its mean over those available is shown as provisional (TD-08).
+- **`data_status`:** `CURRENT` when `data_through` is the last session completed at the run's time; `STALE` when older; `BLOCKED` with no data at all. Credit doesn't set it: credit unavailable blocks the signal's assessment instead (TD-25).
+- **`signal_status`:** the latest episode's state while `data_through` is from its shock through its window's last session; `NO_SHOCK` otherwise. A candidate found earlier in a window still in progress keeps its eligibility as the signal.
+- **`thesis_status`:** `PAUSED` while K1 is `FAIL`; otherwise `PROVISIONAL`, since K2 and K3 aren't evaluated. `run_status` is the nightly run's, set in T3-01.
+- **The current state:** `data_through`'s VIX, the shock test's 80th-percentile level over the 252 sessions before and VIX's share of them at or below it, its ratio to five sessions earlier, the forecast vol and gap, RV5, RV20 and credit at the decision.
+
+### TD-27 — `thesis run`, its file and its workflow (T3-01, T3-02)
+**Status:** ENG · **Affects:** Thesis spec §10, §12; TD-09; T3-01, T3-02, T4-01
+
+- **Command:** `thesis run` (`just thesis`), `pmcc/thesis/run.py`: `.SPX` and `.VIX` daily closes from 2014-01-01 in one batched request over the platform session; FRED's BAMLH0A0HYM2 through its API, percent to bps; then `run_tracker`, the evidence and the statuses, as of the run's time. Everything is re-derived each night and nothing is cached (TD-09). `--plan-only` prints the two requests and asks nothing. An outage, an empty series, an unreadable FRED answer, a tracker input error or a value the model refuses writes nothing and exits 1. The console prints counts and dates, no values.
+- **Closed days:** closes on days the calendar has no session for are left out and counted, and the count is in the VIX source's note (TD-18).
+- **One file:** `live/thesis/thesis.json`, the only file under `live/thesis/` (TD-09's glob). Its model, `pmcc.export.thesis_models.Thesis`, holds the provenance (§10: schema version, model version, config hash, `generated_at`, `data_through`, `data_status`, each source's provider, identifier, coverage and units), the statuses, the signal, the current state, the evidence (cohorts, statements, K1–K3, R5's cost), every episode, and a row per session (the closes, the forecast and RV, the matured realized vol, the outcome's status, and credit at the decision). About 3,300 rows.
+- **Numbers:** canonical JSON, as the results (DEC-50): keys sorted, floats to 6 places. The model refuses NaN and infinities (`allow_inf_nan=False`), so a bad number stops the write instead of printing as null (§10). It's written to a temporary file, then moved into place.
+- **Export:** `pmcc export` reads `live/thesis/thesis.json` if it exists, checks it against the model (a failure stops the export), writes it as `thesis.json`, and names it in `index.json`'s new `thesis` field. `thesis.schema.json` joins the schemas, so the page's types come from it.
+- **Workflow:** `.github/workflows/thesis.yml`, as `vol.yml`: 04:17 UTC and by hand with a `plan_only` input; the LSEG secrets and `FRED_API_KEY` in the run's step alone; the Actions bot commits only `live/thesis/thesis.json` after a pull, three tries; a failed run commits nothing and stays red. `ci.yml` runs on its completion and redeploys.

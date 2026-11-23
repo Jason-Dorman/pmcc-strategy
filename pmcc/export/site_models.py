@@ -59,6 +59,7 @@ class Index(Model):
     symbols: tuple[IndexSymbol, ...]
     universe: Mapping[str, str]  # pooled, headline, pooled_fill_check, suitability → path
     live: str | None = None  # `live.json`, the live wheel's page, once exported (L4-01)
+    thesis: str | None = None  # `thesis.json`, the volatility thesis's page, once run (T3-01)
 
 
 # ---- rules.json ---------------------------------------------------------------------------------
