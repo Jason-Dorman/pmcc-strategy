@@ -193,8 +193,8 @@ def test_td_23_statements_compare_both_groups_and_say_the_sample_is_small() -> N
     specs: list[Spec] = [(20, Eligibility.ELIGIBLE, 0.004), (60, Eligibility.FILTERED_OUT, -0.001)]
     text = evidence(_tracker(specs), CONFIG).statements
 
-    assert "The average premium was positive in the 1 available stable credit episode." in text
-    assert "The average premium was negative in the 1 available unstable credit episode." in text
+    assert "The average premium was positive in the 1 available stable-credit episode." in text
+    assert "The average premium was negative in the 1 available unstable-credit episode." in text
     assert NO_COMPARISON not in text
     assert any("does not establish a reliable edge" in s for s in text)
 

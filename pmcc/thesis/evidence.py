@@ -257,7 +257,7 @@ def _candidates(found: Cohorts) -> list[str]:
             episodes = "episode" if group.count == 1 else "episodes"
             out.append(
                 f"The average premium was {_sign(group.mean_premium)} in the {group.count} "
-                f"available {group.name} {episodes}."
+                f"available {group.name.replace(' ', '-')} {episodes}."
             )
     if not (found.stable.count and found.unstable.count):
         out.append(NO_COMPARISON)
