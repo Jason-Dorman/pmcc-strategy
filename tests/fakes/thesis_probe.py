@@ -2,8 +2,9 @@
 
 `ChainProvider` serves daily closes for the RICs it's given, and an SPXW chain priced by
 Black-Scholes at one vol, in one RIC spelling only (`SPXW`, a lower-case month letter, a strike of
-1,000 or more in tenths), so the probe's spelling check and its 0.20-delta picks have known
-answers; on hourly bars (the close bar) unless `option_intervals` says otherwise. A RIC it doesn't
+1,000 or more in tenths) and at `expiry` only, so the probe's listing check and its 0.20-delta
+picks have known answers; on hourly bars (the close bar) unless `option_intervals` says
+otherwise. A RIC it doesn't
 know gets the service's no-data code, as LSEG answers one.
 """
 
@@ -34,6 +35,7 @@ from pmcc.thesis.fred import FredKey
 RULES = load_thesis_config().cost_sample
 NO_DATA = ("TS.Intraday.UserRequestError.90001",)
 _RIC = re.compile(r"SPXW(?P<letter>[a-x])(?P<day>\d{2})(?P<year>\d{2})(?P<strike>\d{5})\.U")
+_CALL_LETTERS = "abcdefghijkl"
 _PUT_LETTERS = "mnopqrstuvwx"
 
 
@@ -84,8 +86,12 @@ class ChainProvider:
         match = _RIC.fullmatch(ric)
         if match is None:
             return None
-        strike = int(match["strike"]) / 10
         is_call = match["letter"] not in _PUT_LETTERS
+        month = (_CALL_LETTERS if is_call else _PUT_LETTERS).index(match["letter"]) + 1
+        listed = (self.expiry.month, self.expiry.day, self.expiry.year % 100)
+        if (month, int(match["day"]), int(match["year"])) != listed:
+            return None  # only the one expiry is listed
+        strike = int(match["strike"]) / 10
         years = spxw.years_from_close(
             self.calendar.session(self.session), self.calendar, self.expiry
         )

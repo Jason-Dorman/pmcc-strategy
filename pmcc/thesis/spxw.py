@@ -4,8 +4,11 @@ The probe's cost sample for R5 (TD-07): one ~30-day, 0.20-delta iron condor pric
 close's quotes, never a trade and never a backtest. Every threshold is `configs/thesis.yaml`'s
 `cost_sample` (spec §6.2's contract rules, §6.3's spread test, §7.2's fees; TD-14):
 
-- **The expiry:** the session from the minimum to the maximum days after the session after the
-  close (28 to 35), nearest the target (30), a tie going earlier.
+- **The expiry:** spec §6.2's, a listed expiration from the minimum to the maximum days after the
+  session after the close (28 to 35), nearest the target (30), a tie going earlier. Not every
+  session is an SPXW expiration that far out (the first run's Wednesday 30 days out wasn't
+  listed), so every session in the window is a candidate, in that order, and the probe asks LSEG
+  which it lists (TD-19).
 - **RICs:** `{ROOT}{M}{DD}{YY}{SSSSS}.U`, as the equity options' (`pmcc.data.ric`), except that a
   strike of 1,000 or more is written in tenths (6,600 → `66000`) and, as LSEG's OPRA convention has
   it, its month letter in lower case. That spelling isn't pinned by any earlier probe, so the
@@ -150,16 +153,16 @@ def option_ric(spelling: Spelling, expiry: date, right: Right, strike: int) -> s
     return f"{spelling.root}{letter}{expiry:%d}{expiry.year % 100:02d}{field:05d}.U"
 
 
-def pick_expiry(calendar: SessionCalendar, execution: date, rules: Rules) -> date | None:
-    """The session from the minimum to the maximum days after `execution` nearest the target, a
-    tie going earlier; None when the calendar has none (or doesn't reach that far)."""
+def candidate_expiries(
+    calendar: SessionCalendar, execution: date, rules: Rules
+) -> tuple[date, ...]:
+    """The sessions from the minimum to the maximum days after `execution`, nearest the target
+    first, a tie going earlier; empty when the calendar has none (or doesn't reach that far)."""
     span = range(rules.minimum_dte_calendar_days, rules.maximum_dte_calendar_days + 1)
     days = [execution + _DAY * n for n in span]
     sessions = [d for d in days if d <= calendar.last_day and calendar.is_session(d)]
-    if not sessions:
-        return None
     target = rules.target_dte_calendar_days
-    return min(sessions, key=lambda d: (abs((d - execution).days - target), d))
+    return tuple(sorted(sessions, key=lambda d: (abs((d - execution).days - target), d)))
 
 
 def estimated_strikes(spot: float, vix: float, years: float, rules: Rules) -> tuple[float, float]:

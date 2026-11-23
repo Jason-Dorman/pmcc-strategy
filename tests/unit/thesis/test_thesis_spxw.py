@@ -38,20 +38,27 @@ def test_t1_01_ric_refuses_a_strike_too_wide_for_five_digits() -> None:
         spxw.option_ric(SPXW_LOWER, date(2026, 12, 18), Right.CALL, 10_000)
 
 
-def test_t1_01_expiry_is_the_session_nearest_30_days_out() -> None:
-    # From Mon Nov 23 2026: Dec 23 is 30 days out and a session.
-    assert spxw.pick_expiry(CAL, date(2026, 11, 23), RULES) == date(2026, 12, 23)
+def test_td_19_expiries_are_the_window_sessions_nearest_30_days_first() -> None:
+    # From Mon Nov 23 2026, 28-35 days is Dec 21-28: Dec 23 is 30 days out; Dec 22 and 24 tie at
+    # one day off, the earlier first; Christmas and the weekend are closed.
+    assert spxw.candidate_expiries(CAL, date(2026, 11, 23), RULES) == (
+        date(2026, 12, 23),
+        date(2026, 12, 22),
+        date(2026, 12, 24),
+        date(2026, 12, 21),
+        date(2026, 12, 28),
+    )
 
 
 def test_t1_01_expiry_tie_goes_earlier_and_skips_closed_days() -> None:
     # From Thu Nov 26 2026 (Thanksgiving; the arithmetic still holds): 30 days is Sat Dec 26, so
     # Fri Dec 25 (closed) and Sun Dec 27 are out; Thu Dec 24 (28) and Mon Dec 28 (32) tie at 2
     # days off, and the earlier wins.
-    assert spxw.pick_expiry(CAL, date(2026, 11, 26), RULES) == date(2026, 12, 24)
+    assert spxw.candidate_expiries(CAL, date(2026, 11, 26), RULES)[0] == date(2026, 12, 24)
 
 
-def test_t1_01_expiry_is_none_past_the_calendar() -> None:
-    assert spxw.pick_expiry(CAL, CAL.last_day, RULES) is None
+def test_t1_01_no_expiries_past_the_calendar() -> None:
+    assert spxw.candidate_expiries(CAL, CAL.last_day, RULES) == ()
 
 
 def test_t1_01_ladder_rounds_outwards_to_whole_steps() -> None:

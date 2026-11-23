@@ -12,8 +12,9 @@ Four sections:
    and last. FRED refusing the request or answering unreadably is reported; FRED not answering is
    an outage.
 4. **SPXW:** the chain about 30 days out at the last close, and a rough 0.20-delta condor priced
-   from it (`pmcc.thesis.spxw`): R5's cost sample (TD-07). The spellings are asked on hourly bars,
-   then, if none answers, on daily ones; and a search shows the RICs LSEG itself gives SPXW, each
+   from it (`pmcc.thesis.spxw`): R5's cost sample (TD-07). The at-the-money pair is asked at each
+   candidate expiry in each spelling on hourly bars, then, if none answers, on daily ones; the
+   nearest listed expiry is used (TD-19). A search shows the RICs LSEG itself gives SPXW, each
    asked on both, so a wrong spelling and a missing entitlement tell apart (TD-18).
 
 Each section reports its source's answer, or why it couldn't be read (a search refused, no SPXW
@@ -68,6 +69,7 @@ MAX_TABLES = 8
 SPXW_QUERIES = ("SPXW", "S&P 500 Index weekly option")
 SPXW_CHECKED = 8
 INTERVALS = (Interval.HOURLY, Interval.DAILY)
+NOT_LISTED = "LSEG listed the ATM pair at no expiry 28-35 days out, in no spelling"
 FRED_SERIES = "BAMLH0A0HYM2"
 LISTED = 10  # days listed in a mismatch, besides the count
 _DAY = timedelta(days=1)
@@ -279,35 +281,45 @@ def spxw_section(
         return {"error": _error(exc)}
     spot = closes.get(INDEX_RIC, {}).get(session.day)
     vix = closes.get(VIX_RIC, {}).get(session.day)
-    expiry = spxw.pick_expiry(calendar, execution, rules)
+    expiries = spxw.candidate_expiries(calendar, execution, rules)
     base: Json = {
         "session": session.day.isoformat(),
         "execution": execution.isoformat(),
         "search": spxw_search(provider, finder, session),
     }
-    if spot is None or vix is None or expiry is None:
+    if spot is None or vix is None or not expiries:
         return base | {"error": f"no index or VIX close for {session.day}, or no expiry"}
-    base |= {"expiry": expiry.isoformat(), "dte": (expiry - execution).days, "index_close": spot}
+    base |= {"candidate_expiries": [d.isoformat() for d in expiries], "index_close": spot}
+    close = _Close(calendar, session, execution, spot, vix)
     try:
-        return base | _chain(provider, _Market(calendar, session, expiry, spot, vix), rules)
+        return base | _chain(provider, close, expiries, rules)
     except SOURCE_ERRORS as exc:
         return base | {"error": _error(exc)}
 
 
 @final
 @dataclass(frozen=True, slots=True)
-class _Market:
-    """The close the chain is read at."""
+class _Close:
+    """The close the chain is read at, and the session after it."""
 
     calendar: SessionCalendar
     session: Session
-    expiry: date
+    execution: date
     spot: float
     vix: float
 
+
+@final
+@dataclass(frozen=True, slots=True)
+class _Market:
+    """The close and the expiry chosen."""
+
+    close: _Close
+    expiry: date
+
     @property
     def years(self) -> float:
-        return spxw.years_from_close(self.session, self.calendar, self.expiry)
+        return spxw.years_from_close(self.close.session, self.close.calendar, self.expiry)
 
 
 def spxw_search(provider: HistoryProvider, finder: SeriesFinder, session: Session) -> Json:
@@ -331,22 +343,27 @@ def _answered_row(ric: str, answered: Mapping[Interval, frozenset[str]]) -> Json
     return row
 
 
-def _chain(provider: HistoryProvider, market: _Market, rules: CostSampleConfig) -> Json:
-    atm = spxw.atm_strike(market.spot, rules)
-    spellings, chosen = _spelling(provider, market, atm)
+def _chain(
+    provider: HistoryProvider, close: _Close, expiries: Sequence[date], rules: CostSampleConfig
+) -> Json:
+    atm = spxw.atm_strike(close.spot, rules)
+    listings, chosen = _listing(provider, close.session, expiries, atm)
     if chosen is None:
-        return {"spellings": spellings, "error": "LSEG answered no spelling of the ATM pair"}
-    spelling, interval = chosen
+        return {"listings": listings, "error": NOT_LISTED}
+    spelling, interval, expiry = chosen
+    market = _Market(close, expiry)
     legs = _ladder_legs(provider, market, spelling, interval, atm, rules)
     pair = {leg.right: leg for leg in legs if leg.strike == atm}
     forward_spot = None
     if Right.CALL in pair and Right.PUT in pair:
         forward_spot = spxw.parity_spot(pair[Right.CALL], pair[Right.PUT], market.years, rules)
-    spot = forward_spot or market.spot
+    spot = forward_spot or close.spot
     priced = spxw.priced(legs, spot, market.years, rules)
     found = spxw.condor(priced, spot, rules)
     return {
-        "spellings": spellings,
+        "expiry": expiry.isoformat(),
+        "dte": (expiry - close.execution).days,
+        "listings": listings,
         "spelling": spelling.name,
         "interval": interval.value,
         "years": market.years,
@@ -358,25 +375,29 @@ def _chain(provider: HistoryProvider, market: _Market, rules: CostSampleConfig) 
     }
 
 
-def _spelling(
-    provider: HistoryProvider, market: _Market, atm: int
-) -> tuple[list[Json], tuple[spxw.Spelling, Interval] | None]:
-    """The ATM pair in each spelling, hourly; if no spelling answers, daily (TD-18)."""
-    rights = (Right.CALL, Right.PUT)
-    rics = {
-        s: tuple(spxw.option_ric(s, market.expiry, right, atm) for right in rights)
+type _Listed = tuple[spxw.Spelling, Interval, date]
+
+
+def _listing(
+    provider: HistoryProvider, session: Session, expiries: Sequence[date], atm: int
+) -> tuple[list[Json], _Listed | None]:
+    """The ATM pair at each candidate expiry in each spelling, hourly; if none answers, daily
+    (TD-18). The nearest listed expiry wins, in the first spelling listing it (TD-19)."""
+    pairs = {
+        (s, e): tuple(spxw.option_ric(s, e, right, atm) for right in (Right.CALL, Right.PUT))
+        for e in expiries
         for s in spxw.SPELLINGS
     }
-    asked = [r for pair in rics.values() for r in pair]
+    asked = [r for pair in pairs.values() for r in pair]
     report: list[Json] = []
     for interval in INTERVALS:
-        listed, _ = spxw.close_quotes(provider, asked, market.session, interval)
-        for s, pair in rics.items():
-            row: Json = {"spelling": s.name, "interval": interval.value, "rics": list(pair)}
-            report.append(row | {"listed": [r in listed for r in pair]})
-        chosen = next((s for s, pair in rics.items() if all(r in listed for r in pair)), None)
-        if chosen is not None:
-            return report, (chosen, interval)
+        listed, _ = spxw.close_quotes(provider, asked, session, interval)
+        for (s, e), pair in pairs.items():
+            row: Json = {"expiry": e.isoformat(), "spelling": s.name, "interval": interval.value}
+            report.append(row | {"rics": list(pair), "listed": [r in listed for r in pair]})
+        found = next((k for k, pair in pairs.items() if all(r in listed for r in pair)), None)
+        if found is not None:
+            return report, (found[0], interval, found[1])
     return report, None
 
 
@@ -388,13 +409,13 @@ def _ladder_legs(
     atm: int,
     rules: CostSampleConfig,
 ) -> list[spxw.Leg]:
-    put_k, call_k = spxw.estimated_strikes(market.spot, market.vix, market.years, rules)
+    put_k, call_k = spxw.estimated_strikes(market.close.spot, market.close.vix, market.years, rules)
     puts = spxw.ladder(put_k * rules.put_window_low, put_k * rules.put_window_high, rules)
     calls = spxw.ladder(call_k * rules.call_window_low, call_k * rules.call_window_high, rules)
     wanted = [(Right.PUT, k) for k in puts] + [(Right.CALL, k) for k in calls]
     unique = list(dict.fromkeys([*wanted, (Right.PUT, atm), (Right.CALL, atm)]))
     rics = {spxw.option_ric(spelling, market.expiry, right, k): (right, k) for right, k in unique}
-    listed, quotes = spxw.close_quotes(provider, list(rics), market.session, interval)
+    listed, quotes = spxw.close_quotes(provider, list(rics), market.close.session, interval)
     return [
         spxw.Leg(ric, right, k, *quotes.get(ric, (None, None)), listed=ric in listed)
         for ric, (right, k) in rics.items()

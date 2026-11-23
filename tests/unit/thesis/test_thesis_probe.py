@@ -195,17 +195,25 @@ def test_t1_01_listed_counts_ric_answers_not_close_quotes() -> None:
 
 def test_t1_01_spxw_finds_the_spelling_lseg_answers() -> None:
     section = _section(_report(), "spxw")
-    spellings = section["spellings"]
+    listings = section["listings"]
 
     assert section["spelling"] == "SPXW, lower-case month"
     assert section["expiry"] == EXPIRY.isoformat()
     assert section["dte"] == 30
-    assert [s["listed"] for s in spellings] == [  # pyright: ignore[reportUnknownVariableType, reportGeneralTypeIssues]
-        [True, True],
-        [False, False],
-        [False, False],
-        [False, False],
-    ]
+    assert isinstance(listings, list)
+    assert len(listings) == 20  # pyright: ignore[reportUnknownArgumentType]  # 5 expiries, 4 spellings
+    listed = [(s["expiry"], s["spelling"]) for s in listings if all(s["listed"])]  # pyright: ignore[reportUnknownVariableType, reportUnknownArgumentType]
+    assert listed == [(EXPIRY.isoformat(), "SPXW, lower-case month")]
+
+
+def test_td_19_the_nearest_listed_expiry_is_used() -> None:
+    # Only Thu Dec 24 is listed: 31 days out, the third candidate.
+    provider = ChainProvider(CAL, _closes(), SESSION, date(2026, 12, 24))
+    section = _section(_report(provider), "spxw")
+
+    assert section["expiry"] == "2026-12-24"
+    assert section["dte"] == 31
+    assert section["condor"] is not None
 
 
 def test_t1_01_spxw_prices_a_condor_with_its_cost_share() -> None:
@@ -237,12 +245,12 @@ def test_td_18_credit_takes_each_searchs_index_rics_before_its_bonds() -> None:
 def test_td_18_spxw_answering_only_daily_prices_on_the_daily_bar() -> None:
     provider = _provider(option_intervals=frozenset({Interval.DAILY}))
     section = _section(_report(provider), "spxw")
-    spellings = section["spellings"]
+    listings = section["listings"]
 
     assert section["spelling"] == "SPXW, lower-case month"
     assert section["interval"] == "daily"
-    assert isinstance(spellings, list)
-    assert [s["interval"] for s in spellings] == ["hourly"] * 4 + ["daily"] * 4  # pyright: ignore[reportUnknownVariableType]
+    assert isinstance(listings, list)
+    assert [s["interval"] for s in listings] == ["hourly"] * 20 + ["daily"] * 20  # pyright: ignore[reportUnknownVariableType]
     assert section["condor"] is not None
 
 
@@ -273,7 +281,7 @@ def test_t1_01_spxw_without_any_spelling_answering_reports_it() -> None:
 
     provider = Unlisted(CAL, _closes(), SESSION, EXPIRY)
     section = _section(_report(provider), "spxw")
-    assert section["error"] == "LSEG answered no spelling of the ATM pair"
+    assert section["error"] == probe.NOT_LISTED
 
 
 def test_t1_01_the_console_shows_counts_and_dates_never_values() -> None:
