@@ -12,7 +12,8 @@ close's quotes, never a trade and never a backtest. Every threshold is `configs/
   probe asks the at-the-money pair in each candidate spelling (root `SPXW` or `SPX`, letter lower or
   upper) and reports which LSEG answers before asking the chain in it.
 - **Quotes:** each contract's bid and ask in the session's close bar (the hourly bar ending at
-  16:00 ET), as the live wheel's snapshot reads them (LD-21).
+  16:00 ET), as the live wheel's snapshot reads them (LD-21); or, where LSEG answers SPXW only
+  daily, the session's daily bar (its last bid and ask of the day; TD-18).
 - **Deltas:** Black-Scholes on the spot implied by the at-the-money pair's put-call parity, so the
   index's dividends need no input; IV from the mid; a flat rough rate. Rough: labelled so wherever
   it's shown.
@@ -36,7 +37,7 @@ import numpy as np
 import polars as pl
 
 from pmcc.data.fetch import BarRequest, Retry, fetch_rics
-from pmcc.data.provider import HistoryProvider, Interval
+from pmcc.data.provider import HistoryProvider, Interval, RawHistory
 from pmcc.domain.calendar import SessionCalendar
 from pmcc.domain.instruments import Right
 from pmcc.domain.sessions import Session
@@ -185,18 +186,26 @@ def close_quotes(
     provider: HistoryProvider,
     rics: Sequence[str],
     session: Session,
+    interval: Interval = Interval.HOURLY,
     retry: Retry = Retry(),  # noqa: B008 (frozen, so a shared default is safe)
 ) -> tuple[frozenset[str], dict[str, tuple[float | None, float | None]]]:
-    """Which RICs LSEG listed, and each listed one's bid and ask in `session`'s close bar."""
-    request = BarRequest(QUOTE_FIELDS, session.day, session.day + _DAY, Interval.HOURLY)
+    """Which RICs LSEG listed, and each listed one's bid and ask in `session`'s close bar
+    (hourly) or its daily bar."""
+    request = BarRequest(QUOTE_FIELDS, session.day, session.day + _DAY, interval)
     result = fetch_rics(provider, rics, request, retry=retry)
-    closing = close_bar_rows(result.history, session)
+    closing = _session_rows(result.history, session, interval)
     quotes: dict[str, tuple[float | None, float | None]] = {}
     for ric in result.answered:
         rows = closing.filter(pl.col("ric") == ric).iter_rows(named=True)
         cells = {r["field"]: r["value"] for r in rows}
         quotes[ric] = (_cell(cells.get("BID")), _cell(cells.get("ASK")))
     return result.answered, quotes
+
+
+def _session_rows(history: RawHistory, session: Session, interval: Interval) -> pl.DataFrame:
+    if interval is Interval.DAILY:
+        return history.rows.filter(pl.col("bar_start") == session.day)
+    return close_bar_rows(history, session)
 
 
 def parity_spot(call: Leg, put: Leg, years: float, rules: Rules) -> float | None:

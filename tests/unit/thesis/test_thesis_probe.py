@@ -7,9 +7,10 @@ from datetime import date, datetime
 import pytest
 
 from pmcc.config.calendar import load_calendar
-from pmcc.data.provider import ProviderOutageError
+from pmcc.data.provider import Interval, ProviderOutageError
 from pmcc.domain.clock import ET
-from pmcc.thesis import probe
+from pmcc.domain.instruments import Right
+from pmcc.thesis import probe, spxw
 from pmcc.thesis.fred import FredUnavailableError
 from pmcc.thesis.probe import INDEX_RIC, VIX_RIC, Sources, describe, has_closes, run_probe
 from tests.fakes.thesis_probe import (
@@ -217,6 +218,52 @@ def test_t1_01_spxw_prices_a_condor_with_its_cost_share() -> None:
     share = condor["round_trip_cost_share_of_mid_credit"]
     assert isinstance(share, float)
     assert 0 < share < 1
+
+
+def test_td_18_credit_takes_each_searchs_index_rics_before_its_bonds() -> None:
+    def hit(ric: str) -> dict[str, str | None]:
+        return {"RIC": ric, "DocumentTitle": ric}
+
+    first = [hit(r) for r in ("BOND1=", "BOND2=", ".SP5A", ".SP5B", ".SP5C", ".SP5D")]
+    finder = FakeFinder(
+        hits={probe.CREDIT_QUERIES[2]: first, probe.CREDIT_QUERIES[3]: [hit(".MERH0A0")]}
+    )
+    tables = _section(_report(finder=finder), "credit_lseg")["tables"]
+
+    assert isinstance(tables, list)
+    assert [t["ric"] for t in tables] == [".SP5A", ".SP5B", ".SP5C", ".MERH0A0"]  # pyright: ignore[reportUnknownVariableType]
+
+
+def test_td_18_spxw_answering_only_daily_prices_on_the_daily_bar() -> None:
+    provider = _provider(option_intervals=frozenset({Interval.DAILY}))
+    section = _section(_report(provider), "spxw")
+    spellings = section["spellings"]
+
+    assert section["spelling"] == "SPXW, lower-case month"
+    assert section["interval"] == "daily"
+    assert isinstance(spellings, list)
+    assert [s["interval"] for s in spellings] == ["hourly"] * 4 + ["daily"] * 4  # pyright: ignore[reportUnknownVariableType]
+    assert section["condor"] is not None
+
+
+def test_td_18_spxw_search_shows_which_of_lsegs_rics_answer() -> None:
+    real = spxw.option_ric(spxw.SPELLINGS[0], EXPIRY, Right.CALL, 6600)
+    hits: list[dict[str, str | None]] = [{"RIC": real}, {"RIC": "0#SPXW*.U"}, {"RIC": None}]
+    finder = FakeFinder(hits={probe.SPXW_QUERIES[0]: hits})
+    search = _section(_report(finder=finder), "spxw", "search")
+
+    assert search["answered"] == [
+        {"ric": real, "hourly": True, "daily": False},
+        {"ric": "0#SPXW*.U", "hourly": False, "daily": False},
+    ]
+
+
+def test_td_18_spxw_search_finding_nothing_asks_nothing() -> None:
+    provider = _provider()
+    search = _section(_report(provider), "spxw", "search")
+
+    assert search["answered"] == []
+    assert () not in provider.asked
 
 
 def test_t1_01_spxw_without_any_spelling_answering_reports_it() -> None:

@@ -22,7 +22,7 @@ The current work. It builds the thesis, its daily tracker and their page, nothin
 | Phase | Dates | Exit criteria | Status |
 | --- | --- | --- | --- |
 | T0 Docs | Sat Nov 21 | Spec scoped, decisions and backlog live | In progress: T0-01 drafted, waiting on the PO's review |
-| T1 Data | Sat Nov 21 | A headless probe shows the index's, VIX's and the credit series' coverage, and an SPXW chain | T1-01 built 2026-11-21 (TD-14): waiting on the PO's run |
+| T1 Data | Sat Nov 21 | A headless probe shows the index's, VIX's and the credit series' coverage, and an SPXW chain | T1-01: first full run 2026-11-22 (TD-18), closes proven; credit on LSEG and SPXW waiting on a second run |
 | T2 Tracker | Sun Nov 22 | The tracker, K1 and R5's note computed from series in memory, tested | T2-01 done 2026-11-21 (TD-15, TD-16); T2-02 next |
 | T3 Nightly | Sun Nov 22 | `thesis run` writes `live/thesis/`; the `thesis` workflow commits it and the site redeploys | Not started |
 | T4 Site | Mon Nov 23 | `#/thesis` shows R1–R7 from the committed files | Not started |
@@ -52,6 +52,7 @@ The current work. It builds the thesis, its daily tracker and their page, nothin
 
 - [ ] **T1-01 · Probe: the index, VIX, the credit spread and an SPXW chain** **[LSEG]** **[PO]** — built 2026-11-21 (TD-13, TD-14): `thesis probe` (`just thesis-probe`), `pmcc/thesis/probe.py`, `spxw.py`, `fred.py`, `pmcc/data/lseg/discovery.py`, the `thesis-probe` workflow, its thresholds in `configs/thesis.yaml`'s `cost_sample`; 73 tests and the recipe's, after a code review's fixes (FRED's empty cells, outages writing nothing, the history calendar checked against the tape). The contracts' settlement, exercise style and multiplier aren't read from LSEG: the probe settles the RIC spelling, and the profile rests on Cboe's SPXW specification [S5] (TD-14). Waiting on the PO's run
   - First run (Actions, 2026-11-22): FRED's public CSV timed out, so it wrote nothing; FRED moved to its official API with a key (PO, TD-17), with retries (TD-14).
+  - First full run (Actions, 2026-11-22 22:37 ET; TD-18): the index's and VIX's closes from 2014, the index's matching the calendar day for day; FRED's spread from 2023-11-21 only; LSEG's search found `.MERH0A0` but didn't read it; no SPXW spelling answered hourly. The probe now reads each search's index RICs first, tries SPXW daily, and searches for SPXW's RICs: waiting on a second run.
   - To run: add the `FRED_API_KEY` secret (Settings › Secrets and variables › Actions); then in Actions, "Run workflow" on `thesis-probe`, and download the `thesis-probe-report` artifact into `data_cache/probes/`. Or locally, `just thesis-probe` with the three LSEG variables and `FRED_API_KEY` in the environment.
   - The thesis's own command, `thesis` (TD-13): a second entry point in `pyproject.toml`, its first subcommand `thesis probe` (`just thesis-probe`), over the platform session (TD-04), and FRED's CSV (TD-05): the S&P 500 index's and VIX's daily closes from 2014-01-01 (count, first and last session, sessions missing against each other); whether LSEG has ICE BofA US High Yield OAS, its history and units; FRED's BAMLH0A0HYM2 (first, last, count); for the SPXW expiry nearest 30 days, the contracts' settlement, exercise style and multiplier, and the bid and ask at the close of the strikes nearest ±0.20 delta and their wings. Counts on screen, the report in `data_cache/probes/` (gitignored); runnable by hand in Actions.
   - Done when: the PO's run shows each series' coverage, recorded as a TD entry. If either closes series is missing, or the credit series exists nowhere, take it to the PO before T3.
@@ -59,7 +60,7 @@ The current work. It builds the thesis, its daily tracker and their page, nothin
 
 #### T2 — Tracker
 
-- [x] **T2-01 · The tracker: features, horizons, outcomes, episodes, candidates, credit** — done 2026-11-21 (TD-15, TD-16): `configs/thesis.yaml`, `configs/calendar_history.yaml` (2014–2024, checked against NYSE's rules; the shipped table unchanged), `pmcc/thesis/` (`run_tracker` and its parts); 79 tests, among them spec §14's 1–4 and 3.52 → 352, and the PO's missing-data rules (TD-16), after a code review's fixes (credit before 2014, a shock at the calendar's end). To be checked against the S&P 500 tape once T1-01 pulls it
+- [x] **T2-01 · The tracker: features, horizons, outcomes, episodes, candidates, credit** — done 2026-11-21 (TD-15, TD-16): `configs/thesis.yaml`, `configs/calendar_history.yaml` (2014–2024, checked against NYSE's rules; the shipped table unchanged), `pmcc/thesis/` (`run_tracker` and its parts); 79 tests, among them spec §14's 1–4 and 3.52 → 352, and the PO's missing-data rules (TD-16), after a code review's fixes (credit before 2014, a shock at the calendar's end). The history table matches the S&P 500's tape day for day (TD-18)
   - `configs/thesis.yaml` (spec §13's keys that the tracker reads) and `pmcc/thesis/`, pure, on series in memory: log returns, EWMA and RV5/RV20 (§5.1); `N_t`, the forecast and the matured realized variance on one calendar convention (§5.2); shock episodes and their fixed search windows (§5.3); the first candidate, chosen without credit (§5.4); the credit condition, as-of its assumed publication time, in basis points (§4.4, §5.5).
   - Done when: spec §14's tests 1–4 pass on fixtures (future data changing nothing at t; credit available a day late not used; 3.52 → 352; repeated shocks not extending a window; the credit filter not moving a candidate; weekends, holidays, a leap year and a DST change; immature outcomes null), and `just check` is green.
   - Needs: T0-01
@@ -94,8 +95,8 @@ The current work. It builds the thesis, its daily tracker and their page, nothin
 
 ### Thesis risks
 
-- **Credit history.** FRED supplies about three years of BAMLH0A0HYM2 (spec §4.2). If LSEG lacks it, few episodes carry a credit flag, and K1 and R5's cohorts stay `INSUFFICIENT_DATA` or exploratory: shown as such, never relaxed (TD-08).
-- **Entitlement.** The platform session pulled NVDA's chain (LD-21); the index, VIX and SPXW are unproven until T1-01.
+- **Credit history.** FRED supplies three years of BAMLH0A0HYM2, from 2023-11-21 (spec §4.2; confirmed, TD-18). If LSEG lacks it, few episodes carry a credit flag, and K1 and R5's cohorts stay `INSUFFICIENT_DATA` or exploratory: shown as such, never relaxed (TD-08).
+- **Entitlement.** The platform session pulled NVDA's chain (LD-21) and the index's and VIX's closes (TD-18); SPXW answered in no spelling hourly, so it's unproven until the second run.
 - **ICE's terms.** The raw spread is charted (TD-06) and its values committed in public JSON. ICE's copyright notice is shown; if the course or ICE objects, the chart falls back to the flag.
 - **Few episodes.** VIX shocks are rare. Even with history from 2015, K1's 30 matured stable-credit candidates may not exist: `INSUFFICIENT_DATA` is the expected, honest state.
 - **Timing.** Scheduled runs start late or are dropped (LD-27); Monday night's must land before the deadline.

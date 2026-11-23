@@ -5,13 +5,16 @@ Four sections:
 1. **Closes:** the S&P 500 index's (`.SPX`) and VIX's (`.VIX`) daily bars from 2014-01-01 over the
    platform session: each field's count, the first and last session, the days one has and the
    other lacks, and the days either disagrees with the session calendar where it reaches.
-2. **Credit on LSEG:** search for ICE BofA US High Yield OAS, and each of the first few RICs found
-   read as a daily table with whatever columns LSEG sends: their names, rows, first and last day.
+2. **Credit on LSEG:** search for ICE BofA US High Yield OAS, and each search's first few RICs,
+   index RICs first, read as a daily table with whatever columns LSEG sends: their names, rows,
+   first and last day.
 3. **Credit on FRED:** BAMLH0A0HYM2 from its official API (TD-05, TD-17): rows, valued days, first
    and last. FRED refusing the request or answering unreadably is reported; FRED not answering is
    an outage.
 4. **SPXW:** the chain about 30 days out at the last close, and a rough 0.20-delta condor priced
-   from it (`pmcc.thesis.spxw`): R5's cost sample (TD-07).
+   from it (`pmcc.thesis.spxw`): R5's cost sample (TD-07). The spellings are asked on hourly bars,
+   then, if none answers, on daily ones; and a search shows the RICs LSEG itself gives SPXW, each
+   asked on both, so a wrong spelling and a missing entitlement tell apart (TD-18).
 
 Each section reports its source's answer, or why it couldn't be read (a search refused, no SPXW
 spelling listed), so one section's failure doesn't hide the others'. An outage, LSEG's session
@@ -60,7 +63,11 @@ CREDIT_QUERIES = (
 )
 SEARCH_SELECT = "RIC,DocumentTitle"
 SEARCH_TOP = 10
-MAX_TABLES = 6
+TABLES_PER_QUERY = 3
+MAX_TABLES = 8
+SPXW_QUERIES = ("SPXW", "S&P 500 Index weekly option")
+SPXW_CHECKED = 8
+INTERVALS = (Interval.HOURLY, Interval.DAILY)
 FRED_SERIES = "BAMLH0A0HYM2"
 LISTED = 10  # days listed in a mismatch, besides the count
 _DAY = timedelta(days=1)
@@ -104,7 +111,7 @@ def run_probe(
         "closes": closes_report,
         "credit_lseg": credit_lseg_section(sources.finder, HISTORY_START, end),
         "credit_fred": fred_section(sources.get_text, sources.fred_key, sources.sleep),
-        "spxw": spxw_section(sources.provider, calendar, now, closes, rules),
+        "spxw": spxw_section(sources.provider, sources.finder, calendar, now, closes, rules),
     }
 
 
@@ -177,18 +184,38 @@ def _days(days: set[date]) -> Json:
 
 
 def credit_lseg_section(finder: SeriesFinder, start: date, end_exclusive: date) -> Json:
+    searches, rics = _search(finder, CREDIT_QUERIES, _index_first)
+    tables = [_table_report(finder, ric, start, end_exclusive) for ric in rics[:MAX_TABLES]]
+    return {"searches": searches, "tables": tables}
+
+
+def _search(
+    finder: SeriesFinder, queries: Sequence[str], pick: Callable[[list[str]], list[str]]
+) -> tuple[list[Json], list[str]]:
+    """Each query's hits (or why it failed), and the RICs `pick` takes from each, once each."""
     searches: list[Json] = []
     rics: list[str] = []
-    for query in CREDIT_QUERIES:
+    for query in queries:
         try:
             hits = finder.search(query, SEARCH_SELECT, SEARCH_TOP)
         except SOURCE_ERRORS as exc:
             searches.append({"query": query, "error": _error(exc)})
             continue
         searches.append({"query": query, "hits": hits})
-        rics = list(dict.fromkeys([*rics, *(ric for hit in hits if (ric := hit.get("RIC")))]))
-    tables = [_table_report(finder, ric, start, end_exclusive) for ric in rics[:MAX_TABLES]]
-    return {"searches": searches, "tables": tables}
+        found = pick([ric for hit in hits if (ric := hit.get("RIC"))])
+        rics = list(dict.fromkeys([*rics, *found]))
+    return searches, rics
+
+
+def _index_first(rics: list[str]) -> list[str]:
+    """A search's first few RICs, index RICs (LSEG's `.` prefix) before the rest: the series is
+    an index's, and the first run's tables went to bonds and other indexes ahead of ICE's
+    (TD-18)."""
+    return sorted(rics, key=lambda ric: not ric.startswith("."))[:TABLES_PER_QUERY]
+
+
+def _all(rics: list[str]) -> list[str]:
+    return rics
 
 
 def _table_report(finder: SeriesFinder, ric: str, start: date, end_exclusive: date) -> Json:
@@ -239,6 +266,7 @@ def _fred_report(series: FredSeries) -> Json:
 
 def spxw_section(
     provider: HistoryProvider,
+    finder: SeriesFinder,
     calendar: SessionCalendar,
     now: datetime,
     closes: Mapping[str, Mapping[date, float]],
@@ -252,7 +280,11 @@ def spxw_section(
     spot = closes.get(INDEX_RIC, {}).get(session.day)
     vix = closes.get(VIX_RIC, {}).get(session.day)
     expiry = spxw.pick_expiry(calendar, execution, rules)
-    base: Json = {"session": session.day.isoformat(), "execution": execution.isoformat()}
+    base: Json = {
+        "session": session.day.isoformat(),
+        "execution": execution.isoformat(),
+        "search": spxw_search(provider, finder, session),
+    }
     if spot is None or vix is None or expiry is None:
         return base | {"error": f"no index or VIX close for {session.day}, or no expiry"}
     base |= {"expiry": expiry.isoformat(), "dte": (expiry - execution).days, "index_close": spot}
@@ -278,12 +310,34 @@ class _Market:
         return spxw.years_from_close(self.session, self.calendar, self.expiry)
 
 
+def spxw_search(provider: HistoryProvider, finder: SeriesFinder, session: Session) -> Json:
+    """The RICs LSEG's search gives SPXW, and whether each answers `session` hourly and daily."""
+    searches, rics = _search(finder, SPXW_QUERIES, _all)
+    checked = rics[:SPXW_CHECKED]
+    if not checked:
+        return {"searches": searches, "answered": []}
+    try:
+        answered = {i: spxw.close_quotes(provider, checked, session, i)[0] for i in INTERVALS}
+    except SOURCE_ERRORS as exc:
+        return {"searches": searches, "error": _error(exc)}
+    rows: list[Json] = [_answered_row(r, answered) for r in checked]
+    return {"searches": searches, "answered": rows}
+
+
+def _answered_row(ric: str, answered: Mapping[Interval, frozenset[str]]) -> Json:
+    row: Json = {"ric": ric}
+    for interval in INTERVALS:
+        row[interval.value] = ric in answered[interval]
+    return row
+
+
 def _chain(provider: HistoryProvider, market: _Market, rules: CostSampleConfig) -> Json:
     atm = spxw.atm_strike(market.spot, rules)
     spellings, chosen = _spelling(provider, market, atm)
     if chosen is None:
         return {"spellings": spellings, "error": "LSEG answered no spelling of the ATM pair"}
-    legs = _ladder_legs(provider, market, chosen, atm, rules)
+    spelling, interval = chosen
+    legs = _ladder_legs(provider, market, spelling, interval, atm, rules)
     pair = {leg.right: leg for leg in legs if leg.strike == atm}
     forward_spot = None
     if Right.CALL in pair and Right.PUT in pair:
@@ -293,7 +347,8 @@ def _chain(provider: HistoryProvider, market: _Market, rules: CostSampleConfig) 
     found = spxw.condor(priced, spot, rules)
     return {
         "spellings": spellings,
-        "spelling": chosen.name,
+        "spelling": spelling.name,
+        "interval": interval.value,
         "years": market.years,
         "rate": rules.rate_decimal,
         "parity_spot": forward_spot,
@@ -305,26 +360,31 @@ def _chain(provider: HistoryProvider, market: _Market, rules: CostSampleConfig) 
 
 def _spelling(
     provider: HistoryProvider, market: _Market, atm: int
-) -> tuple[list[Json], spxw.Spelling | None]:
+) -> tuple[list[Json], tuple[spxw.Spelling, Interval] | None]:
+    """The ATM pair in each spelling, hourly; if no spelling answers, daily (TD-18)."""
     rights = (Right.CALL, Right.PUT)
     rics = {
         s: tuple(spxw.option_ric(s, market.expiry, right, atm) for right in rights)
         for s in spxw.SPELLINGS
     }
     asked = [r for pair in rics.values() for r in pair]
-    listed, _ = spxw.close_quotes(provider, asked, market.session)
-    report: list[Json] = [
-        {"spelling": s.name, "rics": list(pair), "listed": [r in listed for r in pair]}
-        for s, pair in rics.items()
-    ]
-    chosen = next((s for s, pair in rics.items() if all(r in listed for r in pair)), None)
-    return report, chosen
+    report: list[Json] = []
+    for interval in INTERVALS:
+        listed, _ = spxw.close_quotes(provider, asked, market.session, interval)
+        for s, pair in rics.items():
+            row: Json = {"spelling": s.name, "interval": interval.value, "rics": list(pair)}
+            report.append(row | {"listed": [r in listed for r in pair]})
+        chosen = next((s for s, pair in rics.items() if all(r in listed for r in pair)), None)
+        if chosen is not None:
+            return report, (chosen, interval)
+    return report, None
 
 
 def _ladder_legs(
     provider: HistoryProvider,
     market: _Market,
     spelling: spxw.Spelling,
+    interval: Interval,
     atm: int,
     rules: CostSampleConfig,
 ) -> list[spxw.Leg]:
@@ -334,7 +394,7 @@ def _ladder_legs(
     wanted = [(Right.PUT, k) for k in puts] + [(Right.CALL, k) for k in calls]
     unique = list(dict.fromkeys([*wanted, (Right.PUT, atm), (Right.CALL, atm)]))
     rics = {spxw.option_ric(spelling, market.expiry, right, k): (right, k) for right, k in unique}
-    listed, quotes = spxw.close_quotes(provider, list(rics), market.session)
+    listed, quotes = spxw.close_quotes(provider, list(rics), market.session, interval)
     return [
         spxw.Leg(ric, right, k, *quotes.get(ric, (None, None)), listed=ric in listed)
         for ric, (right, k) in rics.items()
@@ -446,15 +506,24 @@ def _describe_fred(section: Json) -> str:
 
 
 def _describe_spxw(section: Json) -> str:
+    search = _describe_search(_section(section, "search"))
     if "error" in section:
-        return f"SPXW: {section['error']}"
+        return f"SPXW: {section['error']}; {search}"
     counts = _section(section, "counts")
     found = "a condor priced" if section.get("condor") else "no condor found"
     return (
         f"SPXW: expiry {section.get('expiry')} ({section.get('dte')} days), spelling "
-        f"{section.get('spelling')}; {counts.get('asked')} asked, {counts.get('quoted')} quoted at "
-        f"the close, {counts.get('tight')} within the spread test; {found}."
+        f"{section.get('spelling')}, {section.get('interval')} bars; {counts.get('asked')} asked, "
+        f"{counts.get('quoted')} quoted at the close, {counts.get('tight')} within the spread "
+        f"test; {found}; {search}"
     )
+
+
+def _describe_search(section: Json) -> str:
+    rows = _sections(section.get("answered"))
+    hourly = len([r for r in rows if r.get(Interval.HOURLY.value)])
+    days = len([r for r in rows if r.get(Interval.DAILY.value)])
+    return f"search: {len(rows)} RICs checked, {hourly} answer hourly, {days} daily."
 
 
 def _error(exc: Exception) -> str:

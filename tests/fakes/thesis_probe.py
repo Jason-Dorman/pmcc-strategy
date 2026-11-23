@@ -3,7 +3,8 @@
 `ChainProvider` serves daily closes for the RICs it's given, and an SPXW chain priced by
 Black-Scholes at one vol, in one RIC spelling only (`SPXW`, a lower-case month letter, a strike of
 1,000 or more in tenths), so the probe's spelling check and its 0.20-delta picks have known
-answers. A RIC it doesn't know gets the service's no-data code, as LSEG answers one.
+answers; on hourly bars (the close bar) unless `option_intervals` says otherwise. A RIC it doesn't
+know gets the service's no-data code, as LSEG answers one.
 """
 
 import json
@@ -48,6 +49,7 @@ class ChainProvider:
     spot: float = 6600.0
     vol: float = 0.18
     spread: float = 0.04
+    option_intervals: frozenset[Interval] = frozenset({Interval.HOURLY})  # where SPXW answers
     asked: list[tuple[str, ...]] = field(default_factory=list[tuple[str, ...]])
 
     def history(
@@ -67,13 +69,14 @@ class ChainProvider:
     def _rows(
         self, ric: str, fields: Sequence[str], start: date, end: date, interval: Interval
     ) -> list[tuple[object, str, str, float]]:
-        if interval is Interval.DAILY:
-            days = self.closes.get(ric, {})
+        if interval is Interval.DAILY and ric in self.closes:
+            days = self.closes[ric]
             return [(d, ric, "TRDPRC_1", v) for d, v in days.items() if start <= d < end]
-        quote = self._quote(ric)
+        quote = self._quote(ric) if interval in self.option_intervals else None
         if quote is None:
             return []
-        stamp = _bar_start(self.calendar.session(self.session))
+        session = self.calendar.session(self.session)
+        stamp = self.session if interval is Interval.DAILY else _bar_start(session)
         bid, ask = quote
         return [(stamp, ric, f, v) for f, v in (("BID", bid), ("ASK", ask)) if f in fields]
 
