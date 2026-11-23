@@ -1,0 +1,63 @@
+# The volatility thesis's tracker (THESIS-SPEC §5, §13; TD-03). Loaded by pmcc.thesis.config.
+#
+# The values are the spec's §13, provisional and predeclared v1 assumptions, not optimized or
+# measured (§5): never tuned to make a result look better (§8.1). Only the sections the tracker,
+# K1 and R5's cost sample read are here; §13's options, execution, portfolio, exits and course
+# sections wait for the backtesting assignment (TD-03). `decision_time_et` and `credit.assumed_publication_time_et`
+# are §4.4's and §7.1's 20:30 New York, kept here so no threshold lives in code (TD-16).
+strategy_id: conditional_volatility_premium
+model_version: v1.0
+timezone: America/New_York
+history_start: '2015-01-01'
+decision_time_et: '20:30'
+forecast:
+  horizon_calendar_days: 30
+  ewma_lambda: 0.94
+  initialization_sessions: 60
+  signal_warmup_sessions: 252
+shock:
+  percentile_lookback_sessions: 252
+  percentile_threshold: 0.80
+  ratio_lookback_sessions: 5
+  minimum_vix_ratio: 1.25
+  search_sessions_after_shock: 10
+normalization:
+  short_rv_sessions: 5
+  long_rv_sessions: 20
+  falling_rv_comparison_sessions: 3
+  minimum_forecast_gap_decimal: 0.03
+credit:
+  maximum_level_bps: 450
+  maximum_change_5_observations_bps: 15
+  maximum_change_20_observations_bps: 40
+  assumed_publication_lag_business_days: 2
+  assumed_publication_time_et: '20:30'
+  maximum_age_business_days: 3
+evidence:
+  minimum_matured_events_per_credit_cohort: 20
+  kill_window_selected_events: 30
+  kill_window_completed_trades: 30
+  credit_comparison_window_months: 36
+# R5's cost sample (TD-07, TD-14): one rough SPXW iron condor at a close, never a trade. The
+# contract rules are §13's options values (§6.2), the spread test §6.3's, the fee §7.2's, the
+# multiplier Cboe's SPXW specification's [S5]. The rate is a rough flat input (the 3-month bill's
+# 4.32%), and the strike step and windows are the probe's search: the windows are shares of each
+# estimated 0.20-delta strike, puts reaching further out for the index's skew.
+cost_sample:
+  target_dte_calendar_days: 30
+  minimum_dte_calendar_days: 28
+  maximum_dte_calendar_days: 35
+  absolute_short_delta_target: 0.20
+  delta_tolerance: 0.05
+  target_wing_width_spot_fraction: 0.005
+  maximum_wing_width_target_multiple: 1.5
+  maximum_spread_points: 1.0
+  maximum_spread_fraction_of_mid: 0.20
+  fee_per_contract_transaction_usd: 2.00
+  contract_multiplier: 100
+  rate_decimal: 0.0432
+  strike_step_points: 5
+  put_window_low: 0.94
+  put_window_high: 1.04
+  call_window_low: 0.97
+  call_window_high: 1.04

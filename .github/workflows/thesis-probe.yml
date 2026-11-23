@@ -1,0 +1,49 @@
+# The thesis's data probe (T1-01; TD-04, TD-05), run by hand from the Actions tab: "Run workflow".
+# It signs in to LSEG headlessly with the repo's secrets (no Workspace) and reads FRED's public CSV:
+# the S&P 500's and VIX's daily closes since 2014, the high-yield OAS on LSEG and FRED, and an SPXW
+# chain about 30 days out with a rough condor (R5's cost sample, TD-07). It prints counts and dates
+# only; the full report, with the values, is kept as an artifact for one day. It commits nothing.
+name: thesis-probe
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: thesis-probe
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Install from uv.lock
+        run: uv sync --frozen
+
+      - name: Probe the thesis's sources
+        env:
+          LSEG_APP_KEY: ${{ secrets.LSEG_APP_KEY }}
+          LSEG_USERNAME: ${{ secrets.LSEG_USERNAME }}
+          LSEG_PASSWORD: ${{ secrets.LSEG_PASSWORD }}
+        run: uv run --frozen thesis probe
+
+      - name: Keep the report for a day
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: thesis-probe-report
+          path: data_cache/probes/thesis_*.json
+          retention-days: 1
+          if-no-files-found: warn

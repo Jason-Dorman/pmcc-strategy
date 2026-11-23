@@ -20,6 +20,7 @@ dependencies = [
 
 [project.scripts]
 pmcc = "pmcc.cli:app"
+thesis = "pmcc.cli:thesis_app"
 
 [dependency-groups]
 dev = [

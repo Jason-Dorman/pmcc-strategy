@@ -64,6 +64,27 @@ class RawHistory:
         return frozenset(self.rows["ric"].unique().to_list())
 
 
+@final
+@dataclass(frozen=True, slots=True)
+class DailyTable:
+    """A daily history read with whatever columns the source sends (T1-01): their names as sent,
+    and a row a day, None where a cell is empty."""
+
+    ric: str
+    columns: tuple[str, ...]
+    rows: tuple[tuple[date, tuple[float | None, ...]], ...]
+
+    def column(self, name: str) -> tuple[tuple[date, float], ...]:
+        """`name`'s valued days, oldest first."""
+        at = self.columns.index(name)
+        valued: list[tuple[date, float]] = []
+        for day, cells in self.rows:
+            value = cells[at]
+            if value is not None:
+                valued.append((day, value))
+        return tuple(valued)
+
+
 class NoDataError(Exception):
     """The service answered every RIC in the request with a no-data code (DEC-49: soft).
 

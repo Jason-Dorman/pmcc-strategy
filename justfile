@@ -48,6 +48,12 @@ live SYM *ARGS:
 vol SYM *ARGS:
     {{uv}} pmcc vol --symbol {{SYM}} {{ARGS}}
 
+# The thesis's data probe (T1-01; TD-04, TD-05): the S&P 500's and VIX's closes, the high-yield
+# OAS on LSEG and FRED, an SPXW chain. Platform credentials in the environment, as `live`'s.
+# Prints counts; the report stays in data_cache/probes/
+thesis-probe:
+    {{uv}} thesis probe
+
 # Pull a symbol from LSEG into the cache (local; Workspace signed in). Add --plan-only for the estimate
 fetch SYM START END *ARGS:
     {{uv}} pmcc fetch --symbol {{SYM}} --start {{START}} --end {{END}} {{ARGS}}

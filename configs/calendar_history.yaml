@@ -1,0 +1,146 @@
+# NYSE trading calendar, 2014-2024: the thesis tracker's history (TD-15). Loaded, joined to
+# configs/calendar.yaml (2025-2027, unchanged), by pmcc.thesis.calendar only: the backtests, the
+# live wheel and `pmcc probe` read configs/calendar.yaml alone, so nothing they do changes.
+#
+# The same schema and conventions as configs/calendar.yaml: every weekday from first_day to
+# last_day is a session unless it is listed under `closed`; an `early_closes` day ends at 13:00 ET.
+# A holiday on a Saturday is observed the Friday before, and on a Sunday the Monday after, except
+# that NYSE does not close on Friday Dec 31 when New Year's Day falls on a Saturday (2022).
+# Juneteenth is a holiday from 2022. One special closure falls in the span: Dec 5 2018 (President
+# George H.W. Bush). Hurricane Sandy's closures (Oct 29-30 2012) are before it.
+#
+# Each listed day is checked against NYSE's holiday rules by tests/unit/thesis/test_thesis_calendar.py,
+# and the table is to be checked against the S&P 500 index's daily tape once T1-01's probe pulls it.
+source:
+  - "NYSE, Holidays & Trading Hours, https://www.nyse.com/markets/hours-calendars"
+  - "NYSE Rule 7.2 (Holidays): Saturday holidays observed the Friday before, Sunday holidays the Monday after; no closure on Dec 31 for a Saturday New Year's Day"
+  - "NYSE, NYSE to Close Markets on Wednesday, December 5, 2018 to Honor President George H.W. Bush (Dec 2018), https://ir.theice.com/press/news-details/2018/NYSE-To-Close-Markets-On-Wednesday-December-5-2018-To-Honor-President-George-HW-Bush/default.aspx"
+first_day: 2014-01-01
+last_day: 2024-12-31
+closed:
+  - {day: 2014-01-01, name: "New Year's Day"}
+  - {day: 2014-01-20, name: "Martin Luther King, Jr. Day"}
+  - {day: 2014-02-17, name: "Washington's Birthday"}
+  - {day: 2014-04-18, name: "Good Friday"}
+  - {day: 2014-05-26, name: "Memorial Day"}
+  - {day: 2014-07-04, name: "Independence Day"}
+  - {day: 2014-09-01, name: "Labor Day"}
+  - {day: 2014-11-27, name: "Thanksgiving Day"}
+  - {day: 2014-12-25, name: "Christmas Day"}
+  - {day: 2015-01-01, name: "New Year's Day"}
+  - {day: 2015-01-19, name: "Martin Luther King, Jr. Day"}
+  - {day: 2015-02-16, name: "Washington's Birthday"}
+  - {day: 2015-04-03, name: "Good Friday"}
+  - {day: 2015-05-25, name: "Memorial Day"}
+  - {day: 2015-07-03, name: "Independence Day (observed)"}
+  - {day: 2015-09-07, name: "Labor Day"}
+  - {day: 2015-11-26, name: "Thanksgiving Day"}
+  - {day: 2015-12-25, name: "Christmas Day"}
+  - {day: 2016-01-01, name: "New Year's Day"}
+  - {day: 2016-01-18, name: "Martin Luther King, Jr. Day"}
+  - {day: 2016-02-15, name: "Washington's Birthday"}
+  - {day: 2016-03-25, name: "Good Friday"}
+  - {day: 2016-05-30, name: "Memorial Day"}
+  - {day: 2016-07-04, name: "Independence Day"}
+  - {day: 2016-09-05, name: "Labor Day"}
+  - {day: 2016-11-24, name: "Thanksgiving Day"}
+  - {day: 2016-12-26, name: "Christmas Day (observed)"}
+  - {day: 2017-01-02, name: "New Year's Day (observed)"}
+  - {day: 2017-01-16, name: "Martin Luther King, Jr. Day"}
+  - {day: 2017-02-20, name: "Washington's Birthday"}
+  - {day: 2017-04-14, name: "Good Friday"}
+  - {day: 2017-05-29, name: "Memorial Day"}
+  - {day: 2017-07-04, name: "Independence Day"}
+  - {day: 2017-09-04, name: "Labor Day"}
+  - {day: 2017-11-23, name: "Thanksgiving Day"}
+  - {day: 2017-12-25, name: "Christmas Day"}
+  - {day: 2018-01-01, name: "New Year's Day"}
+  - {day: 2018-01-15, name: "Martin Luther King, Jr. Day"}
+  - {day: 2018-02-19, name: "Washington's Birthday"}
+  - {day: 2018-03-30, name: "Good Friday"}
+  - {day: 2018-05-28, name: "Memorial Day"}
+  - {day: 2018-07-04, name: "Independence Day"}
+  - {day: 2018-09-03, name: "Labor Day"}
+  - {day: 2018-11-22, name: "Thanksgiving Day"}
+  - {day: 2018-12-05, name: "National Day of Mourning (President George H.W. Bush)"}
+  - {day: 2018-12-25, name: "Christmas Day"}
+  - {day: 2019-01-01, name: "New Year's Day"}
+  - {day: 2019-01-21, name: "Martin Luther King, Jr. Day"}
+  - {day: 2019-02-18, name: "Washington's Birthday"}
+  - {day: 2019-04-19, name: "Good Friday"}
+  - {day: 2019-05-27, name: "Memorial Day"}
+  - {day: 2019-07-04, name: "Independence Day"}
+  - {day: 2019-09-02, name: "Labor Day"}
+  - {day: 2019-11-28, name: "Thanksgiving Day"}
+  - {day: 2019-12-25, name: "Christmas Day"}
+  - {day: 2020-01-01, name: "New Year's Day"}
+  - {day: 2020-01-20, name: "Martin Luther King, Jr. Day"}
+  - {day: 2020-02-17, name: "Washington's Birthday"}
+  - {day: 2020-04-10, name: "Good Friday"}
+  - {day: 2020-05-25, name: "Memorial Day"}
+  - {day: 2020-07-03, name: "Independence Day (observed)"}
+  - {day: 2020-09-07, name: "Labor Day"}
+  - {day: 2020-11-26, name: "Thanksgiving Day"}
+  - {day: 2020-12-25, name: "Christmas Day"}
+  - {day: 2021-01-01, name: "New Year's Day"}
+  - {day: 2021-01-18, name: "Martin Luther King, Jr. Day"}
+  - {day: 2021-02-15, name: "Washington's Birthday"}
+  - {day: 2021-04-02, name: "Good Friday"}
+  - {day: 2021-05-31, name: "Memorial Day"}
+  - {day: 2021-07-05, name: "Independence Day (observed)"}
+  - {day: 2021-09-06, name: "Labor Day"}
+  - {day: 2021-11-25, name: "Thanksgiving Day"}
+  - {day: 2021-12-24, name: "Christmas Day (observed)"}
+  - {day: 2022-01-17, name: "Martin Luther King, Jr. Day"}
+  - {day: 2022-02-21, name: "Washington's Birthday"}
+  - {day: 2022-04-15, name: "Good Friday"}
+  - {day: 2022-05-30, name: "Memorial Day"}
+  - {day: 2022-06-20, name: "Juneteenth (observed)"}
+  - {day: 2022-07-04, name: "Independence Day"}
+  - {day: 2022-09-05, name: "Labor Day"}
+  - {day: 2022-11-24, name: "Thanksgiving Day"}
+  - {day: 2022-12-26, name: "Christmas Day (observed)"}
+  - {day: 2023-01-02, name: "New Year's Day (observed)"}
+  - {day: 2023-01-16, name: "Martin Luther King, Jr. Day"}
+  - {day: 2023-02-20, name: "Washington's Birthday"}
+  - {day: 2023-04-07, name: "Good Friday"}
+  - {day: 2023-05-29, name: "Memorial Day"}
+  - {day: 2023-06-19, name: "Juneteenth"}
+  - {day: 2023-07-04, name: "Independence Day"}
+  - {day: 2023-09-04, name: "Labor Day"}
+  - {day: 2023-11-23, name: "Thanksgiving Day"}
+  - {day: 2023-12-25, name: "Christmas Day"}
+  - {day: 2024-01-01, name: "New Year's Day"}
+  - {day: 2024-01-15, name: "Martin Luther King, Jr. Day"}
+  - {day: 2024-02-19, name: "Washington's Birthday"}
+  - {day: 2024-03-29, name: "Good Friday"}
+  - {day: 2024-05-27, name: "Memorial Day"}
+  - {day: 2024-06-19, name: "Juneteenth"}
+  - {day: 2024-07-04, name: "Independence Day"}
+  - {day: 2024-09-02, name: "Labor Day"}
+  - {day: 2024-11-28, name: "Thanksgiving Day"}
+  - {day: 2024-12-25, name: "Christmas Day"}
+early_closes:
+  - {day: 2014-07-03, name: "Independence Day eve"}
+  - {day: 2014-11-28, name: "Day after Thanksgiving"}
+  - {day: 2014-12-24, name: "Christmas Eve"}
+  - {day: 2015-11-27, name: "Day after Thanksgiving"}
+  - {day: 2015-12-24, name: "Christmas Eve"}
+  - {day: 2016-11-25, name: "Day after Thanksgiving"}
+  - {day: 2017-07-03, name: "Independence Day eve"}
+  - {day: 2017-11-24, name: "Day after Thanksgiving"}
+  - {day: 2018-07-03, name: "Independence Day eve"}
+  - {day: 2018-11-23, name: "Day after Thanksgiving"}
+  - {day: 2018-12-24, name: "Christmas Eve"}
+  - {day: 2019-07-03, name: "Independence Day eve"}
+  - {day: 2019-11-29, name: "Day after Thanksgiving"}
+  - {day: 2019-12-24, name: "Christmas Eve"}
+  - {day: 2020-11-27, name: "Day after Thanksgiving"}
+  - {day: 2020-12-24, name: "Christmas Eve"}
+  - {day: 2021-11-26, name: "Day after Thanksgiving"}
+  - {day: 2022-11-25, name: "Day after Thanksgiving"}
+  - {day: 2023-07-03, name: "Independence Day eve"}
+  - {day: 2023-11-24, name: "Day after Thanksgiving"}
+  - {day: 2024-07-03, name: "Independence Day eve"}
+  - {day: 2024-11-29, name: "Day after Thanksgiving"}
+  - {day: 2024-12-24, name: "Christmas Eve"}

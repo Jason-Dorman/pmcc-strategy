@@ -1,4 +1,5 @@
-"""The `pmcc` command line. A command not built yet is a stub naming its backlog item."""
+"""The `pmcc` command line, and the thesis's `thesis` (TD-13). A command not built yet is a stub
+naming its backlog item."""
 
 import os
 from contextlib import AbstractContextManager
@@ -33,6 +34,7 @@ from pmcc.data.fetch import Retry
 from pmcc.data.files import replace_file
 from pmcc.data.load import load_symbol
 from pmcc.data.lseg import PlatformCredentials, lseg_session, platform_session
+from pmcc.data.lseg.discovery import lseg_discovery
 from pmcc.data.probe import ProbeStoppedError, probe_path, run_probe, write_report
 from pmcc.data.provider import HistoryProvider, ProviderOutageError
 from pmcc.data.pull import PlanError, Target, prepare, prepare_wheel, pull_units
@@ -79,6 +81,12 @@ from pmcc.live.vol import (
 from pmcc.live.vol_fetch import fetch_points, plan_points
 from pmcc.log import configure_logging
 from pmcc.runner import Market, Stamp, run_symbol
+from pmcc.thesis.calendar import load_thesis_calendar
+from pmcc.thesis.config import ThesisConfigError, load_thesis_config
+from pmcc.thesis.fred import FredUnavailableError, http_get
+from pmcc.thesis.probe import Sources, has_closes
+from pmcc.thesis.probe import describe as describe_thesis_probe
+from pmcc.thesis.probe import run_probe as run_thesis_probe
 from pmcc.wheel.benchmarks import BENCHMARKS_PATH, BenchmarkError, load_benchmarks
 from pmcc.wheel.config import WHEEL_PATH, WheelConfigError, WheelRunConfig, load_wheel_run
 from pmcc.wheel.result import run_wheel_symbol
@@ -834,3 +842,49 @@ def _counted(verified: Verified) -> str:
 def serve() -> None:
     """Serve the built site and the local data endpoints on 127.0.0.1."""
     _not_built("P7-06")
+
+
+# --- `thesis`: the volatility thesis's own command (TD-13) -----------------------------------
+
+thesis_app = typer.Typer(help="The volatility thesis's tracker: probe its data sources, run it.")
+
+
+@thesis_app.callback()
+def thesis() -> None:
+    """The volatility thesis (docs/THESIS-SPEC.md)."""
+
+
+@thesis_app.command("probe")
+def thesis_probe(
+    out: Annotated[Path, typer.Option(help="Where probe reports go.")] = Path("data_cache/probes"),
+) -> None:
+    """What the thesis's sources hold (T1-01): the index's and VIX's closes, the high-yield OAS on
+    LSEG and FRED, and an SPXW chain ~30 days out with a rough condor.
+
+    Needs LSEG_APP_KEY, LSEG_USERNAME and LSEG_PASSWORD in the environment (LD-05, TD-04); asks
+    FRED's public CSV too (TD-05). Prints counts and dates; every value is in the report file. An
+    outage (LSEG's session, FRED) writes nothing. Checks the index's tape against the thesis's
+    2014-2027 calendar (TD-15).
+    """
+    configure_logging("thesis-probe")
+    now = _now()
+    path = out / f"thesis_{now:%Y%m%dT%H%M%S}.json"
+    if path.exists():
+        _fail(f"{path} exists; a probe report is never overwritten. Rename it to probe again.")
+    try:
+        rules = load_thesis_config().cost_sample
+    except ThesisConfigError as exc:
+        _fail(str(exc))
+    calendar = load_thesis_calendar()
+    try:
+        with _platform() as provider:
+            sources = Sources(provider, lseg_discovery(), http_get)
+            report = run_thesis_probe(sources, calendar, now, rules)
+    except (ProviderOutageError, FredUnavailableError) as exc:
+        _fail(f"the thesis probe stopped and wrote nothing: {exc}")
+    write_report(report, path)
+    for line in describe_thesis_probe(report):
+        _say(line)
+    _say(f"Report written to {path}")
+    if not has_closes(report):
+        _fail("the index's or VIX's closes didn't come back; see the report.")

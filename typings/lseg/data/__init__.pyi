@@ -5,6 +5,7 @@ from enum import Enum
 
 from pandas import DataFrame
 
+from . import discovery as discovery
 from . import errors as errors
 from . import session as session
 
