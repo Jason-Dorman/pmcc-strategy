@@ -53,7 +53,13 @@ def served(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> list[object]:
     monkeypatch.setattr(cli, "lseg_discovery", FakeFinder)
     monkeypatch.setattr(cli, "http_get", _fred)
     monkeypatch.setattr(cli, "_now", lambda: NOW)
+    monkeypatch.setenv("FRED_API_KEY", "0123456789abcdef0123456789abcdef")
+    monkeypatch.setattr("pmcc.thesis.probe.time.sleep", _no_wait)
     return served
+
+
+def _no_wait(_seconds: float) -> None:
+    pass
 
 
 def _fred(_url: str) -> str:
@@ -110,6 +116,20 @@ def test_t1_01_fred_not_answering_writes_nothing(
     assert code == 1
     assert "wrote nothing" in output
     assert _reports() == []
+
+
+def test_td_17_no_fred_key_writes_nothing_and_asks_nothing(
+    served: list[object], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("FRED_API_KEY")
+    provider = served[0]
+    code, output = _probe()
+
+    assert code == 1
+    assert "FRED_API_KEY not set" in output
+    assert _reports() == []
+    assert isinstance(provider, ChainProvider)
+    assert provider.asked == []
 
 
 def test_t1_01_missing_vix_fails_after_writing_the_report(served: list[object]) -> None:

@@ -1,5 +1,6 @@
 # The thesis's data probe (T1-01; TD-04, TD-05), run by hand from the Actions tab: "Run workflow".
-# It signs in to LSEG headlessly with the repo's secrets (no Workspace) and reads FRED's public CSV:
+# It signs in to LSEG headlessly with the repo's secrets (no Workspace) and asks FRED's official API
+# with the FRED_API_KEY secret (TD-17):
 # the S&P 500's and VIX's daily closes since 2014, the high-yield OAS on LSEG and FRED, and an SPXW
 # chain about 30 days out with a rough condor (R5's cost sample, TD-07). It prints counts and dates
 # only; the full report, with the values, is kept as an artifact for one day. It commits nothing.
@@ -37,6 +38,7 @@ jobs:
           LSEG_APP_KEY: ${{ secrets.LSEG_APP_KEY }}
           LSEG_USERNAME: ${{ secrets.LSEG_USERNAME }}
           LSEG_PASSWORD: ${{ secrets.LSEG_PASSWORD }}
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
         run: uv run --frozen thesis probe
 
       - name: Keep the report for a day

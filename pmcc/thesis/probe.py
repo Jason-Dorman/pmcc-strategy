@@ -7,8 +7,9 @@ Four sections:
    other lacks, and the days either disagrees with the session calendar where it reaches.
 2. **Credit on LSEG:** search for ICE BofA US High Yield OAS, and each of the first few RICs found
    read as a daily table with whatever columns LSEG sends: their names, rows, first and last day.
-3. **Credit on FRED:** BAMLH0A0HYM2 from its public CSV (TD-05): rows, valued days, first and last.
-   An answer that isn't the series' CSV is reported; FRED not answering is an outage.
+3. **Credit on FRED:** BAMLH0A0HYM2 from its official API (TD-05, TD-17): rows, valued days, first
+   and last. FRED refusing the request or answering unreadably is reported; FRED not answering is
+   an outage.
 4. **SPXW:** the chain about 30 days out at the last close, and a rough 0.20-delta condor priced
    from it (`pmcc.thesis.spxw`): R5's cost sample (TD-07).
 
@@ -21,6 +22,7 @@ live probe's, LD-21). The console line carries counts and dates only. Nothing is
 nothing committed: the probe decides what T3-01 pulls, it isn't a pull.
 """
 
+import time
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
@@ -43,7 +45,7 @@ from pmcc.domain.sessions import Session
 from pmcc.live.snapshot import last_completed, next_session
 from pmcc.thesis import spxw
 from pmcc.thesis.config import CostSampleConfig
-from pmcc.thesis.fred import FredError, FredSeries, fetch_series
+from pmcc.thesis.fred import FredError, FredKey, FredSeries, fetch_series
 
 INDEX_RIC = ".SPX"
 VIX_RIC = ".VIX"
@@ -86,6 +88,8 @@ class Sources:
     provider: HistoryProvider
     finder: SeriesFinder
     get_text: GetText
+    fred_key: FredKey
+    sleep: Callable[[float], None] = lambda seconds: time.sleep(seconds)  # between FRED's tries
 
 
 def run_probe(
@@ -99,7 +103,7 @@ def run_probe(
         "history_start": HISTORY_START.isoformat(),
         "closes": closes_report,
         "credit_lseg": credit_lseg_section(sources.finder, HISTORY_START, end),
-        "credit_fred": fred_section(sources.get_text),
+        "credit_fred": fred_section(sources.get_text, sources.fred_key, sources.sleep),
         "spxw": spxw_section(sources.provider, calendar, now, closes, rules),
     }
 
@@ -207,9 +211,11 @@ def _table_report(finder: SeriesFinder, ric: str, start: date, end_exclusive: da
 # --- 3. credit on FRED -----------------------------------------------------------------------
 
 
-def fred_section(get_text: GetText) -> Json:
+def fred_section(
+    get_text: GetText, key: FredKey, sleep: Callable[[float], None] = time.sleep
+) -> Json:
     try:
-        series = fetch_series(FRED_SERIES, get_text)
+        series = fetch_series(FRED_SERIES, key, get_text, sleep=sleep)
     except FredError as exc:
         return {"series": FRED_SERIES, "error": _error(exc)}
     return _fred_report(series)

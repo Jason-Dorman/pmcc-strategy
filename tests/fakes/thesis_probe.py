@@ -6,6 +6,7 @@ Black-Scholes at one vol, in one RIC spelling only (`SPXW`, a lower-case month l
 answers. A RIC it doesn't know gets the service's no-data code, as LSEG answers one.
 """
 
+import json
 import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
@@ -27,6 +28,7 @@ from pmcc.domain.sessions import Session
 from pmcc.pricing.black_scholes import price
 from pmcc.thesis import spxw
 from pmcc.thesis.config import load_thesis_config
+from pmcc.thesis.fred import FredKey
 
 RULES = load_thesis_config().cost_sample
 NO_DATA = ("TS.Intraday.UserRequestError.90001",)
@@ -121,7 +123,16 @@ class FakeFinder:
         return self.tables[ric]
 
 
-FRED_TEXT = "observation_date,BAMLH0A0HYM2\n2023-11-20,4.01\n2023-11-21,.\n2023-11-22,3.98\n"
+FRED_KEY = FredKey("0123456789abcdef0123456789abcdef")
+FRED_TEXT = json.dumps(
+    {
+        "observations": [
+            {"date": "2023-11-20", "value": "4.01"},
+            {"date": "2023-11-21", "value": "."},
+            {"date": "2023-11-22", "value": "3.98"},
+        ]
+    }
+)
 
 
 def oas_table(ric: str, days: Sequence[date]) -> DailyTable:

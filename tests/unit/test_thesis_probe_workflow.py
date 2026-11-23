@@ -6,7 +6,7 @@ from typing import Any
 import yaml
 
 WORKFLOW = Path(__file__).resolve().parents[2] / ".github" / "workflows" / "thesis-probe.yml"
-SECRETS = ("LSEG_APP_KEY", "LSEG_USERNAME", "LSEG_PASSWORD")
+SECRETS = ("LSEG_APP_KEY", "LSEG_USERNAME", "LSEG_PASSWORD", "FRED_API_KEY")
 
 
 def _workflow() -> dict[Any, Any]:

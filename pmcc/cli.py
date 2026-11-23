@@ -83,7 +83,7 @@ from pmcc.log import configure_logging
 from pmcc.runner import Market, Stamp, run_symbol
 from pmcc.thesis.calendar import load_thesis_calendar
 from pmcc.thesis.config import ThesisConfigError, load_thesis_config
-from pmcc.thesis.fred import FredUnavailableError, http_get
+from pmcc.thesis.fred import FredKey, FredUnavailableError, http_get
 from pmcc.thesis.probe import Sources, has_closes
 from pmcc.thesis.probe import describe as describe_thesis_probe
 from pmcc.thesis.probe import run_probe as run_thesis_probe
@@ -861,10 +861,10 @@ def thesis_probe(
     """What the thesis's sources hold (T1-01): the index's and VIX's closes, the high-yield OAS on
     LSEG and FRED, and an SPXW chain ~30 days out with a rough condor.
 
-    Needs LSEG_APP_KEY, LSEG_USERNAME and LSEG_PASSWORD in the environment (LD-05, TD-04); asks
-    FRED's public CSV too (TD-05). Prints counts and dates; every value is in the report file. An
-    outage (LSEG's session, FRED) writes nothing. Checks the index's tape against the thesis's
-    2014-2027 calendar (TD-15).
+    Needs LSEG_APP_KEY, LSEG_USERNAME and LSEG_PASSWORD in the environment (LD-05, TD-04), and
+    FRED_API_KEY for FRED's API (TD-05, TD-17). Prints counts and dates; every value is in the
+    report file. An outage (LSEG's session, FRED) writes nothing. Checks the index's tape against
+    the thesis's 2014-2027 calendar (TD-15).
     """
     configure_logging("thesis-probe")
     now = _now()
@@ -877,8 +877,9 @@ def thesis_probe(
         _fail(str(exc))
     calendar = load_thesis_calendar()
     try:
+        fred_key = FredKey.from_env(os.environ)
         with _platform() as provider:
-            sources = Sources(provider, lseg_discovery(), http_get)
+            sources = Sources(provider, lseg_discovery(), http_get, fred_key)
             report = run_thesis_probe(sources, calendar, now, rules)
     except (ProviderOutageError, FredUnavailableError) as exc:
         _fail(f"the thesis probe stopped and wrote nothing: {exc}")

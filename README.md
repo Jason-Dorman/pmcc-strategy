@@ -51,6 +51,7 @@ A symbol-agnostic backtester for the **Poor Man's Covered Call** (PMCC): a deep 
 - **Node.js 22 LTS with npm,** for the site (`web/`; pinned by `web/.nvmrc`).
 - **LSEG Workspace,** only for fetching the backtests' data. It must be running and signed in on the same Windows machine, because the LSEG desktop session connects to it locally.
 - **LSEG platform credentials,** only for the live wheel: `LSEG_APP_KEY` (an EDP API app key), `LSEG_USERNAME` and `LSEG_PASSWORD`, as GitHub secrets for the Actions and as environment variables to run it locally. This headless session needs no Workspace (LD-05).
+- **A FRED API key,** only for the volatility thesis: `FRED_API_KEY` (free, from fred.stlouisfed.org), as a GitHub secret for the Actions and as an environment variable to run it locally (TD-17).
 
 Development runs in Git Bash on Windows, and CI runs the same checks on Ubuntu. Keep the clone on a Windows path, not `\\wsl.localhost\…`. Backtests, tests and the site build never contact LSEG.
 
@@ -79,7 +80,7 @@ LSEG credentials go in `lseg-data.config.json` in the repo root. The file is git
 ```bash
 uv run pmcc probe  --symbol NVDA                                       # LSEG spikes → data_cache/probes/ (Workspace required)
 uv run pmcc live --symbol NVDA --dry-run                               # one night of the live wheel, deciding and writing nothing (drop --dry-run to write open_orders.json and the run log); after the close, platform credentials in the environment
-uv run thesis probe                                                    # the thesis's data probe (T1-01): the S&P 500's and VIX's closes since 2014, the high-yield OAS on LSEG and FRED, an SPXW chain → data_cache/probes/thesis_*.json; counts and dates only on screen (platform credentials in the environment; also the thesis-probe workflow, run by hand in Actions)
+uv run thesis probe                                                    # the thesis's data probe (T1-01): the S&P 500's and VIX's closes since 2014, the high-yield OAS on LSEG and FRED, an SPXW chain → data_cache/probes/thesis_*.json; counts and dates only on screen (platform credentials and FRED_API_KEY in the environment; also the thesis-probe workflow, run by hand in Actions)
 uv run pmcc live-probe --symbol NVDA                                   # the live wheel's close snapshot over the headless session → data_cache/probes/live_NVDA_*.json; counts only on screen (platform credentials in the environment; also the live-probe workflow, run by hand in Actions)
 uv run pmcc fetch  --symbol NVDA --start 2026-07-06 --end 2026-09-18   # LSEG → local cache (Workspace required)
 uv run pmcc fetch  --symbol NVDA --start 2026-03-30 --end 2026-09-25 --plan-only   # the estimate: asks LSEG for the stock tape only, writes nothing (Workspace required)

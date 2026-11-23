@@ -13,6 +13,7 @@ from pmcc.thesis import probe
 from pmcc.thesis.fred import FredUnavailableError
 from pmcc.thesis.probe import INDEX_RIC, VIX_RIC, Sources, describe, has_closes, run_probe
 from tests.fakes.thesis_probe import (
+    FRED_KEY,
     FRED_TEXT,
     RULES,
     ChainProvider,
@@ -49,10 +50,16 @@ def _finder() -> FakeFinder:
     )
 
 
+def _no_wait(_seconds: float) -> None:
+    pass
+
+
 def _report(
     provider: ChainProvider | None = None, finder: FakeFinder | None = None, fred: str = FRED_TEXT
 ) -> dict[str, object]:
-    sources = Sources(provider or _provider(), finder or _finder(), lambda _url: fred)
+    sources = Sources(
+        provider or _provider(), finder or _finder(), lambda _url: fred, FRED_KEY, _no_wait
+    )
     return run_probe(sources, CAL, NOW, RULES)
 
 
@@ -146,9 +153,9 @@ def test_t1_01_fred_coverage_counts_blank_days_apart() -> None:
     }
 
 
-def test_t1_01_a_fred_answer_that_isnt_the_csv_is_reported() -> None:
+def test_t1_01_a_fred_answer_that_isnt_json_is_reported() -> None:
     report = _report(fred="<html>maintenance</html>\n")
-    assert "not BAMLH0A0HYM2's CSV" in str(_section(report, "credit_fred")["error"])
+    assert "not JSON" in str(_section(report, "credit_fred")["error"])
 
 
 def test_t1_01_fred_not_answering_is_an_outage_and_aborts() -> None:
@@ -156,7 +163,7 @@ def test_t1_01_fred_not_answering_is_an_outage_and_aborts() -> None:
         raise FredUnavailableError("FRED did not answer: TimeoutError")
 
     with pytest.raises(FredUnavailableError):
-        run_probe(Sources(_provider(), _finder(), down), CAL, NOW, RULES)
+        run_probe(Sources(_provider(), _finder(), down, FRED_KEY, _no_wait), CAL, NOW, RULES)
 
 
 def test_t1_01_an_lseg_outage_aborts_the_probe() -> None:
