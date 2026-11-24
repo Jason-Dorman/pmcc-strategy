@@ -4,13 +4,13 @@ The inputs are the synthetic spike: fixtures, never market data."""
 
 import json
 import math
-from datetime import date, datetime
+from datetime import date, datetime, time
 from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
 
-from pmcc.domain.clock import ET
+from pmcc.domain.clock import ET, at_et
 from pmcc.export import canonical
 from pmcc.export.thesis_models import Thesis
 from pmcc.thesis.fred import FredKey, FredUnavailableError
@@ -44,10 +44,12 @@ def _provider(closes: dict[str, dict[date, float]] | None = None) -> ChainProvid
     return ChainProvider(CAL, served, LAST, LAST)
 
 
-def _night(provider: ChainProvider | None = None, fred: str | None = None) -> Thesis:
+def _night(
+    provider: ChainProvider | None = None, fred: str | None = None, now: datetime = NOW
+) -> Thesis:
     text = fred if fred is not None else spike_fred_text()
-    inputs = pull(provider or _provider(), lambda _url: text, KEY, CAL, NOW, _no_wait)
-    return build(inputs, CAL, CONFIG, NOW)
+    inputs = pull(provider or _provider(), lambda _url: text, KEY, CAL, CONFIG, now, _no_wait)
+    return build(inputs, CAL, CONFIG, now)
 
 
 def test_f14_14_a_fixtures_inputs_give_its_episode_criteria_and_json() -> None:
@@ -114,8 +116,41 @@ def test_td_18_vix_on_a_closed_day_is_left_out_and_counted() -> None:
 
     assert HOLIDAY.isoformat() not in {p.day for p in thesis.series}
     assert "1 values on days NYSE was closed" in thesis.sources[1].note
-    kept, dropped = on_sessions({HOLIDAY: 14.0, LAST: 15.0}, CAL)
+    kept, dropped = on_sessions({HOLIDAY: 14.0, LAST: 15.0}, CAL, LAST)
     assert (kept, dropped) == ({LAST: 15.0}, 1)
+
+
+@pytest.mark.parametrize("clock", [time(11, 0), time(16, 5), time(20, 29)])
+def test_td_28_a_session_before_its_decision_is_left_out(clock: time) -> None:
+    # LSEG serves the day's bar while it trades: it is no close, and §7.1 allows no signal yet.
+    thesis = _night(now=at_et(LAST, clock))
+
+    assert thesis.data_through == SPIKE_DAYS[-2].isoformat()
+    assert thesis.series[-1].day == SPIKE_DAYS[-2].isoformat()
+    assert thesis.data_status == "CURRENT"  # through the last session decided
+    assert "0 values on days NYSE was closed" in thesis.sources[1].note  # not counted as one
+
+
+def test_td_28_the_decision_itself_publishes_the_session() -> None:
+    assert _night(now=at_et(LAST, time(20, 30))).data_through == LAST.isoformat()
+
+
+def test_t4_01_the_file_carries_what_the_page_labels() -> None:
+    thesis = _night()
+    point = thesis.series[SPIKE_CANDIDATE]
+    outcome_end = date.fromisoformat(point.outcome_end or "")
+
+    assert 25 <= (outcome_end - date.fromisoformat(point.day)).days <= 30
+    assert point.credit_observation_date is not None
+    assert point.credit_change_short_bps == pytest.approx(0.0)
+    assert thesis.episodes[0].outcome_end == point.outcome_end
+    current = thesis.current
+    assert current is not None
+    assert current.credit_available_at is not None
+    assert datetime.fromisoformat(current.credit_available_at) <= at_et(LAST, time(20, 30))
+    assert thesis.parameters is not None
+    assert thesis.parameters.credit_maximum_level_bps == 450
+    assert thesis.expected_by is not None
 
 
 def test_t3_01_lseg_without_vix_writes_nothing() -> None:
@@ -135,7 +170,7 @@ def test_t3_01_fred_not_answering_is_an_outage() -> None:
         raise FredUnavailableError("FRED did not answer: TimeoutError")
 
     with pytest.raises(FredUnavailableError):
-        pull(_provider(), down, KEY, CAL, NOW, _no_wait)
+        pull(_provider(), down, KEY, CAL, CONFIG, NOW, _no_wait)
 
 
 def test_t3_01_the_plan_names_its_two_requests() -> None:

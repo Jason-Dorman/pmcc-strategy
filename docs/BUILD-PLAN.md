@@ -24,8 +24,8 @@ The current work. It builds the thesis, its daily tracker and their page, nothin
 | T0 Docs | Sat Nov 21 | Spec scoped, decisions and backlog live | In progress: T0-01 drafted, waiting on the PO's review |
 | T1 Data | Sat Nov 21 | A headless probe shows the index's, VIX's and the credit series' coverage, and an SPXW chain | Done 2026-11-22: closes proven (TD-18); credit from FRED, LSEG not entitled (TD-19); SPXW's chain quoted, no spec condor that day (TD-20) |
 | T2 Tracker | Sun Nov 22 | The tracker, K1 and R5's note computed from series in memory, tested | Done 2026-11-23: T2-01 (TD-15, TD-16), T2-02 (TD-21 to TD-26) |
-| T3 Nightly | Sun Nov 22 | `thesis run` writes `live/thesis/`; the `thesis` workflow commits it and the site redeploys | Built 2026-11-23 (TD-27): waiting on the PO's manual run of the `thesis` workflow |
-| T4 Site | Mon Nov 23 | `#/thesis` shows R1–R7 from the committed files | Not started |
+| T3 Nightly | Sun Nov 22 | `thesis run` writes `live/thesis/`; the `thesis` workflow commits it and the site redeploys | Done 2026-11-23 (TD-27): the PO's run of the `thesis` workflow committed the file |
+| T4 Site | Mon Nov 23 | `#/thesis` shows R1–R7 from the committed files | Done 2026-11-23 (TD-28, TD-29) |
 | T5 Release | Tue Nov 24 | A scheduled run after Monday's close has updated the page; the URL is submitted | Not started |
 
 **Critical path:** T3-02, live before Monday night, so the scheduled run after Monday's close (04:17 UTC Tue, which GitHub may start hours late, LD-27) updates the page before the deadline: the tracker staying current day to day. A manual run covers a dropped one.
@@ -37,7 +37,7 @@ The current work. It builds the thesis, its daily tracker and their page, nothin
 | When | Asks |
 | --- | --- |
 | T2-02 | Answered 2026-11-23: R5's form (TD-21), the evidence section (TD-23), K1's latch (TD-24), the signal states (TD-25) |
-| T4-01 | The page's panel order and copy, the two charts' design, the home tile's figure (TD-10) |
+| T4-01 | Answered 2026-11-23: the page's order and copy, the two charts, the home tile (TD-28) |
 | T5-01 | The submit target time |
 
 ### Backlog
@@ -74,18 +74,18 @@ The current work. It builds the thesis, its daily tracker and their page, nothin
 
 #### T3 — Nightly
 
-- [ ] **T3-01 · `thesis run`: pull, compute, write `live/thesis/`** **[LSEG]** — built 2026-11-23 (TD-27): `thesis run` (`just thesis`), `pmcc/thesis/run.py`, `publish.py`, `pmcc/export/thesis_models.py`, the export's `thesis.json`; 25 tests, among them spec §14 tests 13 and 14. Waiting on a real run (T3-02's manual run)
+- [x] **T3-01 · `thesis run`: pull, compute, write `live/thesis/`** **[LSEG]** — done 2026-11-23; built (TD-27): `thesis run` (`just thesis`), `pmcc/thesis/run.py`, `publish.py`, `pmcc/export/thesis_models.py`, the export's `thesis.json`; 25 tests, among them spec §14 tests 13 and 14. First real run 2026-11-23 00:59 ET, data through Nov 20; corrected at T4-01 to leave out a session before its decision (TD-29)
   - Pulls the closes from LSEG and the credit series (TD-04, TD-05), runs T2's tracker, and writes `live/thesis/*.json`: a schema version, the config's hash, `generated_at`, `data_through`, `data_status` and each series' source (spec §10), nulls explicit, no NaN or Infinity; `--plan-only` first; an outage writes nothing. `pmcc export` publishes it for the page.
   - Done when: spec §14 test 13 (schema, no NaN, no fixture data in the live files) and 14 (a fixture's inputs to its expected episodes, criteria and JSON) pass, a real run writes the files on the PO's machine or in Actions, and `just check` is green.
   - Needs: T1-01, T2-02
-- [ ] **T3-02 · The `thesis` workflow** **[PO]** — built 2026-11-23 (TD-27): `.github/workflows/thesis.yml`, `ci.yml` on its completion; 8 tests. To run: Actions › thesis › "Run workflow" (it needs the `FRED_API_KEY` secret, already set for the probe)
+- [x] **T3-02 · The `thesis` workflow** **[PO]** — done 2026-11-23, its first manual run committing the file; built (TD-27): `.github/workflows/thesis.yml`, `ci.yml` on its completion; 8 tests. To run: Actions › thesis › "Run workflow" (it needs the `FRED_API_KEY` secret, already set for the probe)
   - `.github/workflows/thesis.yml`: cron `17 4 * * *` and by hand; `thesis run` (`just thesis`), the LSEG secrets in its step alone; commits only `live/thesis/*.json` as the bot after a pull (TD-09); `ci.yml` runs on its completion and redeploys.
   - Done when: a manual run commits the files and the site redeploys.
   - Needs: T3-01
 
 #### T4 — Site
 
-- [ ] **T4-01 · The thesis page** **[PO]**
+- [x] **T4-01 · The thesis page** **[PO]** — done 2026-11-23 (TD-28, TD-29): `web/src/pages/Thesis.tsx` and `thesis/`, `components/charts/thesis.ts`, `format/thesis.ts`, the home tile and menu; the smoke test at four widths and an end-to-end test of the zoom, the tooltip and the tables
   - Ask first: the panel order and copy, the two charts, the home tile (TD-10).
   - `#/thesis`, a "Volatility thesis" menu and a home tile, per a new UI-SPEC section: the thesis and its statuses; the horizons and mechanism; the tracker chart (VIX, the 30-day forecast vol and the matured realized vol, the candidates marked, pending outcomes shown as gaps); the credit spread with its 450 bps line (TD-06) and the stable/unstable outcomes; the K1–K3 cards; R5's note; the macro paragraph with the current state; methodology and sources. Accessible tables beside the charts.
   - Done when: the page renders the committed files, the smoke test passes at four widths, and `just check` and `just e2e` are green.

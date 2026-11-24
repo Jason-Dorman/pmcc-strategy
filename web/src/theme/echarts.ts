@@ -5,6 +5,8 @@
 import { LineChart, ScatterChart } from "echarts/charts";
 import {
   AriaComponent,
+  DataZoomInsideComponent,
+  DataZoomSliderComponent,
   GridComponent,
   LegendComponent,
   MarkAreaComponent,
@@ -25,6 +27,8 @@ echarts.use([
   MarkLineComponent,
   MarkAreaComponent,
   AriaComponent,
+  DataZoomInsideComponent,
+  DataZoomSliderComponent,
   SVGRenderer,
 ]);
 
@@ -44,8 +48,10 @@ const PALETTE_TOKENS = [
   "accent", "accent-dim", "mark", "trade", "trade-edge", "positive", "negative", "warn",
   "nav-line", "margin-im", "margin-mm", "fit-line", "identity-line", "long-leg", "short-leg",
   "strategy-quant", "strategy-baseline", "available-funds", "spot-line", "strike-line",
-  "basis-line", "iv-line", "rv-line", "negative-shade", "shares-shade", "vol-gap-shade",
-  "move-shade",
+  "basis-line", "iv-line", "rv-line", "vix-line", "forecast-line", "realized-line", "gap-line",
+  "credit-line", "threshold-line", "eligible-mark", "filtered-mark", "unavailable-mark",
+  "negative-shade", "shares-shade", "vol-gap-shade", "move-shade", "window-shade",
+  "no-credit-shade", "unstable-shade",
 ] as const satisfies readonly (keyof Palette)[];
 
 /** Every colour and font stack a chart uses, as the document has them now. */
@@ -70,6 +76,44 @@ export const STACKED_GRIDS = [
   { left: INSET.left, right: INSET.right, top: INSET.top, height: "62%" },
   { left: INSET.left, right: INSET.right, top: "74%", bottom: INSET.bottom },
 ];
+
+/** Two grids over a zoom slider (the thesis's tracker, T4-01), and the lower one's legend. */
+export const ZOOM_PANES = [
+  { left: INSET.left, right: INSET.right, top: INSET.top, height: "50%" },
+  { left: INSET.left, right: INSET.right, top: "57%", height: "31%" },
+];
+export const ZOOM_PANE_LEGEND = { left: LEGEND_INSET.left, top: "58%", itemWidth: 12,
+                                  itemHeight: 10 } as const;
+
+/** One grid over a zoom slider (the thesis's credit spread, T4-01). */
+export const ZOOM_GRID = [{ left: INSET.left, right: INSET.right, top: INSET.top, bottom: 74 }];
+
+/** A date zoom: a slider under the chart (drag an end or the window) over every x axis, opening
+ * on `start`-`end` as indices into the categories. The wheel scrolls the page, never the zoom. */
+export function zoom(p: Palette, axes: readonly number[], start: number, end: number) {
+  const shared = { xAxisIndex: [...axes], startValue: start, endValue: end,
+                   filterMode: "filter" };
+  return [
+    { ...shared, type: "slider", bottom: 8, height: 22, brushSelect: false, showDetail: false,
+      handleSize: "150%", borderColor: p.border, backgroundColor: p["surface-alt"],
+      fillerColor: p["window-shade"],
+      handleStyle: { color: p.surface, borderColor: p.accent },
+      moveHandleStyle: { color: p["accent-dim"] },
+      emphasis: { handleStyle: { color: p["accent-dim"], borderColor: p.accent },
+                  moveHandleStyle: { color: p.accent } },
+      dataBackground: { lineStyle: { color: p["text-muted"], width: LINE.ruler },
+                        areaStyle: { color: p.grid } },
+      selectedDataBackground: { lineStyle: { color: p["text-muted"], width: LINE.ruler },
+                                areaStyle: { color: p.grid } } },
+    { ...shared, type: "inside", zoomOnMouseWheel: false, moveOnMouseWheel: false,
+      moveOnMouseMove: true },
+  ];
+}
+
+/** A shading's legend entry: no data, a swatch of the fill. */
+export function shadeKey(name: string, fill: string, extra: object = {}) {
+  return { name, type: "line", data: [], color: fill, silent: true, ...extra };
+}
 
 // A lower pane's value axis: few ticks, so its labels never crowd.
 export const PANE_TICKS = 2;

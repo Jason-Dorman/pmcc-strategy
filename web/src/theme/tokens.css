@@ -48,6 +48,15 @@
   --basis-line: var(--identity-line); /* there: the shares' cost basis, a dotted reference */
   --iv-line: var(--mark); /* the live page: ATM implied vol, a quoted mark (L4-02) */
   --rv-line: var(--nav-line); /* there: the stock's realized vol, RV20 */
+  --vix-line: var(--mark); /* the thesis's tracker (T4-01): VIX, quoted */
+  --forecast-line: var(--text); /* there: the 30-day forecast, a model's, dashed */
+  --realized-line: var(--nav-line); /* there: the realized vol that followed */
+  --gap-line: var(--text-muted); /* there: VIX less the forecast, neutral under the candidates */
+  --credit-line: var(--mark); /* there: the high-yield spread */
+  --threshold-line: var(--margin-im); /* there: a rule's threshold, a dashed reference */
+  --eligible-mark: var(--positive); /* there: an eligible candidate, a circle */
+  --filtered-mark: var(--negative); /* there: a filtered-out candidate, a square */
+  --unavailable-mark: var(--text); /* there: a candidate without credit data, a triangle */
 
   /* derived */
   --negative-tint: color-mix(in srgb, var(--negative) 14%, transparent); /* warning ground */
@@ -55,6 +64,9 @@
   --shares-shade: color-mix(in srgb, var(--nav-line) 14%, transparent); /* the wheel holds shares */
   --vol-gap-shade: color-mix(in srgb, var(--mark) 14%, transparent); /* IV vs RV20's gap */
   --move-shade: color-mix(in srgb, var(--text) 9%, transparent); /* the expected move, LD-41 */
+  --window-shade: color-mix(in srgb, var(--text) 7%, transparent); /* a spike's search window */
+  --no-credit-shade: color-mix(in srgb, var(--margin-im) 14%, transparent); /* no credit data */
+  --unstable-shade: color-mix(in srgb, var(--negative) 18%, transparent); /* credit unstable */
 
   /* type stacks (self-hosted, DEC-72) */
   --font-display: "Space Grotesk", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;

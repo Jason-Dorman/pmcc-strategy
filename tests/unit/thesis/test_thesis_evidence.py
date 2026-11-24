@@ -2,14 +2,16 @@
 preliminary cohorts and their plain-language statements (TD-23), R5's cost from the config
 (TD-21), and the status fields (TD-25). Trackers are built by hand: fixtures, never market data."""
 
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, time
 
 import pytest
 
+from pmcc.domain.clock import at_et
 from pmcc.thesis.credit import CreditState, CreditStatus
 from pmcc.thesis.episodes import CandidateStatus, Episode
 from pmcc.thesis.evidence import (
     EVIDENCE_STATUS,
+    NEITHER_GROUP,
     NO_COMPARISON,
     NOT_EVALUATED,
     ConditionStatus,
@@ -25,6 +27,7 @@ from pmcc.thesis.status import (
     ThesisStatus,
     current_state,
     data_status,
+    expected_by,
     signal,
     thesis_status,
 )
@@ -204,6 +207,16 @@ def test_td_23_one_group_missing_makes_the_comparison_unavailable() -> None:
     assert NO_COMPARISON in text
 
 
+def test_td_23_neither_credit_group_matured_is_said_directly() -> None:
+    specs: list[Spec] = [(20, Eligibility.CREDIT_UNAVAILABLE, 0.004)]
+    text = evidence(_tracker(specs), CONFIG).statements
+    assert NEITHER_GROUP in text
+    assert NO_COMPARISON in text
+    assert any(s.startswith("1 matured candidate has no credit data at its decision") for s in text)
+    one = evidence(_tracker([(20, Eligibility.ELIGIBLE, 0.004)]), CONFIG).statements
+    assert NEITHER_GROUP not in one
+
+
 def test_td_23_nothing_matured_is_said_directly() -> None:
     text = evidence(_tracker([], premiums=None), CONFIG).statements
     assert text[0].startswith("No session's 30-day outcome has matured yet")
@@ -297,13 +310,23 @@ def test_td_25_an_incomplete_search_blocks_the_assessment() -> None:
     assert found.reason == note
 
 
-def test_t2_02_data_status_is_current_only_at_the_last_completed_session() -> None:
+def test_td_28_data_status_is_current_only_at_the_last_decided_session() -> None:
     tracker = _tracker([], through=50)
-    after_close = datetime.combine(DAYS[50], datetime.min.time(), UTC).replace(hour=23)
-    next_night = datetime.combine(DAYS[51], datetime.min.time(), UTC).replace(hour=23)
 
-    assert data_status(tracker, CAL, after_close) is DataStatus.CURRENT
-    assert data_status(tracker, CAL, next_night) is DataStatus.STALE
+    # Through the session after it, until that one's own 20:30 decision.
+    assert data_status(tracker, CAL, CONFIG, at_et(DAYS[50], time(20, 30))) is DataStatus.CURRENT
+    assert data_status(tracker, CAL, CONFIG, at_et(DAYS[51], time(20, 29))) is DataStatus.CURRENT
+    assert data_status(tracker, CAL, CONFIG, at_et(DAYS[51], time(20, 30))) is DataStatus.STALE
+
+
+def test_td_28_the_next_file_is_due_at_noon_the_day_after_the_next_session() -> None:
+    friday, monday = date(2026, 11, 20), date(2026, 11, 23)
+    night = at_et(friday, time(23, 17))
+    assert expected_by(CAL, CONFIG, night) == at_et(date(2026, 11, 24), time(12, 0))
+    # Monday afternoon, before Monday's decision: still Monday's file that is due.
+    assert expected_by(CAL, CONFIG, at_et(monday, time(15, 0))) == at_et(
+        date(2026, 11, 24), time(12, 0)
+    )
 
 
 def test_t2_02_thesis_status_pauses_only_on_k1_failing() -> None:

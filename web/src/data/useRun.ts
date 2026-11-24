@@ -8,6 +8,7 @@ import type { Index, IndexRun, IndexWheelRun } from "../types/generated/index";
 import type { Live } from "../types/generated/live";
 import type { Rules } from "../types/generated/rules";
 import type { RunResult } from "../types/generated/run_result";
+import type { Thesis } from "../types/generated/thesis";
 import type { WheelResult } from "../types/generated/wheel_result";
 import { failure, useIndex } from "./IndexContext";
 import { loadFile, loadRun } from "./loader";
@@ -96,4 +97,10 @@ export function useRules(): Loaded<Rules> {
 /** `live.json`, the live wheel's page (L4-01), once the export has written it. */
 export function useLive(): Loaded<Live> {
   return useLoaded((index) => index.live ?? undefined, "the wheel forward test", loadFile<Live>);
+}
+
+/** `thesis.json`, the volatility thesis's page (T4-01), once its nightly run has written it. */
+export function useThesis(): Loaded<Thesis> {
+  return useLoaded((index) => index.thesis ?? undefined, "the volatility thesis",
+                   loadFile<Thesis>);
 }

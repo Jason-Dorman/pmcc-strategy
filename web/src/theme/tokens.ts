@@ -47,12 +47,25 @@ export const ROLE_TOKENS = {
   // the stock's own, violet
   "iv-line": "mark",
   "rv-line": "nav-line",
+  // the thesis's tracker (T4-01, TD-28): VIX is quoted, cyan; the forecast, a model's, off-white
+  // and dashed; what followed, violet. Its gap is neutral, so the candidates on it carry the
+  // colour; a rule's threshold is a dashed reference
+  "vix-line": "mark",
+  "forecast-line": "text",
+  "realized-line": "nav-line",
+  "gap-line": "text-muted",
+  "credit-line": "mark",
+  "threshold-line": "margin-im",
+  "eligible-mark": "positive",
+  "filtered-mark": "negative",
+  "unavailable-mark": "text",
 } as const satisfies Record<string, ColorToken>;
 
 export type RoleToken = keyof typeof ROLE_TOKENS;
 
 /** The translucent fills tokens.css derives from a palette colour. */
-export type ShadeToken = "negative-shade" | "shares-shade" | "vol-gap-shade" | "move-shade";
+export type ShadeToken = "negative-shade" | "shares-shade" | "vol-gap-shade" | "move-shade"
+  | "window-shade" | "no-credit-shade" | "unstable-shade";
 
 /** A colour token's current value, read from the document at render time (the charts). */
 export function color(token: ColorToken | RoleToken | ShadeToken,

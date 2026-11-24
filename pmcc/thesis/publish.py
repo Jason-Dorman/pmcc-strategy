@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from typing import final
 
+from pmcc.domain.calendar import SessionCalendar
 from pmcc.export.thesis_models import (
     Thesis,
     ThesisCohort,
@@ -21,12 +22,13 @@ from pmcc.export.thesis_models import (
     ThesisEpisode,
     ThesisEvidence,
     ThesisLegCost,
+    ThesisParameters,
     ThesisPoint,
     ThesisSignal,
     ThesisSource,
 )
 from pmcc.thesis.config import ThesisConfig
-from pmcc.thesis.credit import CreditState
+from pmcc.thesis.credit import CreditState, assumed_available_at
 from pmcc.thesis.evidence import Cohort, Condition, CostNote, Evidence, LegCost
 from pmcc.thesis.outcomes import Outcome
 from pmcc.thesis.status import CurrentState, Signal
@@ -39,6 +41,7 @@ RUN_OK = "OK"
 @dataclass(frozen=True, slots=True)
 class Statuses:
     data_status: str
+    expected_by: datetime
     thesis_status: str
     signal: Signal
     current: CurrentState | None
@@ -49,6 +52,7 @@ def thesis_file(
     found: Evidence,
     statuses: Statuses,
     sources: Sequence[ThesisSource],
+    calendar: SessionCalendar,
     config: ThesisConfig,
     generated_at: datetime,
 ) -> Thesis:
@@ -60,12 +64,14 @@ def thesis_file(
         config_hash=tracker.config_hash,
         generated_at=generated_at.isoformat(),
         data_through=_day(tracker.data_through),
+        expected_by=statuses.expected_by.isoformat(),
         run_status=RUN_OK,
         data_status=statuses.data_status,
         thesis_status=statuses.thesis_status,
         evidence_status=found.evidence_status,
         signal=_signal(statuses.signal),
-        current=_current(statuses.current),
+        current=_current(statuses.current, calendar, config),
+        parameters=parameters(config),
         sources=tuple(sources),
         evidence=_evidence(found),
         episodes=tuple(_episode(e, outcomes, vix) for e in tracker.episodes),
@@ -89,8 +95,12 @@ def _series(tracker: Tracker) -> tuple[ThesisPoint, ...]:
             rv_long=row.rv_long,
             realized_vol=outcome.realized_vol,
             outcome=outcome.status.value,
+            outcome_end=_day(outcome.maturity_day),
             credit_bps=credit.level_bps,
             credit_status=credit.status.value,
+            credit_observation_date=_day(credit.observation_date),
+            credit_change_short_bps=credit.change_short_bps,
+            credit_change_long_bps=credit.change_long_bps,
         )
         for row, outcome, credit in zip(
             tracker.features, tracker.outcomes, tracker.credit, strict=True
@@ -116,6 +126,7 @@ def _episode(
         credit_change_short_bps=None if credit is None else credit.change_short_bps,
         credit_change_long_bps=None if credit is None else credit.change_long_bps,
         outcome=None if outcome is None else outcome.status.value,
+        outcome_end=None if outcome is None else _day(outcome.maturity_day),
         realized_vol=None if outcome is None else outcome.realized_vol,
         premium=None if outcome is None else outcome.realized_variance_premium,
         note=_episode_note(tracked),
@@ -214,10 +225,18 @@ def _signal(s: Signal) -> ThesisSignal:
     )
 
 
-def _current(state: CurrentState | None) -> ThesisCurrent | None:
+def _current(
+    state: CurrentState | None, calendar: SessionCalendar, config: ThesisConfig
+) -> ThesisCurrent | None:
     if state is None:
         return None
     credit: CreditState | None = state.credit
+    observed = None if credit is None else credit.observation_date
+    available = (
+        None
+        if observed is None
+        else assumed_available_at(observed, calendar, config.credit).isoformat()
+    )
     return ThesisCurrent(
         day=state.day.isoformat(),
         vix=state.vix_points,
@@ -230,8 +249,38 @@ def _current(state: CurrentState | None) -> ThesisCurrent | None:
         rv_long=state.rv_long,
         credit_status="UNAVAILABLE" if credit is None else credit.status.value,
         credit_bps=None if credit is None else credit.level_bps,
-        credit_observation_date=None if credit is None else _day(credit.observation_date),
+        credit_observation_date=_day(observed),
+        credit_available_at=available,
         credit_change_short_bps=None if credit is None else credit.change_short_bps,
         credit_change_long_bps=None if credit is None else credit.change_long_bps,
         credit_note="" if credit is None else credit.note,
+    )
+
+
+def parameters(config: ThesisConfig) -> ThesisParameters:
+    """The thresholds the tracker ran with, for the page's words and lines."""
+    forecast, shock, normal = config.forecast, config.shock, config.normalization
+    credit = config.credit
+    return ThesisParameters(
+        history_start=config.history_start,
+        decision_time_et=config.decision_time_et,
+        horizon_calendar_days=forecast.horizon_calendar_days,
+        ewma_lambda=forecast.ewma_lambda,
+        initialization_sessions=forecast.initialization_sessions,
+        signal_warmup_sessions=forecast.signal_warmup_sessions,
+        percentile_lookback_sessions=shock.percentile_lookback_sessions,
+        percentile_threshold=shock.percentile_threshold,
+        ratio_lookback_sessions=shock.ratio_lookback_sessions,
+        minimum_vix_ratio=shock.minimum_vix_ratio,
+        search_sessions_after_shock=shock.search_sessions_after_shock,
+        short_rv_sessions=normal.short_rv_sessions,
+        long_rv_sessions=normal.long_rv_sessions,
+        falling_rv_comparison_sessions=normal.falling_rv_comparison_sessions,
+        minimum_forecast_gap=normal.minimum_forecast_gap_decimal,
+        credit_maximum_level_bps=float(credit.maximum_level_bps),
+        credit_maximum_change_short_bps=float(credit.maximum_change_5_observations_bps),
+        credit_maximum_change_long_bps=float(credit.maximum_change_20_observations_bps),
+        credit_publication_lag_business_days=credit.assumed_publication_lag_business_days,
+        credit_publication_time_et=credit.assumed_publication_time_et,
+        credit_maximum_age_business_days=credit.maximum_age_business_days,
     )

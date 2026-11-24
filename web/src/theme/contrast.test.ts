@@ -128,6 +128,16 @@ const DEC_04: Record<string, ColorToken> = {
   // the live page's volatility (L4-02; PO, LD-33)
   "iv-line": "mark",
   "rv-line": "nav-line",
+  // the thesis's tracker (T4-01; TD-28: the markers differ by shape and colour)
+  "vix-line": "mark",
+  "forecast-line": "text",
+  "realized-line": "nav-line",
+  "gap-line": "text-muted",
+  "credit-line": "mark",
+  "threshold-line": "margin-im",
+  "eligible-mark": "positive",
+  "filtered-mark": "negative",
+  "unavailable-mark": "text",
 };
 
 describe("chart roles (DEC-04)", () => {
@@ -155,6 +165,12 @@ describe("chart roles (DEC-04)", () => {
 
   it("shades the gap between IV and RV20 in MARK (L4-02)", () => {
     expect(TOKENS).toContain("--vol-gap-shade: color-mix(in srgb, var(--mark) 14%, transparent)");
+  });
+
+  it("shades the thesis's regions: unstable credit apart from credit without data (TD-28)", () => {
+    expect(TOKENS).toContain("--window-shade: color-mix(in srgb, var(--text) 7%, transparent)");
+    expect(TOKENS).toContain("--no-credit-shade: color-mix(in srgb, var(--margin-im) 14%, transparent)");
+    expect(TOKENS).toContain("--unstable-shade: color-mix(in srgb, var(--negative) 18%, transparent)");
   });
 
   it("shades the expected move in TEXT, neutral, never amber (LD-41)", () => {

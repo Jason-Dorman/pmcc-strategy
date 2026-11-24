@@ -42,6 +42,7 @@ const ROUTES: [string, string][] = [
   ["/wheel-review/NVDA", "Verdicts"],
   ["/wheel-review/NVDA/W-X2", "Rules"],
   ["/live/NVDA", "Nightly run log"],
+  ["/thesis", "Daily tracker"],
   ["/rules", "Entry rules"],
   ["/rules/X-S3", "Exit rules"],
   ["/methodology", "Discovery"],
@@ -59,15 +60,17 @@ describe("routes", () => {
     expect(screen.queryByRole("contentinfo")).toBeNull();
   });
 
-  it("opens the home page from #/: a headline, then a tile per strategy, live first (LD-36, "
-     + "LD-37)", async () => {
+  it("opens the home page from #/: a headline, then a tile per strategy, the thesis first (LD-36, "
+     + "LD-37, TD-28)", async () => {
     renderAt("/");
     expect(await screen.findByRole("heading", { level: 1 })).toBeDefined();
     const tiles = screen.getAllByRole("region").map((r) => r.querySelector("h2")?.textContent);
-    expect(tiles).toEqual(["Wheel forward test", "Wheel backtest", "PMCC backtest"]);
+    expect(tiles).toEqual(["Volatility Thesis", "Wheel forward test", "Wheel backtest",
+                           "PMCC backtest"]);
     expect(document.querySelector(".pm-crumb")).toBeNull();
     const chips = (name: string) => within(screen.getByRole("list", { name: `${name} pages` }))
       .getAllByRole("link").map((a) => [a.textContent, a.getAttribute("href")]);
+    expect(chips("Volatility Thesis")).toEqual([["Overview →", "/thesis"]]);
     expect(chips("Wheel forward test")).toEqual([["Overview →", "/live/NVDA"]]);
     expect(chips("Wheel backtest")).toEqual([["Wheel →", "/wheel/NVDA"],
                                              ["Wheel review →", "/wheel-review/NVDA"]]);
@@ -241,12 +244,15 @@ describe("the strategy menus (PO, LD-36)", () => {
     return screen.getByRole("navigation", { name: "Strategies" });
   }
 
-  it("list the strategies, the live wheel first, a link for its one page", async () => {
+  it("list the strategies, the thesis first, then the live wheel, each a link for its one page "
+     + "(TD-28)", async () => {
     const nav = await bar();
     expect([...nav.children].map((c) => c.textContent)).toEqual(
-      ["Wheel forward test", "Wheel backtest▾", "PMCC backtest▾"]);
+      ["Volatility Thesis", "Wheel forward test", "Wheel backtest▾", "PMCC backtest▾"]);
     expect(within(nav).getByRole("link", { name: "Wheel forward test" }).getAttribute("href"))
       .toBe("/live/NVDA");
+    expect(within(nav).getByRole("link", { name: "Volatility Thesis" }).getAttribute("href"))
+      .toBe("/thesis");
   });
 
   it("keep Universe and Data out of every menu, and show no symbol picker or ident",
@@ -254,8 +260,8 @@ describe("the strategy menus (PO, LD-36)", () => {
     const nav = await bar();
     for (const button of within(nav).getAllByRole("button")) fireEvent.click(button);
     const labels = within(nav).getAllByRole("link").map((a) => a.textContent);
-    expect(labels).toEqual(["Wheel forward test", "Wheel", "Wheel review", "Compare", "Baseline",
-                            "Quant", "Rules", "Methodology"]);
+    expect(labels).toEqual(["Volatility Thesis", "Wheel forward test", "Wheel", "Wheel review",
+                            "Compare", "Baseline", "Quant", "Rules", "Methodology"]);
     expect(screen.queryByRole("combobox", { name: "Symbol" })).toBeNull();
     expect(screen.queryByText(/hourly ·/)).toBeNull();
   });

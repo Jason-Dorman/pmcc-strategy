@@ -168,6 +168,7 @@ class ThesisConfig(_Section):
     timezone: Literal["America/New_York"]
     history_start: str
     decision_time_et: str
+    update_due_time_et: str
     forecast: ForecastConfig
     shock: ShockConfig
     normalization: NormalizationConfig
@@ -179,6 +180,7 @@ class ThesisConfig(_Section):
     @model_validator(mode="after")
     def _formats(self) -> Self:
         parse_hhmm(self.decision_time_et, "decision_time_et")
+        parse_hhmm(self.update_due_time_et, "update_due_time_et")
         try:
             date.fromisoformat(self.history_start)
         except ValueError:
@@ -191,6 +193,11 @@ class ThesisConfig(_Section):
     def decision_time(self) -> time:
         """When a session's signal is decided, New York time (§7.1: no earlier than 20:30)."""
         return parse_hhmm(self.decision_time_et, "decision_time_et")
+
+    @property
+    def update_due_time(self) -> time:
+        """When, the day after a session, its run should have published (New York)."""
+        return parse_hhmm(self.update_due_time_et, "update_due_time_et")
 
     @property
     def history_start_day(self) -> date:

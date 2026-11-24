@@ -425,6 +425,8 @@ Nov 21, 2026 · companion to the [Thesis spec](THESIS-SPEC.md), the source of tr
 | TD-25 | Two more signal states, a blocked assessment that stops nothing | SETTLED (PO) | — |
 | TD-26 | The evidence and statuses' conventions (T2-02) | ENG | — |
 | TD-27 | `thesis run`, its file and its workflow (T3-01, T3-02) | ENG | — |
+| TD-28 | The thesis page: order, charts, home tile | SETTLED (PO); amends LD-36, LD-38's order | — |
+| TD-29 | The thesis page, as built, and `thesis run` corrected (T4-01) | ENG | — |
 
 ## Thesis settled
 
@@ -547,6 +549,15 @@ Nov 21, 2026 · companion to the [Thesis spec](THESIS-SPEC.md), the source of tr
 - **The page's labels (PO):** "Credit data unavailable — eligibility cannot be assessed" and "Incomplete observation window — candidate assessment unavailable", each with the affected date or episode and a brief reason.
 - **Built** (`pmcc.thesis.status`): `signal` carries the status, an `assessment` (`OK` or `BLOCKED`), the episode's ID, shock, candidate and window end, and the reason.
 
+### TD-28 — The thesis page: order, charts, home tile
+**Status:** SETTLED · **Basis:** PO, 2026-11-23 · **Affects:** completes TD-10, TD-06; amends LD-36, LD-38 (the menu's and the tiles' order); Thesis spec §10; UI-SPEC; T4-01
+
+- **Asked:** the panel order and copy, the tracker's and the credit spread's charts, and the menu entry and home tile.
+- **Order (PO):** the assignment's items in order, with plain headings; methodology and sources last, folded. The thesis, horizons and macro paragraph are spec §1's text. (Recommended.)
+- **The tracker (PO):** two stacked panes with one date axis and one zoom. The outcome is labelled "Subsequent 30-day realized volatility", plotted at its forecast-origin date, the tooltip showing the origin and the outcome's end; pending or incomplete outcomes are blank. Event shading is subtle. Eligible, filtered-out and unavailable-data markers differ by both shape and colour. The periods without credit coverage are clearly identified.
+- **Credit (PO):** the spread and the 450 bps line, unstable and unavailable credit shaded apart. The latest level and the five- and twenty-observation changes, against their thresholds, are in a small visible summary, not only in tooltips, with the observation's date and when it became available.
+- **Menu and tile (PO):** "Volatility Thesis" first in both. The tile's figure is VIX minus the 30-day forecast, signed, labelled "volatility points"; below it a readable assessment and the data-through date; "Daily thesis tracker" as its subtitle; a direct link. If the gap can't be calculated it says "Unavailable", never zero. It never implies the gap is an expected trading return.
+
 ## Thesis engineering
 
 ### TD-11 — ID prefixes
@@ -616,15 +627,15 @@ Nov 21, 2026 · companion to the [Thesis spec](THESIS-SPEC.md), the source of tr
 - **Run:** Actions, 2026-11-22 23:18 ET (`data_cache/probes/thesis_20261122T231844.json`, gitignored), with TD-18's changes. The closes and FRED's answer match the first run's.
 - **Credit on LSEG: not entitled.** `.MERH0A0` (ICE BofA US High Yield Index) answers `TSCC.QS.UserNotPermission.92000`, "User has no permission", and `.MERH0A3` and `.MERH0A1` answer `TS.Interday.UserNotPermission.70112`. The S&P 500 Bond Index high-yield OAS indexes end 2022-11-29 and aren't ICE's series. So, by TD-05's rule (LSEG if it holds the history, otherwise FRED), **the credit series is FRED's BAMLH0A0HYM2**, from 2023-11-21: episodes before that are `CREDIT_UNAVAILABLE`, and K1 and R5's credit cohorts show what that leaves, `INSUFFICIENT_DATA` if under the threshold (TD-08), never relaxed.
 - **SPXW's spelling is proven:** LSEG's own search gives `SPXWa292777300.U` for the Jan 29 2027 7,730 call and `SPXWm292777300.U` for the put: root `SPXW`, a lower-case month letter, the strike in tenths, as `spxw.option_ric` builds it. All eight RICs checked answer the Nov 20 session, hourly and daily, so the platform session is entitled to SPXW.
-- **What failed was the expiry.** The probe asked Wed Dec 23 2026, the session nearest 30 days, in every spelling, and nothing answered: that day wasn't a listed SPXW expiration. The probe had read §6.2's "an expiration 28–35 calendar days from the intended execution session, closest to 30 days" as any session. Now every session in the window is a candidate, nearest 30 first and a tie earlier (`spxw.candidate_expiries`); the at-the-money pair is asked at each, in each spelling, and the nearest expiry LSEG lists is used. That is the spec's rule as written, not a change to it.
+- **What failed was the expiry.** The probe asked Wed Dec 23 2026, the session nearest 30 days, in every spelling, and nothing answered, while other SPXW contracts did: LSEG returned nothing for that expiry (wording corrected, TD-29). The probe had read §6.2's "an expiration 28–35 calendar days from the intended execution session, closest to 30 days" as any session. Now every session in the window is a candidate, nearest 30 first and a tie earlier (`spxw.candidate_expiries`); the at-the-money pair is asked at each, in each spelling, and the nearest expiry LSEG lists is used. That is the spec's rule as written, not a change to it.
 - **Next:** a third run, for the cost sample.
 
 ### TD-20 — The probe's third run: SPXW's chain, and no spec condor that day (T1-01)
 **Status:** ENG · **Affects:** Thesis spec §6.2, §6.3, §7.2; TD-07, TD-19; T1-01, T2-02
 
 - **Run:** Actions, 2026-11-22 23:42 ET (`data_cache/probes/thesis_20261122T234215.json`, gitignored), with TD-19's change. The close it reads, Fri Nov 20, is itself a VIX spike: VIX 35.89, the index 6,910.39.
-- **Expiry:** Thu Dec 24 2026, 31 days from Mon Nov 23: the third candidate. Dec 23 and Dec 22 aren't listed; Dec 24 is, at the at-the-money pair, hourly, `SPXW` with a lower-case month letter.
-- **The chain:** 239 contracts asked, 76 listed, all 76 quoted at the close bar and priced, 55 inside §6.3's spread test. The parity spot is 6,901.85. Puts that far out are listed every 25 points, not 5 (6,225, 6,250, 6,275, 6,300 …); calls near 7,400 every 5 or 10.
+- **Expiry:** Thu Dec 24 2026, 31 days from Mon Nov 23: the third candidate. LSEG returned nothing for Dec 23 and Dec 22's pair; it answered Dec 24's, hourly, `SPXW` with a lower-case month letter.
+- **The chain:** 239 contracts asked, 76 answered, all 76 quoted at the close bar and priced, 55 inside §6.3's spread test. The parity spot is 6,901.85. LSEG answered puts that far out every 25 points, not 5 (6,225, 6,250, 6,275, 6,300 …); calls near 7,400 every 5 or 10.
 - **The short legs exist:** the 6,300 put at −0.201 delta (95.9 / 105.5) and the 7,400 call at 0.204 (54.7 / 61.3), both inside the spread test. IVs: puts near 0.20 delta about 40%, calls about 25%.
 - **No spec condor:** §6.2 step 4's widths run from 0.005 × 6,910 ≈ 35 to 1.5 × that ≈ 52 points. The only put wing in that range is the 6,250 at 50, quoted 88.5 / 122.5: a 34-point spread, past the test's 21, and a mid above the 6,300 put's. The call side has 7,440 at 40, which the put side doesn't. So, by §6.2, the trade is skipped that day, and the probe reports no condor. Nothing was widened or rounded to make one (§6.2 step 8).
 - **What the quotes do show,** for R5's cost (TD-07): legs between 0.10 and 0.30 absolute delta have median spreads of 9.65 points on puts (n = 20, 9.7% of the mid) and 8.65 on calls (n = 24, 19.6%). A natural round trip gives up about one spread a leg; the fee is $2 a contract a transaction, 0.16 points for a condor's eight.
@@ -635,7 +646,7 @@ Nov 21, 2026 · companion to the [Thesis spec](THESIS-SPEC.md), the source of tr
 
 - **Code:** `pmcc/thesis/evidence.py` (the cohorts, the statements, K1–K3, R5's cost) and `pmcc/thesis/status.py` (the statuses, the current state), pure, on a `Tracker`.
 - **Matured only:** a cohort or K1 reads a session only when its outcome is `MATURED`, with its VIX. K1's "latest 30" are the 30 latest stable-credit candidates by candidate day; below 30 it is `INSUFFICIENT_DATA`, and its mean over those available is shown as provisional (TD-08).
-- **`data_status`:** `CURRENT` when `data_through` is the last session completed at the run's time; `STALE` when older; `BLOCKED` with no data at all. Credit doesn't set it: credit unavailable blocks the signal's assessment instead (TD-25).
+- **`data_status`:** `CURRENT` when `data_through` is the last session decided at the run's time (completed, until TD-29); `STALE` when older; `BLOCKED` with no data at all. Credit doesn't set it: credit unavailable blocks the signal's assessment instead (TD-25).
 - **`signal_status`:** the latest episode's state while `data_through` is from its shock through its window's last session; `NO_SHOCK` otherwise. A candidate found earlier in a window still in progress keeps its eligibility as the signal.
 - **`thesis_status`:** `PAUSED` while K1 is `FAIL`; otherwise `PROVISIONAL`, since K2 and K3 aren't evaluated. `run_status` is the nightly run's, set in T3-01.
 - **The current state:** `data_through`'s VIX, the shock test's 80th-percentile level over the 252 sessions before and VIX's share of them at or below it, its ratio to five sessions earlier, the forecast vol and gap, RV5, RV20 and credit at the decision.
@@ -649,3 +660,16 @@ Nov 21, 2026 · companion to the [Thesis spec](THESIS-SPEC.md), the source of tr
 - **Numbers:** canonical JSON, as the results (DEC-50): keys sorted, floats to 6 places. The model refuses NaN and infinities (`allow_inf_nan=False`), so a bad number stops the write instead of printing as null (§10). It's written to a temporary file, then moved into place.
 - **Export:** `pmcc export` reads `live/thesis/thesis.json` if it exists, checks it against the model (a failure stops the export), writes it as `thesis.json`, and names it in `index.json`'s new `thesis` field. `thesis.schema.json` joins the schemas, so the page's types come from it.
 - **Workflow:** `.github/workflows/thesis.yml`, as `vol.yml`: 04:17 UTC and by hand with a `plan_only` input; the LSEG secrets and `FRED_API_KEY` in the run's step alone; the Actions bot commits only `live/thesis/thesis.json` after a pull, three tries; a failed run commits nothing and stays red. `ci.yml` runs on its completion and redeploys.
+
+### TD-29 — The thesis page, as built, and `thesis run` corrected (T4-01)
+**Status:** ENG · **Affects:** TD-19, TD-20, TD-26, TD-27; Thesis spec §7.1, §9, §10; T3-01, T4-01
+
+- **A fix: the undecided session.** `thesis run` kept every daily bar LSEG returned, and LSEG serves a day's bar while it trades. A run by hand in the day would have published an intraday price as a close, and one between the close and 20:30 a signal before spec §7.1 allows it, reading credit assumed available only at 20:30. A session whose 20:30 decision hasn't passed is now left out, and `data_status` is `CURRENT` at the last session *decided* (TD-26 said completed). The scheduled run, at 23:17 EST, was never affected, nor the first night's file.
+- **Stale:** the file carries `expected_by`, noon New York the day after the next session (`configs/thesis.yaml`'s `update_due_time_et`; a scheduled run can start hours late, LD-27). A page read after it shows a stale banner, whatever the file says of itself, since a failed night leaves the last file in place (spec §9: never a falsely fresh chart).
+- **New fields:** each outcome's end, each session's observation date and changes, when the latest observation became usable, and the rules' thresholds (`parameters`), so the page never retypes one. They default to null, so the first night's file still reads: the page shows dashes for them until a night writes them.
+- **Copy:** spec §1's text, less its pointers to the spec's own sections and its instructions to the implementer. Every status shows in words, never its code. The R5 note's sentence sets the candidates' mean overstatement beside one leg's measured round trip, with no verdict. FRED's API notice and ICE's attribution are shown.
+- **Charts:** VIX cyan, the forecast off-white and dashed, the realized violet: the palette's cyan and off-white are close for some colour-blind readers, so the dash tells them apart too. Candidates: a green circle, a red square, an off-white triangle. The zoom is a slider and a drag; the wheel scrolls the page. It opens on about two years.
+- **Evidence sentences (TD-23):** "Neither credit group has a matured episode yet." is now said when that is so; it was missing.
+- **Home:** four tiles, so the page widens to 1,400 px; two across at 1,100 px or less, one at 700 px or less.
+- **A correction:** TD-19 and TD-20 said Dec 22 and 23 and some strikes "aren't listed". What the probe showed is that LSEG returned nothing for them; that doesn't prove Cboe lists none. Their wording is corrected. The rule used (the nearest expiry LSEG answers) and the condor's result are unchanged.
+- **Checked:** rebuilding the first night's file with the new code, from its own closes and spreads, gives the same forecasts, outcomes and 56 episodes.

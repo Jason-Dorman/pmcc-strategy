@@ -2,9 +2,11 @@
 `live/thesis/thesis.json` each night; `pmcc export` checks it against this model and publishes it.
 
 Every field is always there; a value not known is an explicit null. NaN and infinities are
-refused, not written (§10: block NaN/Infinity). Dates are `YYYY-MM-DD`; `generated_at` is ISO
-8601 with its offset. Volatilities are decimals (0.18 is 18%); VIX is in its own points; the credit
-spread in basis points; premiums are 30-day total variance (§5.2), decimal.
+refused, not written (§10: block NaN/Infinity). A field added after the first night's file
+(T4-01's) defaults to null, so that file still reads; every file written since holds it. Dates are
+`YYYY-MM-DD`; times are ISO 8601 with their offset. Volatilities are decimals (0.18 is 18%); VIX
+is in its own points; the credit spread in basis points; premiums are 30-day total variance (§5.2),
+decimal.
 """
 
 from pydantic import ConfigDict
@@ -47,8 +49,12 @@ class ThesisPoint(_Strict):
     rv_long: float | None
     realized_vol: float | None  # the 30 days after `day`, once matured; null until then
     outcome: str  # MATURED, PENDING, INCOMPLETE, UNAVAILABLE
+    outcome_end: str | None = None  # the outcome window's last session
     credit_bps: float | None  # the latest usable observation at the decision
     credit_status: str  # STABLE, UNSTABLE, UNAVAILABLE
+    credit_observation_date: str | None = None
+    credit_change_short_bps: float | None = None  # against 5 observations earlier
+    credit_change_long_bps: float | None = None  # against 20 observations earlier
 
 
 class ThesisEpisode(_Strict):
@@ -63,6 +69,7 @@ class ThesisEpisode(_Strict):
     credit_change_short_bps: float | None
     credit_change_long_bps: float | None
     outcome: str | None
+    outcome_end: str | None = None
     realized_vol: float | None
     premium: float | None
     note: str
@@ -157,9 +164,36 @@ class ThesisCurrent(_Strict):
     credit_status: str
     credit_bps: float | None
     credit_observation_date: str | None
+    credit_available_at: str | None = None  # ISO 8601, New York: assumed (§4.4)
     credit_change_short_bps: float | None
     credit_change_long_bps: float | None
     credit_note: str
+
+
+class ThesisParameters(_Strict):
+    """The rules' thresholds, from `configs/thesis.yaml`, so the page never retypes one."""
+
+    history_start: str
+    decision_time_et: str
+    horizon_calendar_days: int
+    ewma_lambda: float
+    initialization_sessions: int
+    signal_warmup_sessions: int
+    percentile_lookback_sessions: int
+    percentile_threshold: float
+    ratio_lookback_sessions: int
+    minimum_vix_ratio: float
+    search_sessions_after_shock: int
+    short_rv_sessions: int
+    long_rv_sessions: int
+    falling_rv_comparison_sessions: int
+    minimum_forecast_gap: float
+    credit_maximum_level_bps: float
+    credit_maximum_change_short_bps: float
+    credit_maximum_change_long_bps: float
+    credit_publication_lag_business_days: int
+    credit_publication_time_et: str
+    credit_maximum_age_business_days: int
 
 
 class Thesis(_Strict):
@@ -171,12 +205,14 @@ class Thesis(_Strict):
     config_hash: str
     generated_at: str
     data_through: str | None
+    expected_by: str | None = None  # ISO 8601: the next session's file is due by then
     run_status: str  # OK, PARTIAL, FAILED
     data_status: str  # CURRENT, STALE, BLOCKED
     thesis_status: str  # PROVISIONAL, PAUSED
     evidence_status: str  # INSUFFICIENT_EVIDENCE in this milestone (TD-23)
     signal: ThesisSignal
     current: ThesisCurrent | None
+    parameters: ThesisParameters | None = None
     sources: tuple[ThesisSource, ...]
     evidence: ThesisEvidence
     episodes: tuple[ThesisEpisode, ...]

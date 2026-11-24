@@ -1,4 +1,4 @@
-# UI Spec — the site's look, and the live page
+# UI Spec — the site's look, the live page and the thesis page
 
 Nov 13, 2026 · The live page joins the existing site and must look like it (LD-01), as the wheel's pages did (WD-01, archived); the wheel's page layouts are in this spec's archived copy, [archive/wheel/UI-SPEC.md](archive/wheel/UI-SPEC.md). This document carries over only the **styling** from the PMCC's UI spec, now archived in [archive/pmcc/UI-SPEC.md](archive/pmcc/UI-SPEC.md); the PMCC's page layouts stay there. Section numbers match the archived spec's, so the web code's styling citations (`UI-SPEC §3`, `§10`) still point at the same topics. `DESIGN-GUIDE.md` (DG) and `theme.py` are the baseline look; a change to the look goes into `web/src/theme/` and this document in the same commit.
 
@@ -19,7 +19,7 @@ No rounded corners, no shadows, no floating cards, no whitespace gaps. shadcn/ui
 | Block | React component | Notes |
 | --- | --- | --- |
 | Command bar | `CommandBar` | **Left:** the wordmark, "Algo Trading Strategies" (display font, amber, uppercase, tracked), a link to the home page. **Right:** the nav, wrapping on a phone. No ident line and no symbol select: every strategy runs on NVDA alone (PO, LD-36) |
-| Nav | `CommandBar`, `NavMenu` | A menu per strategy, in this order (PO, LD-36): **Wheel forward test** (PO, LD-38; one page, Overview, so a plain link to it); **Wheel backtest** ▾ Wheel, Wheel review; **PMCC backtest** ▾ Compare, Baseline, Quant, Rules, Methodology. Universe and Data are in no menu; their routes still work. A menu is a disclosure: a button showing a list of links under it, closed by a link, Escape, or a click or focus outside. Muted at rest; the current strategy's entry and the current page in its list are amber |
+| Nav | `CommandBar`, `NavMenu` | A menu per strategy, in this order (PO, LD-36, TD-28): **Volatility Thesis** (one page, Overview, so a plain link to it); **Wheel forward test** (PO, LD-38; one page, Overview, so a plain link to it); **Wheel backtest** ▾ Wheel, Wheel review; **PMCC backtest** ▾ Compare, Baseline, Quant, Rules, Methodology. Universe and Data are in no menu; their routes still work. A menu is a disclosure: a button showing a list of links under it, closed by a link, Escape, or a click or focus outside. Muted at rest; the current strategy's entry and the current page in its list are amber |
 | Strategy label | `AppShell` | Under the bar on every page but home: the page's strategy and name, `PMCC BACKTEST › QUANT` (mono caps, muted; the page's name in text, the › amber) (PO, LD-36) |
 | Readout strip | `Readouts` | Per KPI: label (muted caps), value (amber mono), and a one-line hint defining the number |
 | Panel grid | `PanelGrid` | 10 columns. Widths: 10 (full), 5 + 5, 6 + 4. A row's widths sum to 10 |
@@ -50,8 +50,8 @@ No rounded corners, no shadows, no floating cards, no whitespace gaps. shadcn/ui
 | `WARN` | `--warn` | skip reasons (words only) |
 | `NAV_LINE` | `--nav-line` | the NAV series |
 | `FIT_LINE` / `IDENTITY_LINE` | `--fit-line` / `--identity-line` | OLS fit / y = x |
-| chart roles | `var()` of a palette colour, named in `tokens.ts`'s `ROLE_TOKENS` | charts name a role, never a colour. The wheel's NAV chart adds `--spot-line` (TEXT), `--strike-line` (MARGIN_IM) and `--basis-line` (IDENTITY_LINE) (WD-32); the live page's volatility adds `--iv-line` (MARK: implied vol, a quoted mark's) and `--rv-line` (NAV_LINE: the stock's realized) (LD-33) |
-| derived | `--negative-tint` / `--negative-shade` / `--shares-shade` / `--vol-gap-shade` / `--move-shade` | `NEGATIVE` at 14% (a warning's ground) / 30% (a shaded breach); `NAV_LINE` at 14% (the wheel's bars holding shares, WD-32); `MARK` at 14% (the live page's gap between IV and RV20, LD-33); `TEXT` at 9% (the skew's expected move, neutral, LD-41) |
+| chart roles | `var()` of a palette colour, named in `tokens.ts`'s `ROLE_TOKENS` | charts name a role, never a colour. The wheel's NAV chart adds `--spot-line` (TEXT), `--strike-line` (MARGIN_IM) and `--basis-line` (IDENTITY_LINE) (WD-32); the live page's volatility adds `--iv-line` (MARK: implied vol, a quoted mark's) and `--rv-line` (NAV_LINE: the stock's realized) (LD-33); the thesis's tracker adds `--vix-line` (MARK), `--forecast-line` (TEXT, always dashed), `--realized-line` (NAV_LINE), `--gap-line` (TEXT_MUTED), `--credit-line` (MARK), `--threshold-line` (MARGIN_IM, a dashed reference), `--eligible-mark` (POSITIVE, a circle), `--filtered-mark` (NEGATIVE, a square) and `--unavailable-mark` (TEXT, a triangle) (TD-28, TD-29) |
+| derived | `--negative-tint` / `--negative-shade` / `--shares-shade` / `--vol-gap-shade` / `--move-shade` | `NEGATIVE` at 14% (a warning's ground) / 30% (a shaded breach); `NAV_LINE` at 14% (the wheel's bars holding shares, WD-32); `MARK` at 14% (the live page's gap between IV and RV20, LD-33); `TEXT` at 9% (the skew's expected move, neutral, LD-41). The thesis adds `--window-shade` (`TEXT` at 7%: a spike's search window), `--no-credit-shade` (`MARGIN_IM` at 14%: no credit data) and `--unstable-shade` (`NEGATIVE` at 18%: credit unstable) (TD-28) |
 | `FONT_DISPLAY` / `FONT_BODY` / `FONT_MONO` | `--font-display` / `--font-body` / `--font-mono` | Space Grotesk / Inter / JetBrains Mono, self-hosted |
 
 **Layout constants** live typed in `web/src/theme/tokens.ts` and are never re-typed as literals: the grid (`GRID_COLUMNS` 10, `W_FULL`, `W_HALF`, `W_HERO`, `W_SIDECAR`), breakpoints, figure heights (`PANEL_FIGURE_HEIGHT`, `HERO_FIGURE_HEIGHT`, `FIGURE_MIN_WIDTH`), table sizes (`TABLE_MIN_WIDTH`, `TABLE_MAX_HEIGHT`, `TABLE_FONT_SIZE`, `TABLE_ROW_HEIGHT`, `TABLE_OVERSCAN`), account line weights and marker sizes.
@@ -65,7 +65,7 @@ No rounded corners, no shadows, no floating cards, no whitespace gaps. shadcn/ui
 5. **References aren't series.** Fit lines, y = x and zero lines are thinner and dashed or dotted, and never take a series hue.
 6. **Holes render as holes.** `connectNulls: false`; a missing value is `null`, never interpolated.
 7. **Every time series has mouseover.** An axis tooltip lists every series at that time, in mono, with the time in ET.
-8. **The time axis is trading time.** A category axis of the result's bars (or sessions), ticked at each session's first point and labelled at each week's; nights and weekends take no width. Stacked grids share the axis and the pointer.
+8. **The time axis is trading time.** A category axis of the result's bars (or sessions), ticked at each session's first point and labelled at each week's; nights and weekends take no width. Stacked grids share the axis and the pointer. A chart over years (the thesis's) is ticked and labelled by month, `Nov 2026`, over a zoom slider; the mouse wheel scrolls the page, never the zoom.
 
 ## 5. Tables (TanStack Table)
 
@@ -100,10 +100,11 @@ A modern break from the terminal look, on this page alone (PO, LD-37): no readou
 
 - **Backdrop:** three large blurred lights in the palette's amber, cyan and violet (`--accent`, `--mark`, `--nav-line`) drifting slowly behind the page, and a faint grid fading out from the top, drifting too. Decoration only: it shows no data. Still when the system asks for reduced motion.
 - **Headline:** an eyebrow (`NVDA · OPTIONS · LSEG DATA`, mono caps), the title "Harvesting the volatility risk premium." in the display font ("volatility risk premium." an amber → cyan → violet gradient), the subtitle "Systematic options strategies" (PO, LD-37), and a pill with a green dot: "Last nightly run …" from the run log's last row (PO, LD-38).
-- **Tiles**, three across (one column at ≤ 1100px), the forward test first. Each: a kicker (mono caps: "Forward test · nightly", or "Backtest · Mar 30 – Sep 25"), the strategy's name linking to its first page, one big amber figure, a mono detail line, one sentence on what it does, and its pages as pill links. A tile lifts and its edge turns amber on hover or focus.
+- **Tiles**, four across (two at ≤ 1100px, one at ≤ 700px), the thesis first, then the forward test (PO, TD-28). Each: a kicker (mono caps: "Forward test · nightly", or "Backtest · Mar 30 – Sep 25"), the strategy's name linking to its first page, one big amber figure, a mono detail line, one sentence on what it does, and its pages as pill links. A tile lifts and its edge turns amber on hover or focus.
 
 | Tile | Figure | Detail | From |
 | --- | --- | --- | --- |
+| Volatility Thesis (kicker "Daily thesis tracker") | VIX minus the 30-day forecast, signed, with "volatility points" under it; "Unavailable", never zero, without one (PO, TD-28) | the signal in words, the data-through date, and "Stale: an update is overdue" when it is; its sentence says the gap isn't an expected trading return | `thesis.json` |
 | Wheel forward test | this week's trade as a story (PO, LD-38): `Selling a $155 put`, the open order's option as LSEG picked it (LD-35), a step smaller than the other figures so it fits a line; "No trade open" when there's none | `Delta −0.32 · IV 88.2% · expires Nov 20`, the pick's at the close | `live.json` |
 | Wheel backtest | its P&L | its return and Sharpe | `live.json`'s `backtest` |
 | PMCC backtest | the baseline's P&L | the baseline's return, quant's P&L | `universe/headline.json` |
@@ -131,6 +132,25 @@ A tile's figure is "—" while its file loads or if it's missing; its links alwa
 | 6 | Nightly run log | 10 | one row per run, newest first: run time, the session planned, state, cash, outcome, rule, why, the option picked at the close, the strike sent (LD-29), its delta and IV, and its bid, ask, mid and spread at the close ("—" on rows logged before them, PO, LD-15) |
 | 7 | The rules | 10 | `configs/live.yaml`'s rules, each in words with its ID, as a table; last on the page (PO, LD-35) |
 
+### Thesis — `#/thesis` (PO, TD-10, TD-28; built at T4-01, TD-29)
+
+The assignment's items in their order, from `thesis.json`. A stale file (its `data_status` not `CURRENT`, or its `expected_by` past) shows a page-level `WarningBanner` with the last successful update. Statuses show in words, never their codes; a missing value is "—", "Pending" or "Unavailable", never zero.
+
+**Readouts:** Thesis status · Evidence · Today's signal (in words, with the episode's dates) · Data through (and when updated) · VIX minus forecast · Credit
+
+| # | Panel | Width | Content |
+| --- | --- | --- | --- |
+| — | The thesis | 10 | the one-sentence thesis (amber), the mechanism and its caveats, spec §1's text |
+| — | Time horizons | 10 | spec §1's five horizons |
+| 1 | Daily tracker | 10 | what it tracks, the signal and where credit data starts, in prose; then the chart (hero height): above, VIX, the 30-day forecast (dashed) and the subsequent 30-day realized volatility at its origin date, blank until matured; below, VIX minus the forecast, the candidate's threshold (dashed), a dotted zero and the candidates by shape and colour; search windows shaded faintly; the sessions before credit data shaded and labelled; one date axis, one zoom slider, opening on about two years; the tooltip gives each value, the outcome's first and last day, the credit and any candidate. Under it the ten latest sessions as a table; every session and every VIX spike in disclosures |
+| 2 | Credit spread | 6 | the spread as known at each decision, its 450 bps limit dashed, unstable and unavailable sessions shaded apart, a zoom; then, always visible, the observation's date and when it became usable, and the level and the 5- and 20-observation changes against their limits; the values in a disclosure; ICE's and FRED's attribution |
+| — | Today's state | 4 | the signal, and each measured value with what a spike or a candidate needs in brackets |
+| 3 | Wrong-if conditions | 10 | K1–K3: the condition, what it needs, the sample, the current value ("(provisional)" below its sample), the assessment date, the status, a note |
+| 4 | Preliminary historical evidence | 6 | the file's sentences; the groups (matured count, mean and median variance premium, VIX minus realized, starting VIX, dates); the future validation target; every candidate, newest first. No evidence classification (TD-23) |
+| — | Alpha and cost | 4 | "Gross economic premium, not tradable alpha."; the edge by group beside one leg's round-trip cost, base and stressed; the dated sample's assumptions; the limitations (TD-21) |
+| — | Macro environment | 10 | spec §1's paragraph, and a dated sentence generated from the tracker's values alone |
+| — | Methodology and sources | 10 | how the tracker is computed (its values from the file), limitations, the sources' coverage with their notices, the version: each folded |
+
 ## 7. Routes
 
 Hash routing (GitHub Pages has no SPA fallback); the URL is the state. The PMCC's routes are in the archived spec; the wheel adds two (PO, WD-22). `#/` is the home page (PO, LD-36); it used to open the PMCC's Compare page:
@@ -148,6 +168,12 @@ The live assignment adds one (PO, LD-16), the "Wheel forward test" entry first i
 | --- | --- |
 | `#/live/:symbol` | Live |
 
+The thesis adds one, first in the nav (PO, TD-28):
+
+| Route | Page |
+| --- | --- |
+| `#/thesis` | Thesis |
+
 ## 8. States
 
 | State | Rendering |
@@ -156,6 +182,7 @@ The live assignment adds one (PO, LD-16), the "Wheel forward test" entry first i
 | Missing run | in-panel "No results for SYMBOL / RUN" |
 | Schema mismatch | page-level `WarningBanner` |
 | Synthetic data | page-level `WarningBanner`: "Synthetic data — not market results" |
+| Stale tracker | page-level `WarningBanner` on the thesis page: its last successful update and data-through date (TD-29) |
 | Stale mark | the mark cell uses `flag`, with a tooltip "last valid mid carried; never filled" |
 
 ## 9. Formatting (`web/src/format/`)
@@ -168,6 +195,7 @@ The live assignment adds one (PO, LD-16), the "Wheel forward test" entry first i
 | Option prices | `$2.3450` (4 dp) |
 | Percent | 1 dp; spreads < 1% at 2 dp |
 | Greeks, IV | delta 2 dp; IV as % at 1 dp |
+| A vol difference, a spread, a premium (the thesis) | `+11.9 pts`; `347 bps`, a change `+17 bps`; `+0.0019`, 30-day total variance |
 | Time | `2026-09-14 10:00 ET` |
 | Instrument | RIC on top, OCC symbol underneath, spaces preserved |
 

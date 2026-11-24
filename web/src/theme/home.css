@@ -7,7 +7,7 @@
 
 .pm-home {
   position: relative;
-  max-width: 1240px;
+  max-width: 1400px;
   margin: 0 auto;
   padding: 72px 8px 96px;
 }
@@ -133,7 +133,7 @@
 /* ---- the tiles ---- */
 .pm-tiles {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr)); /* one each: the thesis and three more */
   gap: 20px;
 }
 .pm-tile {
@@ -189,6 +189,15 @@
   color: var(--accent);
   font-variant-numeric: tabular-nums;
 }
+.pm-tile-unit {
+  display: block;
+  margin-top: 8px;
+  font-family: var(--font-mono);
+  font-weight: 400;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  color: var(--text);
+}
 .pm-tile-words {
   font-size: clamp(26px, 2.2vw, 32px);
   line-height: 1.15;
@@ -239,6 +248,12 @@
   .pm-home {
     padding: 44px 0 64px;
   }
+  .pm-tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
   .pm-tiles {
     grid-template-columns: minmax(0, 1fr);
   }

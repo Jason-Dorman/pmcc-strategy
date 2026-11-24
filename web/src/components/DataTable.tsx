@@ -68,6 +68,8 @@ export interface DataTableProps<T> {
   wrap?: boolean;
   /** As tall as its rows, without TABLE_MAX_HEIGHT's cap: the rule tables (PO, DEC-112). */
   grow?: boolean;
+  /** As narrow as its cells, without TABLE_MIN_WIDTH's floor: a short table in a sidecar. */
+  narrow?: boolean;
   /** The row ID a reader has chosen (the wheel ledger's bar, WD-22): outlined like a target, but
    * not scrolled to, so a long table stays where the reader is. */
   selected?: string | undefined;
@@ -233,9 +235,14 @@ function useTarget(target: string | undefined, present: boolean) {
   return ref;
 }
 
+function tableClasses(virtual: boolean, wrap = false, narrow = false) {
+  return ["pm-table", virtual && "pm-table-fixed", wrap && "pm-table-wrap",
+          narrow && "pm-table-narrow"];
+}
+
 export function DataTable<T extends RowData>({
   label, rows, columns, rowId, filters = NO_FILTERS, virtual = false, detail, target,
-  wrap = false, grow = false, selected,
+  wrap, grow = false, narrow, selected,
 }: DataTableProps<T>) {
   const defs = useColumns(columns);
   const [chosen, setChosen] = useState<Chosen>({});
@@ -257,7 +264,7 @@ export function DataTable<T extends RowData>({
     if (!next.delete(id)) next.add(id);
     return next;
   });
-  const classes = ["pm-table", virtual && "pm-table-fixed", wrap && "pm-table-wrap"];
+  const classes = tableClasses(virtual, wrap, narrow);
   const numeric = new Set(columns.filter((c) => c.num).map((c) => c.id));
   const align = (id: string) => (numeric.has(id) ? "pm-num" : undefined);
 

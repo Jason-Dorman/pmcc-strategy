@@ -38,6 +38,17 @@ function axisOf(categories: string[], dates: string[]): TradingAxis {
   return { categories, dates, sessionStarts, weekStarts };
 }
 
+/** `2026-03-30` → `Mar 2026`. */
+export function monthYear(date: string): string {
+  const [y, m] = date.split("-").map(Number);
+  return `${MONTHS[(m ?? 1) - 1] ?? ""} ${y ?? ""}`;
+}
+
+/** `2026-11-20` → `Nov 20, 2026`. */
+export function longDate(date: string): string {
+  return `${shortDate(date)}, ${date.slice(0, 4)}`;
+}
+
 /** An axis of bars, by their end times. */
 export function barAxis(times: readonly string[]): TradingAxis {
   const categories = times.map(timeET);
@@ -69,5 +80,28 @@ export function xAxis(p: Palette, axis: TradingAxis, gridIndex = 0, labels = tru
       formatter: (_value: string, i: number) => shortDate(axis.dates[i] ?? ""),
     },
     axisTick: { ...style.axisTick, interval: (i: number) => axis.sessionStarts[i] === true },
+  };
+}
+
+/**
+ * The category x-axis of a chart over years of sessions (the thesis's, T4-01): ticked and labelled
+ * at each month's first session, `Mar 2026`, the labels thinned as they would overlap.
+ */
+export function monthAxis(p: Palette, axis: TradingAxis, gridIndex = 0, labels = true) {
+  const style = categoryAxisStyle(p);
+  const starts = axis.dates.map((d, i) =>
+    i === 0 || d.slice(0, 7) !== (axis.dates[i - 1] ?? "").slice(0, 7));
+  return {
+    ...style,
+    gridIndex,
+    data: axis.categories,
+    axisLabel: {
+      ...style.axisLabel,
+      show: labels,
+      hideOverlap: true,
+      interval: (i: number) => starts[i] === true,
+      formatter: (value: string) => monthYear(value),
+    },
+    axisTick: { ...style.axisTick, interval: (i: number) => starts[i] === true },
   };
 }

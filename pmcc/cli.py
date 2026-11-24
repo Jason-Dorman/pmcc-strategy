@@ -923,7 +923,7 @@ def thesis_run(
     try:
         fred_key = FredKey.from_env(os.environ)
         with _platform() as provider:
-            inputs = thesis_pull(provider, http_get, fred_key, calendar, now)
+            inputs = thesis_pull(provider, http_get, fred_key, calendar, config, now)
         thesis = thesis_build(inputs, calendar, config, now)
     except (
         ProviderOutageError,

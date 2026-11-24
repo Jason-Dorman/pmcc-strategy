@@ -5,7 +5,9 @@ Each night the whole tracker is re-derived from its sources, and only the derive
 
 1. **Closes** (TD-04): `.SPX` and `.VIX`, daily from 2014-01-01, over the platform session, in one
    batched request. A day the calendar has no session for is dropped and counted: VIX is computed
-   on some NYSE holidays (TD-18), and the tracker runs on NYSE's sessions (§4.4).
+   on some NYSE holidays (TD-18), and the tracker runs on NYSE's sessions (§4.4). A session whose
+   20:30 decision hasn't passed is left out too: LSEG serves a day's bar while it trades, and a
+   session's signal is never generated before its decision (§7.1, TD-28).
 2. **Credit** (TD-05, TD-19): FRED's BAMLH0A0HYM2 through its API (TD-17), percent to basis points,
    on the assumed publication lag (§4.4). LSEG isn't entitled to ICE's indexes.
 3. **Compute:** `run_tracker`, the evidence and the statuses, as of the run's time.
@@ -37,13 +39,14 @@ from pmcc.data.provider import (
 from pmcc.domain.calendar import SessionCalendar
 from pmcc.export import canonical
 from pmcc.export.thesis_models import Thesis, ThesisSource
+from pmcc.thesis.calendar import last_decided
 from pmcc.thesis.config import ThesisConfig
 from pmcc.thesis.credit import credit_series, percent_to_bps
 from pmcc.thesis.evidence import evidence
 from pmcc.thesis.fred import FredError, FredKey, FredSeries, GetText, fetch_series
 from pmcc.thesis.probe import CLOSE, FRED_SERIES, HISTORY_START, INDEX_RIC, VIX_RIC
 from pmcc.thesis.publish import Statuses, thesis_file
-from pmcc.thesis.status import current_state, data_status, signal, thesis_status
+from pmcc.thesis.status import current_state, data_status, expected_by, signal, thesis_status
 from pmcc.thesis.tracker import run_tracker
 
 THESIS_FILE = Path("live") / "thesis" / "thesis.json"
@@ -76,6 +79,7 @@ def pull(
     get_text: GetText,
     key: FredKey,
     calendar: SessionCalendar,
+    config: ThesisConfig,
     now: datetime,
     sleep: Callable[[float], None] = lambda seconds: time.sleep(seconds),
 ) -> Inputs:
@@ -88,8 +92,10 @@ def pull(
         raise ThesisRunError(f"LSEG's closes: {type(exc).__name__}: {exc}") from exc
     if result.unanswered:
         raise ThesisRunError(f"LSEG returned no closes for {', '.join(result.unanswered)}")
-    index, dropped_index = on_sessions(_closes(result.history.rows, INDEX_RIC), calendar)
-    vix, dropped_vix = on_sessions(_closes(result.history.rows, VIX_RIC), calendar)
+    through = last_decided(calendar, now, config.decision_time)
+    rows = result.history.rows
+    index, dropped_index = on_sessions(_closes(rows, INDEX_RIC), calendar, through)
+    vix, dropped_vix = on_sessions(_closes(rows, VIX_RIC), calendar, through)
     try:
         credit = fetch_series(FRED_SERIES, key, get_text, sleep=sleep)
     except FredError as exc:
@@ -105,15 +111,17 @@ def _closes(rows: pl.DataFrame, ric: str) -> dict[date, float]:
 
 
 def on_sessions(
-    closes: Mapping[date, float], calendar: SessionCalendar
+    closes: Mapping[date, float], calendar: SessionCalendar, through: date
 ) -> tuple[dict[date, float], int]:
-    """The closes on the calendar's sessions, and how many fell on other days."""
+    """The closes on the calendar's sessions up to `through`, and how many up to it fell on other
+    days. A later day's bar isn't final: neither kept nor counted."""
+    final = {d: v for d, v in closes.items() if d <= through}
     kept = {
         d: v
-        for d, v in closes.items()
+        for d, v in final.items()
         if calendar.first_day <= d <= calendar.last_day and calendar.is_session(d)
     }
-    return kept, len(closes) - len(kept)
+    return kept, len(final) - len(kept)
 
 
 def build(inputs: Inputs, calendar: SessionCalendar, config: ThesisConfig, now: datetime) -> Thesis:
@@ -123,12 +131,13 @@ def build(inputs: Inputs, calendar: SessionCalendar, config: ThesisConfig, now: 
     tracker = run_tracker(inputs.index, inputs.vix, credit, calendar, config)
     found = evidence(tracker, config)
     statuses = Statuses(
-        data_status=data_status(tracker, calendar, now).value,
+        data_status=data_status(tracker, calendar, config, now).value,
+        expected_by=expected_by(calendar, config, now),
         thesis_status=thesis_status(found).value,
         signal=signal(tracker),
         current=current_state(tracker, config),
     )
-    return thesis_file(tracker, found, statuses, sources(inputs), config, now)
+    return thesis_file(tracker, found, statuses, sources(inputs), calendar, config, now)
 
 
 def sources(inputs: Inputs) -> tuple[ThesisSource, ...]:
@@ -150,7 +159,7 @@ def sources(inputs: Inputs) -> tuple[ThesisSource, ...]:
             inputs.vix,
             "VIX points",
             f"Cboe VIX, daily close (TRDPRC_1); {inputs.dropped[VIX_RIC]} values on days NYSE "
-            "was closed left out (TD-18)",
+            "was closed left out",
         ),
         ThesisSource(
             series="credit",
@@ -163,7 +172,7 @@ def sources(inputs: Inputs) -> tuple[ThesisSource, ...]:
             note=(
                 "ICE BofA US High Yield Index Option-Adjusted Spread, published in percent and "
                 "shown in basis points (3.52 is 352). Assumed usable two business days after its "
-                "date, at 20:30 New York (§4.4). FRED serves the last three years only."
+                "date, at 20:30 New York. FRED serves the last three years only."
             ),
         ),
     )

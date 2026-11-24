@@ -1,6 +1,7 @@
 // The site's pages and their routes (UI-SPEC §7, DEC-73). The URL is the state: a page with a
 // symbol carries it in its route, and the pages without one link back to the last symbol shown.
 export type PageKey =
+  | "thesis"
   | "compare"
   | "baseline"
   | "quant"
@@ -12,7 +13,7 @@ export type PageKey =
   | "universe"
   | "data";
 
-export type StrategyKey = "live" | "wheel" | "pmcc";
+export type StrategyKey = "thesis" | "live" | "wheel" | "pmcc";
 
 export interface Page {
   key: PageKey;
@@ -22,6 +23,7 @@ export interface Page {
 }
 
 export const PAGES: readonly Page[] = [
+  { key: "thesis", label: "Overview", symbol: "none", strategy: "thesis" }, // TD-10, TD-28
   { key: "compare", label: "Compare", symbol: "required", strategy: "pmcc" },
   { key: "baseline", label: "Baseline", symbol: "required", strategy: "pmcc" },
   { key: "quant", label: "Quant", symbol: "required", strategy: "pmcc" },
@@ -41,9 +43,10 @@ export interface Strategy {
   menu: readonly PageKey[];
 }
 
-/** The site's strategies, the forward test first (PO, LD-36): the header's menus and the home
- * page's cards, in this order. */
+/** The site's strategies, the volatility thesis first (PO, TD-28), then the forward test (PO,
+ * LD-36): the header's menus and the home page's cards, in this order. */
 export const STRATEGIES: readonly Strategy[] = [
+  { key: "thesis", label: "Volatility Thesis", menu: ["thesis"] }, // PO, TD-28
   { key: "live", label: "Wheel forward test", menu: ["live"] }, // PO, LD-38
   { key: "wheel", label: "Wheel backtest", menu: ["wheel", "wheel-review"] },
   { key: "pmcc", label: "PMCC backtest",

@@ -9,6 +9,7 @@ import { TABLE_ROW_HEIGHT } from "../src/theme/tokens";
 const SYMBOL = "NVDA";
 const ROUTES = [
   "",
+  "thesis",
   `compare/${SYMBOL}`,
   `baseline/${SYMBOL}`,
   `quant/${SYMBOL}`,
@@ -345,4 +346,45 @@ test("a sort clicked as soon as the page loads takes effect", async ({ page }) =
   const values = shown.map((t) => Number(t.replace(/[^\d.]/g, "")));
   expect(values.length).toBeGreaterThan(1);
   expect(values, "NAV ascending").toEqual([...values].sort((a, b) => a - b));
+});
+
+test("the thesis page shows the tracker, its zoom and dates, the credit tests and the conditions",
+     async ({ page }) => {
+  await page.setViewportSize({ width: 1600, height: HEIGHT });
+  await page.goto("./#/thesis");
+  await settled(page);
+  const tracker = page.getByRole("figure", { name: /VIX, the 30-day volatility forecast/ });
+  await expect(tracker.locator("svg path").first()).toBeAttached();
+  const rows = (name: string) =>
+    page.getByRole("table", { name, exact: true }).locator("tbody tr:not(.pm-spacer)");
+  await expect(rows("Recent sessions")).toHaveCount(10);
+  await expect(rows("Wrong-if conditions")).toHaveCount(3);
+  await expect(rows("Preliminary historical evidence")).toHaveCount(5);
+  await expect(rows("Credit tests")).toHaveCount(3);
+  // The tooltip names the day the outcome is measured from (its end too, once a night has written
+  // it: Thesis.test.tsx; PO, TD-28).
+  const box = await tracker.boundingBox();
+  if (!box) throw new Error("no chart");
+  await page.mouse.move(box.x + box.width * 0.4, box.y + box.height * 0.3);
+  const tip = page.locator(".pm-tip").first();
+  await expect(tip).toContainText("measured from");
+  await tracker.screenshot({ path: "test-results/screenshots/thesis-tooltip.png" });
+  // The slider's left end, dragged to the start, reaches the years without credit data.
+  await expect(tracker.getByText(/No credit data before/)).toHaveCount(0);
+  await tracker.evaluate((el) => el.scrollIntoView({ block: "center" }));
+  const now = await tracker.boundingBox();
+  if (!now) throw new Error("no chart");
+  const paths = await tracker.locator("svg path").evaluateAll((found) =>
+    found.map((path) => path.getBoundingClientRect()).map((r) => ({ x: r.x, y: r.y, w: r.width,
+                                                                    h: r.height })));
+  const [left] = paths.filter((r) => r.y > now.y + now.height * 0.9 && r.w > 3 && r.w < 12
+      && r.h > 18 && r.h < 40)
+    .sort((m, n) => m.x - n.x).map((r) => ({ x: r.x + r.w / 2, y: r.y + r.h / 2 }));
+  if (!left) throw new Error("no slider handle");
+  await page.mouse.move(left.x, left.y);
+  await page.mouse.down();
+  await page.mouse.move(now.x, left.y, { steps: 20 });
+  await page.mouse.up();
+  await expect(tracker.getByText(/No credit data before/)).toHaveCount(1);
+  await tracker.screenshot({ path: "test-results/screenshots/thesis-zoomed-out.png" });
 });

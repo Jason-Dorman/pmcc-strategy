@@ -2,9 +2,12 @@
 
 Pure, on a `Tracker` in memory, as of its last session with both closes (`data_through`):
 
-- **`data_status`:** `CURRENT` when that is the last session completed at `now`, `STALE` when it
-  is older, `BLOCKED` when there is none. A changed build time over old inputs is never fresh
-  (§10).
+- **`data_status`:** `CURRENT` when that is the last session decided at `now` (its 20:30 has
+  passed, §7.1), `STALE` when it is older, `BLOCKED` when there is none. A changed build time
+  over old inputs is never fresh (§10).
+- **`expected_by`:** when the next session's run should have published, the day after that
+  session at `update_due_time_et` (a scheduled run can start hours late, LD-27). A page read
+  after it shows the tracker as stale, so a failed night is never falsely fresh (§9).
 - **`signal_status`:** the latest episode's state while `data_through` is inside it (its shock
   through its window's last session): `SEARCHING`, `NO_CANDIDATE`, or its candidate's
   `ELIGIBLE` or `FILTERED_OUT`; `NO_SHOCK` otherwise. Two tracker states the spec's list lacks are
@@ -22,12 +25,12 @@ Pure, on a `Tracker` in memory, as of its last session with both closes (`data_t
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from enum import StrEnum
 from typing import final
 
 from pmcc.domain.calendar import SessionCalendar
-from pmcc.live.snapshot import last_completed
+from pmcc.thesis.calendar import decision_at, last_decided, sessions_after
 from pmcc.thesis.config import ThesisConfig
 from pmcc.thesis.credit import CreditState
 from pmcc.thesis.episodes import CandidateStatus, percentile
@@ -103,11 +106,20 @@ _BY_SEARCH = {
 _BLOCKED = frozenset({SignalStatus.CREDIT_UNAVAILABLE, SignalStatus.INCOMPLETE_CANDIDATE_SEARCH})
 
 
-def data_status(tracker: Tracker, calendar: SessionCalendar, now: datetime) -> DataStatus:
+def data_status(
+    tracker: Tracker, calendar: SessionCalendar, config: ThesisConfig, now: datetime
+) -> DataStatus:
     if tracker.data_through is None:
         return DataStatus.BLOCKED
-    expected = last_completed(calendar, now).day
+    expected = last_decided(calendar, now, config.decision_time)
     return DataStatus.CURRENT if tracker.data_through >= expected else DataStatus.STALE
+
+
+def expected_by(calendar: SessionCalendar, config: ThesisConfig, now: datetime) -> datetime:
+    """When the next session's run should have published: the day after that session."""
+    decided = last_decided(calendar, now, config.decision_time)
+    (following,) = sessions_after(calendar, decided, 1)
+    return decision_at(following + timedelta(days=1), config.update_due_time)
 
 
 def signal(tracker: Tracker) -> Signal:

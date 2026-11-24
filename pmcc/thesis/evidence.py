@@ -43,6 +43,7 @@ OUT_OF_SCOPE = (
     "assignment's scope."
 )
 NO_COMPARISON = "Credit-regime comparison unavailable in this sample."
+NEITHER_GROUP = "Neither credit group has a matured episode yet."
 _TRANSACTIONS_PER_LEG = 2  # opened and closed
 
 
@@ -259,14 +260,19 @@ def _candidates(found: Cohorts) -> list[str]:
                 f"The average premium was {_sign(group.mean_premium)} in the {group.count} "
                 f"available {group.name.replace(' ', '-')} {episodes}."
             )
+    if not (found.stable.count or found.unstable.count):
+        out.append(NEITHER_GROUP)
     if not (found.stable.count and found.unstable.count):
         out.append(NO_COMPARISON)
     if found.credit_unavailable.count:
-        out.append(
-            f"{found.credit_unavailable.count} matured candidates have no credit data at their "
-            "decision, so they are in neither group."
-        )
+        out.append(_without_credit(found.credit_unavailable.count))
     return out
+
+
+def _without_credit(count: int) -> str:
+    who = "1 matured candidate has" if count == 1 else f"{count} matured candidates have"
+    whose, they = ("its", "it is") if count == 1 else ("their", "they are")
+    return f"{who} no credit data at {whose} decision, so {they} in neither group."
 
 
 def _sign(value: float) -> str:

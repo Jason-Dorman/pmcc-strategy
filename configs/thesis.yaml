@@ -10,6 +10,9 @@ model_version: v1.0
 timezone: America/New_York
 history_start: '2015-01-01'
 decision_time_et: '20:30'
+# When, the day after a session, its night's run should have published: the page shows the tracker
+# as stale after it (TD-28). A scheduled run can start hours late (LD-27), so noon, not 23:17.
+update_due_time_et: '12:00'
 forecast:
   horizon_calendar_days: 30
   ewma_lambda: 0.94
@@ -83,4 +86,4 @@ r5_cost:
   call_median_spread_fraction_of_mid: 0.1961
   stressed_spread_multiple: 1.5
   stressed_fee_multiple: 2.0
-  spec_condor: 'skipped on the sample day: no put and call wing pair from 35 to 52 points passed the spread test (TD-20)'
+  spec_condor: 'skipped on the sample day: among the contracts quoted, no put and call wing pair 35 to 52 points wide passed the spread test'

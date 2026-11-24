@@ -13,7 +13,7 @@ from pathlib import Path
 
 from pmcc.config.calendar import CALENDAR_PATH, CalendarFile, read_calendar_file
 from pmcc.domain.calendar import SessionCalendar
-from pmcc.domain.clock import at_et
+from pmcc.domain.clock import at_et, to_et
 
 HISTORY_PATH = Path(__file__).resolve().parents[2] / "configs" / "calendar_history.yaml"
 _DAY = timedelta(days=1)
@@ -75,6 +75,15 @@ def business_days_between(calendar: SessionCalendar, start: date, end: date) -> 
     if end <= start:
         return 0
     return len(calendar.sessions(start + _DAY, end))
+
+
+def last_decided(calendar: SessionCalendar, now: datetime, clock: time) -> date:
+    """The latest session whose decision (`clock`, New York) is at or before `now`: the last one a
+    run may publish (§7.1: a session's signal is never generated before its decision)."""
+    today = to_et(now).date()
+    if calendar.is_session(today) and now >= decision_at(today, clock):
+        return today
+    return calendar.sessions_before(today, 1)[0].day
 
 
 def decision_at(day: date, clock: time) -> datetime:

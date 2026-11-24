@@ -9,6 +9,7 @@ import { Live } from "../pages/Live";
 import { Methodology } from "../pages/Methodology";
 import { Rules } from "../pages/Rules";
 import { Strategy } from "../pages/Strategy";
+import { Thesis } from "../pages/Thesis";
 import { Universe } from "../pages/Universe";
 import { Wheel } from "../pages/Wheel";
 import { WheelReview } from "../pages/WheelReview";
@@ -20,6 +21,7 @@ export function AppRoutes() {
     <Routes>
       <Route element={<AppShell />}>
         <Route index element={<Home />} />
+        <Route path="thesis" element={<Thesis />} />
         <Route path="compare/:symbol" element={<Comparison />} />
         <Route path="baseline/:symbol" element={<Strategy page="baseline" />} />
         <Route path="quant/:symbol" element={<Strategy page="quant" />} />
