@@ -107,6 +107,7 @@ class Condition:
     formula: str
     threshold: str
     minimum_sample: str
+    required: int  # the minimum sample's count
     status: ConditionStatus
     value: float | None
     sample: int | None
@@ -306,6 +307,7 @@ def k1(tracker: Tracker, config: ThesisConfig) -> Condition:
         ),
         threshold="wrong if <= 0",
         minimum_sample=f"{window} matured selected episodes",
+        required=window,
         status=_k1_status(value, len(stable), window),
         value=value,
         sample=len(stable),
@@ -332,6 +334,7 @@ def k2(config: ThesisConfig) -> Condition:
         "full-policy trades",
         "wrong if <= 0",
         f"{trades} resolved trades",
+        trades,
     )
 
 
@@ -346,11 +349,12 @@ def k3(config: ThesisConfig) -> Condition:
         "costs",
         "wrong if stable <= unstable",
         f"at least {events} completed events per disjoint cohort",
+        events,
     )
 
 
 def _not_evaluated(
-    condition_id: str, name: str, formula: str, threshold: str, sample: str
+    condition_id: str, name: str, formula: str, threshold: str, sample: str, required: int
 ) -> Condition:
     return Condition(
         condition_id=condition_id,
@@ -358,6 +362,7 @@ def _not_evaluated(
         formula=formula,
         threshold=threshold,
         minimum_sample=sample,
+        required=required,
         status=ConditionStatus.NOT_EVALUATED,
         value=None,
         sample=None,

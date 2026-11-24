@@ -363,34 +363,6 @@ body {
   list-style: decimal;
   padding-left: 22px;
 }
-/* named terms in prose (the thesis's horizons, T4-01) */
-.pm-terms {
-  margin: 0;
-  padding-left: 18px;
-  list-style: square;
-}
-.pm-terms li + li,
-.pm-note .pm-steps li + li {
-  margin-top: 6px;
-}
-/* prose beside a table or a figure in one panel */
-.pm-note + .pm-figure,
-.pm-note + .pm-table-scroll,
-.pm-note + .pm-table,
-.pm-note + .pm-stack,
-.pm-figure + .pm-note,
-.pm-figure + .pm-table-scroll,
-.pm-table-scroll + .pm-note,
-.pm-table + .pm-note {
-  margin-top: 10px;
-}
-/* a data source's attribution under its chart */
-.pm-source {
-  margin-top: 10px;
-  color: var(--text-muted);
-  font-size: 11px;
-  line-height: 1.45;
-}
 /* code in prose (a config key) */
 .pm-note code {
   font-family: var(--font-mono);

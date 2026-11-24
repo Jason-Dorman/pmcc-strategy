@@ -20,7 +20,9 @@ Pure, on a `Tracker` in memory, as of its last session with both closes (`data_t
   and K3 aren't evaluated, so the thesis can't be `ACTIVE` in this milestone.
 - **The current state** (§10 component 9, TD-10): `data_through`'s VIX, its 80th-percentile
   shock level over the 252 sessions before and VIX's share of those at or below it, its ratio to
-  VIX five sessions earlier, the forecast vol and gap, RV5 and RV20, and credit at the decision.
+  VIX five sessions earlier, the forecast vol and gap, RV5 and RV20, §5.4's tests as they read that
+  day (by the function that picks candidates, so the page never judges one itself, TD-30), and
+  credit at the decision.
 """
 
 from collections.abc import Sequence
@@ -33,7 +35,7 @@ from pmcc.domain.calendar import SessionCalendar
 from pmcc.thesis.calendar import decision_at, last_decided, sessions_after
 from pmcc.thesis.config import ThesisConfig
 from pmcc.thesis.credit import CreditState
-from pmcc.thesis.episodes import CandidateStatus, percentile
+from pmcc.thesis.episodes import CandidateStatus, Checks, checks, percentile
 from pmcc.thesis.evidence import ConditionStatus, Evidence
 from pmcc.thesis.features import FeatureRow
 from pmcc.thesis.tracker import Eligibility, TrackedEpisode, Tracker
@@ -90,6 +92,7 @@ class CurrentState:
     forecast_gap_vol: float | None
     rv_short: float | None
     rv_long: float | None
+    checks: Checks  # §5.4's tests as they read today, whether or not a search is open
     credit: CreditState | None
 
 
@@ -190,6 +193,7 @@ def current_state(tracker: Tracker, config: ThesisConfig) -> CurrentState | None
         forecast_gap_vol=row.forecast_gap_vol,
         rv_short=row.rv_short,
         rv_long=row.rv_long,
+        checks=checks(rows, i, config.normalization),
         credit=tracker.credit[i],
     )
 

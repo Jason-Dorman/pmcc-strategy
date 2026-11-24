@@ -427,6 +427,8 @@ Nov 21, 2026 · companion to the [Thesis spec](THESIS-SPEC.md), the source of tr
 | TD-27 | `thesis run`, its file and its workflow (T3-01, T3-02) | ENG | — |
 | TD-28 | The thesis page: order, charts, home tile | SETTLED (PO); amends LD-36, LD-38's order | — |
 | TD-29 | The thesis page, as built, and `thesis run` corrected (T4-01) | ENG | — |
+| TD-30 | The thesis page, redesigned for a reader | SETTLED (PO); replaces TD-28's order and labels | — |
+| TD-31 | The redesign, as built (T4-02) | ENG | — |
 
 ## Thesis settled
 
@@ -558,6 +560,21 @@ Nov 21, 2026 · companion to the [Thesis spec](THESIS-SPEC.md), the source of tr
 - **Credit (PO):** the spread and the 450 bps line, unstable and unavailable credit shaded apart. The latest level and the five- and twenty-observation changes, against their thresholds, are in a small visible summary, not only in tooltips, with the observation's date and when it became available.
 - **Menu and tile (PO):** "Volatility Thesis" first in both. The tile's figure is VIX minus the 30-day forecast, signed, labelled "volatility points"; below it a readable assessment and the data-through date; "Daily thesis tracker" as its subtitle; a direct link. If the gap can't be calculated it says "Unavailable", never zero. It never implies the gap is an expected trading return.
 
+### TD-30 — The thesis page, redesigned for a reader
+**Status:** SETTLED · **Basis:** PO, 2026-11-23 · **Affects:** replaces TD-28's panel order, readouts and labels, and the page's part of TD-10; TD-25's labels; Thesis spec §1 (R1, R2, R6), §10; UI-SPEC § Thesis; T4-02
+
+- **Asked by the PO:** the page made readers work too hard to see what each number, chart and table means. No change to the calculations, event definitions, thresholds or observations; backend changes only to supply existing calculations to the page.
+- **Order:** the idea and its horizons; the latest assessment; the daily tracker; preliminary historical evidence; what would invalidate the thesis; potential return and trading costs; macro conditions; methodology, sources and detailed data behind disclosures. The assignment's six items stay in the normal reading flow.
+- **The idea:** the title, the one-sentence thesis, the explanation and the macro paragraph are the PO's copy, in spec §1. A hypothesis being investigated; three horizons, two of them planning estimates.
+- **The latest assessment** replaces the readouts and "Today's state": one headline from the backend's signal state, one or two sentences, three supporting observations, the data's dates. All generated from the data; the frontend is never a second signal engine. A historical qualifying observation's date is kept apart from the latest readings. "Research conditions met" never implies a trade or a profit; missing data is never a failed condition or a zero. Labels: `NO_SHOCK` "No qualifying volatility spike to monitor", `SEARCHING` "Watching a recent volatility spike", `NO_CANDIDATE` "No qualifying observation in this search window", `ELIGIBLE` "Research conditions met", `FILTERED_OUT` "Candidate did not meet the credit rules", `CREDIT_UNAVAILABLE` "Credit data needed to assess eligibility", `INCOMPLETE_CANDIDATE_SEARCH` "Missing observations prevent assessment".
+- **The tracker:** one chart by default (VIX, our forecast, what followed), with range presets beside the slider; the gap's pane, its threshold, the search windows and the markers under "Show signal details", on the same axis and zoom; raw tables behind named disclosures.
+- **Credit:** its purpose before its measurements; the rule a spread breaks is said in words; the chart, the three checks and the dates under "Explore credit conditions".
+- **Evidence:** stable against unstable credit first, each with its completed count and average gap; the sample's limits and what is left out beside it; full statistics behind a disclosure. A gap is never a trading return, nor proof of mispricing; no classification (TD-23).
+- **Wrong-if:** three stacked cards, K1–K3's definitions unchanged and their exact formulas expandable. K1 reads "Preliminary: n of the required 30 observations available"; K2 and K3 "Evaluated in the next phase: strategy backtesting."; no zero for an unmeasured value.
+- **Return and costs:** the gross premium and the quote sample's cost apart, each with its unit; never subtracted; net returns not estimated. Assumptions, stress cases and the structure skipped that day behind a disclosure.
+- **Writing and layout:** meaning before formula; a readable size at 100% zoom; a centred column with wider charts; detailed tables only inside disclosures, each with its purpose in a sentence; no colour-only states; styles scoped so no other page changes.
+- **Data:** the page gets the existing thresholds, times and dates; what a file lacks shows as unavailable where it would be, never as zero. Freshness is separate from how much evidence there is.
+
 ## Thesis engineering
 
 ### TD-11 — ID prefixes
@@ -673,3 +690,14 @@ Nov 21, 2026 · companion to the [Thesis spec](THESIS-SPEC.md), the source of tr
 - **Home:** four tiles, so the page widens to 1,400 px; two across at 1,100 px or less, one at 700 px or less.
 - **A correction:** TD-19 and TD-20 said Dec 22 and 23 and some strikes "aren't listed". What the probe showed is that LSEG returned nothing for them; that doesn't prove Cboe lists none. Their wording is corrected. The rule used (the nearest expiry LSEG answers) and the condor's result are unchanged.
 - **Checked:** rebuilding the first night's file with the new code, from its own closes and spreads, gives the same forecasts, outcomes and 56 episodes.
+
+### TD-31 — The redesign, as built (T4-02)
+**Status:** ENG · **Affects:** TD-27, TD-29, TD-30; T4-02
+
+- **The tracker's own verdicts:** `thesis.json`'s current state gains §5.4's tests (`swings_below_long`, `swings_not_rising`, `gap_ok`, with RV5 at the comparison session) and §5.5's (`credit_level_ok`, `credit_change_short_ok`, `credit_change_long_ok`), and each condition its `required` count. §5.4's come from `episodes.checks`, the function that picks candidates, refactored out of `qualifies` with its results unchanged. They default to null, so earlier files still read.
+- **Words:** `web/src/pages/thesis/assessment.ts`, pure: the state's sentence by the backend's status, two sentences on the readings, the observations with the file's verdicts ("Meets the condition", "Does not meet the condition", "Not assessed"). "Substantially more" means the gap passes its check; "only slightly more", that it is positive and doesn't.
+- **The zoom:** presets of 126, 252 (the default), 756 and all sessions. The slider reports its window (`Chart`'s `onZoom`) without a redraw, so a drag isn't interrupted, and the details open on it. The slider alone zooms: the wheel and a finger scroll the page.
+- **Legends** are HTML, so they wrap on a phone and name shapes in words. Chart text is 13 px.
+- **Styles:** `web/src/theme/thesis.css`, all under `.th`. The rules T4-01 added to `shell.css` for spacing notes against charts and tables also moved other pages by a few pixels; they are removed.
+- **The payload:** the deployed file was the first night's (Nov 23 00:59 ET), before T4-01's fields; the producer was already right, so the next `thesis` run writes them all. Until then the page says where each missing value would be.
+- **Home tile:** its line uses the new labels.

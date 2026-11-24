@@ -17,6 +17,18 @@ export interface ChartProps {
   /** A click anywhere on a plot picks the category under it: its index on the time axis (the
    * wheel's portfolio at a bar, WD-22). */
   onPick?: ((index: number) => void) | undefined;
+  /** The sessions the zoom slider was dragged to, as indices (the thesis's, TD-30). Report only:
+   * redrawing for it would interrupt the drag. Must be stable. */
+  onZoom?: ((range: { start: number; end: number }) => void) | undefined;
+}
+
+/** Where a chart's zoom stands, as category indices. */
+function zoomed(chart: { getOption(): object }): { start: number; end: number } | undefined {
+  const [zoom] = (chart.getOption() as {
+    dataZoom?: { startValue?: unknown; endValue?: unknown }[];
+  }).dataZoom ?? [];
+  const { startValue: start, endValue: end } = zoom ?? {};
+  return typeof start === "number" && typeof end === "number" ? { start, end } : undefined;
 }
 
 /** What a chart instance offers a click on its plot. */
@@ -39,7 +51,7 @@ export function pickedIndex(chart: Pickable, x: number, y: number): number | und
   return undefined;
 }
 
-export function Chart({ build, hero = false, label, onPick }: ChartProps) {
+export function Chart({ build, hero = false, label, onPick, onZoom }: ChartProps) {
   const option = useMemo(() => build(readPalette()), [build]);
   const height = hero ? HERO_FIGURE_HEIGHT : PANEL_FIGURE_HEIGHT;
   // The chart is ready once, so its click handler reads the latest onPick through a ref.
@@ -53,6 +65,12 @@ export function Chart({ build, hero = false, label, onPick }: ChartProps) {
       if (index !== undefined) pick.current?.(index);
     });
   }, []);
+  const events = useMemo(() => (onZoom === undefined ? undefined : {
+    datazoom: (_event: unknown, chart: Pickable) => {
+      const range = zoomed(chart);
+      if (range) onZoom(range);
+    },
+  }), [onZoom]);
   return (
     <div className={hero ? "pm-figure pm-figure-hero" : "pm-figure"} role="figure"
          aria-label={label}>
@@ -63,6 +81,7 @@ export function Chart({ build, hero = false, label, onPick }: ChartProps) {
         opts={{ renderer: RENDERER }}
         style={{ height }}
         {...(onPick ? { onChartReady: ready } : {})}
+        {...(events ? { onEvents: events } : {})}
       />
     </div>
   );

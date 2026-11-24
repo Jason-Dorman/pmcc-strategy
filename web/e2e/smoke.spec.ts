@@ -348,36 +348,33 @@ test("a sort clicked as soon as the page loads takes effect", async ({ page }) =
   expect(values, "NAV ascending").toEqual([...values].sort((a, b) => a - b));
 });
 
-test("the thesis page shows the tracker, its zoom and dates, the credit tests and the conditions",
+test("the thesis page reads without opening anything, and its chart keeps its zoom with the details",
      async ({ page }) => {
-  await page.setViewportSize({ width: 1600, height: HEIGHT });
+  await page.setViewportSize({ width: 1366, height: HEIGHT });
   await page.goto("./#/thesis");
   await settled(page);
-  const tracker = page.getByRole("figure", { name: /VIX, the 30-day volatility forecast/ });
-  await expect(tracker.locator("svg path").first()).toBeAttached();
-  const rows = (name: string) =>
-    page.getByRole("table", { name, exact: true }).locator("tbody tr:not(.pm-spacer)");
-  await expect(rows("Recent sessions")).toHaveCount(10);
-  await expect(rows("Wrong-if conditions")).toHaveCount(3);
-  await expect(rows("Preliminary historical evidence")).toHaveCount(5);
-  await expect(rows("Credit tests")).toHaveCount(3);
-  // The tooltip names the day the outcome is measured from (its end too, once a night has written
-  // it: Thesis.test.tsx; PO, TD-28).
-  const box = await tracker.boundingBox();
+  await expect(page.getByRole("heading", { level: 1 }))
+    .toHaveText("Selling expensive protection after market scares");
+  await expect(page.getByRole("table")).toHaveCount(0); // every raw table is behind a disclosure
+  const chart = page.getByRole("figure", { name: /Market-priced volatility, our forecast/ });
+  await chart.evaluate((el) => el.scrollIntoView({ block: "center" }));
+  await expect(chart.locator("svg path").first()).toBeAttached();
+  const box = await chart.boundingBox();
   if (!box) throw new Error("no chart");
   await page.mouse.move(box.x + box.width * 0.4, box.y + box.height * 0.3);
-  const tip = page.locator(".pm-tip").first();
-  await expect(tip).toContainText("measured from");
-  await tracker.screenshot({ path: "test-results/screenshots/thesis-tooltip.png" });
-  // The slider's left end, dragged to the start, reaches the years without credit data.
-  await expect(tracker.getByText(/No credit data before/)).toHaveCount(0);
-  await tracker.evaluate((el) => el.scrollIntoView({ block: "center" }));
-  const now = await tracker.boundingBox();
+  await expect(page.locator(".pm-tip").first()).toContainText("measured from this close");
+  // The wheel over the chart scrolls the page.
+  const before = await page.evaluate(() => window.scrollY);
+  await page.mouse.wheel(0, 120);
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(before);
+  // Dragging the slider's left end to the start: no preset is pressed, and the details open there.
+  await chart.evaluate((el) => el.scrollIntoView({ block: "center" }));
+  const now = await chart.boundingBox();
   if (!now) throw new Error("no chart");
-  const paths = await tracker.locator("svg path").evaluateAll((found) =>
+  const rects = await chart.locator("svg path").evaluateAll((found) =>
     found.map((path) => path.getBoundingClientRect()).map((r) => ({ x: r.x, y: r.y, w: r.width,
                                                                     h: r.height })));
-  const [left] = paths.filter((r) => r.y > now.y + now.height * 0.9 && r.w > 3 && r.w < 12
+  const [left] = rects.filter((r) => r.y > now.y + now.height * 0.85 && r.w > 3 && r.w < 12
       && r.h > 18 && r.h < 40)
     .sort((m, n) => m.x - n.x).map((r) => ({ x: r.x + r.w / 2, y: r.y + r.h / 2 }));
   if (!left) throw new Error("no slider handle");
@@ -385,6 +382,31 @@ test("the thesis page shows the tracker, its zoom and dates, the credit tests an
   await page.mouse.down();
   await page.mouse.move(now.x, left.y, { steps: 20 });
   await page.mouse.up();
-  await expect(tracker.getByText(/No credit data before/)).toHaveCount(1);
-  await tracker.screenshot({ path: "test-results/screenshots/thesis-zoomed-out.png" });
+  const presets = page.getByRole("group", { name: "Period shown" });
+  await expect(presets.getByRole("button", { pressed: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "Show signal details" }).click();
+  await expect(chart.getByText(/No credit data before/)).toHaveCount(1);
+  // A preset brings the recent sessions back, the details still open.
+  await presets.getByRole("button", { name: "1 year" }).click();
+  await expect(chart.getByText(/No credit data before/)).toHaveCount(0);
+  await expect(page.getByRole("list", { name: "Signal details legend" })).toBeVisible();
+});
+
+test("every disclosure on the thesis page opens by keyboard without widening the page",
+     async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: HEIGHT });
+  await page.goto("./#/thesis");
+  await settled(page);
+  const summaries = page.locator("main summary");
+  const count = await summaries.count();
+  expect(count).toBeGreaterThanOrEqual(12);
+  for (let i = 0; i < count; i++) {
+    await summaries.nth(i).focus();
+    await page.keyboard.press("Enter");
+  }
+  await expect(page.locator("main details[open]")).toHaveCount(count);
+  await settled(page);
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(0);
 });

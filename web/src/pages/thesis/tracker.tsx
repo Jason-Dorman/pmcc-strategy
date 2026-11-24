@@ -1,62 +1,104 @@
-// The thesis page's tracker, credit spread and current state (UI-SPEC §6 › Thesis; T4-01; PO,
-// TD-28). Each chart has its values in a table beside it.
-import { useCallback, useMemo } from "react";
+// The thesis page's daily tracker (UI-SPEC §6 › Thesis; PO, TD-30): one chart of what was priced in
+// and what followed, with range presets over its zoom; the signal's details on demand, on the same
+// axis and zoom; and the raw tables behind named disclosures.
+import { useCallback, useMemo, useState } from "react";
 
 import { longDate } from "../../components/charts/axis";
 import { Chart } from "../../components/charts/Chart";
 import {
-  creditOption,
-  creditPoints,
   creditStart,
+  lastSessions,
+  priceOption,
   trackerOption,
-  type CreditLimits,
+  TRACKER_SERIES,
+  type Range,
 } from "../../components/charts/thesis";
-import { KeyValue, type KeyValueRow } from "../../components/cells";
 import { DataTable, type TableColumn } from "../../components/DataTable";
-import { Details, Empty, Note } from "../../components/Note";
-import { iv, orDash, pct, ratio } from "../../format/number";
+import { iv, orDash } from "../../format/number";
 import {
   bps,
-  bpsChange,
   creditLabel,
   eligibilityLabel,
   episodeLabel,
+  isStale,
   level,
   outcomeLabel,
-  signalDetail,
-  signalLabel,
+  points,
   variance,
   volPts,
 } from "../../format/thesis";
-import { timeET } from "../../format/time";
 import type { Palette } from "../../theme/echarts";
-import type {
-  Thesis,
-  ThesisCurrent,
-  ThesisEpisode,
-  ThesisParameters,
-  ThesisPoint,
-} from "../../types/generated/thesis";
+import type { Thesis, ThesisEpisode, ThesisPoint } from "../../types/generated/thesis";
+import { Disclosure, Legend, NotAvailable, Section, Toggle, type Key } from "./parts";
 
-/** The sessions the visible table shows; the rest are in its disclosure. */
-const RECENT = 10;
+/** The range presets, in sessions; a recent one is the default. */
+const PRESETS = [
+  { name: "6 months", sessions: 126 },
+  { name: "1 year", sessions: 252 },
+  { name: "3 years", sessions: 756 },
+  { name: "All", sessions: Number.POSITIVE_INFINITY },
+] as const;
+const DEFAULT_PRESET = PRESETS[1];
+
+const PRICE_KEYS: readonly Key[] = [
+  { name: TRACKER_SERIES.vix, mark: "th-key-line th-key-vix" },
+  { name: TRACKER_SERIES.forecast, mark: "th-key-line th-key-forecast" },
+  { name: TRACKER_SERIES.realized, mark: "th-key-line th-key-realized" },
+];
+
+function detailKeys(threshold: number | null): Key[] {
+  return [
+    { name: "Search window after a VIX spike", mark: "th-key-area th-key-window" },
+    { name: TRACKER_SERIES.gap, mark: "th-key-line th-key-gap" },
+    ...(threshold === null ? []
+      : [{ name: `Gap a qualifying observation needs, ${points(threshold)} volatility points`,
+           mark: "th-key-line th-key-threshold" }]),
+    { name: "Qualifying observation, credit stable", mark: "th-key-eligible", glyph: "●" },
+    { name: "Qualifying observation, credit not stable", mark: "th-key-filtered", glyph: "■" },
+    { name: "Qualifying observation, credit data unavailable", mark: "th-key-unavailable",
+      glyph: "▲" },
+    { name: "No credit data", mark: "th-key-area th-key-nocredit" },
+  ];
+}
+
+/** The gap and the qualifying rules in words, with the details they explain. */
+function SignalDetails({ thesis }: { thesis: Thesis }) {
+  const p = thesis.parameters;
+  const from = creditStart(thesis.series);
+  return (
+    <>
+      <p>
+        The lower pane is VIX minus our forecast, in volatility points. After a spike in VIX we
+        search a fixed window, shaded, for the first session where market swings have eased and that
+        gap is wide enough. Each marker is that session. Its shape and colour say what credit was at
+        its own assessment, which never moves it to another day.{" "}
+        {from === undefined ? "No session has credit data yet."
+          : `Credit data starts ${longDate(from)}: earlier observations are marked unavailable, `
+            + "neither stable nor unstable."}
+      </p>
+      {p === null && <NotAvailable>The gap a qualifying observation needs is not in this data file,
+        so its line is not drawn. It arrives with the next nightly update.</NotAvailable>}
+      <Legend label="Signal details legend" keys={detailKeys(p?.minimum_forecast_gap ?? null)} />
+    </>
+  );
+}
 
 const SESSION_COLUMNS: readonly TableColumn<ThesisPoint>[] = [
   { id: "day", header: "Session", sort: (r) => r.day, cell: (r) => r.day },
   { id: "vix", header: "VIX", num: true, sort: (r) => r.vix ?? undefined,
     cell: (r) => orDash(r.vix, level) },
-  { id: "forecast", header: "30-day forecast", num: true, sort: (r) => r.forecast_vol ?? undefined,
+  { id: "forecast", header: "Our forecast", num: true, sort: (r) => r.forecast_vol ?? undefined,
     cell: (r) => orDash(r.forecast_vol, iv) },
   { id: "gap", header: "VIX − forecast", num: true, sort: (r) => r.forecast_gap_vol ?? undefined,
     cell: (r) => orDash(r.forecast_gap_vol, volPts) },
-  { id: "rv5", header: "RV5", num: true, sort: (r) => r.rv_short ?? undefined,
+  { id: "rv5", header: "5-day volatility", num: true, sort: (r) => r.rv_short ?? undefined,
     cell: (r) => orDash(r.rv_short, iv) },
-  { id: "rv20", header: "RV20", num: true, sort: (r) => r.rv_long ?? undefined,
+  { id: "rv20", header: "20-day volatility", num: true, sort: (r) => r.rv_long ?? undefined,
     cell: (r) => orDash(r.rv_long, iv) },
-  { id: "realized", header: "Subsequent 30-day realized", num: true,
+  { id: "realized", header: "Following 30 days", num: true,
     sort: (r) => r.realized_vol ?? undefined,
     cell: (r) => (r.realized_vol === null ? outcomeLabel(r.outcome) : iv(r.realized_vol)) },
-  { id: "end", header: "Outcome ends", sort: (r) => r.outcome_end ?? undefined,
+  { id: "end", header: "Window ends", sort: (r) => r.outcome_end ?? undefined,
     cell: (r) => orDash(r.outcome_end, String) },
   { id: "credit", header: "Credit spread", num: true, sort: (r) => r.credit_bps ?? undefined,
     cell: (r) => orDash(r.credit_bps, bps) },
@@ -67,220 +109,118 @@ const SESSION_COLUMNS: readonly TableColumn<ThesisPoint>[] = [
 const EPISODE_COLUMNS: readonly TableColumn<ThesisEpisode>[] = [
   { id: "shock", header: "VIX spike", sort: (e) => e.shock_day, cell: (e) => e.shock_day },
   { id: "end", header: "Search ends", sort: (e) => e.window_end, cell: (e) => e.window_end },
-  { id: "status", header: "Search", sort: (e) => e.status, cell: (e) => episodeLabel(e.status) },
-  { id: "candidate", header: "Candidate", sort: (e) => e.candidate_day ?? undefined,
+  { id: "status", header: "Search result", sort: (e) => e.status,
+    cell: (e) => episodeLabel(e.status) },
+  { id: "candidate", header: "Qualifying observation", sort: (e) => e.candidate_day ?? undefined,
     cell: (e) => orDash(e.candidate_day, String) },
-  { id: "eligibility", header: "Credit at its decision", sort: (e) => e.eligibility ?? undefined,
+  { id: "eligibility", header: "Credit at its assessment", sort: (e) => e.eligibility ?? undefined,
     cell: (e) => orDash(e.eligibility, eligibilityLabel) },
-  { id: "bps", header: "Spread", num: true, sort: (e) => e.credit_bps ?? undefined,
-    cell: (e) => orDash(e.credit_bps, bps) },
-  { id: "vix", header: "VIX", num: true, sort: (e) => e.vix ?? undefined,
-    cell: (e) => orDash(e.vix, level) },
-  { id: "realized", header: "Realized after", num: true, sort: (e) => e.realized_vol ?? undefined,
-    cell: (e) => (e.realized_vol !== null ? iv(e.realized_vol)
-      : orDash(e.outcome, outcomeLabel)) },
-  { id: "outcome-end", header: "Outcome ends", sort: (e) => e.outcome_end ?? undefined,
-    cell: (e) => orDash(e.outcome_end, String) },
+  { id: "outcome", header: "Outcome", sort: (e) => e.outcome ?? undefined,
+    cell: (e) => orDash(e.outcome, outcomeLabel) },
   { id: "premium", header: "Variance premium", num: true, sort: (e) => e.premium ?? undefined,
     cell: (e) => orDash(e.premium, variance) },
   { id: "note", header: "Note", sort: (e) => e.note,
     cell: (e) => <div className="pm-notes" title={e.note}>{e.note}</div> },
 ];
 
-/** The tracker's definition, the signal and the credit coverage, above the chart. */
-function Definition({ thesis }: { thesis: Thesis }) {
-  const from = creditStart(thesis.series);
+function RawTables({ thesis }: { thesis: Thesis }) {
+  const newest = useMemo(() => [...thesis.series].reverse(), [thesis.series]);
+  const episodes = useMemo(() => [...thesis.episodes].reverse(), [thesis.episodes]);
   return (
-    <Note>
-      <p>
-        <b>What it tracks.</b> VIX is the volatility the options market prices into the S&amp;P 500
-        for the next 30 days. The forecast is what the index&apos;s recent returns imply for the
-        same 30 days. The subsequent realized volatility is what the index then delivered, plotted
-        at the day it is measured from: where VIX sits above it, options overpriced the moves that
-        followed. A window that has not ended is blank, never zero. The lower pane is VIX minus the
-        forecast, with the gap a candidate needs. Each marker is the first session after a VIX spike
-        that met the rules; its shape and colour say what credit was at that session&apos;s decision.
-        The exact rules are under Methodology and sources.
+    <>
+      <Disclosure title="View daily observations" wide>
+        <p>The table lists every session, newest first, with what was priced in, our forecast, and
+          what followed once its 30 days completed.</p>
+        <DataTable label="Daily observations" rows={newest} columns={SESSION_COLUMNS}
+                   rowId={(r) => r.day} virtual />
+      </Disclosure>
+      <Disclosure title="View volatility spikes and qualifying observations" wide>
+        <p>The table lists every VIX spike, newest first, with whether a session in its search
+          window qualified and what credit was at that session.</p>
+        <DataTable label="Volatility spikes" rows={episodes} columns={EPISODE_COLUMNS}
+                   rowId={(e) => e.episode_id} />
+      </Disclosure>
+    </>
+  );
+}
+
+function Presets({ value, onPick }: { value: string | null; onPick: (name: string) => void }) {
+  return (
+    <div className="th-presets" role="group" aria-label="Period shown">
+      {PRESETS.map((p) => (
+        <button key={p.name} type="button" className="th-button" aria-pressed={value === p.name}
+                onClick={() => { onPick(p.name); }}>
+          {p.name}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+const PRICE_LABEL = "Market-priced volatility, our forecast and the volatility of the following 30 "
+  + "days, by session";
+const DETAIL_LABEL = `${PRICE_LABEL}, with the gap between VIX and the forecast and each qualifying `
+  + "observation below";
+
+/** The chart, its presets, its slider and its details. A preset or the details toggle sets the
+ * window; the slider only reports it, so dragging is never interrupted by a redraw. */
+function TrackerChart({ thesis }: { thesis: Thesis }) {
+  const { series, episodes } = thesis;
+  const threshold = thesis.parameters?.minimum_forecast_gap ?? null;
+  const [range, setRange] = useState<Range>(() =>
+    lastSessions(series.length, DEFAULT_PRESET.sessions));
+  const [dragged, setDragged] = useState<Range | null>(null);
+  const [preset, setPreset] = useState<string | null>(DEFAULT_PRESET.name);
+  const [details, setDetails] = useState(false);
+  const build = useCallback((p: Palette) => (details
+    ? trackerOption(p, series, episodes, threshold, range)
+    : priceOption(p, series, range)), [details, series, episodes, threshold, range]);
+  const onZoom = useCallback((next: Range) => { setDragged(next); setPreset(null); }, []);
+  const pick = (name: string) => {
+    const found = PRESETS.find((p) => p.name === name) ?? DEFAULT_PRESET;
+    setPreset(found.name);
+    setDragged(null);
+    setRange(lastSessions(series.length, found.sessions)); // a new object, so a same pick resets
+  };
+  const toggle = () => {
+    if (dragged) setRange(dragged);
+    setDragged(null);
+    setDetails((open) => !open);
+  };
+  return (
+    <div className="th-wide">
+      <div className="th-controls">
+        <Presets value={preset} onPick={pick} />
+        <Toggle open={details} onToggle={toggle} controls="signal-details"
+                show="Show signal details" hide="Hide signal details" />
+      </div>
+      <Legend label="Tracker legend" keys={PRICE_KEYS} />
+      <Chart build={build} hero={details} onZoom={onZoom}
+             label={details ? DETAIL_LABEL : PRICE_LABEL} />
+      <p className="th-caption">
+        Annualized volatility, in percent. Drag the ends of the bar under the chart for any other
+        period. Data through {orDash(thesis.data_through, longDate)}
+        {isStale(thesis) && "; the data feed is out of date"}.
       </p>
-      <p>
-        Signal at {orDash(thesis.data_through, longDate)}:{" "}
-        <b>{signalLabel(thesis.signal.status)}.</b> {signalDetail(thesis.signal)}{" "}
-        {from === undefined ? "No session has credit data yet."
-          : `Credit data starts ${longDate(from)}: every candidate before it is marked credit `
-            + "data unavailable, not eligible or filtered out."}
-      </p>
-    </Note>
+      <div id="signal-details">{details && <SignalDetails thesis={thesis} />}</div>
+    </div>
   );
 }
 
 export function Tracker({ thesis }: { thesis: Thesis }) {
-  const { series, episodes } = thesis;
-  const threshold = thesis.parameters?.minimum_forecast_gap ?? null;
-  const build = useCallback((p: Palette) => trackerOption(p, series, episodes, threshold),
-                            [series, episodes, threshold]);
-  const newest = useMemo(() => [...series].reverse(), [series]);
-  if (series.length === 0) return <Empty>No session in the tracker yet.</Empty>;
   return (
-    <>
-      <Definition thesis={thesis} />
-      <Chart build={build} hero
-             label={"VIX, the 30-day volatility forecast and the realized volatility that "
-               + "followed, with VIX minus the forecast and each episode's candidate below"} />
-      <DataTable label="Recent sessions" rows={newest.slice(0, RECENT)} columns={SESSION_COLUMNS}
-                 rowId={(r) => r.day} />
-      <Details summary="Every session" table lazy>
-        <DataTable label="Every session" rows={newest} columns={SESSION_COLUMNS}
-                   rowId={(r) => r.day} virtual />
-      </Details>
-      <Details summary="Every VIX spike and its candidate" table>
-        <DataTable label="Every VIX spike" rows={[...episodes].reverse()}
-                   columns={EPISODE_COLUMNS} rowId={(e) => e.episode_id} />
-      </Details>
-    </>
-  );
-}
-
-// ---- credit -------------------------------------------------------------------------------------
-
-function limitsOf(p: ThesisParameters | null): CreditLimits | null {
-  return p === null ? null : { level: p.credit_maximum_level_bps,
-                               short: p.credit_maximum_change_short_bps,
-                               long: p.credit_maximum_change_long_bps };
-}
-
-interface CreditTest {
-  name: string;
-  value: number | null;
-  limit: number | undefined;
-  show: (v: number) => string;
-}
-
-function passes(t: CreditTest): string {
-  if (t.value === null || t.limit === undefined) return "—";
-  return t.value <= t.limit ? "Within" : "Over";
-}
-
-const CREDIT_TEST_COLUMNS: readonly TableColumn<CreditTest>[] = [
-  { id: "name", header: "Test", sort: (t) => t.name, cell: (t) => t.name },
-  { id: "value", header: "Latest", num: true, sort: (t) => t.value ?? undefined,
-    cell: (t) => orDash(t.value, t.show) },
-  { id: "limit", header: "Limit", num: true, sort: (t) => t.limit,
-    cell: (t) => orDash(t.limit, (v) => `≤ ${t.show(v)}`) },
-  { id: "passes", header: "Against it", sort: passes,
-    cell: (t) => <span className={passes(t) === "Over" ? "pm-flag" : undefined}>{passes(t)}</span> },
-];
-
-function creditTests(c: ThesisCurrent, limits: CreditLimits | null): CreditTest[] {
-  return [
-    { name: "Level", value: c.credit_bps, limit: limits?.level, show: bps },
-    { name: "Change over 5 observations", value: c.credit_change_short_bps, limit: limits?.short,
-      show: bpsChange },
-    { name: "Change over 20 observations", value: c.credit_change_long_bps, limit: limits?.long,
-      show: bpsChange },
-  ];
-}
-
-/** The latest spread against each limit, with the observation's date and when it became usable
- * (PO, TD-28: visible, never only in a tooltip). */
-function CreditSummary({ current, limits }: { current: ThesisCurrent;
-                                              limits: CreditLimits | null }) {
-  return (
-    <>
-      <Note>
-        <p>
-          Credit at {longDate(current.day)}&apos;s decision:{" "}
-          <b>{creditLabel(current.credit_status)}.</b>{" "}
-          {current.credit_observation_date === null ? "No usable observation."
-            : `The observation of ${longDate(current.credit_observation_date)}`
-              + (current.credit_available_at === null ? "."
-                : `, assumed available ${timeET(current.credit_available_at)}.`)}
-          {current.credit_note && ` ${current.credit_note}.`}
-        </p>
-      </Note>
-      <DataTable label="Credit tests" rows={creditTests(current, limits)}
-                 columns={CREDIT_TEST_COLUMNS} rowId={(t) => t.name} grow narrow />
-    </>
-  );
-}
-
-const CREDIT_COLUMNS: readonly TableColumn<ThesisPoint>[] = [
-  { id: "day", header: "Decision", sort: (r) => r.day, cell: (r) => r.day },
-  { id: "obs", header: "Observation of", sort: (r) => r.credit_observation_date ?? undefined,
-    cell: (r) => orDash(r.credit_observation_date, String) },
-  { id: "bps", header: "Spread", num: true, sort: (r) => r.credit_bps ?? undefined,
-    cell: (r) => orDash(r.credit_bps, bps) },
-  { id: "short", header: "Change, 5", num: true,
-    sort: (r) => r.credit_change_short_bps ?? undefined,
-    cell: (r) => orDash(r.credit_change_short_bps, bpsChange) },
-  { id: "long", header: "Change, 20", num: true,
-    sort: (r) => r.credit_change_long_bps ?? undefined,
-    cell: (r) => orDash(r.credit_change_long_bps, bpsChange) },
-  { id: "status", header: "Credit", sort: (r) => r.credit_status,
-    cell: (r) => creditLabel(r.credit_status) },
-];
-
-export function CreditSpread({ thesis }: { thesis: Thesis }) {
-  const points = useMemo(() => creditPoints(thesis.series), [thesis.series]);
-  const limits = useMemo(() => limitsOf(thesis.parameters), [thesis.parameters]);
-  const build = useCallback((p: Palette) => creditOption(p, points, limits), [points, limits]);
-  const newest = useMemo(() => [...points].reverse(), [points]);
-  if (points.length === 0) return <Empty>No credit data in the tracker yet.</Empty>;
-  return (
-    <>
-      <Chart build={build} label={"The high-yield credit spread as known at each session's "
-        + "decision, with its limit and the sessions credit was unstable or unavailable"} />
-      {thesis.current && <CreditSummary current={thesis.current} limits={limits} />}
-      <Details summary="The values" table lazy>
-        <DataTable label="Credit by session" rows={newest} columns={CREDIT_COLUMNS}
-                   rowId={(r) => r.day} virtual />
-      </Details>
-      <div className="pm-source">
-        ICE BofA US High Yield Index Option-Adjusted Spread, ICE Data Indices, LLC, retrieved from
-        FRED, Federal Reserve Bank of St. Louis.
-      </div>
-    </>
-  );
-}
-
-// ---- today's state ------------------------------------------------------------------------------
-
-/** `35.89 (≥ 19.91)`: a value with the threshold it is read against. */
-function against(value: string, threshold: string | null): string {
-  return threshold === null ? value : `${value} (${threshold})`;
-}
-
-function stateRows(c: ThesisCurrent, p: ThesisParameters | null): KeyValueRow[] {
-  return [
-    ["VIX, against the spike level",
-     against(orDash(c.vix, level), c.shock_level === null ? null : `≥ ${level(c.shock_level)}`)],
-    ["Share of the prior year's sessions at or below it",
-     orDash(c.vix_share_at_or_below, (v) => pct(v, 0))],
-    ["VIX over its level 5 sessions earlier",
-     against(orDash(c.vix_ratio, ratio), p === null ? null : `≥ ${ratio(p.minimum_vix_ratio)}`)],
-    ["30-day volatility forecast", orDash(c.forecast_vol, iv)],
-    ["VIX minus forecast",
-     against(orDash(c.forecast_gap_vol, volPts),
-             p === null ? null : `≥ ${(p.minimum_forecast_gap * 100).toFixed(1)} pts`)],
-    ["Realized volatility, 5 sessions", orDash(c.rv_short, iv)],
-    ["Realized volatility, 20 sessions", orDash(c.rv_long, iv)],
-    ["Credit spread", orDash(c.credit_bps, bps)],
-    ["Credit", creditLabel(c.credit_status)],
-  ];
-}
-
-export function TodaysState({ thesis }: { thesis: Thesis }) {
-  const c = thesis.current;
-  if (c === null) return <Empty>No session in the tracker yet.</Empty>;
-  return (
-    <>
-      <Note>
-        <p><b>{signalLabel(thesis.signal.status)}.</b> {signalDetail(thesis.signal)}</p>
-      </Note>
-      <KeyValue label="Today's state" rows={stateRows(c, thesis.parameters)} />
-      <Note>
-        <p>Measured at the {longDate(c.day)} close. In brackets, what a spike or a candidate
-          needs.</p>
-      </Note>
-    </>
+    <Section id="tracker" title="How much volatility was priced in—and what followed?"
+             intro={<>Compare the market-priced line with the actual-volatility line to see whether
+               the market priced more movement than subsequently occurred. The newest
+               actual-volatility values remain blank until their 30-day windows finish.</>}>
+      <p>
+        <b>Realized volatility</b> is the size of the swings that actually happened. Each
+        actual-volatility value is drawn at the day its 30 days began, so it can be compared with
+        what was priced in then. It became known only after that window ended.
+      </p>
+      {thesis.series.length === 0 ? <NotAvailable>No session is in the tracker yet.</NotAvailable>
+        : <TrackerChart thesis={thesis} />}
+      <RawTables thesis={thesis} />
+    </Section>
   );
 }

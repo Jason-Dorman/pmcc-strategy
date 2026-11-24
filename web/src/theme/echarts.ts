@@ -5,7 +5,6 @@
 import { LineChart, ScatterChart } from "echarts/charts";
 import {
   AriaComponent,
-  DataZoomInsideComponent,
   DataZoomSliderComponent,
   GridComponent,
   LegendComponent,
@@ -27,7 +26,6 @@ echarts.use([
   MarkLineComponent,
   MarkAreaComponent,
   AriaComponent,
-  DataZoomInsideComponent,
   DataZoomSliderComponent,
   SVGRenderer,
 ]);
@@ -63,6 +61,8 @@ export function readPalette(root: Element = document.documentElement): Palette {
 
 // Type sizes, as theme.py's figures set them.
 export const CHART_FONT = { tick: 10, legend: 10.5, tooltip: 11 } as const;
+// A reading page's charts (the thesis's, TD-30): legible at 100% zoom.
+export const READING_FONT = { tick: 13, tooltip: 13 } as const;
 
 // Plot insets. The band above the plot stays empty: the legend sits inside the plot, top left.
 const INSET = { left: 64, right: 18, top: 10, bottom: 28 } as const;
@@ -77,19 +77,18 @@ export const STACKED_GRIDS = [
   { left: INSET.left, right: INSET.right, top: "74%", bottom: INSET.bottom },
 ];
 
-/** Two grids over a zoom slider (the thesis's tracker, T4-01), and the lower one's legend. */
+/** Two grids over a zoom slider (the thesis's tracker with its details, T4-01). */
 export const ZOOM_PANES = [
   { left: INSET.left, right: INSET.right, top: INSET.top, height: "50%" },
   { left: INSET.left, right: INSET.right, top: "57%", height: "31%" },
 ];
-export const ZOOM_PANE_LEGEND = { left: LEGEND_INSET.left, top: "58%", itemWidth: 12,
-                                  itemHeight: 10 } as const;
 
 /** One grid over a zoom slider (the thesis's credit spread, T4-01). */
 export const ZOOM_GRID = [{ left: INSET.left, right: INSET.right, top: INSET.top, bottom: 74 }];
 
 /** A date zoom: a slider under the chart (drag an end or the window) over every x axis, opening
- * on `start`-`end` as indices into the categories. The wheel scrolls the page, never the zoom. */
+ * on `start`-`end` as indices into the categories. The slider alone zooms, so the mouse wheel and
+ * a finger on the chart still scroll the page. */
 export function zoom(p: Palette, axes: readonly number[], start: number, end: number) {
   const shared = { xAxisIndex: [...axes], startValue: start, endValue: end,
                    filterMode: "filter" };
@@ -105,14 +104,7 @@ export function zoom(p: Palette, axes: readonly number[], start: number, end: nu
                         areaStyle: { color: p.grid } },
       selectedDataBackground: { lineStyle: { color: p["text-muted"], width: LINE.ruler },
                                 areaStyle: { color: p.grid } } },
-    { ...shared, type: "inside", zoomOnMouseWheel: false, moveOnMouseWheel: false,
-      moveOnMouseMove: true },
   ];
-}
-
-/** A shading's legend entry: no data, a swatch of the fill. */
-export function shadeKey(name: string, fill: string, extra: object = {}) {
-  return { name, type: "line", data: [], color: fill, silent: true, ...extra };
 }
 
 // A lower pane's value axis: few ticks, so its labels never crowd.

@@ -153,6 +153,21 @@ def test_t4_01_the_file_carries_what_the_page_labels() -> None:
     assert thesis.expected_by is not None
 
 
+def test_td_30_the_file_carries_the_trackers_own_checks_of_the_day() -> None:
+    current = _night().current
+    assert current is not None
+
+    short, long_, earlier = current.rv_short, current.rv_long, current.rv_short_earlier
+    assert short is not None
+    assert long_ is not None
+    assert earlier is not None
+    assert current.gap_ok is ((current.forecast_gap_vol or 0) >= 0.03)
+    assert current.swings_below_long is (short < long_)
+    assert current.swings_not_rising is (short <= earlier)
+    assert (current.credit_level_ok, current.credit_change_short_ok) == (True, True)
+    assert [k.required for k in _night().evidence.conditions] == [30, 30, 20]
+
+
 def test_t3_01_lseg_without_vix_writes_nothing() -> None:
     with pytest.raises(ThesisRunError, match=r"\.VIX"):
         _night(_provider({INDEX_RIC: spike_index()}))

@@ -1,6 +1,6 @@
-// The thesis's charts (T4-01; PO, TD-28): the two panes over one zoom, the outcome at its origin
-// and blank until it matures, the candidates by shape and colour, the years without credit data,
-// and the credit spread's two shadings.
+// The thesis's charts (PO, TD-28, TD-30): the default chart of what was priced in and what followed,
+// the signal's details on the same axis and zoom, the outcome at its origin and blank until its
+// window completes, and the credit spread's two shadings.
 import { describe, expect, it } from "vitest";
 
 import { EPISODES, SERIES } from "../../test/thesisFixtures";
@@ -12,18 +12,18 @@ import {
   creditSpans,
   CREDIT_SERIES,
   creditStart,
-  opening,
-  thresholdName,
+  lastSessions,
+  priceOption,
   trackerOption,
   TRACKER_SERIES,
   windowSpans,
 } from "./thesis";
 
 const P = new Proxy({} as Palette, { get: (_t, key) => String(key) });
+const ALL = lastSessions(SERIES.length, SERIES.length);
 
 interface Series {
   name: string;
-  type: string;
   data: readonly unknown[];
   symbol?: string;
   color?: string;
@@ -40,80 +40,94 @@ function series(option: { series: unknown[] }, name: string): Series {
   return found;
 }
 
-describe("the tracker", () => {
-  const option = trackerOption(P, SERIES, EPISODES, 0.03);
-  const { vix, forecast, realized, gap } = TRACKER_SERIES;
+const { vix, forecast, realized, gap } = TRACKER_SERIES;
 
-  it("draws VIX, the forecast and what followed above, in vol, and the gap below", () => {
+describe("the default chart", () => {
+  const option = priceOption(P, SERIES, ALL);
+
+  it("draws only what was priced in, our forecast and what followed, in the PO's words", () => {
+    expect((option.series as Series[]).map((s) => s.name)).toEqual([
+      "Market-priced volatility — VIX", "Our volatility forecast",
+      "Actual volatility over the following 30 days"]);
     expect(series(option, vix).data).toEqual([0.2, 0.2, 0.2, 0.3, 0.2, 0.275]);
-    expect(series(option, vix).lineStyle?.color).toBe("vix-line");
     expect(series(option, forecast).lineStyle?.type).toBe("dashed"); // told by more than hue
-    expect(series(option, gap).xAxisIndex).toBe(1);
-    expect(series(option, gap).data[1]).toBeNull(); // a hole, never zero
+    expect(series(option, forecast).data[1]).toBeNull(); // a hole, never zero
+    expect(series(option, vix).markArea).toBeUndefined(); // no shading by default
   });
 
-  it("plots the realized vol at the day it is measured from, blank until it matures", () => {
-    expect(realized).toBe("Subsequent 30-day realized volatility");
+  it("plots what followed at the day it is measured from, blank until it completes", () => {
     expect(series(option, realized).data).toEqual([0.14, 0.14, 0.14, 0.14, 0.14, null]);
   });
 
-  it("shares one date axis and one zoom between the panes", () => {
+  it("opens on the range it is given, and only the slider zooms", () => {
+    expect(lastSessions(3242, 252)).toEqual({ start: 2990, end: 3241 });
+    expect(lastSessions(10, Number.POSITIVE_INFINITY)).toEqual({ start: 0, end: 9 });
+    const narrow = priceOption(P, SERIES, { start: 2, end: 4 });
+    expect(narrow.dataZoom.map((z) => [z.type, z.startValue, z.endValue]))
+      .toEqual([["slider", 2, 4]]);
+  });
+
+  it("names the day an outcome is measured from and when it became known", () => {
+    const tip = (day: string) => option.tooltip.formatter([{ axisValue: day }]);
+    expect(tip("2026-02-04")).toContain("Feb 4, 2026");
+    expect(tip("2026-02-04")).toContain("known only after");
+    expect(tip("2026-02-04")).toContain("Mar 10, 2026");
+    expect(tip("2026-02-09")).toContain("pending");
+    expect(tip("2026-02-03")).toContain("not available");
+    expect(tip("2026-02-04")).not.toContain("Credit");
+  });
+});
+
+describe("the signal details", () => {
+  const option = trackerOption(P, SERIES, EPISODES, 0.03, { start: 1, end: 5 });
+
+  it("keep the default's lines, over one date axis and one zoom with the gap's pane", () => {
+    expect(series(option, realized).data).toEqual(series(priceOption(P, SERIES, ALL), realized).data);
     expect(option.xAxis.map((x) => x.data)).toEqual([SERIES.map((s) => s.day),
                                                      SERIES.map((s) => s.day)]);
-    for (const z of option.dataZoom) expect(z.xAxisIndex).toEqual([0, 1]);
+    for (const z of option.dataZoom) {
+      expect([z.xAxisIndex, z.startValue, z.endValue]).toEqual([[0, 1], 1, 5]);
+    }
     expect(option.axisPointer.link).toEqual([{ xAxisIndex: "all" }]);
+    expect(series(option, gap).xAxisIndex).toBe(1);
+    expect(series(option, gap).data[1]).toBeNull();
   });
 
-  it("opens on about two years", () => {
-    expect(opening(3242)).toBe(3242 - 504);
-    expect(opening(10)).toBe(0);
-  });
-
-  it("marks each candidate at its gap, its credit told by shape and by colour", () => {
+  it("mark each qualifying observation, its credit told by shape and by colour", () => {
     expect(new Set(CANDIDATES.map((c) => c.symbol)).size).toBe(3);
     expect(new Set(CANDIDATES.map((c) => c.role)).size).toBe(3);
-    const eligible = series(option, "Eligible");
-    expect([eligible.data, eligible.symbol, eligible.color]).toEqual([
+    const stable = series(option, "Credit stable");
+    expect([stable.data, stable.symbol, stable.color]).toEqual([
       [["2026-02-04", 0.05]], "circle", "eligible-mark"]);
-    const filtered = series(option, "Filtered out");
-    expect([filtered.data, filtered.symbol, filtered.color]).toEqual([
+    const not = series(option, "Credit not stable");
+    expect([not.data, not.symbol, not.color]).toEqual([
       [["2026-02-06", 0.05]], "rect", "filtered-mark"]);
     const none = series(option, "Credit data unavailable");
     expect([none.data, none.symbol, none.color]).toEqual([
       [["2026-02-02", 0.05]], "triangle", "unavailable-mark"]);
   });
 
-  it("shades each spike's search window, cut at the last session", () => {
+  it("shade each search window, cut at the last session, and the sessions without credit", () => {
     expect(windowSpans(SERIES, EPISODES)).toEqual([[0, 1], [2, 4], [3, 4], [5, 5]]);
     expect(series(option, vix).markArea?.itemStyle.color).toBe("window-shade");
-  });
-
-  it("shades and names the sessions before credit data", () => {
     expect(creditStart(SERIES)).toBe("2026-02-04");
     const area = series(option, gap).markArea;
     expect(area?.label?.formatter).toBe("No credit data before Feb 4, 2026");
     expect(area?.data).toEqual([[{ xAxis: "2026-02-02" }, { xAxis: "2026-02-04" }]]);
   });
 
-  it("draws the candidate's threshold dashed and names it, over a dotted zero", () => {
+  it("draw the threshold dashed over a dotted zero, and none when the file lacks it", () => {
     expect(series(option, gap).markLine?.data.map((d) => d.yAxis)).toEqual([0, 0.03]);
-    expect(thresholdName(0.03)).toBe("Candidate needs 3 points");
-    expect(option.legend[1]?.data).toContain("Candidate needs 3 points");
-  });
-
-  it("names the outcome's first and last day, and a pending one as pending", () => {
-    const tip = (day: string) => option.tooltip.formatter([{ axisValue: day }]);
-    expect(tip("2026-02-04")).toContain("Feb 4, 2026");
-    expect(tip("2026-02-04")).toContain("Mar 10, 2026");
-    expect(tip("2026-02-04")).toContain("Eligible");
-    expect(tip("2026-02-09")).toContain("pending");
-    expect(tip("2026-02-09")).not.toContain("0.0%");
-    expect(tip("2026-02-02")).toContain("no data");
-  });
-
-  it("draws without the rules' values, as on the first night's file", () => {
-    const bare = trackerOption(P, SERIES, EPISODES, null);
+    const bare = trackerOption(P, SERIES, EPISODES, null, ALL);
     expect(series(bare, gap).markLine?.data.map((d) => d.yAxis)).toEqual([0]);
+  });
+
+  it("add the gap, the credit and the observation to the tooltip", () => {
+    const tip = option.tooltip.formatter([{ axisValue: "2026-02-04" }]);
+    for (const text of ["+5.0 pts", "300 bps, stable", "Qualifying observation", "Credit stable"]) {
+      expect(tip).toContain(text);
+    }
+    expect(option.tooltip.formatter([{ axisValue: "2026-02-02" }])).toContain("no data");
   });
 });
 
@@ -126,13 +140,13 @@ describe("the credit spread", () => {
     expect(creditPoints([])).toEqual([]);
   });
 
-  it("draws the level limit, dashed", () => {
+  it("draws the level limit, dashed, and none when the file lacks it", () => {
     expect(series(option, CREDIT_SERIES.spread).markLine?.data).toEqual([{ yAxis: 450 }]);
+    expect(series(creditOption(P, points, null), CREDIT_SERIES.spread).markLine).toBeUndefined();
   });
 
-  it("shades unstable and unavailable sessions apart, one session still having width", () => {
-    const spans = creditSpans(points, "UNSTABLE");
-    expect(spans).toEqual([[2, 2]]);
+  it("shades not-stable and unavailable sessions apart, one session still having width", () => {
+    expect(creditSpans(points, "UNSTABLE")).toEqual([[2, 2]]);
     const unstable = series(option, CREDIT_SERIES.spread).markArea;
     expect(unstable?.itemStyle.color).toBe("unstable-shade");
     expect(unstable?.data).toEqual([[{ xAxis: "2026-02-06" }, { xAxis: "2026-02-09" }]]);

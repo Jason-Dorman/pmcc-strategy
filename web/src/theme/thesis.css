@@ -1,0 +1,445 @@
+/*
+ * The thesis page (UI-SPEC §6 › Thesis; PO, TD-30): a reading page, not a terminal. Everything is
+ * scoped under .th, so no other page changes. Prose keeps to a comfortable line; charts, cards and
+ * tables may take the wider column (.th-wide). Every colour is a token, or a mix of tokens.
+ */
+
+.th {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 8px 20px 96px;
+  font-family: var(--font-body);
+  font-size: 17px;
+  line-height: 1.65;
+  color: var(--text);
+}
+
+/* ---- the column: prose in the middle, wide things across ---- */
+.th-section {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 720px) minmax(0, 1fr);
+  row-gap: 18px;
+  padding-top: 72px;
+  scroll-margin-top: 8px;
+}
+.th-section:focus {
+  outline: none; /* focused by the contents, as a place to read from */
+}
+.th-section > * {
+  grid-column: 2;
+  min-width: 0;
+  margin: 0;
+}
+.th-section > .th-wide {
+  grid-column: 1 / -1;
+}
+
+/* ---- type ---- */
+.th-hero {
+  padding-top: 32px;
+}
+.th-eyebrow {
+  font-size: 14px;
+  letter-spacing: 0.4px;
+  color: var(--text-muted);
+}
+.th-h1 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(32px, 5vw, 48px);
+  line-height: 1.12;
+  letter-spacing: -0.8px;
+}
+.th-h2 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(25px, 3.4vw, 32px);
+  line-height: 1.2;
+  letter-spacing: -0.3px;
+}
+.th-h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 21px;
+  line-height: 1.3;
+}
+.th-section > .th-h3 {
+  margin-top: 14px;
+}
+.th-h4 {
+  margin: 0;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 17px;
+}
+.th-thesis {
+  font-size: clamp(20px, 2.4vw, 23px);
+  line-height: 1.5;
+}
+.th-intro {
+  font-size: 18px;
+  color: var(--text);
+}
+.th b {
+  font-weight: 600;
+}
+.th-caption,
+.th-meta,
+.th-missing {
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--text-muted);
+}
+.th-caption b {
+  color: var(--text);
+}
+
+/* ---- the horizons ---- */
+.th-horizons {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+  margin-top: 14px !important;
+  padding: 24px 28px;
+  border-radius: 12px;
+  background: var(--surface);
+}
+.th-horizons dt {
+  font-weight: 600;
+}
+.th-horizons dd {
+  margin: 4px 0 0;
+  color: var(--text);
+}
+
+/* ---- the page's contents ---- */
+.th-contents {
+  max-width: 720px;
+  margin: 32px auto 0;
+}
+.th-contents ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 20px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.th-contents button {
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 15px;
+  color: var(--text-muted);
+  text-decoration: underline;
+  text-decoration-color: var(--border);
+  text-underline-offset: 4px;
+  cursor: pointer;
+}
+.th-contents button:hover {
+  color: var(--accent);
+}
+
+/* ---- the latest assessment ---- */
+.th-assessment {
+  display: grid;
+  gap: 18px;
+  padding: 32px;
+  border-radius: 12px;
+  background: var(--surface);
+}
+.th-assessment > p {
+  max-width: 720px;
+  margin: 0;
+}
+.th-headline {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(24px, 3vw, 30px);
+  line-height: 1.25;
+}
+.th-observations {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 28px;
+}
+.th-observation {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.th-observation p {
+  flex: 1;
+  margin: 0;
+  font-size: 16px;
+}
+.th-verdict {
+  font-size: 15px;
+  font-weight: 600;
+}
+.th-verdict-met {
+  color: var(--positive);
+}
+.th-verdict-unmet {
+  color: var(--negative);
+}
+.th-verdict-unknown {
+  color: var(--text-muted);
+}
+.th-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.th-feed {
+  font-weight: 600;
+  color: var(--positive);
+}
+.th-feed-stale {
+  color: var(--negative);
+}
+
+/* ---- cards ---- */
+.th-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+.th-cards {
+  display: grid;
+  gap: 20px;
+}
+.th-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 28px;
+  border-radius: 12px;
+  background: var(--surface);
+}
+.th-card p {
+  margin: 0;
+}
+.th-figure {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 34px;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+.th-figure-unit {
+  display: block;
+  margin-top: 2px;
+  font-family: var(--font-body);
+  font-weight: 400;
+  font-size: 15px;
+  color: var(--text-muted);
+}
+.th-status {
+  font-weight: 600;
+}
+.th-status-fail .th-status {
+  color: var(--negative);
+}
+.th-facts {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  font-size: 16px;
+}
+.th-facts > div {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 12px;
+}
+.th-facts dt {
+  color: var(--text-muted);
+}
+.th-facts dd {
+  margin: 0;
+}
+
+/* ---- disclosures and buttons ---- */
+.th-disclosure {
+  border-top: 1px solid var(--border);
+}
+.th-disclosure > summary {
+  padding: 12px 0;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.th-disclosure > summary:hover {
+  color: var(--accent);
+}
+.th-disclosure-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  padding: 6px 0 20px;
+}
+.th-disclosure-body > * {
+  min-width: 0;
+}
+.th-disclosure-body > p,
+.th-disclosure-body > ul,
+.th-disclosure-body > ol {
+  max-width: 720px;
+  margin: 0;
+}
+.th-section > .th-disclosure + .th-disclosure {
+  margin-top: -18px; /* a run of disclosures shares its rules */
+}
+.th-button {
+  padding: 7px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  font: inherit;
+  font-size: 15px;
+  line-height: 1.4;
+  color: var(--text);
+  cursor: pointer;
+}
+.th-button:hover {
+  border-color: var(--accent);
+}
+.th-button[aria-pressed="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.th button:focus-visible,
+.th summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* ---- charts ---- */
+.th .pm-figure {
+  margin-bottom: 10px;
+  min-width: 0; /* the page never scrolls sideways; the chart narrows instead */
+  overflow: hidden; /* until it has resized to a narrower window */
+}
+.th-controls,
+.th-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.th-controls {
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.th-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 24px;
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+  font-size: 15px;
+}
+.th-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.th-key {
+  flex: none;
+  width: 26px;
+  text-align: center;
+  line-height: 1;
+}
+.th-key-line {
+  border-top: 3px solid;
+}
+.th-key-area {
+  height: 14px;
+  border: 1px solid var(--border);
+}
+.th-key-vix { border-color: var(--vix-line); }
+.th-key-forecast { border-color: var(--forecast-line); border-top-style: dashed; }
+.th-key-realized { border-color: var(--realized-line); }
+.th-key-gap { border-color: var(--gap-line); }
+.th-key-credit { border-color: var(--credit-line); }
+.th-key-threshold { border-color: var(--threshold-line); border-top-style: dashed; }
+.th-key-window { background: var(--window-shade); }
+.th-key-nocredit { background: var(--no-credit-shade); }
+.th-key-unstable { background: var(--unstable-shade); }
+.th-key-eligible { color: var(--eligible-mark); }
+.th-key-filtered { color: var(--filtered-mark); }
+.th-key-unavailable { color: var(--unavailable-mark); }
+#signal-details {
+  margin-top: 18px;
+}
+#signal-details > p {
+  max-width: 720px;
+  margin: 0 0 14px;
+}
+
+/* ---- lists and detailed tables ---- */
+.th-list,
+.th-steps {
+  padding-left: 22px;
+  font-size: 16px;
+}
+.th-list {
+  list-style: disc;
+}
+.th-steps {
+  list-style: decimal;
+}
+.th-list li + li,
+.th-steps li + li {
+  margin-top: 10px;
+}
+.th .pm-table {
+  font-size: 14px;
+}
+.th .pm-table thead th {
+  font-size: 13px;
+  letter-spacing: 0.2px;
+  text-transform: none;
+}
+.th .pm-table-kv td:first-child {
+  width: 45%;
+}
+.th .pm-empty {
+  font-size: 16px;
+}
+
+@media (max-width: 800px) {
+  .th {
+    padding: 12px 4px 64px;
+    font-size: 17px;
+  }
+  .th-section {
+    grid-template-columns: minmax(0, 1fr);
+    padding-top: 56px;
+  }
+  .th-section > *,
+  .th-section > .th-wide {
+    grid-column: 1;
+  }
+  .th-hero {
+    padding-top: 20px;
+  }
+  .th-horizons,
+  .th-observations,
+  .th-pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .th-horizons,
+  .th-assessment,
+  .th-card {
+    padding: 22px 18px;
+  }
+  .th-facts > div {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+}

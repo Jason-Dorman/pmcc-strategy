@@ -12,7 +12,7 @@ A **terminal**, not a dashboard of cards:
 - hairline rules between everything
 - every number in monospace
 
-No rounded corners, no shadows, no floating cards, no whitespace gaps. shadcn/ui components are restyled to match. One theme, dark; no theme toggle.
+No rounded corners, no shadows, no floating cards, no whitespace gaps. Two pages break from it by the PO's choice, each in its own scoped stylesheet: Home (LD-37) and the thesis page (TD-30). shadcn/ui components are restyled to match. One theme, dark; no theme toggle.
 
 ## 2. Building blocks
 
@@ -132,24 +132,22 @@ A tile's figure is "—" while its file loads or if it's missing; its links alwa
 | 6 | Nightly run log | 10 | one row per run, newest first: run time, the session planned, state, cash, outcome, rule, why, the option picked at the close, the strike sent (LD-29), its delta and IV, and its bid, ask, mid and spread at the close ("—" on rows logged before them, PO, LD-15) |
 | 7 | The rules | 10 | `configs/live.yaml`'s rules, each in words with its ID, as a table; last on the page (PO, LD-35) |
 
-### Thesis — `#/thesis` (PO, TD-10, TD-28; built at T4-01, TD-29)
+### Thesis — `#/thesis` (PO, TD-30; T4-02, TD-31)
 
-The assignment's items in their order, from `thesis.json`. A stale file (its `data_status` not `CURRENT`, or its `expected_by` past) shows a page-level `WarningBanner` with the last successful update. Statuses show in words, never their codes; a missing value is "—", "Pending" or "Unavailable", never zero.
+A reading page, its own break from the terminal look (as Home's is): `web/src/theme/thesis.css`, every rule under `.th`, every colour a token. A centred column up to 720 px for prose, 1,120 px for charts, cards and tables (`.th-wide`); 17 px body text, display-font headings, captions at 15 px; rounded surfaces, space between sections, few rules. On a phone everything stacks and nothing scrolls sideways outside a detailed table. From `thesis.json`; the idea and the macro paragraph need no file.
 
-**Readouts:** Thesis status · Evidence · Today's signal (in words, with the episode's dates) · Data through (and when updated) · VIX minus forecast · Credit
+In order, each a named section, with a contents list that moves focus to one:
 
-| # | Panel | Width | Content |
-| --- | --- | --- | --- |
-| — | The thesis | 10 | the one-sentence thesis (amber), the mechanism and its caveats, spec §1's text |
-| — | Time horizons | 10 | spec §1's five horizons |
-| 1 | Daily tracker | 10 | what it tracks, the signal and where credit data starts, in prose; then the chart (hero height): above, VIX, the 30-day forecast (dashed) and the subsequent 30-day realized volatility at its origin date, blank until matured; below, VIX minus the forecast, the candidate's threshold (dashed), a dotted zero and the candidates by shape and colour; search windows shaded faintly; the sessions before credit data shaded and labelled; one date axis, one zoom slider, opening on about two years; the tooltip gives each value, the outcome's first and last day, the credit and any candidate. Under it the ten latest sessions as a table; every session and every VIX spike in disclosures |
-| 2 | Credit spread | 6 | the spread as known at each decision, its 450 bps limit dashed, unstable and unavailable sessions shaded apart, a zoom; then, always visible, the observation's date and when it became usable, and the level and the 5- and 20-observation changes against their limits; the values in a disclosure; ICE's and FRED's attribution |
-| — | Today's state | 4 | the signal, and each measured value with what a spike or a candidate needs in brackets |
-| 3 | Wrong-if conditions | 10 | K1–K3: the condition, what it needs, the sample, the current value ("(provisional)" below its sample), the assessment date, the status, a note |
-| 4 | Preliminary historical evidence | 6 | the file's sentences; the groups (matured count, mean and median variance premium, VIX minus realized, starting VIX, dates); the future validation target; every candidate, newest first. No evidence classification (TD-23) |
-| — | Alpha and cost | 4 | "Gross economic premium, not tradable alpha."; the edge by group beside one leg's round-trip cost, base and stressed; the dated sample's assumptions; the limitations (TD-21) |
-| — | Macro environment | 10 | spec §1's paragraph, and a dated sentence generated from the tracker's values alone |
-| — | Methodology and sources | 10 | how the tracker is computed (its values from the file), limitations, the sources' coverage with their notices, the version: each folded |
+1. **The idea:** the eyebrow ("a hypothesis being investigated"), the title, the one-sentence thesis, the explanation, three horizons and the note that two are planning estimates.
+2. **Latest assessment:** the headline (the backend's signal state in words), one or two sentences on the latest readings, the state's own dates (leading when it is about an earlier qualifying observation), three observations (pricing gap, market swings, credit conditions) each with the tracker's verdict as an icon and words; the feed's freshness, data-through date, last update and next expected. Then VIX, volatility point and basis point defined, why credit matters, and "Explore credit conditions": the rule broken in words, the spread with its limit and its not-stable and unavailable sessions shaded apart, the three checks, the dates, the values, the attribution.
+3. **How much volatility was priced in—and what followed?** One chart: VIX, our forecast (dashed) and the actual volatility of the following 30 days at its origin date, blank until complete; presets (6 months, 1 year, the default, 3 years, all) and a slider; an HTML legend. "Show signal details" adds, on the same axis and zoom, the search windows, the gap's pane with its threshold, and the qualifying observations by shape and colour. The tooltip gives the window's first day and the day it became known. "View daily observations" and "View volatility spikes and qualifying observations" hold the tables.
+4. **Preliminary historical evidence:** stable and unstable credit, each with its completed count and average gap; the sample's limits and the observations left out, beside them; "Explore the historical observations" holds every group and observation.
+5. **What would invalidate the thesis:** three stacked cards (plain condition, status, sample needed and available, current value with its unit), the exact formula in each card's disclosure.
+6. **Potential return and trading costs:** the gross premium and the cost illustration apart, each with its unit and denominator; "Cost assumptions and limitations".
+7. **Macro conditions.**
+8. **Methodology, sources and detailed data:** each behind a named disclosure.
+
+A value the file lacks is said to be missing where it would be ("Not in this file", "Not measured yet", "Pending"); never zero, never a failed check. Stale says the data feed is out of date, and nothing about the evidence. Disclosures are native `details`, opened by keyboard.
 
 ## 7. Routes
 
@@ -182,7 +180,7 @@ The thesis adds one, first in the nav (PO, TD-28):
 | Missing run | in-panel "No results for SYMBOL / RUN" |
 | Schema mismatch | page-level `WarningBanner` |
 | Synthetic data | page-level `WarningBanner`: "Synthetic data — not market results" |
-| Stale tracker | page-level `WarningBanner` on the thesis page: its last successful update and data-through date (TD-29) |
+| Stale tracker | in the thesis page's latest assessment, "Data feed out of date: an update is overdue or failed", with its dates; repeated under the tracker's chart (TD-29, TD-30) |
 | Stale mark | the mark cell uses `flag`, with a tooltip "last valid mid carried; never filled" |
 
 ## 9. Formatting (`web/src/format/`)

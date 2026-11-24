@@ -1,8 +1,7 @@
-// The volatility thesis's words and units (UI-SPEC §6 › Thesis; PO, TD-23, TD-25, TD-28): a
-// vol difference in points, a spread in basis points, a premium in variance, and each status as a
-// reader would say it. The file's own codes never show on the page.
-import type { Thesis, ThesisSignal } from "../types/generated/thesis";
-import { longDate } from "../components/charts/axis";
+// The volatility thesis's words and units (UI-SPEC §6 › Thesis; PO, TD-23, TD-25, TD-30): a vol
+// difference in volatility points, a spread in basis points, a premium in variance, and each
+// status as a reader would say it. The file's own codes never show on the page.
+import type { Thesis } from "../types/generated/thesis";
 
 const MINUS = "−";
 
@@ -10,6 +9,11 @@ function signed(value: number, digits: number): string {
   const text = Math.abs(value).toFixed(digits);
   if (Number(text) === 0) return text;
   return `${value < 0 ? MINUS : "+"}${text}`;
+}
+
+/** The size of a vol difference in volatility points, unsigned: `11.9`. */
+export function points(difference: number): string {
+  return (Math.abs(difference) * 100).toFixed(1);
 }
 
 /** A difference of two decimal vols, in volatility points, signed: `+11.9`. */
@@ -47,70 +51,50 @@ export function level(value: number): string {
   return value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-/** The signal in a few words (the home tile, the readout). The two blocked states are the PO's
- * (TD-25), cut to their first half here; `signalDetail` gives each whole. */
+/** `5 completed observations`, `1 completed observation`. */
+export function completed(count: number): string {
+  return `${count.toLocaleString("en-US")} completed ${count === 1 ? "observation" : "observations"}`;
+}
+
+/** The backend's signal state, the PO's words (TD-30): the assessment's headline, and the home
+ * tile's line. */
 const SIGNALS: Readonly<Record<string, string>> = {
-  NO_SHOCK: "No qualifying episode today",
-  SEARCHING: "Monitoring a recent volatility spike",
-  NO_CANDIDATE: "Recent spike, no candidate qualified",
-  ELIGIBLE: "Candidate found, credit stable",
-  FILTERED_OUT: "Candidate found, credit not stable",
-  CREDIT_UNAVAILABLE: "Credit data unavailable",
-  INCOMPLETE_CANDIDATE_SEARCH: "Incomplete observation window",
+  NO_SHOCK: "No qualifying volatility spike to monitor",
+  SEARCHING: "Watching a recent volatility spike",
+  NO_CANDIDATE: "No qualifying observation in this search window",
+  ELIGIBLE: "Research conditions met",
+  FILTERED_OUT: "Candidate did not meet the credit rules",
+  CREDIT_UNAVAILABLE: "Credit data needed to assess eligibility",
+  INCOMPLETE_CANDIDATE_SEARCH: "Missing observations prevent assessment",
 };
 
 export function signalLabel(status: string): string {
   return SIGNALS[status] ?? status;
 }
 
-function blockedDetail(s: ThesisSignal): string | undefined {
-  if (s.status === "CREDIT_UNAVAILABLE") {
-    return "Credit data unavailable — eligibility cannot be assessed.";
-  }
-  if (s.status === "INCOMPLETE_CANDIDATE_SEARCH") {
-    return "Incomplete observation window — candidate assessment unavailable.";
-  }
-  return undefined;
-}
-
-/** The signal in a sentence or two: its episode's dates, and a blocked assessment's reason. */
-export function signalDetail(s: ThesisSignal): string {
-  if (s.shock_day === null || s.window_end === null) {
-    return "No VIX spike has a search open.";
-  }
-  const spike = `VIX spiked on ${longDate(s.shock_day)}`;
-  const blocked = blockedDetail(s);
-  if (blocked !== undefined) return `${blocked} ${spike}. ${s.reason}`.trim();
-  const until = `${spike}; the search for a candidate runs through ${longDate(s.window_end)}.`;
-  if (s.candidate_day === null) {
-    return s.status === "NO_CANDIDATE"
-      ? `${spike}; no session of its search window qualified.` : until;
-  }
-  return `${spike}; the candidate is ${longDate(s.candidate_day)}.`;
-}
-
 /** Whether the next night's file is overdue, so this one is stale whatever it says of itself
- * (THESIS-SPEC §9: never a falsely fresh chart). */
+ * (THESIS-SPEC §9: never a falsely fresh chart). Nothing to do with how much evidence there is. */
 export function isStale(thesis: Thesis, now: number = Date.now()): boolean {
   if (thesis.data_status !== "CURRENT") return true;
   return thesis.expected_by !== null && now > Date.parse(thesis.expected_by);
 }
 
 const ELIGIBILITY: Readonly<Record<string, string>> = {
-  ELIGIBLE: "Eligible",
-  FILTERED_OUT: "Filtered out",
+  ELIGIBLE: "Credit stable",
+  FILTERED_OUT: "Credit not stable",
   CREDIT_UNAVAILABLE: "Credit data unavailable",
 };
 
+/** A qualifying observation's credit at its own assessment. */
 export function eligibilityLabel(eligibility: string): string {
   return ELIGIBILITY[eligibility] ?? eligibility;
 }
 
 const EPISODES: Readonly<Record<string, string>> = {
-  CANDIDATE: "Candidate found",
-  NO_CANDIDATE: "No candidate",
-  SEARCHING: "Searching",
-  INCOMPLETE_CANDIDATE_SEARCH: "Incomplete observation window",
+  CANDIDATE: "Qualifying observation found",
+  NO_CANDIDATE: "None qualified",
+  SEARCHING: "Search open",
+  INCOMPLETE_CANDIDATE_SEARCH: "Missing observations",
 };
 
 export function episodeLabel(status: string): string {
@@ -118,7 +102,7 @@ export function episodeLabel(status: string): string {
 }
 
 const OUTCOMES: Readonly<Record<string, string>> = {
-  MATURED: "Matured",
+  MATURED: "Completed",
   PENDING: "Pending",
   INCOMPLETE: "Incomplete",
   UNAVAILABLE: "Unavailable",
@@ -130,36 +114,10 @@ export function outcomeLabel(outcome: string): string {
 
 const CREDIT: Readonly<Record<string, string>> = {
   STABLE: "Stable",
-  UNSTABLE: "Unstable",
+  UNSTABLE: "Not stable",
   UNAVAILABLE: "Unavailable",
 };
 
 export function creditLabel(status: string): string {
   return CREDIT[status] ?? status;
-}
-
-const CONDITIONS: Readonly<Record<string, string>> = {
-  PASS: "Not triggered",
-  FAIL: "Triggered",
-  INSUFFICIENT_DATA: "Insufficient data",
-  NOT_EVALUATED: "Not yet evaluated",
-};
-
-export function conditionLabel(status: string): string {
-  return CONDITIONS[status] ?? status;
-}
-
-const THESIS: Readonly<Record<string, string>> = {
-  PROVISIONAL: "Provisional",
-  PAUSED: "Paused",
-  ACTIVE: "Active",
-};
-
-export function thesisLabel(status: string): string {
-  return THESIS[status] ?? status;
-}
-
-/** `INSUFFICIENT_EVIDENCE` → `Insufficient`: the only value this milestone has (TD-23). */
-export function evidenceLabel(status: string): string {
-  return status === "INSUFFICIENT_EVIDENCE" ? "Insufficient" : status;
 }

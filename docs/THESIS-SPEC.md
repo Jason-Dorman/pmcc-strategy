@@ -17,7 +17,7 @@ The thesis assignment is due **Tue Nov 24 2026, 11:59 pm ET** (TD-02). It asks f
 | §6 Options implementation, §7 Execution and ledger | Out (backtesting) |
 | §8 Historical evaluation | Out, except the stable/unstable cohorts' matured variance outcomes (analysis D) that K1 and R5 read. R5 is a rough, evidence-informed estimate (TD-07): the premium beside one dated sample of SPXW's measured spreads (TD-21). §8.4's 20 per cohort is a future validation target that blocks nothing (TD-23) |
 | §9 Wrong-if conditions | K1 calculated; K2 and K3 shown as "Not yet evaluated — requires strategy backtesting" (TD-08). Status fields: `run_status`, `data_status`, the tracker's `signal_status` values (`NO_SHOCK`, `SEARCHING`, `NO_CANDIDATE`, `FILTERED_OUT`, `ELIGIBLE`, and `CREDIT_UNAVAILABLE` and `INCOMPLETE_CANDIDATE_SEARCH`, whose assessment is blocked without stopping anything, TD-25), `thesis_status` and `evidence_status` (always `INSUFFICIENT_EVIDENCE`: no `SUPPORTIVE` / `MIXED` / `UNSUPPORTIVE` classification, TD-23); the trading values and `position_status` are out. K1 is a current rolling assessment: the persistent `FAIL` latch waits for backtesting (TD-24) |
-| §10 Website | Components 1–4 and 7–10 (TD-10), with the raw credit spread charted (TD-06); 4 is "Preliminary historical evidence", in plain language (TD-23); 5 (trading comparison) and 6 (forward record) are out |
+| §10 Website | Components 1–4 and 7–10 (TD-10), with the raw credit spread charted (TD-06); 4 is "Preliminary historical evidence", in plain language (TD-23); the page is a reading sequence, the thesis's statuses said in words within it (TD-30); 5 (trading comparison) and 6 (forward record) are out |
 | §11 Data model | Out, except the provenance fields on the public JSON (§10) |
 | §12 Nightly pipeline | The `thesis` workflow (TD-09); no Sanji integration |
 | §13 Configuration | The keys the tracker and K1 read |
@@ -50,9 +50,13 @@ A positive result in one does not establish the other. Do not treat a VIX-minus-
 
 ### R1 — One-sentence thesis
 
-> Following equity-volatility spikes, options overprice subsequent market fluctuations when corporate credit conditions remain stable and realized volatility begins to normalize, creating opportunities to sell protection selectively after costs.
+> I believe S&P 500 options remain expensive relative to subsequent market movements after a volatility spike when market swings begin to ease and corporate credit conditions stay stable, creating opportunities to sell protection selectively after costs.
+
+(The PO's wording, 2026-11-23, TD-30; the research meaning is unchanged. The page's title: "Selling expensive protection after market scares".)
 
 ### Economic explanation
+
+On the page (PO, TD-30): "Investors may continue paying heavily for protection after the initial scare has passed. This project looks for situations where that demand remains high while market conditions begin to settle. Corporate borrowing conditions help us judge whether the scare could become a deeper financial problem." In full:
 
 The proposed mechanism is that demand for protection can remain elevated after an initial equity-market shock. If credit conditions remain stable and actual price fluctuations begin to diminish, the insurance price may decline more slowly than the underlying risk. Stable credit is proposed as evidence that the shock is less likely to become a persistent financing or solvency problem.
 
@@ -68,9 +72,11 @@ This is a testable interpretation, not an established causal conclusion. Credit 
 
 ### R6 — Macro-environment paragraph for the website
 
-> This thesis is most plausible when a volatility spike reflects a temporary repricing of equity risk while corporate financing conditions remain comparatively stable. Persistent inflation surprises, unexpected changes in Federal Reserve policy, deteriorating credit conditions, or renewed equity selling could instead produce sustained volatility. A technology-sector selloff could remain concentrated or spread into broader financial stress; the strategy therefore evaluates broad equity volatility alongside corporate credit rather than assuming every selloff will reverse. Lower implied volatility alone does not guarantee a profitable trade, because the underlying can move enough to overwhelm the benefit from cheaper options. These relationships are hypotheses evaluated by the tracker and historical tests, not assumptions that a particular macro regime is currently present.
+> This idea depends on the market scare fading. Persistent inflation, unexpected Federal Reserve policy changes, or worsening corporate financing conditions could keep volatility elevated. A technology selloff could also spread into the broader market. In those situations, options that appear expensive may be pricing risks that subsequently materialize.
 
-Display this paragraph with a separate, dated current-state summary generated from measured inputs. Do not fabricate explanations for daily moves or claim a news event caused them without sourced evidence.
+(The PO's wording, 2026-11-23, TD-30.)
+
+Display this paragraph apart from a dated current-state summary generated from measured inputs: the page's latest assessment (TD-30). Do not fabricate explanations for daily moves or claim a news event caused them without sourced evidence.
 
 ## 2. Assignment traceability
 

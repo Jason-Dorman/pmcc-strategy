@@ -94,6 +94,7 @@ class ThesisCondition(_Strict):
     formula: str
     threshold: str
     minimum_sample: str
+    required: int | None = None  # the minimum sample's count
     status: str  # PASS, FAIL, INSUFFICIENT_DATA, NOT_EVALUATED
     value: float | None
     sample: int | None
@@ -161,6 +162,14 @@ class ThesisCurrent(_Strict):
     forecast_gap_vol: float | None
     rv_short: float | None
     rv_long: float | None
+    rv_short_earlier: float | None = None  # RV5 at the comparison session, three earlier
+    # §5.4's and §5.5's tests as they read that day, by the tracker's own rules (TD-30)
+    swings_below_long: bool | None = None
+    swings_not_rising: bool | None = None
+    gap_ok: bool | None = None
+    credit_level_ok: bool | None = None
+    credit_change_short_ok: bool | None = None
+    credit_change_long_ok: bool | None = None
     credit_status: str
     credit_bps: float | None
     credit_observation_date: str | None

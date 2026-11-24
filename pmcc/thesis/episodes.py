@@ -116,12 +116,36 @@ def _episode(
     return Episode(episode_id, shock, window, CandidateStatus.NO_CANDIDATE, None, "")
 
 
-def qualifies(rows: Sequence[FeatureRow], i: int, config: NormalizationConfig) -> bool | None:
-    """§5.4's three tests at row `i`: True, False, or None when an input is missing."""
+@final
+@dataclass(frozen=True, slots=True)
+class Checks:
+    """§5.4's three tests at one session, each None when an input is missing."""
+
+    swings_below_long: bool | None  # RV5 < RV20
+    swings_not_rising: bool | None  # RV5 <= RV5 three sessions earlier
+    gap_ok: bool | None  # the forecast gap at or above its minimum
+    earlier_rv_short: float | None  # RV5 three sessions earlier
+
+    @property
+    def passed(self) -> bool | None:
+        """All three, or None when any couldn't be tested."""
+        tests = (self.swings_below_long, self.swings_not_rising, self.gap_ok)
+        return None if None in tests else all(tests)
+
+
+def checks(rows: Sequence[FeatureRow], i: int, config: NormalizationConfig) -> Checks:
     back = i - config.falling_rv_comparison_sessions
     row = rows[i]
     earlier = rows[back].rv_short if back >= 0 else None
     short, long_, gap = row.rv_short, row.rv_long, row.forecast_gap_vol
-    if short is None or long_ is None or gap is None or earlier is None:
-        return None
-    return short < long_ and short <= earlier and gap >= config.minimum_forecast_gap_decimal
+    return Checks(
+        swings_below_long=None if short is None or long_ is None else short < long_,
+        swings_not_rising=None if short is None or earlier is None else short <= earlier,
+        gap_ok=None if gap is None else gap >= config.minimum_forecast_gap_decimal,
+        earlier_rv_short=earlier,
+    )
+
+
+def qualifies(rows: Sequence[FeatureRow], i: int, config: NormalizationConfig) -> bool | None:
+    """§5.4's three tests at row `i`: True, False, or None when an input is missing."""
+    return checks(rows, i, config).passed
