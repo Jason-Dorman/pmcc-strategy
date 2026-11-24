@@ -65,7 +65,7 @@ export type RoleToken = keyof typeof ROLE_TOKENS;
 
 /** The translucent fills tokens.css derives from a palette colour. */
 export type ShadeToken = "negative-shade" | "shares-shade" | "vol-gap-shade" | "move-shade"
-  | "window-shade" | "no-credit-shade" | "unstable-shade";
+  | "window-shade" | "no-credit-shade" | "unstable-shade" | "pending-shade";
 
 /** A colour token's current value, read from the document at render time (the charts). */
 export function color(token: ColorToken | RoleToken | ShadeToken,

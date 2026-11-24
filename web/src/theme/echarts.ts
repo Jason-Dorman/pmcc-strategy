@@ -49,7 +49,7 @@ const PALETTE_TOKENS = [
   "basis-line", "iv-line", "rv-line", "vix-line", "forecast-line", "realized-line", "gap-line",
   "credit-line", "threshold-line", "eligible-mark", "filtered-mark", "unavailable-mark",
   "negative-shade", "shares-shade", "vol-gap-shade", "move-shade", "window-shade",
-  "no-credit-shade", "unstable-shade",
+  "no-credit-shade", "unstable-shade", "pending-shade",
 ] as const satisfies readonly (keyof Palette)[];
 
 /** Every colour and font stack a chart uses, as the document has them now. */
@@ -62,7 +62,13 @@ export function readPalette(root: Element = document.documentElement): Palette {
 // Type sizes, as theme.py's figures set them.
 export const CHART_FONT = { tick: 10, legend: 10.5, tooltip: 11 } as const;
 // A reading page's charts (the thesis's, TD-30): legible at 100% zoom.
-export const READING_FONT = { tick: 13, tooltip: 13 } as const;
+export const READING_FONT = { tick: 13, tooltip: 13, note: 13 } as const;
+// The band above a reading page's plot: its axis's unit on the left, a note on the right.
+const READING_BAND = 46;
+// An axis's unit, set above its plot from the figure's left edge.
+export const UNIT_NAME = { gap: 14, indent: -52 } as const;
+// A note's two lines end this far above the plot.
+export const NOTE_LIFT = -8;
 
 // Plot insets. The band above the plot stays empty: the legend sits inside the plot, top left.
 const INSET = { left: 64, right: 18, top: 10, bottom: 28 } as const;
@@ -77,10 +83,16 @@ export const STACKED_GRIDS = [
   { left: INSET.left, right: INSET.right, top: "74%", bottom: INSET.bottom },
 ];
 
-/** Two grids over a zoom slider (the thesis's tracker with its details, T4-01). */
+/** Two grids over a zoom slider (the thesis's tracker with its details, T4-01), a band above each
+ * for its unit. */
 export const ZOOM_PANES = [
-  { left: INSET.left, right: INSET.right, top: INSET.top, height: "50%" },
-  { left: INSET.left, right: INSET.right, top: "57%", height: "31%" },
+  { left: INSET.left, right: INSET.right, top: READING_BAND, height: "44%" },
+  { left: INSET.left, right: INSET.right, top: "61%", height: "27%" },
+];
+
+/** One grid over a zoom slider, a band above it for its unit and a note (the thesis's tracker). */
+export const NOTED_ZOOM_GRID = [
+  { left: INSET.left, right: INSET.right, top: READING_BAND, bottom: 74 },
 ];
 
 /** One grid over a zoom slider (the thesis's credit spread, T4-01). */

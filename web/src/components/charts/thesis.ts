@@ -17,10 +17,13 @@ import {
   baseOption,
   lineSeries,
   LINE,
+  NOTE_LIFT,
+  NOTED_ZOOM_GRID,
   PANE_TICKS,
   plotGrid,
   READING_FONT,
   ruler,
+  UNIT_NAME,
   valueAxis,
   zoom,
   ZOOM_GRID,
@@ -38,6 +41,12 @@ export const TRACKER_SERIES = {
   realized: "Actual volatility over the following 30 days",
   gap: "VIX minus our forecast",
 } as const;
+
+/** Each pane's unit, above its plot. */
+export const UNITS = { volatility: "Annualized volatility (%)", gap: "Volatility points" } as const;
+
+/** The note over the newest sessions: two lines, so it clears the unit on a phone. */
+export const PENDING_NOTE = "30-day outcomes\nstill pending";
 
 /** Each kind of qualifying observation: its shape and its colour role, which both differ. */
 export const CANDIDATES = [
@@ -106,16 +115,28 @@ export function creditStart(series: readonly ThesisPoint[]): string | undefined 
   return series.find((p) => p.credit_bps !== null)?.day;
 }
 
-/** Each run of consecutive sessions whose credit has `status`, as its first and last index. */
-export function creditSpans(series: readonly ThesisPoint[], status: string): [number, number][] {
+/** Each run of consecutive sessions that `holds`, as its first and last index. */
+function runs(series: readonly ThesisPoint[],
+              holds: (point: ThesisPoint) => boolean): [number, number][] {
   const spans: [number, number][] = [];
   series.forEach((point, i) => {
-    if (point.credit_status !== status) return;
+    if (!holds(point)) return;
     const last = spans.at(-1);
     if (last && last[1] === i - 1) last[1] = i;
     else spans.push([i, i]);
   });
   return spans;
+}
+
+/** Each run of consecutive sessions whose credit has `status`. */
+export function creditSpans(series: readonly ThesisPoint[], status: string): [number, number][] {
+  return runs(series, (point) => point.credit_status === status);
+}
+
+/** Each run of consecutive sessions whose 30-day outcome is pending: the file's own status, so an
+ * incomplete or unavailable outcome is never called pending. */
+export function pendingSpans(series: readonly ThesisPoint[]): [number, number][] {
+  return runs(series, (point) => point.outcome === "PENDING");
 }
 
 /** A shaded region over index spans. A session is a point on the axis, so a span is drawn to the
@@ -200,6 +221,22 @@ function tooltip(base: object, points: readonly ThesisPoint[],
 
 // ---- the tracker --------------------------------------------------------------------------------
 
+/** The pending sessions, shaded faintly, with a note in the band above the plot: drawn only while
+ * they are in the range shown. The note is on the newest run. */
+function pendingArea(p: Palette, series: readonly ThesisPoint[]) {
+  const spans = pendingSpans(series);
+  const area = spanArea(series.map((s) => s.day), spans, p["pending-shade"]);
+  const note = { show: true, formatter: PENDING_NOTE, position: ["100%", 0], align: "right",
+                 verticalAlign: "bottom", offset: [0, NOTE_LIFT], color: p["text-muted"],
+                 fontFamily: p.fontBody, fontSize: READING_FONT.note };
+  return {
+    ...area,
+    label: { show: false },
+    data: area.data.map(([from, to], i) =>
+      [i === area.data.length - 1 ? { ...from, label: note } : from, to]),
+  };
+}
+
 function priceLines(p: Palette, series: readonly ThesisPoint[], extra: object = {}) {
   return [
     lineSeries(TRACKER_SERIES.vix, series.map((s) => (s.vix === null ? null : s.vix / 100)),
@@ -207,12 +244,20 @@ function priceLines(p: Palette, series: readonly ThesisPoint[], extra: object = 
     lineSeries(TRACKER_SERIES.forecast, series.map((s) => s.forecast_vol), p["forecast-line"],
                LINE.series, "dashed"),
     lineSeries(TRACKER_SERIES.realized, series.map((s) => s.realized_vol), p["realized-line"],
-               LINE.series),
+               LINE.series, "solid", { markArea: pendingArea(p, series) }),
   ];
 }
 
+/** An axis's unit, above its plot, from the figure's left edge. */
+function unit(p: Palette, name: string) {
+  return { name, nameLocation: "end", nameGap: UNIT_NAME.gap,
+           nameTextStyle: { align: "left", padding: [0, 0, 0, UNIT_NAME.indent],
+                            color: p["text-muted"], fontFamily: p.fontBody,
+                            fontSize: READING_FONT.note } };
+}
+
 function volAxis(p: Palette, gridIndex: number) {
-  return reading(valueAxis(p, { gridIndex, max: top,
+  return reading(valueAxis(p, { gridIndex, max: top, ...unit(p, UNITS.volatility),
                                 axisLabel: { ...valueAxis(p).axisLabel, formatter: volTick } }));
 }
 
@@ -222,7 +267,7 @@ export function priceOption(p: Palette, series: readonly ThesisPoint[], range: R
   const axis = sessionAxis(series.map((s) => s.day));
   return {
     ...base,
-    grid: ZOOM_GRID.map((g) => plotGrid(p, g)),
+    grid: NOTED_ZOOM_GRID.map((g) => plotGrid(p, g)),
     xAxis: reading(monthAxis(p, axis)),
     yAxis: volAxis(p, 0),
     dataZoom: zoom(p, [0], range.start, range.end),
@@ -251,6 +296,7 @@ export function trackerOption(p: Palette, series: readonly ThesisPoint[],
     yAxis: [
       volAxis(p, 0),
       reading(valueAxis(p, { gridIndex: 1, max: top, splitNumber: PANE_TICKS + 1,
+                             ...unit(p, UNITS.gap),
                              axisLabel: { ...valueAxis(p).axisLabel, formatter: pointTick } })),
     ],
     axisPointer: { link: [{ xAxisIndex: "all" }] },

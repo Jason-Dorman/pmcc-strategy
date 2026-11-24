@@ -367,6 +367,8 @@ test("the thesis page reads without opening anything, and its chart keeps its zo
   const before = await page.evaluate(() => window.scrollY);
   await page.mouse.wheel(0, 120);
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(before);
+  // The pending note shows while pending sessions are in the range, and the preset brings it back.
+  await expect(chart.getByText("still pending")).toHaveCount(1);
   // Dragging the slider's left end to the start: no preset is pressed, and the details open there.
   await chart.evaluate((el) => el.scrollIntoView({ block: "center" }));
   const now = await chart.boundingBox();
@@ -390,6 +392,26 @@ test("the thesis page reads without opening anything, and its chart keeps its zo
   await presets.getByRole("button", { name: "1 year" }).click();
   await expect(chart.getByText(/No credit data before/)).toHaveCount(0);
   await expect(page.getByRole("list", { name: "Signal details legend" })).toBeVisible();
+  for (const unit of ["Annualized volatility (%)", "Volatility points"]) {
+    await expect(chart.getByText(unit, { exact: true })).toHaveCount(1);
+  }
+  // A range that ends before the pending sessions carries no note.
+  await expect(chart.getByText("still pending")).toHaveCount(1);
+  await chart.evaluate((el) => el.scrollIntoView({ block: "center" }));
+  const detail = await chart.boundingBox();
+  if (!detail) throw new Error("no chart");
+  const ends = (await chart.locator("svg path").evaluateAll((found) =>
+    found.map((path) => path.getBoundingClientRect()).map((r) => ({ x: r.x, y: r.y, w: r.width,
+                                                                    h: r.height }))))
+    .filter((r) => r.y > detail.y + detail.height * 0.85 && r.w > 3 && r.w < 12 && r.h > 18
+      && r.h < 40).sort((m, n) => n.x - m.x);
+  const [right, other] = ends;
+  if (!right || !other) throw new Error("no slider handles");
+  await page.mouse.move(right.x + right.w / 2, right.y + right.h / 2);
+  await page.mouse.down();
+  await page.mouse.move(other.x - 200, right.y + right.h / 2, { steps: 20 });
+  await page.mouse.up();
+  await expect(chart.getByText("still pending")).toHaveCount(0);
 });
 
 test("every disclosure on the thesis page opens by keyboard without widening the page",

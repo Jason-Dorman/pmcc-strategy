@@ -173,6 +173,10 @@ describe("chart roles (DEC-04)", () => {
     expect(TOKENS).toContain("--unstable-shade: color-mix(in srgb, var(--negative) 18%, transparent)");
   });
 
+  it("shades the sessions whose outcome is pending faintly, in the outcome's colour (TD-32)", () => {
+    expect(TOKENS).toContain("--pending-shade: color-mix(in srgb, var(--nav-line) 10%, transparent)");
+  });
+
   it("shades the expected move in TEXT, neutral, never amber (LD-41)", () => {
     expect(TOKENS).toContain("--move-shade: color-mix(in srgb, var(--text) 9%, transparent)");
   });

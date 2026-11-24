@@ -107,13 +107,31 @@ describe("the supporting observations", () => {
   it("read the reviewed snapshot, each with the tracker's own verdict", () => {
     const [pricing, swings, credit] = observations(THESIS);
     expect(pricing).toEqual({ name: "Pricing gap", met: true, text:
-      "VIX is 11.5 volatility points above the model forecast. Our rule asks for at least 3.0." });
+      "VIX is 11.5 volatility points above our forecast. To qualify, it must be at least 3.0 "
+      + "volatility points above the forecast." });
     expect(swings).toEqual({ name: "Market swings", met: false, text:
       "Five-day volatility, 34.2%, remains above 20-day volatility, 27.0%." });
     expect(credit?.met).toBe(false);
     expect(credit?.text).toContain(
       "The spread rose 17 basis points over five observations; the stability limit is 15.");
     expect(credit?.text).toContain("347 basis points, is within the 450 limit");
+  });
+
+  it("say where VIX stands, and that the gap needed is above the forecast", () => {
+    const gap = (over: Partial<ThesisCurrent>) => observations(thesis(over))[0];
+    const needs = " To qualify, it must be at least 3.0 volatility points above the forecast.";
+    expect(gap({ forecast_gap_vol: -0.038334, gap_ok: false })).toEqual({ name: "Pricing gap",
+      met: false, text: `VIX is 3.8 volatility points below our forecast.${needs}` });
+    expect(gap({ forecast_gap_vol: 0.031, gap_ok: true })?.text)
+      .toBe(`VIX is 3.1 volatility points above our forecast.${needs}`);
+    for (const level of [0, 0.0002, -0.0002]) {
+      expect(gap({ forecast_gap_vol: level, gap_ok: false })?.text)
+        .toBe(`VIX matches our forecast.${needs}`);
+    }
+    const missing = gap({ forecast_gap_vol: null, gap_ok: null });
+    expect(missing?.met).toBeNull();
+    expect(missing?.text).toContain("can't be compared with our forecast");
+    expect(missing?.text).not.toMatch(/0\.0|matches|below/);
   });
 
   it("follow the file's verdicts, not a comparison of their own", () => {
@@ -145,7 +163,8 @@ describe("the supporting observations", () => {
   it("say what the first night's file lacks, without a verdict it can't support", () => {
     const [pricing, swings, credit] = observations(FIRST_NIGHT);
     expect([pricing?.met, swings?.met]).toEqual([null, null]);
-    expect(pricing?.text).not.toContain("asks for");
+    expect(pricing?.text).toBe("VIX is 11.5 volatility points above our forecast. The gap needed to "
+      + "qualify is not in this data file.");
     expect(credit?.text).toContain("The limits it was checked against are not in this file");
     expect(credit?.met).toBe(false); // the file's own credit status
   });

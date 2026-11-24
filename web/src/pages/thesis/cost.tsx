@@ -1,43 +1,58 @@
 // The thesis page's potential return and trading costs (UI-SPEC §6 › Thesis; PO, TD-07, TD-21,
-// TD-30): a gross premium in volatility points and a cost as a share of an option's price, each
-// with its unit and denominator, never netted against each other.
+// TD-30, TD-32): the volatility gap observed, under the thesis's own conditions first, and an
+// estimated cost as a share of an option's mid-price, each with its unit, never netted.
 import { KeyValue } from "../../components/cells";
 import { longDate } from "../../components/charts/axis";
 import { DataTable, type TableColumn } from "../../components/DataTable";
 import { count, pct } from "../../format/number";
-import { completed, level, points, variance } from "../../format/thesis";
-import type { Thesis, ThesisCohort, ThesisLegCost } from "../../types/generated/thesis";
+import { completed, level, points } from "../../format/thesis";
+import type { Thesis, ThesisLegCost } from "../../types/generated/thesis";
+import { gapPhrase } from "./evidence";
 import { Disclosure, Section, Titled } from "./parts";
 
-function median(c: ThesisCohort): string {
-  if (c.median_vol_gap === null || c.count < 2) return "";
-  return ` The median was ${c.median_vol_gap < 0 ? "−" : "+"}${points(c.median_vol_gap)}.`;
+/** The thesis's own conditions first: the completed observations with stable credit. */
+export function stableGap(t: Thesis): string {
+  const c = t.evidence.cohorts.stable;
+  const phrase = gapPhrase(c);
+  if (phrase === null) {
+    return "No observation with stable credit has completed yet, so the volatility gap under the "
+      + "thesis's own conditions has not been observed.";
+  }
+  return `${c.count === 1 ? "In the 1 completed observation" : `Across ${completed(c.count)}`} with `
+    + `stable credit, ${phrase}.`;
 }
 
-/** The rough gross premium, in words: every qualifying observation, whatever its credit. */
-export function grossPremium(t: Thesis): string {
+/** The kinds of credit the broader group holds besides stable: `including those with …`. */
+function including(t: Thesis): string {
+  const { unstable, credit_unavailable: unavailable } = t.evidence.cohorts;
+  const kinds = [unstable.count > 0 && "unstable", unavailable.count > 0 && "unavailable"]
+    .filter((k) => k !== false);
+  return kinds.length === 0 ? " " : `—including those with ${kinds.join(" or ")} credit—`;
+}
+
+function signedGap(gap: number): string {
+  const size = points(gap);
+  return gap < 0 && size !== "0.0" ? `−${size}` : size;
+}
+
+/** Every completed qualifying observation, whatever its credit: never a stand-in for the above. */
+export function broaderGap(t: Thesis): string {
   const c = t.evidence.cohorts.candidates;
   if (c.count === 0 || c.mean_vol_gap === null) {
-    return "No qualifying observation has completed, so there is no premium to report yet.";
+    return "No qualifying observation has completed yet.";
   }
-  const side = c.mean_vol_gap < 0 ? "below" : "above";
-  const size = c.count === 1 ? points(c.mean_vol_gap) : `an average of ${points(c.mean_vol_gap)}`;
-  return `Across ${completed(c.count)}, with any credit conditions, market-priced volatility was `
-    + `${size} volatility points ${side} the volatility that followed.${median(c)}`;
-}
-
-/** The variance premium's mean and median, for the same observations. */
-function inVariance(c: ThesisCohort): string {
-  if (c.mean_premium === null || c.median_premium === null) return "";
-  return `In variance units the mean was ${variance(c.mean_premium)} and the median `
-    + `${variance(c.median_premium)}, over 30 days.`;
+  const gap = `${signedGap(c.mean_vol_gap)} volatility points`;
+  return c.count === 1
+    ? `The 1 completed qualifying observation, whatever its credit, had a gap of ${gap}.`
+    : `Across all ${count(c.count)} completed qualifying observations${including(t)}the average gap `
+      + `was ${gap}.`;
 }
 
 function costSentence(t: Thesis): string {
   const { puts, calls, sample_session: day } = t.evidence.cost;
-  return `On ${longDate(day)}'s closing quotes, opening and closing one option cost about `
-    + `${pct(puts.base_share)} of a put's price and ${pct(calls.base_share)} of a call's, in the `
-    + "bid–ask spread and fees.";
+  return "Using the sampled bid–ask quotes and assumed fees, we estimate a round-trip cost of about "
+    + `${pct(puts.base_share)} of a put's mid-price and ${pct(calls.base_share)} of a call's. The `
+    + `quotes are from the ${longDate(day)} close.`;
 }
 
 interface CostRow {
@@ -52,9 +67,9 @@ const COST_COLUMNS: readonly TableColumn<CostRow>[] = [
     cell: (r) => `${level(r.leg.median_spread_points)} pts` },
   { id: "mid", header: "Median mid-price", num: true, sort: (r) => r.leg.median_mid_points,
     cell: (r) => `${level(r.leg.median_mid_points)} pts` },
-  { id: "base", header: "Round trip, % of price", num: true, sort: (r) => r.leg.base_share,
+  { id: "base", header: "Estimated round trip, % of mid-price", num: true, sort: (r) => r.leg.base_share,
     cell: (r) => pct(r.leg.base_share) },
-  { id: "stressed", header: "Stressed", num: true, sort: (r) => r.leg.stressed_share,
+  { id: "stressed", header: "Stressed estimate", num: true, sort: (r) => r.leg.stressed_share,
     cell: (r) => pct(r.leg.stressed_share) },
 ];
 
@@ -63,9 +78,9 @@ function Assumptions({ thesis }: { thesis: Thesis }) {
   const rows: CostRow[] = [{ name: "Put", leg: cost.puts }, { name: "Call", leg: cost.calls }];
   return (
     <>
-      <p>The table shows what one option&apos;s round trip cost on the sample day, and in a stressed
-        case of {cost.stressed_spread_multiple} times the spread and {cost.stressed_fee_multiple}{" "}
-        times the fees. Prices are in index points.</p>
+      <p>The table shows the round-trip cost we estimate for one option, using the sampled bid–ask
+        quotes and assumed fees, and in a stressed case of {cost.stressed_spread_multiple} times the
+        spread and {cost.stressed_fee_multiple} times the fees. Prices are in index points.</p>
       <DataTable label="Cost sample" rows={rows} columns={COST_COLUMNS} rowId={(r) => r.name} grow />
       <p>The table lists the assumptions behind it.</p>
       <KeyValue label="Cost assumptions" rows={[
@@ -75,7 +90,7 @@ function Assumptions({ thesis }: { thesis: Thesis }) {
         ["Which strikes", `those with an absolute delta from ${cost.absolute_delta_low} to `
           + String(cost.absolute_delta_high)],
         ["Fee per contract, each way", `$${cost.fee_per_contract_transaction_usd.toFixed(2)}`],
-        ["Round trip", "one full bid–ask spread, plus two fees"],
+        ["Round trip, as assumed", "one full bid–ask spread, plus two fees"],
       ]} />
       <p>
         These are one day&apos;s quotes, taken on a day VIX had spiked, and medians over the strikes
@@ -91,18 +106,19 @@ export function Cost({ thesis }: { thesis: Thesis }) {
   return (
     <Section id="cost" title="Potential return and trading costs"
              intro={<>Two separate measurements: how far market-priced volatility stood above what
-               followed, and what it costs to trade. Net strategy returns have not yet been
-               estimated.</>}>
+               followed, and an estimate of what trading could cost. Net strategy returns have not yet
+               been estimated.</>}>
       <div className="th-pair th-wide">
-        <Titled className="th-card" title="Gross premium observed">
-          <p>{grossPremium(thesis)}</p>
-          <p>{inVariance(thesis.evidence.cohorts.candidates)} This is evidence about the proposed
-            opportunity: a gross economic premium, not tradable alpha.</p>
+        <Titled className="th-card" title="Observed volatility gap">
+          <p>{stableGap(thesis)}</p>
+          <p><b>Broader comparison:</b> {broaderGap(thesis)}</p>
+          <p className="th-caption">A gross economic premium, not tradable alpha. Medians and variance
+            statistics are under “Explore the historical observations” above.</p>
         </Titled>
-        <Titled className="th-card" title="Cost to trade, illustrated">
+        <Titled className="th-card" title="Estimated trading cost">
           <p>{costSentence(thesis)}</p>
-          <p>The percentage is of the option&apos;s mid-price, halfway between its bid and ask, for
-            one option. A strategy with several options pays it on each. It is a limited quote
+          <p>The percentages refer to each option&apos;s mid-price, halfway between its bid and ask,
+            for one option. A strategy with several options would pay on each. It is a limited quote
             sample.</p>
         </Titled>
       </div>

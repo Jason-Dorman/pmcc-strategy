@@ -429,6 +429,7 @@ Nov 21, 2026 · companion to the [Thesis spec](THESIS-SPEC.md), the source of tr
 | TD-29 | The thesis page, as built, and `thesis run` corrected (T4-01) | ENG | — |
 | TD-30 | The thesis page, redesigned for a reader | SETTLED (PO); replaces TD-28's order and labels | — |
 | TD-31 | The redesign, as built (T4-02) | ENG | — |
+| TD-32 | A polish pass on the thesis page | SETTLED (PO) | — |
 
 ## Thesis settled
 
@@ -574,6 +575,16 @@ Nov 21, 2026 · companion to the [Thesis spec](THESIS-SPEC.md), the source of tr
 - **Return and costs:** the gross premium and the quote sample's cost apart, each with its unit; never subtracted; net returns not estimated. Assumptions, stress cases and the structure skipped that day behind a disclosure.
 - **Writing and layout:** meaning before formula; a readable size at 100% zoom; a centred column with wider charts; detailed tables only inside disclosures, each with its purpose in a sentence; no colour-only states; styles scoped so no other page changes.
 - **Data:** the page gets the existing thresholds, times and dates; what a file lacks shows as unavailable where it would be, never as zero. Freshness is separate from how much evidence there is.
+
+### TD-32 — A polish pass on the thesis page
+**Status:** SETTLED · **Basis:** PO, 2026-11-24 · **Affects:** refines TD-30, TD-21's presentation; UI-SPEC § Thesis; T4-03
+
+- **Pricing gap:** where VIX stands ("X volatility points above / below our forecast", "VIX matches our forecast", or that they can't be compared), then that it must be at least the file's threshold *above* the forecast; without the threshold, that the file lacks it. The backend's verdict stays the only one.
+- **Return and costs:** "Observed volatility gap" leads with the completed stable-credit observations, never replaced by the broader sample; all qualifying observations are a labelled "Broader comparison". Medians and variance units are in the expandable details. The cost is "Using the sampled bid–ask quotes and assumed fees, we estimate a round-trip cost of…", wording that claims no trade. The two are still never subtracted.
+- **Wrong-if cards:** each shows the condition, the sample it needs and one assessment statement; values, units, dates and formulas are in "Exact formula and evaluation". K1 joins the average's sign with its sample; a positive average on too small a sample is never a pass. Definitions unchanged.
+- **Volatility** "measures how strongly prices fluctuate; the figures here are expressed on an annualized basis."
+- **Pending outcomes:** "30-day outcomes still pending" over the newest sessions, from the file's `PENDING` status alone, only while such sessions are in the range shown. With the details, the panes are labelled "Annualized volatility (%)" and "Volatility points".
+- **Built:** the note sits in a band above the plot, clear of the lines, in two lines so it clears the unit on a phone; the pending sessions are shaded faintly (`--pending-shade`, the outcome's colour at 10%).
 
 ## Thesis engineering
 

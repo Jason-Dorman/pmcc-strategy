@@ -15,17 +15,25 @@ import {
 import type { Thesis, ThesisCohort, ThesisEpisode } from "../../types/generated/thesis";
 import { Disclosure, Section, Titled } from "./parts";
 
-/** A group's average gap in a sentence, by its sign; one observation is not an average. */
-export function gapSentence(c: ThesisCohort): string {
+/** How market-priced volatility compared with what followed, by its sign; one observation is not
+ * an average. None without a completed observation. */
+export function gapPhrase(c: ThesisCohort): string | null {
   const gap = c.mean_vol_gap;
-  if (c.count === 0 || gap === null) return "No completed observation yet.";
+  if (c.count === 0 || gap === null) return null;
   if (points(gap) === "0.0") {
-    return "Market-priced volatility matched subsequent actual volatility"
-      + `${c.count === 1 ? "." : " on average."}`;
+    return "market-priced volatility matched subsequent actual volatility"
+      + (c.count === 1 ? "" : " on average");
   }
   const size = c.count === 1 ? points(gap) : `an average of ${points(gap)}`;
-  return `Market-priced volatility ${gap > 0 ? "exceeded" : "fell below"} subsequent actual `
-    + `volatility by ${size} volatility points.`;
+  return `market-priced volatility ${gap > 0 ? "exceeded" : "fell below"} subsequent actual `
+    + `volatility by ${size} volatility points`;
+}
+
+/** The same as a sentence of its own. */
+export function gapSentence(c: ThesisCohort): string {
+  const phrase = gapPhrase(c);
+  return phrase === null ? "No completed observation yet."
+    : `${phrase.charAt(0).toUpperCase()}${phrase.slice(1)}.`;
 }
 
 function unit(c: ThesisCohort): string {

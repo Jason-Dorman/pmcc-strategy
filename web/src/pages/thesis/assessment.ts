@@ -113,17 +113,26 @@ export function readings(c: ThesisCurrent): string {
 
 // ---- the three supporting observations ----------------------------------------------------------
 
+/** Where VIX stands against the forecast, in words: above, below or level with it, as shown. */
+function standing(gap: number): string {
+  if (points(gap) === "0.0") return "VIX matches our forecast.";
+  return `VIX is ${points(gap)} volatility points ${gap < 0 ? "below" : "above"} our forecast.`;
+}
+
+/** The gap a session needs, from the file's own threshold, or that the file doesn't hold it. */
+function gapNeeded(p: ThesisParameters | null): string {
+  return p === null ? "The gap needed to qualify is not in this data file."
+    : `To qualify, it must be at least ${points(p.minimum_forecast_gap)} volatility points above the `
+      + "forecast.";
+}
+
 function pricingObservation(c: ThesisCurrent, p: ThesisParameters | null): Observation {
   const gap = c.forecast_gap_vol;
-  const name = "Pricing gap";
-  if (gap === null) {
-    return { name, met: null,
-             text: "The gap between VIX and our forecast is not available for this session." };
-  }
-  const side = gap < 0 ? "below" : "above";
-  const needs = p === null ? "" : ` Our rule asks for at least ${points(p.minimum_forecast_gap)}.`;
-  return { name, met: c.gap_ok, text: `VIX is ${points(Math.abs(gap))} volatility points ${side} `
-    + `the model forecast.${needs}` };
+  const now = gap === null
+    ? "VIX can't be compared with our forecast for this session, because a value is missing."
+    : standing(gap);
+  return { name: "Pricing gap", met: gap === null ? null : c.gap_ok,
+           text: `${now} ${gapNeeded(p)}` };
 }
 
 function swingsText(c: ThesisCurrent): string {

@@ -13,9 +13,12 @@ import {
   CREDIT_SERIES,
   creditStart,
   lastSessions,
+  pendingSpans,
+  PENDING_NOTE,
   priceOption,
   trackerOption,
   TRACKER_SERIES,
+  UNITS,
   windowSpans,
 } from "./thesis";
 
@@ -29,8 +32,8 @@ interface Series {
   color?: string;
   xAxisIndex?: number;
   lineStyle?: { color?: string; type?: string };
-  markArea?: { itemStyle: { color: string }; label?: { formatter: string };
-               data: [{ xAxis: string }, { xAxis: string }][] };
+  markArea?: { itemStyle: { color: string }; label?: { formatter?: string; show?: boolean };
+               data: [{ xAxis: string; label?: { formatter: string } }, { xAxis: string }][] };
   markLine?: { data: { yAxis: number; lineStyle?: { type: string } }[] };
 }
 
@@ -78,6 +81,33 @@ describe("the default chart", () => {
   });
 });
 
+describe("pending outcomes", () => {
+  const with_ = (outcomes: Record<string, string>) =>
+    SERIES.map((s) => ({ ...s, outcome: outcomes[s.day] ?? s.outcome }));
+
+  it("are the file's PENDING sessions: shaded and noted on the newest run, their values blank", () => {
+    expect(pendingSpans(SERIES)).toEqual([[5, 5]]);
+    const line = series(priceOption(P, SERIES, ALL), realized);
+    expect(line.data[5]).toBeNull();
+    expect(line.markArea?.itemStyle.color).toBe("pending-shade");
+    expect(line.markArea?.data).toHaveLength(1);
+    expect(line.markArea?.data[0]?.[0].label?.formatter).toBe(PENDING_NOTE);
+    expect(PENDING_NOTE.replace("\n", " ")).toBe("30-day outcomes still pending");
+  });
+
+  it("never include incomplete or unavailable outcomes, and draw nothing with none", () => {
+    const other = with_({ "2026-02-09": "INCOMPLETE", "2026-02-06": "UNAVAILABLE" });
+    expect(pendingSpans(other)).toEqual([]);
+    expect(series(priceOption(P, other, ALL), realized).markArea?.data).toEqual([]);
+  });
+
+  it("keep one note when a gap splits the pending sessions", () => {
+    const split = with_({ "2026-02-04": "PENDING", "2026-02-06": "INCOMPLETE" });
+    const area = series(priceOption(P, split, ALL), realized).markArea;
+    expect(area?.data.map(([from]) => from.label?.formatter)).toEqual([undefined, PENDING_NOTE]);
+  });
+});
+
 describe("the signal details", () => {
   const option = trackerOption(P, SERIES, EPISODES, 0.03, { start: 1, end: 5 });
 
@@ -91,6 +121,12 @@ describe("the signal details", () => {
     expect(option.axisPointer.link).toEqual([{ xAxisIndex: "all" }]);
     expect(series(option, gap).xAxisIndex).toBe(1);
     expect(series(option, gap).data[1]).toBeNull();
+  });
+
+  it("name each pane's unit", () => {
+    expect(option.yAxis.map((y) => (y as unknown as { name: string }).name))
+      .toEqual([UNITS.volatility, UNITS.gap]);
+    expect(UNITS).toEqual({ volatility: "Annualized volatility (%)", gap: "Volatility points" });
   });
 
   it("mark each qualifying observation, its credit told by shape and by colour", () => {

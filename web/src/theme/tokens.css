@@ -66,6 +66,7 @@
   --move-shade: color-mix(in srgb, var(--text) 9%, transparent); /* the expected move, LD-41 */
   --window-shade: color-mix(in srgb, var(--text) 7%, transparent); /* a spike's search window */
   --no-credit-shade: color-mix(in srgb, var(--margin-im) 14%, transparent); /* no credit data */
+  --pending-shade: color-mix(in srgb, var(--nav-line) 10%, transparent); /* outcomes pending */
   --unstable-shade: color-mix(in srgb, var(--negative) 18%, transparent); /* credit unstable */
 
   /* type stacks (self-hosted, DEC-72) */

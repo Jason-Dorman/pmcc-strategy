@@ -75,9 +75,10 @@ export function Assessment({ thesis }: { thesis: Thesis }) {
       </div>
       <p className="th-caption">
         <b>VIX</b> is the volatility that S&amp;P 500 option prices imply for the next 30 days,
-        called implied volatility. <b>Volatility</b> is the size of market swings as a percentage
-        per year, and a <b>volatility point</b> is one percentage point of it. A <b>basis point</b>{" "}
-        is one hundredth of a percentage point.
+        called implied volatility. <b>Volatility</b> measures how strongly prices fluctuate; the
+        figures here are expressed on an annualized basis. A <b>volatility point</b> is one
+        percentage point of annualized volatility, and a <b>basis point</b> is one hundredth of a
+        percentage point.
       </p>
       <h3 className="th-h3">Why credit matters</h3>
       <p>
