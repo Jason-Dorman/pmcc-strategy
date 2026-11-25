@@ -1,6 +1,6 @@
-// The latest assessment in words (UI-SPEC §6 › Thesis; PO, TD-30), all of it generated from the
-// file. The backend's signal state is the assessment; each supporting observation's verdict is the
-// tracker's own check of that session, never judged here. What the file doesn't hold is said to be
+// The latest readings in words (UI-SPEC §6 › Thesis; PO, TD-30, TD-33), all of it generated from the
+// file. Each supporting observation's verdict is the tracker's own check of that session, never
+// judged here; the versions' results are in `versions.ts`. What the file doesn't hold is said to be
 // missing, never read as failed or as zero.
 import { longDate } from "../../components/charts/axis";
 import { iv, orDash } from "../../format/number";
@@ -20,7 +20,7 @@ function day(date: string | null): string {
   return orDash(date, longDate);
 }
 
-// ---- the state, in a sentence or two ------------------------------------------------------------
+// ---- the original version's state, in a sentence or two (its reference section) -----------------
 
 const NOT_A_TRADE = "That is a research classification: no trade was placed, and profitability has "
   + "not been established.";
@@ -28,8 +28,7 @@ const NOT_A_TRADE = "That is a research classification: no trade was placed, and
 type Lead = (s: ThesisSignal) => string;
 
 const LEADS: Readonly<Record<string, Lead>> = {
-  NO_SHOCK: () => "No recent volatility spike is being assessed, so nothing can qualify today. The "
-    + "readings below describe the latest session.",
+  NO_SHOCK: () => "No recent volatility spike is being assessed, so nothing can qualify today.",
   SEARCHING: (s) => `VIX spiked on ${day(s.shock_day)}. We look for a session that meets the `
     + `research conditions through ${day(s.window_end)}.`,
   NO_CANDIDATE: (s) => `VIX spiked on ${day(s.shock_day)}, and no session in its search window, `
@@ -50,11 +49,6 @@ const LEADS: Readonly<Record<string, Lead>> = {
 export function lead(s: ThesisSignal): string {
   const sentence = LEADS[s.status]?.(s) ?? "The state of the latest session is not recognised.";
   return s.reason ? `${sentence} Reason recorded: ${s.reason}.` : sentence;
-}
-
-/** Whether the state is about a session that qualified earlier, not the latest one's readings. */
-export function aboutACandidate(s: ThesisSignal): boolean {
-  return s.candidate_day !== null;
 }
 
 // ---- the latest readings, in a sentence or two --------------------------------------------------
@@ -131,7 +125,7 @@ function pricingObservation(c: ThesisCurrent, p: ThesisParameters | null): Obser
   const now = gap === null
     ? "VIX can't be compared with our forecast for this session, because a value is missing."
     : standing(gap);
-  return { name: "Pricing gap", met: gap === null ? null : c.gap_ok,
+  return { name: "Pricing gap (both versions)", met: gap === null ? null : c.gap_ok,
            text: `${now} ${gapNeeded(p)}` };
 }
 
@@ -194,7 +188,7 @@ export function observations(t: Thesis): Observation[] {
   if (c === null) return [];
   return [
     pricingObservation(c, t.parameters),
-    { name: "Market swings", met: swingsMet(c), text: swingsText(c) },
-    { name: "Credit conditions", met: creditMet(c), text: creditText(c, t.parameters) },
+    { name: "Market swings (version B only)", met: swingsMet(c), text: swingsText(c) },
+    { name: "Credit conditions (both versions)", met: creditMet(c), text: creditText(c, t.parameters) },
   ];
 }

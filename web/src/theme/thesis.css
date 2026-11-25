@@ -203,6 +203,50 @@
   color: var(--negative);
 }
 
+/* ---- the two versions ---- */
+.th-versions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 28px;
+}
+.th-version {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.th-version p {
+  margin: 0;
+}
+.th-version .th-verdict {
+  font-size: 20px;
+}
+.th-compare {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--surface);
+  font-size: 17px;
+}
+.th-compare th,
+.th-compare td {
+  padding: 14px 20px;
+  border-top: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+  font-variant-numeric: tabular-nums;
+}
+.th-compare thead th {
+  border-top: 0;
+  font-family: var(--font-display);
+  font-weight: 500;
+}
+.th-compare tbody th {
+  font-weight: 400;
+  color: var(--text-muted);
+}
+.th-compare td {
+  font-weight: 600;
+}
+
 /* ---- cards ---- */
 .th-pair {
   display: grid;
@@ -430,8 +474,16 @@
   }
   .th-horizons,
   .th-observations,
+  .th-versions,
   .th-pair {
     grid-template-columns: minmax(0, 1fr);
+  }
+  .th-compare {
+    font-size: 15px;
+  }
+  .th-compare th,
+  .th-compare td {
+    padding: 10px 8px;
   }
   .th-horizons,
   .th-assessment,

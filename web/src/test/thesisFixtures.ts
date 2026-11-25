@@ -4,9 +4,12 @@
 import type {
   Thesis,
   ThesisCohort,
+  ThesisComparison,
   ThesisEpisode,
   ThesisParameters,
   ThesisPoint,
+  ThesisVersion,
+  ThesisView,
 } from "../types/generated/thesis";
 import { SCHEMA_VERSION } from "../types/generated/version";
 
@@ -123,6 +126,64 @@ export const PARAMETERS: ThesisParameters = {
   credit_maximum_age_business_days: 3,
 };
 
+function view(key: string, selected: number, over: Partial<ThesisView> = {}): ThesisView {
+  return { key, selected, completed: selected - 2, pending: 2, incomplete: 0, mean_gap: 0.037053,
+           median_gap: 0.0498, worst_gap: -0.2633, worst_day: "2025-03-28", mean_premium: 0.000632,
+           ...over };
+}
+
+function version(key: string, over: Partial<ThesisVersion>): ThesisVersion {
+  return {
+    key,
+    name: key === "A" ? "Pricing gap + stable credit" : "Also wait for calmer markets",
+    qualifying_days: 393,
+    unknown_days: 0,
+    unconfirmed_stretches: 0,
+    latest: {
+      state: "NOT_MET",
+      checks: [{ key: "gap", met: true }, { key: "credit", met: false }],
+      stretch_start: null,
+    },
+    views: [view("all", 66), view("ten_session", 37), view("thirty_day", 23, { mean_gap: 0.05323 })],
+    observations: [
+      { day: "2026-01-05", stretch_end: "2026-01-09", stretch_sessions: 5, ten_session: true,
+        thirty_day: true, vix: 20, forecast_gap_vol: 0.05, outcome: "MATURED",
+        outcome_end: "2026-02-04", realized_vol: 0.14, vol_gap: 0.06, premium: 0.0012 },
+      { day: "2026-01-12", stretch_end: "2026-01-12", stretch_sessions: 1, ten_session: false,
+        thirty_day: false, vix: 18, forecast_gap_vol: 0.04, outcome: "PENDING",
+        outcome_end: "2026-02-11", realized_vol: null, vol_gap: null, premium: null },
+    ],
+    k1: { condition_id: `K1-${key}`, name: "The observed variance premium disappears",
+          formula: `mean realized_variance_premium over the latest 30 of version ${key}`,
+          threshold: "wrong if <= 0", minimum_sample: "30 completed observations", required: 30,
+          status: "INSUFFICIENT_DATA", value: 0.001237, sample: key === "A" ? 22 : 20,
+          assessed_on: "2026-02-09", note: "" },
+    ...over,
+  };
+}
+
+export const COMPARISON: ThesisComparison = {
+  methodology_version: "v2.0-exploratory",
+  analysis_start: "2023-12-27",
+  analysis_end: "2026-02-09",
+  spacing_sessions: 10,
+  spacing_calendar_days: 30,
+  versions: [
+    version("A", {}),
+    version("B", {
+      qualifying_days: 145,
+      latest: {
+        state: "UNKNOWN",
+        checks: [{ key: "gap", met: true }, { key: "credit", met: null },
+                 { key: "swings_below_long", met: true }, { key: "swings_not_rising", met: true }],
+        stretch_start: null,
+      },
+      views: [view("all", 57, { mean_gap: 0.042562, worst_gap: -0.0523, worst_day: "2025-02-14" }),
+              view("ten_session", 32), view("thirty_day", 21)],
+    }),
+  ],
+};
+
 const NOT_EVALUATED = "Not yet evaluated — requires strategy backtesting";
 
 export const THESIS: Thesis = {
@@ -167,6 +228,7 @@ export const THESIS: Thesis = {
     credit_note: "",
   },
   parameters: PARAMETERS,
+  comparison: COMPARISON,
   sources: [
     { series: "vix", provider: "LSEG", identifier: ".VIX", first: "2014-01-02", last: "2026-02-09",
       observations: 3000, units: "VIX points", note: "Cboe VIX, daily close" },
@@ -225,6 +287,7 @@ export const FIRST_NIGHT: Thesis = {
   ...THESIS,
   expected_by: null,
   parameters: null,
+  comparison: null,
   current: THESIS.current && {
     ...THESIS.current, credit_available_at: null, rv_short_earlier: null, swings_below_long: null,
     swings_not_rising: null, gap_ok: null, credit_level_ok: null, credit_change_short_ok: null,

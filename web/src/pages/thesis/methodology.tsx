@@ -1,5 +1,5 @@
 // The thesis page's methodology, sources and what isn't built yet (UI-SPEC §6 › Thesis; PO, TD-24,
-// TD-30), each behind a named disclosure. Every threshold is the file's; none is typed here.
+// TD-30, TD-33), each behind a named disclosure. Every threshold is the file's; none is typed here.
 import { KeyValue } from "../../components/cells";
 import { DataTable, type TableColumn } from "../../components/DataTable";
 import { count, orDash, pct } from "../../format/number";
@@ -7,6 +7,21 @@ import { bps, bpsChange, points } from "../../format/thesis";
 import { timeET } from "../../format/time";
 import type { Thesis, ThesisParameters, ThesisSource } from "../../types/generated/thesis";
 import { Disclosure, NotAvailable, Section } from "./parts";
+
+/** The rules only the original spike-based version used. */
+function OriginalRules({ p }: { p: ThesisParameters }) {
+  return (
+    <ol className="th-steps">
+      <li><b>Spike.</b> VIX at or above the {pct(p.percentile_threshold, 0)} percentile of the{" "}
+        {p.percentile_lookback_sessions} sessions before, and at least {p.minimum_vix_ratio} times
+        its level {p.ratio_lookback_sessions} sessions earlier, once {p.signal_warmup_sessions}{" "}
+        returns exist. A spike opened a search of {p.search_sessions_after_shock} sessions; another
+        spike inside it was ignored.</li>
+      <li><b>Qualifying observation.</b> The first session of the search that met the gap and the two
+        calming conditions, fixed before credit was read.</li>
+    </ol>
+  );
+}
 
 function Rules({ p }: { p: ThesisParameters }) {
   return (
@@ -22,16 +37,6 @@ function Rules({ p }: { p: ThesisParameters }) {
         daily returns in them is the realized variance, and the variance premium is VIX&apos;s
         implied 30-day variance minus that. It is computed from daily closes, so it is not an exact
         replication of a variance swap, and VIX is not the implied volatility of any one option.</li>
-      <li><b>Spike.</b> VIX at or above the {pct(p.percentile_threshold, 0)} percentile of the{" "}
-        {p.percentile_lookback_sessions} sessions before, and at least {p.minimum_vix_ratio} times
-        its level {p.ratio_lookback_sessions} sessions earlier, once {p.signal_warmup_sessions}{" "}
-        returns exist. A spike opens a search of {p.search_sessions_after_shock} sessions; another
-        spike inside it is ignored.</li>
-      <li><b>Qualifying observation.</b> The first session of the search where{" "}
-        {p.short_rv_sessions}-session realized volatility is below {p.long_rv_sessions}-session, is
-        no higher than {p.falling_rv_comparison_sessions} sessions earlier, and the gap is at least{" "}
-        {points(p.minimum_forecast_gap)} volatility points. It is fixed before credit is read, so
-        credit can never move it to a better day.</li>
       <li><b>Credit.</b> Stable when the latest usable spread is at most{" "}
         {bps(p.credit_maximum_level_bps)}, its change over five observations at most{" "}
         {bpsChange(p.credit_maximum_change_short_bps)}, and over twenty at most{" "}
@@ -42,6 +47,11 @@ function Rules({ p }: { p: ThesisParameters }) {
         is not the same as unstable.</li>
       <li><b>Decision.</b> A session is assessed at {p.decision_time_et} New York, with only what was
         known then.</li>
+      <li><b>Version A.</b> The gap is at least {points(p.minimum_forecast_gap)} volatility points,
+        and credit is stable. It is read at every session.</li>
+      <li><b>Version B.</b> Everything in A, and {p.short_rv_sessions}-session realized volatility is
+        below {p.long_rv_sessions}-session and no higher than {p.falling_rv_comparison_sessions}{" "}
+        sessions earlier.</li>
     </ol>
   );
 }
@@ -62,15 +72,18 @@ const SOURCE_COLUMNS: readonly TableColumn<ThesisSource>[] = [
 const LIMITS: readonly string[] = [
   "The thresholds are provisional assumptions set before the history was examined. They were not "
   + "tuned to it, and nothing here has been tested out of sample.",
-  "Credit data starts in November 2023, because FRED serves the last three years of this series. "
-  + "Earlier qualifying observations have no credit assessment.",
+  "Credit data starts in late 2023, because FRED serves only the last three years of this series. "
+  + "As that window moves forward each night, so does the start of the analysis period, and the "
+  + "stretches and spaced selections near it can change.",
   "A credit spread can lag, and volatility can rise again after it eases. Option sellers are "
   + "ordinarily paid for bearing rare, large losses. Nothing here establishes cause.",
 ];
 
 const NOT_BUILT: readonly string[] = [
   "No trade is simulated. The second and third wrong-if conditions, and any net return, wait for "
-  + "the options backtest.",
+  + "the options backtest. It should compare versions A and B with the same contract selection, "
+  + "sizing, execution assumptions, costs and exits, so that waiting for calmer markets is the only "
+  + "difference tested.",
   "The first wrong-if condition is recomputed each night from the latest completed observations. A "
   + "record that keeps a past failure in force, and the controls for resuming after one, are not "
   + "built in this milestone.",
@@ -91,6 +104,26 @@ export function Methodology({ thesis }: { thesis: Thesis }) {
         {thesis.parameters ? <Rules p={thesis.parameters} /> : (
           <NotAvailable>The rules&apos; values are not in this data file. They arrive with the next
             nightly update.</NotAvailable>
+        )}
+      </Disclosure>
+      <Disclosure title="How qualifying stretches are counted">
+        {thesis.comparison ? (
+          <p>A stretch is an unbroken run of sessions on which a version&apos;s conditions all hold,
+            observed at its first session. It counts only when the session before is known not to
+            meet them, so missing data never creates one. Spacing walks the starts in order over the
+            whole history, keeping the first and then each at least {thesis.comparison.spacing_sessions}
+            {" "}sessions, or {thesis.comparison.spacing_calendar_days} calendar days, after the last
+            kept. The chart&apos;s range never changes the selection. Method{" "}
+            {thesis.comparison.methodology_version}.</p>
+        ) : (
+          <NotAvailable>The counting rules are not in this data file. They arrive with the next
+            nightly update.</NotAvailable>
+        )}
+      </Disclosure>
+      <Disclosure title="How the original spike-based version worked">
+        {thesis.parameters ? <OriginalRules p={thesis.parameters} /> : (
+          <NotAvailable>Its values are not in this data file. They arrive with the next nightly
+            update.</NotAvailable>
         )}
       </Disclosure>
       <Disclosure title="Contract and holding-period details">
@@ -118,7 +151,8 @@ export function Methodology({ thesis }: { thesis: Thesis }) {
       <Disclosure title="Version">
         <p>The table identifies the model and the run behind this page.</p>
         <KeyValue label="Version" rows={[
-          ["Model version", thesis.model_version],
+          ["Original version's model", thesis.model_version],
+          ["Versions A and B, method", thesis.comparison?.methodology_version ?? "Not in this file"],
           ["Configuration", thesis.config_hash.slice(0, 12)],
           ["File version", String(thesis.schema_version)],
           ["Last updated", timeET(thesis.generated_at)],

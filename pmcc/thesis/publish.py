@@ -14,18 +14,24 @@ from typing import final
 from pmcc.domain.calendar import SessionCalendar
 from pmcc.export.thesis_models import (
     Thesis,
+    ThesisCheck,
     ThesisCohort,
     ThesisCohorts,
+    ThesisComparison,
     ThesisCondition,
     ThesisCost,
     ThesisCurrent,
     ThesisEpisode,
     ThesisEvidence,
     ThesisLegCost,
+    ThesisObservation,
     ThesisParameters,
     ThesisPoint,
     ThesisSignal,
     ThesisSource,
+    ThesisVersion,
+    ThesisVersionLatest,
+    ThesisView,
 )
 from pmcc.thesis.config import ThesisConfig
 from pmcc.thesis.credit import CreditState, assumed_available_at
@@ -33,6 +39,7 @@ from pmcc.thesis.evidence import Cohort, Condition, CostNote, Evidence, LegCost
 from pmcc.thesis.outcomes import Outcome
 from pmcc.thesis.status import CurrentState, Signal
 from pmcc.thesis.tracker import TrackedEpisode, Tracker
+from pmcc.thesis.versions import Comparison, Latest, Observation, Version, View
 
 RUN_OK = "OK"
 
@@ -50,6 +57,7 @@ class Statuses:
 def thesis_file(
     tracker: Tracker,
     found: Evidence,
+    compared: Comparison,
     statuses: Statuses,
     sources: Sequence[ThesisSource],
     calendar: SessionCalendar,
@@ -72,6 +80,7 @@ def thesis_file(
         signal=_signal(statuses.signal),
         current=_current(statuses.current, calendar, config),
         parameters=parameters(config),
+        comparison=_comparison(compared),
         sources=tuple(sources),
         evidence=_evidence(found),
         episodes=tuple(_episode(e, outcomes, vix) for e in tracker.episodes),
@@ -291,4 +300,74 @@ def parameters(config: ThesisConfig) -> ThesisParameters:
         credit_publication_lag_business_days=credit.assumed_publication_lag_business_days,
         credit_publication_time_et=credit.assumed_publication_time_et,
         credit_maximum_age_business_days=credit.maximum_age_business_days,
+    )
+
+
+# --- the two exploratory versions (TD-33) ----------------------------------------------------
+
+
+def _comparison(c: Comparison) -> ThesisComparison:
+    return ThesisComparison(
+        methodology_version=c.methodology_version,
+        analysis_start=_day(c.analysis_start),
+        analysis_end=_day(c.analysis_end),
+        spacing_sessions=c.spacing_sessions,
+        spacing_calendar_days=c.spacing_calendar_days,
+        versions=tuple(_version(v) for v in c.versions),
+    )
+
+
+def _version(v: Version) -> ThesisVersion:
+    return ThesisVersion(
+        key=v.key.value,
+        name=v.name,
+        qualifying_days=v.qualifying_days,
+        unknown_days=v.unknown_days,
+        unconfirmed_stretches=v.unconfirmed_stretches,
+        latest=_latest(v.latest),
+        views=tuple(_view(w) for w in v.views),
+        observations=tuple(_observation(o) for o in v.observations),
+        k1=_condition(v.k1),
+    )
+
+
+def _latest(latest: Latest | None) -> ThesisVersionLatest | None:
+    if latest is None:
+        return None
+    return ThesisVersionLatest(
+        state=latest.state.value,
+        checks=tuple(ThesisCheck(key=k.value, met=met) for k, met in latest.checks.items()),
+        stretch_start=_day(latest.stretch_start),
+    )
+
+
+def _view(v: View) -> ThesisView:
+    return ThesisView(
+        key=v.key.value,
+        selected=v.selected,
+        completed=v.completed,
+        pending=v.pending,
+        incomplete=v.incomplete,
+        mean_gap=v.mean_gap,
+        median_gap=v.median_gap,
+        worst_gap=v.worst_gap,
+        worst_day=_day(v.worst_day),
+        mean_premium=v.mean_premium,
+    )
+
+
+def _observation(o: Observation) -> ThesisObservation:
+    return ThesisObservation(
+        day=o.day.isoformat(),
+        stretch_end=o.stretch_end.isoformat(),
+        stretch_sessions=o.stretch_sessions,
+        ten_session=o.ten_session,
+        thirty_day=o.thirty_day,
+        vix=o.vix_points,
+        forecast_gap_vol=o.forecast_gap_vol,
+        outcome=o.outcome.value,
+        outcome_end=_day(o.outcome_end),
+        realized_vol=o.realized_vol,
+        vol_gap=o.vol_gap,
+        premium=o.premium,
     )

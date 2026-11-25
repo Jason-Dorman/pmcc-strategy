@@ -1,52 +1,14 @@
 // The thesis page's potential return and trading costs (UI-SPEC §6 › Thesis; PO, TD-07, TD-21,
-// TD-30, TD-32): the volatility gap observed, under the thesis's own conditions first, and an
+// TD-30, TD-32, TD-33): the volatility gap observed, by version and counting view, and an
 // estimated cost as a share of an option's mid-price, each with its unit, never netted.
 import { KeyValue } from "../../components/cells";
 import { longDate } from "../../components/charts/axis";
 import { DataTable, type TableColumn } from "../../components/DataTable";
 import { count, pct } from "../../format/number";
-import { completed, level, points } from "../../format/thesis";
+import { level } from "../../format/thesis";
 import type { Thesis, ThesisLegCost } from "../../types/generated/thesis";
-import { gapPhrase } from "./evidence";
 import { Disclosure, Section, Titled } from "./parts";
-
-/** The thesis's own conditions first: the completed observations with stable credit. */
-export function stableGap(t: Thesis): string {
-  const c = t.evidence.cohorts.stable;
-  const phrase = gapPhrase(c);
-  if (phrase === null) {
-    return "No observation with stable credit has completed yet, so the volatility gap under the "
-      + "thesis's own conditions has not been observed.";
-  }
-  return `${c.count === 1 ? "In the 1 completed observation" : `Across ${completed(c.count)}`} with `
-    + `stable credit, ${phrase}.`;
-}
-
-/** The kinds of credit the broader group holds besides stable: `including those with …`. */
-function including(t: Thesis): string {
-  const { unstable, credit_unavailable: unavailable } = t.evidence.cohorts;
-  const kinds = [unstable.count > 0 && "unstable", unavailable.count > 0 && "unavailable"]
-    .filter((k) => k !== false);
-  return kinds.length === 0 ? " " : `—including those with ${kinds.join(" or ")} credit—`;
-}
-
-function signedGap(gap: number): string {
-  const size = points(gap);
-  return gap < 0 && size !== "0.0" ? `−${size}` : size;
-}
-
-/** Every completed qualifying observation, whatever its credit: never a stand-in for the above. */
-export function broaderGap(t: Thesis): string {
-  const c = t.evidence.cohorts.candidates;
-  if (c.count === 0 || c.mean_vol_gap === null) {
-    return "No qualifying observation has completed yet.";
-  }
-  const gap = `${signedGap(c.mean_vol_gap)} volatility points`;
-  return c.count === 1
-    ? `The 1 completed qualifying observation, whatever its credit, had a gap of ${gap}.`
-    : `Across all ${count(c.count)} completed qualifying observations${including(t)}the average gap `
-      + `was ${gap}.`;
-}
+import { versionGap } from "./versions";
 
 function costSentence(t: Thesis): string {
   const { puts, calls, sample_session: day } = t.evidence.cost;
@@ -110,10 +72,11 @@ export function Cost({ thesis }: { thesis: Thesis }) {
                been estimated.</>}>
       <div className="th-pair th-wide">
         <Titled className="th-card" title="Observed volatility gap">
-          <p>{stableGap(thesis)}</p>
-          <p><b>Broader comparison:</b> {broaderGap(thesis)}</p>
-          <p className="th-caption">A gross economic premium, not tradable alpha. Medians and variance
-            statistics are under “Explore the historical observations” above.</p>
+          <p>{versionGap(thesis, "A", "all")}</p>
+          <p>{versionGap(thesis, "B", "all")}</p>
+          <p className="th-caption">A gross economic premium, not tradable alpha. The spacing views,
+            medians and variance statistics are under “Explore the spacing views, medians and
+            observations” above.</p>
         </Titled>
         <Titled className="th-card" title="Estimated trading cost">
           <p>{costSentence(thesis)}</p>

@@ -1,6 +1,7 @@
 // The thesis page's latest assessment, and the credit conditions behind it (UI-SPEC §6 › Thesis;
-// PO, TD-30). One headline from the backend's signal state, the latest readings in words, three
-// supporting observations with the tracker's own verdicts, and the data's dates and freshness.
+// PO, TD-30, TD-33). Each version's result, by the backend's own state and checks, the latest
+// readings in words, three supporting observations, and the data's dates and freshness. The
+// original version's spike-search state plays no part here.
 // The full credit chart and its values sit behind "Explore credit conditions".
 import { useCallback, useMemo } from "react";
 
@@ -9,12 +10,13 @@ import { Chart } from "../../components/charts/Chart";
 import { creditOption, creditPoints, CREDIT_SERIES, type CreditLimits } from "../../components/charts/thesis";
 import { DataTable, type TableColumn } from "../../components/DataTable";
 import { orDash } from "../../format/number";
-import { bps, bpsChange, creditLabel, isStale, signalLabel } from "../../format/thesis";
+import { bps, bpsChange, creditLabel, isStale } from "../../format/thesis";
 import { timeET } from "../../format/time";
 import type { Palette } from "../../theme/echarts";
-import type { Thesis, ThesisCurrent, ThesisParameters, ThesisPoint } from "../../types/generated/thesis";
-import { aboutACandidate, creditText, lead, observations, readings, type Verdict } from "./assessment";
-import { Disclosure, Legend, NotAvailable, Section, VerdictTag } from "./parts";
+import type { Thesis, ThesisCurrent, ThesisParameters, ThesisPoint, ThesisVersion } from "../../types/generated/thesis";
+import { creditText, observations, readings, type Verdict } from "./assessment";
+import { Disclosure, Legend, NotAvailable, Section, Titled, VerdictTag } from "./parts";
+import { reason, stateLabel, stateVerdict, versionName } from "./versions";
 
 function Freshness({ thesis }: { thesis: Thesis }) {
   const stale = isStale(thesis);
@@ -34,11 +36,25 @@ function Freshness({ thesis }: { thesis: Thesis }) {
   );
 }
 
+/** A version's result at the latest session: met, not met with why, or not assessable. */
+function VersionResult({ version }: { version: ThesisVersion }) {
+  const met = stateVerdict(version.latest);
+  const mark = met === null ? "unknown" : met ? "met" : "unmet";
+  return (
+    <Titled className="th-version" title={versionName(version)}>
+      <p className={`th-verdict th-verdict-${mark}`}>
+        <span aria-hidden="true">{met === null ? "?" : met ? "✓" : "✕"}</span>{" "}
+        {stateLabel(version.latest)}
+      </p>
+      <p>{reason(version.latest)}</p>
+    </Titled>
+  );
+}
+
 function Readings({ thesis, current }: { thesis: Thesis; current: ThesisCurrent }) {
-  const candidate = aboutACandidate(thesis.signal);
   return (
     <>
-      {candidate && <p>Separately, the latest session: {readings(current)}</p>}
+      <p>{readings(current)}</p>
       <h3 className="th-h3">Readings at the {longDate(current.day)} close</h3>
       <div className="th-observations">
         {observations(thesis).map((o) => (
@@ -49,12 +65,6 @@ function Readings({ thesis, current }: { thesis: Thesis; current: ThesisCurrent 
           </div>
         ))}
       </div>
-      {candidate && (
-        <p className="th-caption">
-          These describe the latest session. The qualifying session&apos;s assessment was fixed on
-          its own date and does not change with them.
-        </p>
-      )}
     </>
   );
 }
@@ -64,10 +74,17 @@ export function Assessment({ thesis }: { thesis: Thesis }) {
   return (
     <Section id="assessment" title="Latest assessment">
       <div className="th-assessment th-wide">
-        <p className="th-headline">{signalLabel(thesis.signal.status)}</p>
-        {c !== null && !aboutACandidate(thesis.signal) && <p>{readings(c)}</p>}
-        <p className={aboutACandidate(thesis.signal) ? undefined : "th-caption"}>
-          {lead(thesis.signal)}
+        {thesis.comparison ? (
+          <div className="th-versions">
+            {thesis.comparison.versions.map((v) => <VersionResult key={v.key} version={v} />)}
+          </div>
+        ) : (
+          <NotAvailable>The two versions&apos; results are not in this data file. They arrive with the
+            next nightly update.</NotAvailable>
+        )}
+        <p className="th-caption">
+          Each version is read at every session&apos;s close. A condition met is a research
+          classification, not a trade.
         </p>
         {c === null ? <NotAvailable>No session is in the tracker yet.</NotAvailable>
           : <Readings thesis={thesis} current={c} />}
@@ -83,8 +100,8 @@ export function Assessment({ thesis }: { thesis: Thesis }) {
       <h3 className="th-h3">Why credit matters</h3>
       <p>
         Credit spreads measure the additional yield investors demand to hold corporate debt. We use
-        their level and recent changes to help distinguish a temporary equity-market scare from
-        broader financial stress.
+        their level and recent changes to help distinguish a temporary rise in equity volatility
+        from broader financial stress.
       </p>
       <Disclosure title="Explore credit conditions" wide><Credit thesis={thesis} /></Disclosure>
     </Section>

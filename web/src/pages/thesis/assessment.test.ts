@@ -106,10 +106,10 @@ describe("the latest readings", () => {
 describe("the supporting observations", () => {
   it("read the reviewed snapshot, each with the tracker's own verdict", () => {
     const [pricing, swings, credit] = observations(THESIS);
-    expect(pricing).toEqual({ name: "Pricing gap", met: true, text:
+    expect(pricing).toEqual({ name: "Pricing gap (both versions)", met: true, text:
       "VIX is 11.5 volatility points above our forecast. To qualify, it must be at least 3.0 "
       + "volatility points above the forecast." });
-    expect(swings).toEqual({ name: "Market swings", met: false, text:
+    expect(swings).toEqual({ name: "Market swings (version B only)", met: false, text:
       "Five-day volatility, 34.2%, remains above 20-day volatility, 27.0%." });
     expect(credit?.met).toBe(false);
     expect(credit?.text).toContain(
@@ -120,7 +120,7 @@ describe("the supporting observations", () => {
   it("say where VIX stands, and that the gap needed is above the forecast", () => {
     const gap = (over: Partial<ThesisCurrent>) => observations(thesis(over))[0];
     const needs = " To qualify, it must be at least 3.0 volatility points above the forecast.";
-    expect(gap({ forecast_gap_vol: -0.038334, gap_ok: false })).toEqual({ name: "Pricing gap",
+    expect(gap({ forecast_gap_vol: -0.038334, gap_ok: false })).toEqual({ name: "Pricing gap (both versions)",
       met: false, text: `VIX is 3.8 volatility points below our forecast.${needs}` });
     expect(gap({ forecast_gap_vol: 0.031, gap_ok: true })?.text)
       .toBe(`VIX is 3.1 volatility points above our forecast.${needs}`);

@@ -12,9 +12,8 @@ import { isStale, volPoints } from "../format/thesis";
 import { fakeFetch, FILES, INDEX } from "../test/fixtures";
 import { FIRST_NIGHT, THESIS } from "../test/thesisFixtures";
 import type { Thesis, ThesisCohort, ThesisCondition } from "../types/generated/thesis";
-import { broaderGap, stableGap } from "./thesis/cost";
-import { gapSentence, leftOut, sampleLimits } from "./thesis/evidence";
 import { assessment } from "./thesis/invalidate";
+import { gapSentence, leftOut, sampleLimits } from "./thesis/original";
 
 function renderAt(path: string, thesis: Thesis | null) {
   vi.stubGlobal("fetch", vi.fn(fakeFetch({
@@ -57,7 +56,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-const SEQUENCE = ["Selling expensive protection after market scares", "Latest assessment",
+const SEQUENCE = ["Selling expensive protection, selectively", "Latest assessment",
                   "How much volatility was priced in—and what followed?",
                   "Preliminary historical evidence", "What would invalidate the thesis",
                   "Potential return and trading costs", "Macro conditions",
@@ -77,7 +76,12 @@ describe("the reading sequence", () => {
   it("leads with the thesis as a hypothesis, and its horizons as planning estimates", async () => {
     await shown();
     const idea = text(SEQUENCE[0] ?? "");
-    expect(idea).toContain("I believe S&P 500 options remain expensive relative to subsequent");
+    expect(idea).toContain("I believe S&P 500 options can offer opportunities to sell protection when "
+      + "implied volatility materially exceeds a forecast based on recent market movements and "
+      + "corporate credit conditions remain stable.");
+    expect(idea).toContain("We compare entering when those conditions are met with waiting until");
+    expect(idea).toContain("shorter than the 30-calendar-day window");
+    expect(idea).not.toMatch(/scare|spike/i);
     expect(idea).toContain("a hypothesis being investigated");
     for (const part of ["12–24 months", "5–10 trading days", "30 calendar days",
                         "planning estimates, not measured results"]) {
@@ -98,10 +102,12 @@ describe("the reading sequence", () => {
 
   it("keeps every raw table behind a disclosure", async () => {
     await shown();
-    expect(screen.queryAllByRole("table")).toEqual([]);
+    expect(screen.getAllByRole("table").map((x) => x.getAttribute("aria-label")))
+      .toEqual(["Versions A and B, all qualifying stretches"]); // the one compact comparison
     for (const title of ["Explore credit conditions", "View daily observations",
-                         "View volatility spikes and qualifying observations",
-                         "Explore the historical observations",
+                         "View the original version's volatility spikes and observations",
+                         "Explore the spacing views, medians and observations",
+                         "Original spike-based version (reference)",
                          "Cost assumptions and limitations"]) {
       expect(screen.getByText(title)).toBeDefined();
     }
@@ -118,7 +124,11 @@ describe("the latest assessment", () => {
   it("has one headline, the readings' date, the observations and the feed's dates", async () => {
     await shown();
     const assessment = text("Latest assessment");
-    for (const part of ["Watching a recent volatility spike", "Readings at the Feb 9, 2026 close",
+    expect(assessment).not.toMatch(/spike|candidate|original/i); // not the original's search
+    for (const part of ["A — Pricing gap + stable credit", "Conditions not met",
+                        "Credit does not pass its stability checks.",
+                        "B — Also wait for calmer markets", "Cannot assess",
+                        "Required data is missing: usable credit data.", "Readings at the Feb 9, 2026 close",
                         "VIX is 11.5 volatility points above our forecast",
                         "To qualify, it must be at least 3.0 volatility points above",
                         "Meets the condition", "Does not meet the condition",
@@ -126,17 +136,6 @@ describe("the latest assessment", () => {
                         "Next update expected by", "Data feed up to date"]) {
       expect(assessment).toContain(part);
     }
-  });
-
-  it("tells a past qualifying session's assessment from the latest readings", async () => {
-    const signal = { ...THESIS.signal, status: "ELIGIBLE", candidate_day: "2026-02-06",
-                     shock_day: "2026-02-04" };
-    await shown({ ...THESIS, signal });
-    const assessment = text("Latest assessment");
-    expect(assessment).toContain("Research conditions met");
-    expect(assessment).toContain("The session of Feb 6, 2026");
-    expect(assessment).toContain("Separately, the latest session");
-    expect(assessment).toContain("no trade was placed");
   });
 
   it("explains the failed credit rule, and gives all three checks on request", async () => {
@@ -173,13 +172,16 @@ describe("the first night's file", () => {
     open("Explore credit conditions");
     for (const row of rowsOf("Credit checks")) expect(row[2]).toBe("Not in this file");
     expect(screen.getByText(/level limit is not in this data file/)).toBeDefined();
-    fireEvent.click(screen.getByRole("button", { name: /Show signal details/ }));
-    expect(screen.getByText(/gap a qualifying observation needs is not in this data file/))
+    fireEvent.click(screen.getByRole("button", { name: /Show gap and original-version details/ }));
+    expect(screen.getByText(/gap a version needs is not in this data file/))
       .toBeDefined();
     open("How the signal and the outcomes are computed");
     expect(screen.getByText(/rules' values are not in this data file/)).toBeDefined();
     expect(text("What would invalidate the thesis")).toContain(
-      "currently positive, but only 5 completed observations so far");
+      "versions' results are not in this data file");
+    expect(text("Preliminary historical evidence")).toContain(
+      "two versions' results are not in this data file");
+    expect(text("Potential return and trading costs")).toContain("not in this data file yet");
   });
 });
 
@@ -190,20 +192,22 @@ describe("the tracker", () => {
     expect(pressed()).toEqual(["1 year"]);
     fireEvent.click(screen.getByRole("button", { name: "All" }));
     expect(pressed()).toEqual(["All"]);
-    const toggle = screen.getByRole("button", { name: /Show signal details/ });
+    const toggle = screen.getByRole("button", { name: /Show gap and original-version details/ });
     expect(toggle.getAttribute("aria-expanded")).toBe("false");
-    expect(screen.queryByRole("list", { name: "Signal details legend" })).toBeNull();
+    expect(screen.queryByRole("list", { name: "Gap and original-version legend" })).toBeNull();
     fireEvent.click(toggle);
-    const legend = screen.getByRole("list", { name: "Signal details legend" });
+    const legend = screen.getByRole("list", { name: "Gap and original-version legend" });
     for (const glyph of ["●", "■", "▲"]) expect(legend.textContent).toContain(glyph);
-    expect(legend.textContent).toContain("needs, 3.0 volatility points");
-    expect(screen.getByRole("button", { name: /Hide signal details/ })
+    expect(legend.textContent).toContain("Gap every version needs, 3.0 volatility points");
+    expect(legend.textContent).toContain("Original version: observation, credit stable");
+    expect(screen.getByText(/Versions A and B use neither/)).toBeDefined();
+    expect(screen.getByRole("button", { name: /Hide gap and original-version details/ })
       .getAttribute("aria-expanded")).toBe("true");
   });
 
   it("gives the raw observations newest first, a pending outcome as pending", async () => {
     await shown();
-    open("View volatility spikes and qualifying observations");
+    open("View the original version's volatility spikes and observations");
     expect(rowsOf("Volatility spikes").map((r) => r[0])).toEqual([
       "2026-02-09", "2026-02-05", "2026-02-04", "2026-02-02"]);
     expect(rowsOf("Volatility spikes")[1]).toContain("Pending");
@@ -224,23 +228,54 @@ describe("the evidence", () => {
     expect(gapSentence(THESIS.evidence.cohorts.unstable)).toBe("No completed observation yet.");
   });
 
-  it("keeps the sample's limits and what is left out beside the comparison", async () => {
-    expect(sampleLimits(THESIS)).toContain("a very small sample");
-    expect(leftOut(THESIS)).toContain("12 other completed observations are left out");
+  it("compares A and B in one table, with the period and the overlap beside it", async () => {
     await shown();
-    const evidence = text("Preliminary historical evidence");
-    expect(evidence).toContain("Stable credit: 5 completed observations");
-    expect(evidence).toContain("They do not establish trading profitability");
-    expect(evidence).toContain("Credit-regime comparison unavailable in this sample.");
-    expect(evidence).not.toMatch(/supportive|unsupportive|mispriced|alpha/i);
+    expect(rowsOf("Versions A and B, all qualifying stretches")).toEqual([
+      ["66", "57"], ["64", "55"], ["+3.7 pts", "+4.3 pts"],
+      ["−26.3 pts (Mar 28, 2025)", "−5.2 pts (Feb 14, 2025)"]]);
+    const shownText = text("Preliminary historical evidence");
+    for (const part of ["Analysis period: Dec 27, 2023 to Feb 9, 2026", "can overlap and are not",
+                        "neither version is shown to be better",
+                        "justify fewer opportunities?"]) {
+      expect(shownText).toContain(part);
+    }
+    expect(shownText).not.toMatch(/winner|5 completed|\+7\.6|mispriced|alpha/i);
   });
 
-  it("holds the full statistics behind its disclosure", async () => {
+  it("holds the spacing views and each version's own observations behind a disclosure", async () => {
     await shown();
-    open("Explore the historical observations");
-    expect(rowsOf("Groups")).toHaveLength(5);
-    expect(rowsOf("Qualifying observations").map((r) => r[0])).toEqual([
+    open("Explore the spacing views, medians and observations");
+    expect(rowsOf("Counting views").map((r) => r.slice(0, 5))).toEqual([
+      ["A", "All qualifying stretches", "66", "64", "2"],
+      ["A", "At least 10 sessions apart", "37", "35", "2"],
+      ["A", "At least 30 calendar days apart", "23", "21", "2"],
+      ["B", "All qualifying stretches", "57", "55", "2"],
+      ["B", "At least 10 sessions apart", "32", "30", "2"],
+      ["B", "At least 30 calendar days apart", "21", "19", "2"]]);
+    expect(rowsOf("Version A observations").map((r) => [r[0], r[3], r[4], r[6]])).toEqual([
+      ["2026-01-12", "—", "—", "Pending"], ["2026-01-05", "Kept", "Kept", "14.0%"]]);
+    const opened = text("Preliminary historical evidence");
+    expect(opened).toContain("held on 393 sessions");
+    expect(opened).toContain("held on 145 sessions");
+    expect(opened).toContain("still not statistically independent");
+  });
+
+  it("keeps the original version apart, whole, and labelled as no evidence for A or B", async () => {
+    await shown();
+    expect(text("Preliminary historical evidence")).not.toContain("Original, stable credit");
+    open("Original spike-based version (reference)");
+    const reference = text("Preliminary historical evidence");
+    for (const part of ["It is not evidence for versions A or B",
+                        "Original, stable credit: 5 completed observations",
+                        "Watching a recent volatility spike", "K1.", "K2.", "K3.",
+                        "only 5 of the required 30 observations are available"]) {
+      expect(reference).toContain(part);
+    }
+    expect(rowsOf("Original groups")).toHaveLength(5);
+    expect(rowsOf("Original qualifying observations").map((r) => r[0])).toEqual([
       "2026-02-06", "2026-02-04", "2026-02-02"]);
+    expect(sampleLimits(THESIS)).toContain("a very small sample");
+    expect(leftOut(THESIS)).toContain("12 other completed observations are left out");
   });
 });
 
@@ -251,32 +286,31 @@ describe("the wrong-if cards", () => {
     return { ...found, ...over };
   };
 
-  it("show the condition, what it needs and one statement, the numbers behind the disclosure",
+  it("assess the revised first condition for each version apart, the rest for the backtest",
      async () => {
     await shown();
     const cards = screen.getAllByRole("article").filter((a) => a.className.includes("th-status-"));
     expect(cards.map((c) => c.querySelector("h3")?.textContent)).toEqual([
-      "The apparent pricing advantage disappears", "Trading costs consume the opportunity",
-      "The credit filter provides no benefit"]);
-    expect(cards.map((c) => c.querySelector(".th-caption")?.textContent)).toEqual([
-      "Needs: the latest 30 completed observations with stable credit.",
-      "Needs: the latest 30 completed trades.",
-      "Needs: at least 20 completed trades in each credit group."]);
-    expect(cards[0]?.querySelector(".th-status")?.textContent).toBe("◐ The average variance premium "
-      + "is currently positive, but only 5 of the required 30 observations are available.");
-    for (const card of cards) {
-      expect(card.textContent).not.toMatch(/0\.0019|Not measured yet|variance units/);
-    }
+      "The observed variance premium disappears", "Returns fail to remain positive after costs",
+      "Stable-credit selection provides no benefit"]);
+    expect([...(cards[0]?.querySelectorAll(".th-status") ?? [])].map((p) => p.textContent)).toEqual([
+      "◐ Version A: The average variance premium is currently positive, but only 22 of the required "
+      + "30 observations are available.",
+      "◐ Version B: The average variance premium is currently positive, but only 20 of the required "
+      + "30 observations are available."]);
+    expect(cards[0]?.textContent).toContain("at least 30 calendar days apart");
     for (const card of cards.slice(1)) {
       expect(card.querySelector(".th-status")?.textContent)
         .toBe("○ Evaluated in the next phase: strategy backtesting.");
+      expect(card.textContent).not.toMatch(/Not measured yet|variance units/);
     }
     const details = cards[0]?.querySelector("details");
     if (!details) throw new Error("no disclosure");
     details.open = true;
     fireEvent(details, new Event("toggle"));
-    for (const part of ["+0.0019 in variance units", "as of Feb 9, 2026", "wrong if ≤ 0",
-                        "30 matured selected episodes"]) {
+    for (const part of ["K1-A.", "K1-B.", "+0.0012 in variance units, over 22 completed",
+                        "over 20 completed", "as of Feb 9, 2026", "wrong if ≤ 0",
+                        "a revised observation definition"]) {
       expect(cards[0]?.textContent).toContain(part);
     }
   });
@@ -305,51 +339,18 @@ describe("the wrong-if cards", () => {
 });
 
 describe("return and costs", () => {
-  const { cohorts } = THESIS.evidence;
-  const having = (over: Partial<typeof cohorts>): Thesis => ({
-    ...THESIS, evidence: { ...THESIS.evidence, cohorts: { ...cohorts, ...over } } });
-
-  it("lead with stable credit, then the broader comparison, each from its own group", () => {
-    expect(stableGap(THESIS)).toBe("Across 5 completed observations with stable credit, "
-      + "market-priced volatility exceeded subsequent actual volatility by an average of 7.6 "
-      + "volatility points.");
-    const broad = having({ unstable: { ...cohorts.stable, count: 2 },
-                           candidates: { ...cohorts.candidates, mean_vol_gap: 0.0422 } });
-    expect(broaderGap(broad)).toBe("Across all 19 completed qualifying observations—including those "
-      + "with unstable or unavailable credit—the average gap was 4.2 volatility points.");
-    expect(broaderGap(THESIS)).toContain("including those with unavailable credit"); // none unstable
-  });
-
-  it("handle negative, level, single and empty groups, never one for the other", () => {
-    const stable = (over: Partial<ThesisCohort>) =>
-      stableGap(having({ stable: { ...cohorts.stable, ...over } }));
-    expect(stable({ mean_vol_gap: -0.031 })).toContain("fell below subsequent actual volatility by");
-    expect(stable({ mean_vol_gap: 0 })).toContain("matched subsequent actual volatility on average");
-    expect(stable({ count: 1 })).toBe("In the 1 completed observation with stable credit, "
-      + "market-priced volatility exceeded subsequent actual volatility by 7.6 volatility points.");
-    const empty = stableGap(having({ stable: cohorts.unstable }));
-    expect(empty).toContain("No observation with stable credit has completed yet");
-    expect(empty).not.toMatch(/\d/);
-    const broad = (over: Partial<ThesisCohort>) =>
-      broaderGap(having({ candidates: { ...cohorts.candidates, ...over } }));
-    expect(broad({ mean_vol_gap: -0.0422 })).toContain("the average gap was −4.2 volatility points");
-    expect(broad({ mean_vol_gap: 0 })).toContain("the average gap was 0.0 volatility points");
-    expect(broad({ count: 1 })).toContain("The 1 completed qualifying observation");
-    expect(broaderGap(having({ candidates: cohorts.unstable })))
-      .toBe("No qualifying observation has completed yet.");
-  });
-
   it("estimate a cost in words that claim no trade, and keep it apart from the gap", async () => {
     await shown();
     const cost = text("Potential return and trading costs");
-    for (const part of ["Observed volatility gap", "Broader comparison:",
+    for (const part of ["Observed volatility gap", "Version A, all qualifying stretches: across 64",
+                        "Version B, all qualifying stretches: across 55",
                         "not tradable alpha", "Using the sampled bid–ask quotes and assumed fees, we "
                         + "estimate a round-trip cost of about 9.8% of a put's mid-price and 19.7%",
                         "Feb 9, 2026", "Net strategy returns have not yet been estimated",
                         "cannot be subtracted"]) {
       expect(cost).toContain(part);
     }
-    expect(cost).not.toMatch(/opening and closing|Gross premium observed|29\.6%|The median was/i);
+    expect(cost).not.toMatch(/opening and closing|29\.6%|The median was|b5 completed|with stable credit/i);
     open("Cost assumptions and limitations");
     expect(rowsOf("Cost sample").map((r) => [r[0], r[4], r[5]])).toEqual([
       ["Put", "9.8%", "14.6%"], ["Call", "19.7%", "29.6%"]]);
@@ -384,7 +385,7 @@ describe("the home tile", () => {
      async () => {
     const found = await tile(THESIS);
     for (const part of ["Daily thesis tracker", "+11.5 volatility points",
-                        "Watching a recent volatility spike", "Data through Feb 9, 2026",
+                        "A: conditions not met · B: cannot assess", "Data through Feb 9, 2026",
                         "not an expected trading return"]) {
       expect(found).toContain(part);
     }

@@ -14,7 +14,8 @@ The thesis assignment is due **Tue Nov 24 2026, 11:59 pm ET** (TD-02). It asks f
 | §3 Architecture | Adapted to the repo: Python under `pmcc/`, the site's existing React and ECharts pages. No private store: no ledger or vendor quote tables are kept. The nightly run re-derives the tracker from LSEG (and FRED) and commits only derived files (TD-09) |
 | §4 Data | §4.1: a probe (T1-01), its results recorded in DECISIONS instead of `research/data_inventory.md`. §4.2: S&P 500 index and VIX closes (TD-04), the high-yield OAS (TD-05); PM options only as R5's cost sample (TD-07); rates and Treasury yields out. §4.3: the SPXW profile checked in the probe, for R5's cost only. §4.4: in, for the tracker's series |
 | §5 Features and tracker | In, as written |
-| §6 Options implementation, §7 Execution and ledger | Out (backtesting) |
+| §5 and §9, versions A and B | In (TD-33): two exploratory versions read at every session, counted in qualifying stretches, with a revised K1 each. §5 and §9 as written are the original version's, kept as a reference |
+| §6 Options implementation, §7 Execution and ledger | Out (backtesting); A and B to be compared on the same contracts, sizing, costs and exits (TD-33) |
 | §8 Historical evaluation | Out, except the stable/unstable cohorts' matured variance outcomes (analysis D) that K1 and R5 read. R5 is a rough, evidence-informed estimate (TD-07): the premium beside one dated sample of SPXW's measured spreads (TD-21). §8.4's 20 per cohort is a future validation target that blocks nothing (TD-23) |
 | §9 Wrong-if conditions | K1 calculated; K2 and K3 shown as "Not yet evaluated — requires strategy backtesting" (TD-08). Status fields: `run_status`, `data_status`, the tracker's `signal_status` values (`NO_SHOCK`, `SEARCHING`, `NO_CANDIDATE`, `FILTERED_OUT`, `ELIGIBLE`, and `CREDIT_UNAVAILABLE` and `INCOMPLETE_CANDIDATE_SEARCH`, whose assessment is blocked without stopping anything, TD-25), `thesis_status` and `evidence_status` (always `INSUFFICIENT_EVIDENCE`: no `SUPPORTIVE` / `MIXED` / `UNSUPPORTIVE` classification, TD-23); the trading values and `position_status` are out. K1 is a current rolling assessment: the persistent `FAIL` latch waits for backtesting (TD-24) |
 | §10 Website | Components 1–4 and 7–10 (TD-10), with the raw credit spread charted (TD-06); 4 is "Preliminary historical evidence", in plain language (TD-23); the page is a reading sequence, the thesis's statuses said in words within it (TD-30); 5 (trading comparison) and 6 (forward record) are out |
@@ -50,13 +51,13 @@ A positive result in one does not establish the other. Do not treat a VIX-minus-
 
 ### R1 — One-sentence thesis
 
-> I believe S&P 500 options remain expensive relative to subsequent market movements after a volatility spike when market swings begin to ease and corporate credit conditions stay stable, creating opportunities to sell protection selectively after costs.
+> I believe S&P 500 options can offer opportunities to sell protection when implied volatility materially exceeds a forecast based on recent market movements and corporate credit conditions remain stable.
 
-(The PO's wording, 2026-11-23, TD-30; the research meaning is unchanged. The page's title: "Selling expensive protection after market scares".)
+We compare entering when those conditions are met with waiting until recent market swings also begin to ease. (The PO's wording, 2026-11-24, TD-33: two exploratory versions, A and B, beside the rest of this spec. Its spike-based version, §5 to §9 as written, stays as the original reference.)
 
 ### Economic explanation
 
-On the page (PO, TD-30): "Investors may continue paying heavily for protection after the initial scare has passed. This project looks for situations where that demand remains high while market conditions begin to settle. Corporate borrowing conditions help us judge whether the scare could become a deeper financial problem." In full:
+For the original spike-based version (TD-33):
 
 The proposed mechanism is that demand for protection can remain elevated after an initial equity-market shock. If credit conditions remain stable and actual price fluctuations begin to diminish, the insurance price may decline more slowly than the underlying risk. Stable credit is proposed as evidence that the shock is less likely to become a persistent financing or solvency problem.
 
@@ -72,9 +73,9 @@ This is a testable interpretation, not an established causal conclusion. Credit 
 
 ### R6 — Macro-environment paragraph for the website
 
-> This idea depends on the market scare fading. Persistent inflation, unexpected Federal Reserve policy changes, or worsening corporate financing conditions could keep volatility elevated. A technology selloff could also spread into the broader market. In those situations, options that appear expensive may be pricing risks that subsequently materialize.
+> This idea depends on markets moving less than options price in. Persistent inflation, unexpected Federal Reserve policy changes, or worsening corporate financing conditions could raise volatility or keep it elevated, whether or not a market scare came first. A technology selloff could also spread into the broader market. In those situations, options that appear expensive may be pricing risks that subsequently materialize.
 
-(The PO's wording, 2026-11-23, TD-30.)
+(The PO's wording, TD-30, with a preceding scare no longer a premise, TD-33.)
 
 Display this paragraph apart from a dated current-state summary generated from measured inputs: the page's latest assessment (TD-30). Do not fabricate explanations for daily moves or claim a news event caused them without sourced evidence.
 

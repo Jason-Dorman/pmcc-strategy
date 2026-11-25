@@ -8,7 +8,7 @@ import type { Loaded } from "../data/state";
 import { useThesis } from "../data/useRun";
 import type { Thesis as ThesisFile } from "../types/generated/thesis";
 import { Cost } from "./thesis/cost";
-import { Evidence } from "./thesis/evidence";
+import { Evidence } from "./thesis/compare";
 import { Idea, Macro } from "./thesis/idea";
 import { Invalidate } from "./thesis/invalidate";
 import { Assessment } from "./thesis/latest";

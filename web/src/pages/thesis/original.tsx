@@ -1,6 +1,6 @@
-// The thesis page's preliminary evidence (UI-SPEC §6 › Thesis; PO, TD-23, TD-30). Every count is of
-// completed (matured) observations. A volatility gap is never a trading return, and nothing here
-// classifies the evidence.
+// The original spike-based version, as a reference (UI-SPEC §6 › Thesis; PO, TD-23, TD-30, TD-33):
+// its own state, groups, observations and wrong-if conditions, unchanged and never shown as
+// evidence for versions A or B. Every count is of completed (matured) observations.
 import { DataTable, type TableColumn } from "../../components/DataTable";
 import { count, iv, orDash } from "../../format/number";
 import {
@@ -8,26 +8,15 @@ import {
   eligibilityLabel,
   level,
   outcomeLabel,
-  points,
+  signalLabel,
   variance,
   volPts,
 } from "../../format/thesis";
 import type { Thesis, ThesisCohort, ThesisEpisode } from "../../types/generated/thesis";
-import { Disclosure, Section, Titled } from "./parts";
-
-/** How market-priced volatility compared with what followed, by its sign; one observation is not
- * an average. None without a completed observation. */
-export function gapPhrase(c: ThesisCohort): string | null {
-  const gap = c.mean_vol_gap;
-  if (c.count === 0 || gap === null) return null;
-  if (points(gap) === "0.0") {
-    return "market-priced volatility matched subsequent actual volatility"
-      + (c.count === 1 ? "" : " on average");
-  }
-  const size = c.count === 1 ? points(gap) : `an average of ${points(gap)}`;
-  return `market-priced volatility ${gap > 0 ? "exceeded" : "fell below"} subsequent actual `
-    + `volatility by ${size} volatility points`;
-}
+import { lead } from "./assessment";
+import { assessment, words } from "./invalidate";
+import { Titled } from "./parts";
+import { gapPhrase } from "./versions";
 
 /** The same as a sentence of its own. */
 export function gapSentence(c: ThesisCohort): string {
@@ -130,10 +119,10 @@ function History({ thesis }: { thesis: Thesis }) {
       <p>The table sets out every group of completed (matured) observations. The gap is VIX minus the
         volatility that followed, in volatility points. The variance premium is the same comparison
         in variance: VIX&apos;s implied 30-day variance minus the variance that followed.</p>
-      <DataTable label="Groups" rows={groups} columns={COHORT_COLUMNS} rowId={(g) => g.name} grow />
+      <DataTable label="Original groups" rows={groups} columns={COHORT_COLUMNS} rowId={(g) => g.name} grow />
       <p>The table lists each qualifying observation, newest first, with what credit was at its
         assessment and what followed.</p>
-      <DataTable label="Qualifying observations" rows={observed} columns={OBSERVATION_COLUMNS}
+      <DataTable label="Original qualifying observations" rows={observed} columns={OBSERVATION_COLUMNS}
                  rowId={(e) => e.episode_id} />
       <p className="th-caption">
         A larger gap can reflect a higher starting VIX, and consecutive sessions share most of their
@@ -145,24 +134,41 @@ function History({ thesis }: { thesis: Thesis }) {
   );
 }
 
-export function Evidence({ thesis }: { thesis: Thesis }) {
+/** The original's wrong-if conditions, as they were defined and stood. */
+function Conditions({ thesis }: { thesis: Thesis }) {
+  return (
+    <ul className="th-list">
+      {thesis.evidence.conditions.map((k) => (
+        <li key={k.condition_id}>
+          <b>{k.condition_id}.</b> {words(k.formula)}; {words(k.threshold)}. Needs{" "}
+          {k.minimum_sample}. {assessment(k)}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+export function OriginalReference({ thesis }: { thesis: Thesis }) {
   const { stable, unstable } = thesis.evidence.cohorts;
   return (
-    <Section id="evidence" title="Preliminary historical evidence"
-             intro={<>When a session qualified after a past volatility spike, how did market-priced
-               volatility compare with the volatility of the 30 days that followed? The thesis
-               expects stable credit to show the larger gap.</>}>
-      <div className="th-pair th-wide">
-        <Group title="Stable credit" cohort={stable} />
-        <Group title="Unstable credit" cohort={unstable} />
+    <>
+      <p>
+        <b>This is the original version, kept as a reference. It is not evidence for versions A or
+          B.</b> It looked only in the ten sessions after a spike in VIX, for the first session whose
+        gap was wide enough and whose market swings had eased, and then read credit at that session.
+      </p>
+      <p>Its state today: {signalLabel(thesis.signal.status)}. {lead(thesis.signal)}</p>
+      <div className="th-pair">
+        <Group title="Original, stable credit" cohort={stable} />
+        <Group title="Original, unstable credit" cohort={unstable} />
       </div>
       {!(stable.count && unstable.count) && (
         <p>Credit-regime comparison unavailable in this sample.</p>
       )}
       <p><b>{sampleLimits(thesis)}</b> {leftOut(thesis)}</p>
-      <Disclosure title="Explore the historical observations" wide>
-        <History thesis={thesis} />
-      </Disclosure>
-    </Section>
+      <History thesis={thesis} />
+      <p>Its wrong-if conditions, as defined and as they stand:</p>
+      <Conditions thesis={thesis} />
+    </>
   );
 }

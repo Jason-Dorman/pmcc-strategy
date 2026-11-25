@@ -2,7 +2,7 @@
 // which THESIS-SPEC §1 holds.
 import { Section } from "./parts";
 
-export const TITLE = "Selling expensive protection after market scares";
+export const TITLE = "Selling expensive protection, selectively";
 
 const HORIZONS: readonly (readonly [string, string])[] = [
   ["Expected opportunity", "Recurring over the next 12–24 months, reviewed quarterly."],
@@ -16,15 +16,18 @@ export function Idea() {
       <p className="th-eyebrow">Volatility thesis · a hypothesis being investigated</p>
       <h1 className="th-h1" id="idea-title">{TITLE}</h1>
       <p className="th-thesis">
-        I believe S&amp;P 500 options remain expensive relative to subsequent market movements after
-        a volatility spike when market swings begin to ease and corporate credit conditions stay
-        stable, creating opportunities to sell protection selectively after costs.
+        I believe S&amp;P 500 options can offer opportunities to sell protection when implied
+        volatility materially exceeds a forecast based on recent market movements and corporate
+        credit conditions remain stable.
       </p>
       <p>
-        Investors may continue paying heavily for protection after the initial scare has passed.
-        This project looks for situations where that demand remains high while market conditions
-        begin to settle. Corporate borrowing conditions help us judge whether the scare could become
-        a deeper financial problem.
+        We compare entering when those conditions are met with waiting until recent market swings
+        also begin to ease.
+      </p>
+      <p>
+        <b>Implied volatility</b> is the movement option prices imply. When it stands well above what
+        recent markets suggest, protection may be expensive, or it may be pricing a risk still to
+        come. Corporate borrowing conditions help us judge which.
       </p>
       <dl className="th-horizons th-wide">
         {HORIZONS.map(([name, text]) => (
@@ -35,7 +38,9 @@ export function Idea() {
         ))}
       </dl>
       <p className="th-caption">
-        The opportunity and the holding period are planning estimates, not measured results.
+        The opportunity and the holding period are planning estimates, not measured results. The
+        proposed holding period for a trade is shorter than the 30-calendar-day window the tracker
+        observes.
       </p>
     </section>
   );
@@ -45,11 +50,11 @@ export function Macro() {
   return (
     <Section id="macro" title="Macro conditions">
       <p>
-        This idea depends on the market scare fading. Persistent inflation, unexpected Federal
-        Reserve policy changes, or worsening corporate financing conditions could keep volatility
-        elevated. A technology selloff could also spread into the broader market. In those
-        situations, options that appear expensive may be pricing risks that subsequently
-        materialize.
+        This idea depends on markets moving less than options price in. Persistent inflation,
+        unexpected Federal Reserve policy changes, or worsening corporate financing conditions could
+        raise volatility or keep it elevated, whether or not a market scare came first. A technology
+        selloff could also spread into the broader market. In those situations, options that appear
+        expensive may be pricing risks that subsequently materialize.
       </p>
     </Section>
   );

@@ -430,6 +430,8 @@ Nov 21, 2026 · companion to the [Thesis spec](THESIS-SPEC.md), the source of tr
 | TD-30 | The thesis page, redesigned for a reader | SETTLED (PO); replaces TD-28's order and labels | — |
 | TD-31 | The redesign, as built (T4-02) | ENG | — |
 | TD-32 | A polish pass on the thesis page | SETTLED (PO) | — |
+| TD-33 | Two exploratory versions, A and B; the original kept as a reference | SETTLED (PO) | — |
+| TD-34 | Versions A and B, as built (T4-04) | ENG | — |
 
 ## Thesis settled
 
@@ -586,6 +588,17 @@ Nov 21, 2026 · companion to the [Thesis spec](THESIS-SPEC.md), the source of tr
 - **Pending outcomes:** "30-day outcomes still pending" over the newest sessions, from the file's `PENDING` status alone, only while such sessions are in the range shown. With the details, the panes are labelled "Annualized volatility (%)" and "Volatility points".
 - **Built:** the note sits in a band above the plot, clear of the lines, in two lines so it clears the unit on a phone; the pending sessions are shaded faintly (`--pending-shade`, the outcome's colour at 10%).
 
+### TD-33 — Two exploratory versions, A and B; the original kept as a reference
+**Status:** SETTLED · **Basis:** PO, 2026-11-24 · **Affects:** Thesis spec §1 (R1, R6), §5 (beside it, unchanged), §9 (K1 for A and B); replaces TD-30's thesis sentence, macro paragraph, assessment headline and evidence; T4-04
+
+- **The question:** does waiting for calmer markets improve the observed volatility premium enough to justify fewer opportunities?
+- **A, pricing gap + stable credit:** VIX at least 3.0 volatility points above the 30-day forecast, and every credit check passing. **B, also wait for calmer markets:** A's, and RV5 below RV20 and no higher than three sessions earlier. Both are read at every session, with no spike before them. Forecasts, credit thresholds, publication lag, missing-data rules and the 30-day outcome are unchanged; nothing is optimized.
+- **The original version** keeps its calculations, results, K1–K3 and IDs (`v1.0`), shown only in a labelled reference section, never as evidence for A or B.
+- **Counting:** a qualifying stretch is an uninterrupted run of sessions meeting a version's conditions, observed once, at its first session. Missing data is unknown, not a failure, and never makes a confirmed start. Three views, over the whole history, dates chosen before outcomes: all starts; ten-session spacing; thirty-calendar-day spacing (each retained start at least that far from the last retained, a discarded start never shifted). They are counting conventions, not trades.
+- **Outcomes**, per version and view: selected, completed, pending and incomplete counts; mean and median VIX minus the realized volatility that followed; the worst gap and its date; the mean variance premium. Pending and incomplete outcomes are counted and never averaged. Overlap is stated; the thirty-day view reduces it and is not called independent.
+- **K1, revised, for A and B apart:** the mean variance premium over the latest 30 completed observations of the version's thirty-day selection, wrong if at or below zero; below 30, descriptive only. K2 and K3 wait for the backtest, which should run A and B on the same contracts, sizing, execution assumptions, costs and exits.
+- **The page:** the broader thesis sentence; each version's result (met, not met with why, cannot assess); one compact A/B table with its period and overlap; spacing, medians, variance and observations in a disclosure; each statistic named by version and view. No version is declared better.
+
 ## Thesis engineering
 
 ### TD-11 — ID prefixes
@@ -712,3 +725,13 @@ Nov 21, 2026 · companion to the [Thesis spec](THESIS-SPEC.md), the source of tr
 - **Styles:** `web/src/theme/thesis.css`, all under `.th`. The rules T4-01 added to `shell.css` for spacing notes against charts and tables also moved other pages by a few pixels; they are removed.
 - **The payload:** the deployed file was the first night's (Nov 23 00:59 ET), before T4-01's fields; the producer was already right, so the next `thesis` run writes them all. Until then the page says where each missing value would be.
 - **Home tile:** its line uses the new labels.
+
+### TD-34 — Versions A and B, as built (T4-04)
+**Status:** ENG · **Affects:** TD-33; T3-01, T4-04
+
+- **Code:** `pmcc/thesis/versions.py`, pure, over the `Tracker` the nightly run already computes: its conditions are `episodes.checks` and `credit.credit_state`, so no rule is restated. `thesis.json` gains `comparison` (null in earlier files), and nothing else in it changes. `configs/thesis.yaml`'s `comparison` holds the method's version, the two spacings and the revised K1's window.
+- **States:** a condition known to fail makes a session not met whatever else is missing; otherwise a missing one makes it unknown. A run is a confirmed stretch only when the session before is known not to be met; other runs are counted as unconfirmed and left out.
+- **The analysis period** starts at the first session every condition of both versions can be read.
+- **Reproduced** on commit `bc8a32c` (2023-12-27 to 2026-11-23), from the file's own recorded credit statuses: A 66 starts, 37 ten-session, 23 thirty-day (22 completed), 64 completed, mean +3.7053 and +5.3230; B 57, 32, 21 (20), 55, +4.2562 and +4.6801; the original 7, 5, +7.5543; B's qualifying days a subset of A's. No discrepancy, and no unknown session in the period.
+- **A moving start:** FRED serves a rolling three years of the spread, so the period's start moves forward each night (Nov 21 to Nov 24, 2023 between the first two files). Stretches near it drop out, and a spaced selection, walked from the first start, can change with them. Keeping our own copy of the series would fix it; that is the PO's to decide for the backtesting phase. The page says so under Limitations.
+- **Titles:** the PO gave the thesis sentence, not a title; the page's is "Selling expensive protection, selectively", since a market scare is no longer a premise.

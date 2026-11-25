@@ -41,6 +41,13 @@ evidence:
   kill_window_selected_events: 30
   kill_window_completed_trades: 30
   credit_comparison_window_months: 36
+# The two exploratory versions' counting views and revised K1 (PO, TD-33). Versions A and B read the
+# conditions above unchanged; `model_version` stays the original spike-based version's.
+comparison:
+  methodology_version: v2.0-exploratory
+  spacing_sessions: 10
+  spacing_calendar_days: 30
+  kill_window_observations: 30
 # R5's cost sample (TD-07, TD-14): one rough SPXW iron condor at a close, never a trade. The
 # contract rules are §13's options values (§6.2), the spread test §6.3's, the fee §7.2's, the
 # multiplier Cboe's SPXW specification's [S5]. The rate is a rough flat input (the 3-month bill's

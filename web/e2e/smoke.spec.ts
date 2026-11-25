@@ -354,8 +354,10 @@ test("the thesis page reads without opening anything, and its chart keeps its zo
   await page.goto("./#/thesis");
   await settled(page);
   await expect(page.getByRole("heading", { level: 1 }))
-    .toHaveText("Selling expensive protection after market scares");
-  await expect(page.getByRole("table")).toHaveCount(0); // every raw table is behind a disclosure
+    .toHaveText("Selling expensive protection, selectively");
+  await expect(page.getByRole("table", { includeHidden: false }))
+    .toHaveCount(await page.getByRole("table", { name: /Versions A and B/ }).count()); // raw tables
+  // stay behind their disclosures; a file before TD-33 has no comparison
   const chart = page.getByRole("figure", { name: /Market-priced volatility, our forecast/ });
   await chart.evaluate((el) => el.scrollIntoView({ block: "center" }));
   await expect(chart.locator("svg path").first()).toBeAttached();
@@ -386,12 +388,12 @@ test("the thesis page reads without opening anything, and its chart keeps its zo
   await page.mouse.up();
   const presets = page.getByRole("group", { name: "Period shown" });
   await expect(presets.getByRole("button", { pressed: true })).toHaveCount(0);
-  await page.getByRole("button", { name: "Show signal details" }).click();
+  await page.getByRole("button", { name: "Show gap and original-version details" }).click();
   await expect(chart.getByText(/No credit data before/)).toHaveCount(1);
   // A preset brings the recent sessions back, the details still open.
   await presets.getByRole("button", { name: "1 year" }).click();
   await expect(chart.getByText(/No credit data before/)).toHaveCount(0);
-  await expect(page.getByRole("list", { name: "Signal details legend" })).toBeVisible();
+  await expect(page.getByRole("list", { name: "Gap and original-version legend" })).toBeVisible();
   for (const unit of ["Annualized volatility (%)", "Volatility points"]) {
     await expect(chart.getByText(unit, { exact: true })).toHaveCount(1);
   }

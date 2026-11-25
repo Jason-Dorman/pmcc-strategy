@@ -15,12 +15,13 @@ import type { Loaded } from "../data/state";
 import { useLive, useThesis, useUniverseFile } from "../data/useRun";
 import { moneySigned } from "../format/money";
 import { iv, orDash, pct, ratio } from "../format/number";
-import { isStale, signalLabel, volPoints } from "../format/thesis";
+import { isStale, volPoints } from "../format/thesis";
 import { timeET } from "../format/time";
 import type { Headline } from "../types/generated/headline";
 import type { Live } from "../types/generated/live";
 import type { Thesis } from "../types/generated/thesis";
 import { pickFor } from "./live/sections";
+import { tileStates } from "./thesis/versions";
 
 /** The value once loaded; nothing while loading or when the file is missing. */
 function ready<T>(state: Loaded<T>): T | undefined {
@@ -86,7 +87,7 @@ function Tile({ strategy, kicker, figure, unit, detail, blurb, symbol,
 }
 
 /** The thesis's tile (PO, TD-28): VIX minus the 30-day forecast, signed, in volatility points,
- * or "Unavailable", never zero; the signal in words; and the session it's as of. */
+ * or "Unavailable", never zero; each version's state (TD-33); and the session it's as of. */
 function thesisTile(state: Loaded<Thesis>): TileProps {
   const base = {
     strategy: "thesis" as const, kicker: "Daily thesis tracker", symbol: undefined,
@@ -101,7 +102,7 @@ function thesisTile(state: Loaded<Thesis>): TileProps {
     ...base,
     ...(gap === null ? { figure: "Unavailable" }
       : { figure: volPoints(gap), unit: "volatility points" }),
-    detail: [signalLabel(t.signal.status),
+    detail: [tileStates(t.comparison),
              t.data_through && `Data through ${longDate(t.data_through)}`,
              isStale(t) && "Stale: an update is overdue"].filter(Boolean).join(" · "),
   };

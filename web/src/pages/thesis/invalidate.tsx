@@ -1,11 +1,12 @@
-// The thesis page's wrong-if cards (UI-SPEC §6 › Thesis; PO, TD-08, TD-24, TD-30): K1-K3 as defined,
-// each in plain language with the sample it needs and one assessment statement; its numbers, units
+// The thesis page's wrong-if cards (UI-SPEC §6 › Thesis; PO, TD-08, TD-24, TD-30, TD-33): the first
+// revised and assessed for versions A and B apart, the other two as defined for the backtest, each in
+// plain language with the sample it needs and one assessment statement; its numbers, units
 // and exact formula behind a disclosure (TD-32). Too small a sample is never a pass.
 import { longDate } from "../../components/charts/axis";
 import { count } from "../../format/number";
 import { completed, variance } from "../../format/thesis";
-import type { Thesis, ThesisCondition } from "../../types/generated/thesis";
-import { Disclosure, Section, Titled } from "./parts";
+import type { Thesis, ThesisComparison, ThesisCondition } from "../../types/generated/thesis";
+import { Disclosure, NotAvailable, Section, Titled } from "./parts";
 
 interface CardCopy {
   title: string;
@@ -15,14 +16,10 @@ interface CardCopy {
 }
 
 const CARDS: Readonly<Record<string, CardCopy>> = {
-  K1: { title: "The apparent pricing advantage disappears",
-        plain: "Over a sufficient sample, implied variance no longer exceeds the variance "
-          + "subsequently realized.",
-        needs: (n) => `the latest ${n} completed observations with stable credit` },
-  K2: { title: "Trading costs consume the opportunity",
-        plain: "The proposed trades fail to earn positive average returns after costs.",
+  K2: { title: "Returns fail to remain positive after costs",
+        plain: "The strategy's actual trades fail to earn positive average returns after costs.",
         needs: (n) => `the latest ${n} completed trades` },
-  K3: { title: "The credit filter provides no benefit",
+  K3: { title: "Stable-credit selection provides no benefit",
         plain: "Trades selected during stable credit conditions perform no better than comparable "
           + "trades during unstable conditions.",
         needs: (n) => `at least ${n} completed trades in each credit group` },
@@ -76,7 +73,7 @@ const STATUS_ICONS: Readonly<Record<string, string>> = {
 };
 
 /** The spec's formula as a reader's: its identifiers as words, its signs as signs. */
-function words(text: string): string {
+export function words(text: string): string {
   return text.replaceAll("_", " ").replaceAll("<=", "≤");
 }
 
@@ -85,22 +82,48 @@ function needed(k: ThesisCondition): string {
   return copy === undefined || k.required === null ? k.minimum_sample : copy.needs(k.required);
 }
 
-/** The numbers behind the assessment, with their units and date. */
-function Evaluation({ k }: { k: ThesisCondition }) {
-  if (k.status === "NOT_EVALUATED") {
-    return <p>Its value and sample are not measured until then.</p>;
-  }
+/** The numbers behind one version's revised first condition, with their units and date. */
+function Numbers({ k }: { k: ThesisCondition }) {
   return (
-    <>
-      <p>
-        {k.value === null ? "No value is available" : `The current value is ${variance(k.value)}`} in
-        variance units: VIX&apos;s implied 30-day variance minus the variance that followed, averaged
-        over {completed(k.sample ?? 0)} with stable credit.
-        {k.assessed_on !== null && ` It is a rolling assessment as of ${longDate(k.assessed_on)}.`}
-      </p>
-      <p>A positive value means implied exceeded realized. Too small a sample is never read
-        as a pass.</p>
-    </>
+    <p>
+      <b>{k.condition_id}.</b> {words(k.formula)}; {words(k.threshold)}. Needs {k.minimum_sample}.{" "}
+      {k.value === null ? "No value is available" : `The current value is ${variance(k.value)}`} in
+      variance units, over {completed(k.sample ?? 0)}
+      {k.assessed_on !== null && `, a rolling assessment as of ${longDate(k.assessed_on)}`}.
+    </p>
+  );
+}
+
+/** The first condition, revised: one statement per version (TD-33). */
+function PremiumCard({ c }: { c: ThesisComparison | null }) {
+  return (
+    <Titled className="th-card th-status-premium" title="The observed variance premium disappears">
+      <p>Over a sufficient sample, implied variance no longer exceeds the variance subsequently
+        realized.</p>
+      {c === null ? (
+        <NotAvailable>The versions&apos; results are not in this data file. They arrive with the next
+          nightly update.</NotAvailable>
+      ) : (
+        <>
+          <p className="th-caption">
+            Needs, for each version: the latest {c.versions[0]?.k1.required ?? ""} completed
+            observations at least {c.spacing_calendar_days} calendar days apart.
+          </p>
+          {c.versions.map((v) => (
+            <p className="th-status" key={v.key}>
+              <span aria-hidden="true">{STATUS_ICONS[v.k1.status] ?? "○"}</span> Version {v.key}:{" "}
+              {assessment(v.k1)}
+            </p>
+          ))}
+          <Disclosure title="Exact formula and evaluation">
+            {c.versions.map((v) => <Numbers key={v.key} k={v.k1} />)}
+            <p>A positive value means implied exceeded realized. Too small a sample is never read as a
+              pass. This is a revised observation definition; the original version&apos;s is kept in
+              its reference section.</p>
+          </Disclosure>
+        </>
+      )}
+    </Titled>
   );
 }
 
@@ -116,7 +139,8 @@ function Card({ k }: { k: ThesisCondition }) {
       <Disclosure title="Exact formula and evaluation">
         <p><b>{k.condition_id}.</b> {words(k.formula)}; {words(k.threshold)}. Needs{" "}
           {k.minimum_sample}.</p>
-        <Evaluation k={k} />
+        <p>Its value and sample are not measured until then. The backtest would run versions A and B
+          on the same contracts, sizing, costs and exits.</p>
       </Disclosure>
     </Titled>
   );
@@ -128,7 +152,9 @@ export function Invalidate({ thesis }: { thesis: Thesis }) {
              intro={<>Three conditions, fixed in advance. Any one of them would count against the
                thesis and call for a review.</>}>
       <div className="th-cards">
-        {thesis.evidence.conditions.map((k) => <Card key={k.condition_id} k={k} />)}
+        <PremiumCard c={thesis.comparison} />
+        {thesis.evidence.conditions.filter((k) => k.status === "NOT_EVALUATED")
+          .map((k) => <Card key={k.condition_id} k={k} />)}
       </div>
     </Section>
   );

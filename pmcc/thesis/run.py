@@ -48,6 +48,7 @@ from pmcc.thesis.probe import CLOSE, FRED_SERIES, HISTORY_START, INDEX_RIC, VIX_
 from pmcc.thesis.publish import Statuses, thesis_file
 from pmcc.thesis.status import current_state, data_status, expected_by, signal, thesis_status
 from pmcc.thesis.tracker import run_tracker
+from pmcc.thesis.versions import compare
 
 THESIS_FILE = Path("live") / "thesis" / "thesis.json"
 _DAY = timedelta(days=1)
@@ -137,7 +138,8 @@ def build(inputs: Inputs, calendar: SessionCalendar, config: ThesisConfig, now: 
         signal=signal(tracker),
         current=current_state(tracker, config),
     )
-    return thesis_file(tracker, found, statuses, sources(inputs), calendar, config, now)
+    compared = compare(tracker, config)
+    return thesis_file(tracker, found, compared, statuses, sources(inputs), calendar, config, now)
 
 
 def sources(inputs: Inputs) -> tuple[ThesisSource, ...]:

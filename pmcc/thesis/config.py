@@ -128,6 +128,16 @@ class CostSampleConfig(_Section):
         return self
 
 
+class ComparisonConfig(_Section):
+    """The two exploratory versions' counting views and revised K1 (PO, TD-33). Their conditions
+    are the sections above's, unchanged."""
+
+    methodology_version: str = Field(min_length=1)
+    spacing_sessions: int = Field(ge=1)
+    spacing_calendar_days: int = Field(ge=1)
+    kill_window_observations: int = Field(ge=1)
+
+
 class R5CostConfig(_Section):
     """R5's measured cost (PO, TD-21): one dated sample of SPXW's spreads at a close, from the
     probe (TD-20), for the legs within an absolute-delta band; and the stressed case's multiples."""
@@ -174,6 +184,7 @@ class ThesisConfig(_Section):
     normalization: NormalizationConfig
     credit: CreditConfig
     evidence: EvidenceConfig
+    comparison: ComparisonConfig
     cost_sample: CostSampleConfig
     r5_cost: R5CostConfig
 

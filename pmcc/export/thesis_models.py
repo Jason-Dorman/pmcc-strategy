@@ -179,6 +179,74 @@ class ThesisCurrent(_Strict):
     credit_note: str
 
 
+class ThesisCheck(_Strict):
+    """One condition of a version, at the latest session."""
+
+    key: str  # gap, credit, swings_below_long, swings_not_rising
+    met: bool | None
+
+
+class ThesisVersionLatest(_Strict):
+    state: str  # MET, NOT_MET, UNKNOWN
+    checks: tuple[ThesisCheck, ...]
+    stretch_start: str | None
+
+
+class ThesisView(_Strict):
+    """A version's counting view (TD-33): how many observations, and what followed them."""
+
+    key: str  # all, ten_session, thirty_day
+    selected: int
+    completed: int
+    pending: int
+    incomplete: int
+    mean_gap: float | None  # VIX minus the realized vol that followed, decimal
+    median_gap: float | None
+    worst_gap: float | None
+    worst_day: str | None
+    mean_premium: float | None
+
+
+class ThesisObservation(_Strict):
+    """A confirmed qualifying stretch's first session, and the views that retain it."""
+
+    day: str
+    stretch_end: str
+    stretch_sessions: int
+    ten_session: bool
+    thirty_day: bool
+    vix: float | None
+    forecast_gap_vol: float | None
+    outcome: str
+    outcome_end: str | None
+    realized_vol: float | None
+    vol_gap: float | None
+    premium: float | None
+
+
+class ThesisVersion(_Strict):
+    key: str  # A, B
+    name: str
+    qualifying_days: int
+    unknown_days: int
+    unconfirmed_stretches: int
+    latest: ThesisVersionLatest | None
+    views: tuple[ThesisView, ...]
+    observations: tuple[ThesisObservation, ...]
+    k1: ThesisCondition  # the revised first wrong-if condition
+
+
+class ThesisComparison(_Strict):
+    """The two exploratory versions (TD-33), apart from the original's episodes and evidence."""
+
+    methodology_version: str
+    analysis_start: str | None
+    analysis_end: str | None
+    spacing_sessions: int
+    spacing_calendar_days: int
+    versions: tuple[ThesisVersion, ...]
+
+
 class ThesisParameters(_Strict):
     """The rules' thresholds, from `configs/thesis.yaml`, so the page never retypes one."""
 
@@ -222,6 +290,7 @@ class Thesis(_Strict):
     signal: ThesisSignal
     current: ThesisCurrent | None
     parameters: ThesisParameters | None = None
+    comparison: ThesisComparison | None = None  # versions A and B; the rest is the original's
     sources: tuple[ThesisSource, ...]
     evidence: ThesisEvidence
     episodes: tuple[ThesisEpisode, ...]

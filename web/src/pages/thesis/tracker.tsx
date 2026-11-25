@@ -48,15 +48,15 @@ const PRICE_KEYS: readonly Key[] = [
 
 function detailKeys(threshold: number | null): Key[] {
   return [
-    { name: "Search window after a VIX spike", mark: "th-key-area th-key-window" },
+    { name: "Original version: search window after a VIX spike", mark: "th-key-area th-key-window" },
     { name: TRACKER_SERIES.gap, mark: "th-key-line th-key-gap" },
     ...(threshold === null ? []
-      : [{ name: `Gap a qualifying observation needs, ${points(threshold)} volatility points`,
+      : [{ name: `Gap every version needs, ${points(threshold)} volatility points`,
            mark: "th-key-line th-key-threshold" }]),
-    { name: "Qualifying observation, credit stable", mark: "th-key-eligible", glyph: "●" },
-    { name: "Qualifying observation, credit not stable", mark: "th-key-filtered", glyph: "■" },
-    { name: "Qualifying observation, credit data unavailable", mark: "th-key-unavailable",
-      glyph: "▲" },
+    { name: "Original version: observation, credit stable", mark: "th-key-eligible", glyph: "●" },
+    { name: "Original version: observation, credit not stable", mark: "th-key-filtered", glyph: "■" },
+    { name: "Original version: observation, credit data unavailable",
+      mark: "th-key-unavailable", glyph: "▲" },
     { name: "No credit data", mark: "th-key-area th-key-nocredit" },
   ];
 }
@@ -68,17 +68,18 @@ function SignalDetails({ thesis }: { thesis: Thesis }) {
   return (
     <>
       <p>
-        The lower pane is VIX minus our forecast, in volatility points. After a spike in VIX we
-        search a fixed window, shaded, for the first session where market swings have eased and that
-        gap is wide enough. Each marker is that session. Its shape and colour say what credit was at
-        its own assessment, which never moves it to another day.{" "}
+        The lower pane is VIX minus our forecast, in volatility points. The shading and the markers
+        belong to the <b>original spike-based version</b>, kept as a reference: after a spike in VIX
+        it searched a fixed window for the first session where market swings had eased and that gap
+        was wide enough. Each marker is that session; its shape and colour say what credit was then.
+        Versions A and B use neither.{" "}
         {from === undefined ? "No session has credit data yet."
           : `Credit data starts ${longDate(from)}: earlier observations are marked unavailable, `
             + "neither stable nor unstable."}
       </p>
-      {p === null && <NotAvailable>The gap a qualifying observation needs is not in this data file,
+      {p === null && <NotAvailable>The gap a version needs is not in this data file,
         so its line is not drawn. It arrives with the next nightly update.</NotAvailable>}
-      <Legend label="Signal details legend" keys={detailKeys(p?.minimum_forecast_gap ?? null)} />
+      <Legend label="Gap and original-version legend" keys={detailKeys(p?.minimum_forecast_gap ?? null)} />
     </>
   );
 }
@@ -134,9 +135,9 @@ function RawTables({ thesis }: { thesis: Thesis }) {
         <DataTable label="Daily observations" rows={newest} columns={SESSION_COLUMNS}
                    rowId={(r) => r.day} virtual />
       </Disclosure>
-      <Disclosure title="View volatility spikes and qualifying observations" wide>
-        <p>The table lists every VIX spike, newest first, with whether a session in its search
-          window qualified and what credit was at that session.</p>
+      <Disclosure title="View the original version's volatility spikes and observations" wide>
+        <p>The table lists the original version&apos;s VIX spikes, newest first, with whether a
+          session in each search window qualified and what credit was at that session.</p>
         <DataTable label="Volatility spikes" rows={episodes} columns={EPISODE_COLUMNS}
                    rowId={(e) => e.episode_id} />
       </Disclosure>
@@ -160,7 +161,7 @@ function Presets({ value, onPick }: { value: string | null; onPick: (name: strin
 const PRICE_LABEL = "Market-priced volatility, our forecast and the volatility of the following 30 "
   + "days, by session";
 const DETAIL_LABEL = `${PRICE_LABEL}, with the gap between VIX and the forecast and each qualifying `
-  + "observation below";
+  + "observation of the original version below";
 
 /** The chart, its presets, its slider and its details. A preset or the details toggle sets the
  * window; the slider only reports it, so dragging is never interrupted by a redraw. */
@@ -192,7 +193,8 @@ function TrackerChart({ thesis }: { thesis: Thesis }) {
       <div className="th-controls">
         <Presets value={preset} onPick={pick} />
         <Toggle open={details} onToggle={toggle} controls="signal-details"
-                show="Show signal details" hide="Hide signal details" />
+                show="Show gap and original-version details"
+                hide="Hide gap and original-version details" />
       </div>
       <Legend label="Tracker legend" keys={PRICE_KEYS} />
       <Chart build={build} hero={details} onZoom={onZoom}

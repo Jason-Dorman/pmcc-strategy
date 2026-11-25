@@ -25,7 +25,7 @@ The current work. It builds the thesis, its daily tracker and their page, nothin
 | T1 Data | Sat Nov 21 | A headless probe shows the index's, VIX's and the credit series' coverage, and an SPXW chain | Done 2026-11-22: closes proven (TD-18); credit from FRED, LSEG not entitled (TD-19); SPXW's chain quoted, no spec condor that day (TD-20) |
 | T2 Tracker | Sun Nov 22 | The tracker, K1 and R5's note computed from series in memory, tested | Done 2026-11-23: T2-01 (TD-15, TD-16), T2-02 (TD-21 to TD-26) |
 | T3 Nightly | Sun Nov 22 | `thesis run` writes `live/thesis/`; the `thesis` workflow commits it and the site redeploys | Done 2026-11-23 (TD-27): the PO's run of the `thesis` workflow committed the file |
-| T4 Site | Mon Nov 23 | `#/thesis` shows R1–R7 from the committed files | Done: T4-01 2026-11-23 (TD-28, TD-29), redesigned by T4-02 and polished by T4-03 2026-11-24 (TD-30 to TD-32) |
+| T4 Site | Mon Nov 23 | `#/thesis` shows R1–R7 from the committed files | Done: T4-01 2026-11-23 (TD-28, TD-29), redesigned by T4-02 and polished by T4-03 2026-11-24 (TD-30 to TD-32); versions A and B by T4-04 (TD-33, TD-34) |
 | T5 Release | Tue Nov 24 | A scheduled run after Monday's close has updated the page; the URL is submitted | Not started |
 
 **Critical path:** T3-02, live before Monday night, so the scheduled run after Monday's close (04:17 UTC Tue, which GitHub may start hours late, LD-27) updates the page before the deadline: the tracker staying current day to day. A manual run covers a dropped one.
@@ -100,9 +100,12 @@ The current work. It builds the thesis, its daily tracker and their page, nothin
   - The gap needed stated as above the forecast; stable credit first and the cost as an estimate; shorter wrong-if cards; the volatility definition; pending outcomes noted on the chart and each pane's unit.
   - Needs: T4-02
 
+- [x] **T4-04 · Versions A and B** **[PO]** — done 2026-11-24 (TD-33, TD-34): `pmcc/thesis/versions.py`, `thesis.json`'s `comparison`, the page's A/B results, table and revised first condition; the PO's snapshot figures reproduced exactly; the original version kept as a reference
+  - Needs: T3-01, T4-03
+
 #### T5 — Release
 
-- [ ] **T5-01 · Submit** **[PO]** — the site's URL, with a scheduled run after Monday Nov 23's close on the page. Needs: T3-02, T4-01, T4-02, T4-03
+- [ ] **T5-01 · Submit** **[PO]** — the site's URL, with a scheduled run after Monday Nov 23's close on the page. Needs: T3-02, T4-01 to T4-04
 
 ### Thesis risks
 
