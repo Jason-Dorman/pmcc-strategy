@@ -1,5 +1,5 @@
 // The thesis page's methodology, sources and what isn't built yet (UI-SPEC §6 › Thesis; PO, TD-24,
-// TD-30, TD-33), each behind a named disclosure. Every threshold is the file's; none is typed here.
+// TD-30, TD-33, TD-35), each behind a named disclosure. Every threshold is the file's; none is typed here.
 import { KeyValue } from "../../components/cells";
 import { DataTable, type TableColumn } from "../../components/DataTable";
 import { count, orDash, pct } from "../../format/number";
@@ -70,8 +70,8 @@ const SOURCE_COLUMNS: readonly TableColumn<ThesisSource>[] = [
 ];
 
 const LIMITS: readonly string[] = [
-  "The thresholds are provisional assumptions set before the history was examined. They were not "
-  + "tuned to it, and nothing here has been tested out of sample.",
+  "These rules and thresholds are provisional research assumptions. The A/B comparison was developed "
+  + "while examining this historical sample, and the results have not been tested on unseen data.",
   "Credit data starts in late 2023, because FRED serves only the last three years of this series. "
   + "As that window moves forward each night, so does the start of the analysis period, and the "
   + "stretches and spaced selections near it can change.",
@@ -97,9 +97,9 @@ function List({ items }: { items: readonly string[] }) {
 export function Methodology({ thesis }: { thesis: Thesis }) {
   return (
     <Section id="method" title="Methodology, sources and detailed data"
-             intro={<>Every number here is recomputed each night from daily closes and the published
-               credit spread. If a source does not answer, nothing is published and the last good
-               update stays, with its date.</>}>
+             intro={<>Market indicators and thesis assessments update nightly. The trading-cost
+               illustration uses the quote date shown in that section. If a required source is
+               unavailable, the last successful published snapshot remains visible with its date.</>}>
       <Disclosure title="How the signal and the outcomes are computed">
         {thesis.parameters ? <Rules p={thesis.parameters} /> : (
           <NotAvailable>The rules&apos; values are not in this data file. They arrive with the next

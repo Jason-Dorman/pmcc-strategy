@@ -9,7 +9,7 @@ import { level, outcomeLabel, variance, volPts } from "../../format/thesis";
 import type { Thesis, ThesisComparison, ThesisObservation, ThesisVersion, ThesisView } from "../../types/generated/thesis";
 import { OriginalReference } from "./original";
 import { Disclosure, NotAvailable, Section } from "./parts";
-import { period, versionName, viewName, viewOf } from "./versions";
+import { countingSentence, period, versionName, viewName, viewOf } from "./versions";
 
 type Measure = readonly [name: string, show: (v: ThesisView) => string];
 
@@ -133,6 +133,10 @@ function Comparison({ c }: { c: ThesisComparison }) {
   return (
     <>
       <Compact c={c} />
+      <p>A positive volatility gap means options priced more volatility than subsequently occurred. A
+        negative gap means the market moved more than options had priced in. The worst gap is the most
+        negative observation in this sample; it is not a trading loss or portfolio drawdown.</p>
+      <p>{countingSentence(c)}</p>
       <p className="th-caption">
         Analysis period: {period(c)}. The volatility gap is VIX minus the actual volatility of the
         following 30 days. Stretches can start days apart, so their 30-day outcomes can overlap and
@@ -140,8 +144,7 @@ function Comparison({ c }: { c: ThesisComparison }) {
       </p>
       <p>
         <b>These are exploratory, descriptive results from a short period. They do not establish
-          trading profitability, and neither version is shown to be better.</b> The averages change
-        with the way stretches are counted, so the spacing views are part of the picture. The options
+          trading profitability, and neither version is shown to be better.</b> The options
         backtest would have to test the difference.
       </p>
       <Disclosure title="Explore the spacing views, medians and observations" wide>

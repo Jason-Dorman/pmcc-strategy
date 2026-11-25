@@ -51,11 +51,15 @@ A positive result in one does not establish the other. Do not treat a VIX-minus-
 
 ### R1 — One-sentence thesis
 
-> I believe S&P 500 options can offer opportunities to sell protection when implied volatility materially exceeds a forecast based on recent market movements and corporate credit conditions remain stable.
+> I believe S&P 500 options with implied volatility substantially above our forecast tend to overstate subsequent market swings when corporate credit conditions are stable, creating opportunities to sell protection selectively after trading costs.
 
-We compare entering when those conditions are met with waiting until recent market swings also begin to ease. (The PO's wording, 2026-11-24, TD-33: two exploratory versions, A and B, beside the rest of this spec. Its spike-based version, §5 to §9 as written, stays as the original reference.)
+Version A enters when the pricing gap is wide enough and credit is stable; version B also waits until recent market swings begin to ease. (The PO's wording, 2026-11-24, TD-35; TD-33: two exploratory versions, A and B, beside the rest of this spec. Its spike-based version, §5 to §9 as written, stays as the original reference.)
 
 ### Economic explanation
+
+The page's proposed mechanism, the hypothesis being investigated and not an established finding (PO, TD-35):
+
+> Investors' demand for downside protection may keep option prices elevated. Stable corporate borrowing conditions may help identify situations where that protection is expensive relative to the market movements that follow. The research must establish whether the premium is enough to compensate for losses and trading costs.
 
 For the original spike-based version (TD-33):
 

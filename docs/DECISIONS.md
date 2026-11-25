@@ -432,6 +432,8 @@ Nov 21, 2026 · companion to the [Thesis spec](THESIS-SPEC.md), the source of tr
 | TD-32 | A polish pass on the thesis page | SETTLED (PO) | — |
 | TD-33 | Two exploratory versions, A and B; the original kept as a reference | SETTLED (PO) | — |
 | TD-34 | Versions A and B, as built (T4-04) | ENG | — |
+| TD-35 | The thesis page's last wording: the belief, the assessment, the history, the updates | SETTLED (PO) | — |
+| TD-36 | TD-35 as built (T4-05) | ENG | — |
 
 ## Thesis settled
 
@@ -599,6 +601,15 @@ Nov 21, 2026 · companion to the [Thesis spec](THESIS-SPEC.md), the source of tr
 - **K1, revised, for A and B apart:** the mean variance premium over the latest 30 completed observations of the version's thirty-day selection, wrong if at or below zero; below 30, descriptive only. K2 and K3 wait for the backtest, which should run A and B on the same contracts, sizing, execution assumptions, costs and exits.
 - **The page:** the broader thesis sentence; each version's result (met, not met with why, cannot assess); one compact A/B table with its period and overlap; spacing, medians, variance and observations in a disclosure; each statistic named by version and view. No version is declared better.
 
+### TD-35 — The thesis page's last wording: the belief, the assessment, the history, the updates
+**Status:** SETTLED · **Basis:** PO, 2026-11-24 · **Affects:** Thesis spec §1 (R1, the economic explanation); replaces TD-33's thesis sentence and its stated reasons, and TD-30's sentences on the readings; UI-SPEC § Thesis; T4-05
+
+- **The thesis sentence** states the belief: options priced substantially above our forecast tend to overstate subsequent market swings when credit is stable. Version A and version B are named under it, and the proposed mechanism is given as a hypothesis under investigation.
+- **The latest assessment:** "Research conditions met", "No qualifying setup" (neutral, not a failure) or "Cannot assess — required data unavailable" (distinct). The reasons are said once, in the three readings, which give every failed check: both of B's calming conditions, and every credit rule broken.
+- **The evidence:** under the table, what a positive, a negative and the worst gap mean, and one sentence, generated from the file, setting the average gaps of all stretches beside the 30-day-spaced ones. No version is said to have the larger gap.
+- **The research history:** the A/B design evolved while this sample was examined, so nothing says it was fixed beforehand: "three defined conditions", "provisional research assumptions", "not been tested on unseen data". No threshold or assessment changes.
+- **Updates:** indicators and assessments update nightly; the cost illustration keeps its own quote date.
+
 ## Thesis engineering
 
 ### TD-11 — ID prefixes
@@ -735,3 +746,12 @@ Nov 21, 2026 · companion to the [Thesis spec](THESIS-SPEC.md), the source of tr
 - **Reproduced** on commit `bc8a32c` (2023-12-27 to 2026-11-23), from the file's own recorded credit statuses: A 66 starts, 37 ten-session, 23 thirty-day (22 completed), 64 completed, mean +3.7053 and +5.3230; B 57, 32, 21 (20), 55, +4.2562 and +4.6801; the original 7, 5, +7.5543; B's qualifying days a subset of A's. No discrepancy, and no unknown session in the period.
 - **A moving start:** FRED serves a rolling three years of the spread, so the period's start moves forward each night (Nov 21 to Nov 24, 2023 between the first two files). Stretches near it drop out, and a spaced selection, walked from the first start, can change with them. Keeping our own copy of the series would fix it; that is the PO's to decide for the backtesting phase. The page says so under Limitations.
 - **Titles:** the PO gave the thesis sentence, not a title; the page's is "Selling expensive protection, selectively", since a market scare is no longer a premise.
+
+### TD-36 — TD-35 as built (T4-05)
+**Status:** ENG · **Affects:** TD-35; T4-05
+
+- A met version still dates its current stretch beside its label, which no reading says.
+- The home tile uses the same labels, without the part after the dash: `A: no qualifying setup · B: cannot assess`.
+- A condition not met is neutral in the readings' tags too, and data missing takes `--warn`, so one ordinary night isn't three red marks.
+- The explanation's "Corporate borrowing conditions help us judge which" is dropped: the mechanism says it as a hypothesis.
+- Only the page changed: no Python, configuration or data.

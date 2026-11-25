@@ -76,10 +76,14 @@ describe("the reading sequence", () => {
   it("leads with the thesis as a hypothesis, and its horizons as planning estimates", async () => {
     await shown();
     const idea = text(SEQUENCE[0] ?? "");
-    expect(idea).toContain("I believe S&P 500 options can offer opportunities to sell protection when "
-      + "implied volatility materially exceeds a forecast based on recent market movements and "
-      + "corporate credit conditions remain stable.");
-    expect(idea).toContain("We compare entering when those conditions are met with waiting until");
+    expect(idea).toContain("I believe S&P 500 options with implied volatility substantially above our "
+      + "forecast tend to overstate subsequent market swings when corporate credit conditions are "
+      + "stable, creating opportunities to sell protection selectively after trading costs.");
+    expect(idea).toContain("Version A enters when the pricing gap is wide enough and credit is stable. "
+      + "Version B also waits until recent market swings begin to ease.");
+    expect(idea).toContain("a hypothesis we are investigating: Investors' demand for downside "
+      + "protection may keep option prices elevated.");
+    expect(idea).toContain("The research must establish whether the premium is enough");
     expect(idea).toContain("shorter than the 30-calendar-day window");
     expect(idea).not.toMatch(/scare|spike/i);
     expect(idea).toContain("a hypothesis being investigated");
@@ -125,10 +129,10 @@ describe("the latest assessment", () => {
     await shown();
     const assessment = text("Latest assessment");
     expect(assessment).not.toMatch(/spike|candidate|original/i); // not the original's search
-    for (const part of ["A — Pricing gap + stable credit", "Conditions not met",
-                        "Credit does not pass its stability checks.",
-                        "B — Also wait for calmer markets", "Cannot assess",
-                        "Required data is missing: usable credit data.", "Readings at the Feb 9, 2026 close",
+    for (const part of ["A — Pricing gap + stable credit", "No qualifying setup",
+                        "B — Also wait for calmer markets",
+                        "Cannot assess — required data unavailable",
+                        "It is higher than three sessions earlier, 18.5%", "Readings at the Feb 9, 2026 close",
                         "VIX is 11.5 volatility points above our forecast",
                         "To qualify, it must be at least 3.0 volatility points above",
                         "Meets the condition", "Does not meet the condition",
@@ -136,6 +140,18 @@ describe("the latest assessment", () => {
                         "Next update expected by", "Data feed up to date"]) {
       expect(assessment).toContain(part);
     }
+    // The readings alone say why: no summary repeats them.
+    expect(assessment).not.toMatch(/The options market is pricing|does not pass its stability/);
+    for (const part of [/20-day volatility, 27/g, /rose 17 basis points/g]) {
+      expect(assessment.match(part)).toHaveLength(1);
+    }
+  });
+
+  it("marks no setup neutrally, apart from missing data", async () => {
+    await shown();
+    const marks = [...document.querySelectorAll(".th-version .th-verdict")];
+    expect(marks.map((m) => [m.className, m.textContent?.slice(0, 1)])).toEqual([
+      ["th-verdict th-verdict-unmet", "○"], ["th-verdict th-verdict-unknown", "?"]]);
   });
 
   it("explains the failed credit rule, and gives all three checks on request", async () => {
@@ -236,7 +252,10 @@ describe("the evidence", () => {
     const shownText = text("Preliminary historical evidence");
     for (const part of ["Analysis period: Dec 27, 2023 to Feb 9, 2026", "can overlap and are not",
                         "neither version is shown to be better",
-                        "justify fewer opportunities?"]) {
+                        "justify fewer opportunities?",
+                        "A negative gap means the market moved more than options had priced in",
+                        "it is not a trading loss or portfolio drawdown",
+                        "Counting every qualifying stretch, the average gap is +3.7 points for A"]) {
       expect(shownText).toContain(part);
     }
     expect(shownText).not.toMatch(/winner|5 completed|\+7\.6|mispriced|alpha/i);
@@ -299,6 +318,8 @@ describe("the wrong-if cards", () => {
       "◐ Version B: The average variance premium is currently positive, but only 20 of the required "
       + "30 observations are available."]);
     expect(cards[0]?.textContent).toContain("at least 30 calendar days apart");
+    expect(text("What would invalidate the thesis")).toContain("Three defined conditions for "
+      + "reviewing this thesis. Any one of them would count against it and call for reassessment.");
     for (const card of cards.slice(1)) {
       expect(card.querySelector(".th-status")?.textContent)
         .toBe("○ Evaluated in the next phase: strategy backtesting.");
@@ -360,6 +381,19 @@ describe("return and costs", () => {
   });
 });
 
+describe("the research history", () => {
+  it("claims neither a design fixed beforehand nor a nightly cost sample", async () => {
+    await shown();
+    open("Limitations");
+    const method = text("Methodology, sources and detailed data");
+    expect(method).toContain("The A/B comparison was developed while examining this historical sample, "
+      + "and the results have not been tested on unseen data.");
+    expect(method).toContain("The trading-cost illustration uses the quote date shown in that section.");
+    expect(document.body.textContent).not.toMatch(
+      /fixed in advance|before the history was examined|every number here/i);
+  });
+});
+
 describe("the definitions", () => {
   it("say volatility is annualized, not a return", async () => {
     await shown();
@@ -385,7 +419,7 @@ describe("the home tile", () => {
      async () => {
     const found = await tile(THESIS);
     for (const part of ["Daily thesis tracker", "+11.5 volatility points",
-                        "A: conditions not met · B: cannot assess", "Data through Feb 9, 2026",
+                        "A: no qualifying setup · B: cannot assess", "Data through Feb 9, 2026",
                         "not an expected trading return"]) {
       expect(found).toContain(part);
     }

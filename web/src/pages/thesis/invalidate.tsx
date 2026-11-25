@@ -149,8 +149,8 @@ function Card({ k }: { k: ThesisCondition }) {
 export function Invalidate({ thesis }: { thesis: Thesis }) {
   return (
     <Section id="invalidate" title="What would invalidate the thesis"
-             intro={<>Three conditions, fixed in advance. Any one of them would count against the
-               thesis and call for a review.</>}>
+             intro={<>Three defined conditions for reviewing this thesis. Any one of them would count
+               against it and call for reassessment.</>}>
       <div className="th-cards">
         <PremiumCard c={thesis.comparison} />
         {thesis.evidence.conditions.filter((k) => k.status === "NOT_EVALUATED")

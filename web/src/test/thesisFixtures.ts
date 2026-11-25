@@ -179,7 +179,7 @@ export const COMPARISON: ThesisComparison = {
         stretch_start: null,
       },
       views: [view("all", 57, { mean_gap: 0.042562, worst_gap: -0.0523, worst_day: "2025-02-14" }),
-              view("ten_session", 32), view("thirty_day", 21)],
+              view("ten_session", 32), view("thirty_day", 21, { mean_gap: 0.046801 })],
     }),
   ],
 };

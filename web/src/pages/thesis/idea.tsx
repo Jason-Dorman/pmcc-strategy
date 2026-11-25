@@ -1,5 +1,5 @@
-// The thesis page's opening and its macro paragraph (UI-SPEC §6 › Thesis): the PO's copy (TD-30),
-// which THESIS-SPEC §1 holds.
+// The thesis page's opening and its macro paragraph (UI-SPEC §6 › Thesis): the PO's copy (TD-30,
+// TD-35), which THESIS-SPEC §1 holds.
 import { Section } from "./parts";
 
 export const TITLE = "Selling expensive protection, selectively";
@@ -16,18 +16,25 @@ export function Idea() {
       <p className="th-eyebrow">Volatility thesis · a hypothesis being investigated</p>
       <h1 className="th-h1" id="idea-title">{TITLE}</h1>
       <p className="th-thesis">
-        I believe S&amp;P 500 options can offer opportunities to sell protection when implied
-        volatility materially exceeds a forecast based on recent market movements and corporate
-        credit conditions remain stable.
+        I believe S&amp;P 500 options with implied volatility substantially above our forecast tend
+        to overstate subsequent market swings when corporate credit conditions are stable, creating
+        opportunities to sell protection selectively after trading costs.
       </p>
       <p>
-        We compare entering when those conditions are met with waiting until recent market swings
-        also begin to ease.
+        We compare two versions. Version A enters when the pricing gap is wide enough and credit is
+        stable. Version B also waits until recent market swings begin to ease.
+      </p>
+      <p>
+        <b>The proposed mechanism, a hypothesis we are investigating:</b> Investors&apos; demand for
+        downside protection may keep option prices elevated. Stable corporate borrowing conditions
+        may help identify situations where that protection is expensive relative to the market
+        movements that follow. The research must establish whether the premium is enough to
+        compensate for losses and trading costs.
       </p>
       <p>
         <b>Implied volatility</b> is the movement option prices imply. When it stands well above what
         recent markets suggest, protection may be expensive, or it may be pricing a risk still to
-        come. Corporate borrowing conditions help us judge which.
+        come.
       </p>
       <dl className="th-horizons th-wide">
         {HORIZONS.map(([name, text]) => (

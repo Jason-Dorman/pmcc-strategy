@@ -183,10 +183,10 @@
   color: var(--positive);
 }
 .th-verdict-unmet {
-  color: var(--negative);
+  color: var(--text); /* an ordinary reading, not a failure (TD-35) */
 }
 .th-verdict-unknown {
-  color: var(--text-muted);
+  color: var(--warn); /* data missing: apart from a condition not met */
 }
 .th-meta {
   display: flex;

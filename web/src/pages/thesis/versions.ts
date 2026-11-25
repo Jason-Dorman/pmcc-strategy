@@ -1,8 +1,8 @@
-// The two exploratory versions in words (UI-SPEC §6 › Thesis; PO, TD-33), all of it from the file's
-// own states, checks and counts. A condition met is never a trade, and missing data never a failure.
+// The two exploratory versions in words (UI-SPEC §6 › Thesis; PO, TD-33, TD-35), all of it from the
+// file's own states and counts. A condition met is never a trade, and missing data never a failure.
 import { longDate } from "../../components/charts/axis";
 import { count } from "../../format/number";
-import { points } from "../../format/thesis";
+import { points, volPoints } from "../../format/thesis";
 import type { Thesis, ThesisComparison, ThesisVersion, ThesisVersionLatest, ThesisView } from "../../types/generated/thesis";
 import type { Verdict } from "./assessment";
 
@@ -16,11 +16,13 @@ export function versionName(v: ThesisVersion): string {
 }
 
 const STATES: Readonly<Record<string, string>> = {
-  MET: "Conditions met", NOT_MET: "Conditions not met", UNKNOWN: "Cannot assess",
+  MET: "Research conditions met", NOT_MET: "No qualifying setup",
+  UNKNOWN: "Cannot assess — required data unavailable",
 };
 
 export function stateLabel(latest: ThesisVersionLatest | null): string {
-  return latest === null ? "Cannot assess" : STATES[latest.state] ?? latest.state;
+  const state = latest?.state ?? "UNKNOWN";
+  return STATES[state] ?? state;
 }
 
 export function stateVerdict(latest: ThesisVersionLatest | null): Verdict {
@@ -28,44 +30,17 @@ export function stateVerdict(latest: ThesisVersionLatest | null): Verdict {
   return latest.state === "MET";
 }
 
-const FAILS: Readonly<Record<string, string>> = {
-  gap: "VIX is not far enough above our forecast",
-  credit: "credit does not pass its stability checks",
-  swings_below_long: "five-day volatility is not below 20-day volatility",
-  swings_not_rising: "five-day volatility is higher than three sessions earlier",
-};
-const MISSING: Readonly<Record<string, string>> = {
-  gap: "VIX or our forecast",
-  credit: "usable credit data",
-  swings_below_long: "five-day or 20-day volatility",
-  swings_not_rising: "five-day volatility three sessions earlier",
-};
-
-/** `a`, `a, and b`, `a, b, and c`. */
-function listed(items: readonly string[]): string {
-  if (items.length < 2) return items.join("");
-  return `${items.slice(0, -1).join(", ")}, and ${items.at(-1) ?? ""}`;
+/** The qualifying stretch a met version is in; nothing otherwise: the readings say why. */
+export function stretchNote(latest: ThesisVersionLatest | null): string | null {
+  if (latest?.state !== "MET" || latest.stretch_start === null) return null;
+  return `The current qualifying stretch began ${longDate(latest.stretch_start)}.`;
 }
 
-function capital(text: string): string {
-  return text.charAt(0).toUpperCase() + text.slice(1);
-}
-
-/** Why: the stretch it opened, the conditions that fail, or what is missing. */
-export function reason(latest: ThesisVersionLatest | null): string {
-  if (latest === null) return "No session is in the tracker yet.";
-  const failed = latest.checks.filter((c) => c.met === false).map((c) => FAILS[c.key] ?? c.key);
-  const missing = latest.checks.filter((c) => c.met === null).map((c) => MISSING[c.key] ?? c.key);
-  if (latest.state === "NOT_MET") return `${capital(listed(failed))}.`;
-  if (latest.state === "UNKNOWN") return `Required data is missing: ${listed(missing)}.`;
-  return latest.stretch_start === null ? "Every condition holds at the latest session."
-    : `Every condition holds. The current qualifying stretch began ${longDate(latest.stretch_start)}.`;
-}
-
-/** The home tile's line: `A: conditions not met · B: cannot assess`. */
+/** The home tile's line, each label short: `A: no qualifying setup · B: cannot assess`. */
 export function tileStates(c: ThesisComparison | null): string {
   if (c === null) return "Version results not in this file yet";
-  return c.versions.map((v) => `${v.key}: ${stateLabel(v.latest).toLowerCase()}`).join(" · ");
+  const short = (v: ThesisVersion) => stateLabel(v.latest).toLowerCase().replace(/ — .*/, "");
+  return c.versions.map((v) => `${v.key}: ${short(v)}`).join(" · ");
 }
 
 export function viewOf(v: ThesisVersion, key: string): ThesisView | undefined {
@@ -81,6 +56,22 @@ export function viewName(key: string, c: ThesisComparison): string {
 export function period(c: ThesisComparison): string {
   if (c.analysis_start === null || c.analysis_end === null) return "no session yet";
   return `${longDate(c.analysis_start)} to ${longDate(c.analysis_end)}`;
+}
+
+/** How far the average gaps depend on the counting: every stretch, then spaced ones (TD-35). The
+ * first figure carries the unit; a view without a completed outcome is said to have no average. */
+export function countingSentence(c: ThesisComparison): string {
+  let unit = " points";
+  const averages = (key: string): string => c.versions.map((v) => {
+    const mean = viewOf(v, key)?.mean_gap ?? null;
+    if (mean === null) return `not available for ${v.key}`;
+    const shown = `${volPoints(mean)}${unit} for ${v.key}`;
+    unit = "";
+    return shown;
+  }).join(" and ");
+  return `Counting every qualifying stretch, the average gap is ${averages("all")}. Keeping `
+    + `observations at least ${c.spacing_calendar_days} calendar days apart, it is `
+    + `${averages("thirty_day")}.`;
 }
 
 /** What a group of completed observations: its count and its average gap. */

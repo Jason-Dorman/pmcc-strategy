@@ -1,5 +1,5 @@
-// The latest readings in words (UI-SPEC §6 › Thesis; PO, TD-30, TD-33), all of it generated from the
-// file. Each supporting observation's verdict is the tracker's own check of that session, never
+// The latest readings in words (UI-SPEC §6 › Thesis; PO, TD-30, TD-33, TD-35), all of it generated
+// from the file. Each supporting observation's verdict is the tracker's own check of that session, never
 // judged here; the versions' results are in `versions.ts`. What the file doesn't hold is said to be
 // missing, never read as failed or as zero.
 import { longDate } from "../../components/charts/axis";
@@ -51,17 +51,7 @@ export function lead(s: ThesisSignal): string {
   return s.reason ? `${sentence} Reason recorded: ${s.reason}.` : sentence;
 }
 
-// ---- the latest readings, in a sentence or two --------------------------------------------------
-
-function pricing(c: ThesisCurrent): string {
-  const gap = c.forecast_gap_vol;
-  if (gap === null) return "Market pricing can't be compared with our forecast for this session.";
-  if (gap <= 0) {
-    return "The options market is pricing no more volatility than our model forecasts.";
-  }
-  const how = c.gap_ok === null ? "more" : c.gap_ok ? "substantially more" : "only slightly more";
-  return `The options market is pricing ${how} volatility than our model forecasts.`;
-}
+// ---- the readings' verdicts ----------------------------------------------------------------------
 
 /** Whether market swings have eased: RV5 under RV20 and no higher than three sessions before. */
 export function swingsMet(c: ThesisCurrent): Verdict {
@@ -75,34 +65,8 @@ export function creditMet(c: ThesisCurrent): Verdict {
   return c.credit_status === "UNAVAILABLE" ? null : c.credit_status === "STABLE";
 }
 
-function creditClause(c: ThesisCurrent): string {
-  if (creditMet(c) === null) return "credit conditions cannot be assessed for lack of usable data";
-  if (c.credit_level_ok === false) {
-    return "credit spreads are above the level our stability rule allows";
-  }
-  if (c.credit_change_short_ok === false || c.credit_change_long_ok === false) {
-    return "credit spreads have risen faster than our stability rule allows";
-  }
-  return "credit conditions do not meet our stability rule";
-}
-
 function capital(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
-}
-
-/** Two sentences on the latest session: pricing, then market swings and credit. */
-export function readings(c: ThesisCurrent): string {
-  const swings = swingsMet(c);
-  const credit = creditMet(c);
-  const good = [swings === true && "recent market swings have begun to ease",
-                credit === true && "credit conditions are stable"].filter((x) => x !== false);
-  const bad = [swings === false && "recent market swings have not yet settled",
-               credit !== true && creditClause(c)].filter((x) => x !== false);
-  const turn = c.gap_ok === true ? "However, " : "In addition, ";
-  const sentences = [pricing(c)];
-  if (bad.length > 0) sentences.push(`${turn}${bad.join(", and ")}.`);
-  if (good.length > 0) sentences.push(`${capital(good.join(", and "))}.`);
-  return sentences.join(" ");
 }
 
 // ---- the three supporting observations ----------------------------------------------------------
@@ -129,15 +93,29 @@ function pricingObservation(c: ThesisCurrent, p: ThesisParameters | null): Obser
            text: `${now} ${gapNeeded(p)}` };
 }
 
-function swingsText(c: ThesisCurrent): string {
+/** Five-day volatility against 20-day, in words, or that one of them is missing. */
+function againstLong(c: ThesisCurrent): string {
   const { rv_short: short, rv_long: long } = c;
   if (short === null || long === null) {
     return "Five-day and 20-day volatility are not both available for this session.";
   }
-  const side = short < long ? "is below" : "remains above";
-  const levels = `Five-day volatility, ${iv(short)}, ${side} 20-day volatility, ${iv(long)}.`;
-  return short < long && c.swings_not_rising === false
-    ? `${levels} It has risen over the past three sessions, so swings are not easing.` : levels;
+  const side = short < long ? "is below" : short > long ? "is above" : "equals";
+  return `Five-day volatility, ${iv(short)}, ${side} 20-day volatility, ${iv(long)}.`;
+}
+
+/** Five-day volatility against its own level three sessions earlier, by the tracker's check. */
+function againstEarlier(c: ThesisCurrent): string {
+  if (c.swings_not_rising === null) {
+    return "Whether it has risen over the past three sessions cannot be assessed.";
+  }
+  const level = c.rv_short_earlier === null ? "" : `, ${iv(c.rv_short_earlier)}`;
+  return `It is ${c.swings_not_rising ? "no higher" : "higher"} than three sessions earlier${level}.`;
+}
+
+/** Version B's two calming conditions, each said whatever the other does. */
+function swingsText(c: ThesisCurrent): string {
+  return `${againstLong(c)} ${againstEarlier(c)} To qualify, five-day volatility must be below 20-day `
+    + "volatility and no higher than three sessions earlier.";
 }
 
 /** A change in a spread, in words: `rose 17 basis points`. */
@@ -151,21 +129,22 @@ function basis(value: number): string {
   return `${value.toFixed(0)} basis points`;
 }
 
-/** The first rule a spread breaks, in words, and its level against the limit it still meets. */
+/** Every rule a spread breaks, in words, and its level against the limit it still meets. */
 function broken(c: ThesisCurrent, p: ThesisParameters, level: number): string | undefined {
-  if (c.credit_level_ok === false) {
-    return `The spread is ${basis(level)}; the stability limit is ${p.credit_maximum_level_bps}.`;
-  }
   const rises = [
     { ok: c.credit_change_short_ok, change: c.credit_change_short_bps, over: "five",
       limit: p.credit_maximum_change_short_bps },
     { ok: c.credit_change_long_ok, change: c.credit_change_long_bps, over: "twenty",
       limit: p.credit_maximum_change_long_bps },
-  ];
-  const failed = rises.find((r) => r.ok === false && r.change !== null);
-  return failed && `The spread ${moved(failed.change ?? 0)} over ${failed.over} observations; the `
-    + `stability limit is ${failed.limit}. Its level, ${basis(level)}, is within the `
-    + `${p.credit_maximum_level_bps} limit, but a spread must also not rise too quickly.`;
+  ].filter((r) => r.ok === false && r.change !== null)
+    .map((r) => `The spread ${moved(r.change ?? 0)} over ${r.over} observations; the stability limit `
+      + `is ${r.limit}.`);
+  if (c.credit_level_ok === false) {
+    return [`The spread is ${basis(level)}; the stability limit is ${p.credit_maximum_level_bps}.`,
+            ...rises].join(" ");
+  }
+  return rises.length === 0 ? undefined : `${rises.join(" ")} Its level, ${basis(level)}, is within `
+    + `the ${p.credit_maximum_level_bps} limit, but a spread must also not rise too quickly.`;
 }
 
 /** Credit in words: the rule it breaks, or that it meets all three, or what isn't known. */

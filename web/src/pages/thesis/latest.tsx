@@ -1,7 +1,7 @@
 // The thesis page's latest assessment, and the credit conditions behind it (UI-SPEC §6 › Thesis;
-// PO, TD-30, TD-33). Each version's result, by the backend's own state and checks, the latest
-// readings in words, three supporting observations, and the data's dates and freshness. The
-// original version's spike-search state plays no part here.
+// PO, TD-30, TD-33, TD-35). Each version's result, by the backend's own state, the three readings
+// that explain it, and the data's dates and freshness. The original version's spike-search state
+// plays no part here.
 // The full credit chart and its values sit behind "Explore credit conditions".
 import { useCallback, useMemo } from "react";
 
@@ -14,9 +14,9 @@ import { bps, bpsChange, creditLabel, isStale } from "../../format/thesis";
 import { timeET } from "../../format/time";
 import type { Palette } from "../../theme/echarts";
 import type { Thesis, ThesisCurrent, ThesisParameters, ThesisPoint, ThesisVersion } from "../../types/generated/thesis";
-import { creditText, observations, readings, type Verdict } from "./assessment";
+import { creditText, observations, type Verdict } from "./assessment";
 import { Disclosure, Legend, NotAvailable, Section, Titled, VerdictTag } from "./parts";
-import { reason, stateLabel, stateVerdict, versionName } from "./versions";
+import { stateLabel, stateVerdict, stretchNote, versionName } from "./versions";
 
 function Freshness({ thesis }: { thesis: Thesis }) {
   const stale = isStale(thesis);
@@ -36,17 +36,19 @@ function Freshness({ thesis }: { thesis: Thesis }) {
   );
 }
 
-/** A version's result at the latest session: met, not met with why, or not assessable. */
+/** A version's result at the latest session; the readings below say why. An ordinary session with
+ * no setup is neutral: it looks like neither a failure nor missing data (TD-35). */
 function VersionResult({ version }: { version: ThesisVersion }) {
   const met = stateVerdict(version.latest);
   const mark = met === null ? "unknown" : met ? "met" : "unmet";
+  const note = stretchNote(version.latest);
   return (
     <Titled className="th-version" title={versionName(version)}>
       <p className={`th-verdict th-verdict-${mark}`}>
-        <span aria-hidden="true">{met === null ? "?" : met ? "✓" : "✕"}</span>{" "}
+        <span aria-hidden="true">{met === null ? "?" : met ? "✓" : "○"}</span>{" "}
         {stateLabel(version.latest)}
       </p>
-      <p>{reason(version.latest)}</p>
+      {note && <p>{note}</p>}
     </Titled>
   );
 }
@@ -54,7 +56,6 @@ function VersionResult({ version }: { version: ThesisVersion }) {
 function Readings({ thesis, current }: { thesis: Thesis; current: ThesisCurrent }) {
   return (
     <>
-      <p>{readings(current)}</p>
       <h3 className="th-h3">Readings at the {longDate(current.day)} close</h3>
       <div className="th-observations">
         {observations(thesis).map((o) => (
@@ -83,8 +84,8 @@ export function Assessment({ thesis }: { thesis: Thesis }) {
             next nightly update.</NotAvailable>
         )}
         <p className="th-caption">
-          Each version is read at every session&apos;s close. A condition met is a research
-          classification, not a trade.
+          Each version is read at every session&apos;s close. “Research conditions met” is a research
+          classification, not a trade. The readings below show the conditions behind each result.
         </p>
         {c === null ? <NotAvailable>No session is in the tracker yet.</NotAvailable>
           : <Readings thesis={thesis} current={c} />}
