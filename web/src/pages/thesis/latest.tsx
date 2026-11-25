@@ -2,7 +2,7 @@
 // PO, TD-30, TD-33, TD-35). Each version's result, by the backend's own state, the three readings
 // that explain it, and the data's dates and freshness. The original version's spike-search state
 // plays no part here.
-// The full credit chart and its values sit behind "Explore credit conditions".
+// The credit chart is on the page (TD-37); its checks and daily values are behind a disclosure.
 import { useCallback, useMemo } from "react";
 
 import { longDate } from "../../components/charts/axis";
@@ -14,7 +14,7 @@ import { bps, bpsChange, creditLabel, isStale } from "../../format/thesis";
 import { timeET } from "../../format/time";
 import type { Palette } from "../../theme/echarts";
 import type { Thesis, ThesisCurrent, ThesisParameters, ThesisPoint, ThesisVersion } from "../../types/generated/thesis";
-import { creditText, observations, type Verdict } from "./assessment";
+import { observations, type Verdict } from "./assessment";
 import { Disclosure, Legend, NotAvailable, Section, Titled, VerdictTag } from "./parts";
 import { stateLabel, stateVerdict, stretchNote, versionName } from "./versions";
 
@@ -104,7 +104,12 @@ export function Assessment({ thesis }: { thesis: Thesis }) {
         their level and recent changes to help distinguish a temporary rise in equity volatility
         from broader financial stress.
       </p>
-      <Disclosure title="Explore credit conditions" wide><Credit thesis={thesis} /></Disclosure>
+      <p>
+        The spread charted here is the extra yield on high-yield US corporate bonds over Treasuries,
+        in basis points. Credit counts as stable only when three checks all hold: the level of the
+        spread, and how far it has risen over 5 and over 20 observations.
+      </p>
+      <Credit thesis={thesis} />
     </Section>
   );
 }
@@ -169,47 +174,55 @@ const CREDIT_COLUMNS: readonly TableColumn<ThesisPoint>[] = [
     cell: (r) => creditLabel(r.credit_status) },
 ];
 
-function Credit({ thesis }: { thesis: Thesis }) {
-  const points = useMemo(() => creditPoints(thesis.series), [thesis.series]);
-  const limits = useMemo(() => limitsOf(thesis.parameters), [thesis.parameters]);
-  const build = useCallback((p: Palette) => creditOption(p, points, limits), [points, limits]);
+/** The checks at the latest session, and every session's values. */
+function CreditValues({ thesis, points }: { thesis: Thesis; points: readonly ThesisPoint[] }) {
   const newest = useMemo(() => [...points].reverse(), [points]);
   const c = thesis.current;
-  if (points.length === 0) return <NotAvailable>No credit data in the tracker yet.</NotAvailable>;
   return (
     <>
-      <p>
-        The spread is the extra yield on high-yield US corporate bonds over Treasuries, in basis
-        points. Credit counts as stable only when three checks all hold: the level of the spread,
-        and how far it has risen over 5 and over 20 observations.
-        {c && ` ${creditText(c, thesis.parameters)}`}
-      </p>
-      <Legend label="Credit chart legend" keys={[
-        { name: CREDIT_SERIES.spread, mark: "th-key-line th-key-credit" },
-        ...(limits === null ? []
-          : [{ name: `Level limit, ${bps(limits.level)}`, mark: "th-key-line th-key-threshold" }]),
-        { name: `${CREDIT_SERIES.unstable}: a check failed`, mark: "th-key-area th-key-unstable" },
-        { name: `${CREDIT_SERIES.unavailable}: too little or too old data`,
-          mark: "th-key-area th-key-nocredit" },
-      ]} />
-      {limits === null && <NotAvailable>The level limit is not in this data file, so it is not
-        drawn. It arrives with the next nightly update.</NotAvailable>}
-      <Chart build={build} label={"The high-yield credit spread as known at each session's "
-        + "decision, with the sessions credit was not stable or was unavailable"} />
       {c && (
         <>
           <p>The table sets the latest spread against each stability check. {dates(c)}</p>
-          <DataTable label="Credit checks" rows={tests(c, limits)} columns={TEST_COLUMNS}
-                     rowId={(t) => t.name} grow narrow />
+          <DataTable label="Credit checks" rows={tests(c, limitsOf(thesis.parameters))}
+                     columns={TEST_COLUMNS} rowId={(t) => t.name} grow narrow />
         </>
       )}
       <p>The table lists the spread as it was known at each session&apos;s decision.</p>
       <DataTable label="Credit by session" rows={newest} columns={CREDIT_COLUMNS}
                  rowId={(r) => r.day} virtual />
-      <p className="th-caption">
-        ICE BofA US High Yield Index Option-Adjusted Spread, ICE Data Indices, LLC, retrieved from
-        FRED, Federal Reserve Bank of St. Louis.
-      </p>
+    </>
+  );
+}
+
+/** The spread's chart, on the page, then its checks and values behind a disclosure. */
+function Credit({ thesis }: { thesis: Thesis }) {
+  const points = useMemo(() => creditPoints(thesis.series), [thesis.series]);
+  const limits = useMemo(() => limitsOf(thesis.parameters), [thesis.parameters]);
+  const build = useCallback((p: Palette) => creditOption(p, points, limits), [points, limits]);
+  if (points.length === 0) return <NotAvailable>No credit data in the tracker yet.</NotAvailable>;
+  return (
+    <>
+      <div className="th-wide">
+        <Legend label="Credit chart legend" keys={[
+          { name: CREDIT_SERIES.spread, mark: "th-key-line th-key-credit" },
+          ...(limits === null ? []
+            : [{ name: `Level limit, ${bps(limits.level)}`, mark: "th-key-line th-key-threshold" }]),
+          { name: `${CREDIT_SERIES.unstable}: a check failed`, mark: "th-key-area th-key-unstable" },
+          { name: `${CREDIT_SERIES.unavailable}: too little or too old data`,
+            mark: "th-key-area th-key-nocredit" },
+        ]} />
+        {limits === null && <NotAvailable>The level limit is not in this data file, so it is not
+          drawn. It arrives with the next nightly update.</NotAvailable>}
+        <Chart build={build} label={"The high-yield credit spread as known at each session's "
+          + "decision, with the sessions credit was not stable or was unavailable"} />
+        <p className="th-caption">
+          ICE BofA US High Yield Index Option-Adjusted Spread, ICE Data Indices, LLC, retrieved from
+          FRED, Federal Reserve Bank of St. Louis.
+        </p>
+      </div>
+      <Disclosure title="View credit checks and daily values" wide>
+        <CreditValues thesis={thesis} points={points} />
+      </Disclosure>
     </>
   );
 }

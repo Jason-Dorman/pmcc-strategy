@@ -25,7 +25,7 @@ The current work. It builds the thesis, its daily tracker and their page, nothin
 | T1 Data | Sat Nov 21 | A headless probe shows the index's, VIX's and the credit series' coverage, and an SPXW chain | Done 2026-11-22: closes proven (TD-18); credit from FRED, LSEG not entitled (TD-19); SPXW's chain quoted, no spec condor that day (TD-20) |
 | T2 Tracker | Sun Nov 22 | The tracker, K1 and R5's note computed from series in memory, tested | Done 2026-11-23: T2-01 (TD-15, TD-16), T2-02 (TD-21 to TD-26) |
 | T3 Nightly | Sun Nov 22 | `thesis run` writes `live/thesis/`; the `thesis` workflow commits it and the site redeploys | Done 2026-11-23 (TD-27): the PO's run of the `thesis` workflow committed the file |
-| T4 Site | Mon Nov 23 | `#/thesis` shows R1–R7 from the committed files | Done: T4-01 2026-11-23 (TD-28, TD-29), redesigned by T4-02 and polished by T4-03 2026-11-24 (TD-30 to TD-32); versions A and B by T4-04 (TD-33, TD-34); last wording by T4-05 (TD-35, TD-36) |
+| T4 Site | Mon Nov 23 | `#/thesis` shows R1–R7 from the committed files | Done: T4-01 2026-11-23 (TD-28, TD-29), redesigned by T4-02 and polished by T4-03 2026-11-24 (TD-30 to TD-32); versions A and B by T4-04 (TD-33, TD-34); last wording by T4-05 (TD-35, TD-36); the credit chart on the page by T4-06, 2026-11-25 (TD-37) |
 | T5 Release | Tue Nov 24 | A scheduled run after Monday's close has updated the page; the URL is submitted | Not started |
 
 **Critical path:** T3-02, live before Monday night, so the scheduled run after Monday's close (04:17 UTC Tue, which GitHub may start hours late, LD-27) updates the page before the deadline: the tracker staying current day to day. A manual run covers a dropped one.
@@ -105,6 +105,9 @@ The current work. It builds the thesis, its daily tracker and their page, nothin
 
 - [x] **T4-05 · The thesis page's last wording** **[PO]** — done 2026-11-24 (TD-35, TD-36): the thesis as a belief, the mechanism as a hypothesis, the assessment said once, the gaps explained, the research history and the updates described as they are; no calculation changed
   - Needs: T4-04
+
+- [x] **T4-06 · The credit chart on the page** **[PO]** — done 2026-11-25 (TD-37)
+  - Needs: T4-05
 
 #### T5 — Release
 

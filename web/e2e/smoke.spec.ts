@@ -358,13 +358,21 @@ test("the thesis page reads without opening anything, and its chart keeps its zo
   await expect(page.getByRole("table", { includeHidden: false }))
     .toHaveCount(await page.getByRole("table", { name: /Versions A and B/ }).count()); // raw tables
   // stay behind their disclosures; a file before TD-33 has no comparison
+  // The credit chart is on the page (TD-37), and the wheel over it scrolls the page.
+  const credit = page.getByRole("figure", { name: /high-yield credit spread/ });
+  await credit.evaluate((el) => el.scrollIntoView({ block: "center" }));
+  await expect(credit.locator("svg path").first()).toBeVisible();
+  await credit.hover();
+  const held = await page.evaluate(() => window.scrollY);
+  await page.mouse.wheel(0, 120);
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(held);
   const chart = page.getByRole("figure", { name: /Market-priced volatility, our forecast/ });
   await chart.evaluate((el) => el.scrollIntoView({ block: "center" }));
   await expect(chart.locator("svg path").first()).toBeAttached();
   const box = await chart.boundingBox();
   if (!box) throw new Error("no chart");
   await page.mouse.move(box.x + box.width * 0.4, box.y + box.height * 0.3);
-  await expect(page.locator(".pm-tip").first()).toContainText("measured from this close");
+  await expect(chart.locator(".pm-tip")).toContainText("measured from this close");
   // The wheel over the chart scrolls the page.
   const before = await page.evaluate(() => window.scrollY);
   await page.mouse.wheel(0, 120);

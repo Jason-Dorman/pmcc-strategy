@@ -108,7 +108,7 @@ describe("the reading sequence", () => {
     await shown();
     expect(screen.getAllByRole("table").map((x) => x.getAttribute("aria-label")))
       .toEqual(["Versions A and B, all qualifying stretches"]); // the one compact comparison
-    for (const title of ["Explore credit conditions", "View daily observations",
+    for (const title of ["View credit checks and daily values", "View daily observations",
                          "View the original version's volatility spikes and observations",
                          "Explore the spacing views, medians and observations",
                          "Original spike-based version (reference)",
@@ -154,9 +154,23 @@ describe("the latest assessment", () => {
       ["th-verdict th-verdict-unmet", "○"], ["th-verdict th-verdict-unknown", "?"]]);
   });
 
+  it("shows the credit chart without opening anything, its legend and source beside it", async () => {
+    await shown();
+    const chart = screen.getByRole("figure", { name: /high-yield credit spread as known/ });
+    expect(chart.closest("details")).toBeNull();
+    const legend = screen.getByRole("list", { name: "Credit chart legend" });
+    for (const part of ["Level limit, 450 bps", "a check failed", "too little or too old data"]) {
+      expect(legend.textContent).toContain(part);
+    }
+    const assessment = text("Latest assessment");
+    expect(assessment).toContain("stable only when three checks all hold");
+    expect(assessment).toContain("ICE Data Indices, LLC");
+    expect(assessment).not.toContain("The latest observation is dated");
+  });
+
   it("explains the failed credit rule, and gives all three checks on request", async () => {
     await shown();
-    open("Explore credit conditions");
+    open("View credit checks and daily values");
     expect(rowsOf("Credit checks").map((r) => r.map((c) => c.replace(/^[✓✕?] /, "")))).toEqual([
       ["Level of the spread", "347 bps", "at most 450 bps", "Meets the condition"],
       ["Change over 5 observations", "+17 bps", "at most +15 bps", "Does not meet the condition"],
@@ -165,7 +179,6 @@ describe("the latest assessment", () => {
     const credit = text("Latest assessment");
     expect(credit).toContain("The latest observation is dated Feb 5, 2026");
     expect(credit).toContain("became usable at 2026-02-09 20:30 ET");
-    expect(credit).toContain("ICE Data Indices, LLC");
   });
 });
 
@@ -185,7 +198,7 @@ describe("the first night's file", () => {
     await shown(FIRST_NIGHT);
     expect(text("Latest assessment")).toContain("Next update time not in this file");
     expect(text("Latest assessment")).toContain("Not assessed");
-    open("Explore credit conditions");
+    open("View credit checks and daily values");
     for (const row of rowsOf("Credit checks")) expect(row[2]).toBe("Not in this file");
     expect(screen.getByText(/level limit is not in this data file/)).toBeDefined();
     fireEvent.click(screen.getByRole("button", { name: /Show gap and original-version details/ }));

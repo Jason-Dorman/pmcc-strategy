@@ -434,6 +434,7 @@ Nov 21, 2026 · companion to the [Thesis spec](THESIS-SPEC.md), the source of tr
 | TD-34 | Versions A and B, as built (T4-04) | ENG | — |
 | TD-35 | The thesis page's last wording: the belief, the assessment, the history, the updates | SETTLED (PO) | — |
 | TD-36 | TD-35 as built (T4-05) | ENG | — |
+| TD-37 | The credit chart is on the page | SETTLED (PO) | — |
 
 ## Thesis settled
 
@@ -609,6 +610,12 @@ Nov 21, 2026 · companion to the [Thesis spec](THESIS-SPEC.md), the source of tr
 - **The evidence:** under the table, what a positive, a negative and the worst gap mean, and one sentence, generated from the file, setting the average gaps of all stretches beside the 30-day-spaced ones. No version is said to have the larger gap.
 - **The research history:** the A/B design evolved while this sample was examined, so nothing says it was fixed beforehand: "three defined conditions", "provisional research assumptions", "not been tested on unseen data". No threshold or assessment changes.
 - **Updates:** indicators and assessments update nightly; the cost illustration keeps its own quote date.
+
+### TD-37 — The credit chart is on the page
+**Status:** SETTLED · **Basis:** PO, 2026-11-25 · **Affects:** replaces TD-30's "Explore credit conditions"; UI-SPEC § Thesis; T4-06
+
+- The high-yield spread's chart is critical to the thesis, so it is visible in the latest assessment, with its three checks described, its legend and its source.
+- ENG: the checks' table and the daily values stay behind "View credit checks and daily values". The sentence on the rule broken isn't repeated beside the chart, since the credit reading above gives it (TD-35).
 
 ## Thesis engineering
 
